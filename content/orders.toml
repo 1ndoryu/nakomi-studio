@@ -1,0 +1,80 @@
+# Pedidos de prueba para el usuario cliente.
+# Usa @users para client/employee, @lookup para service_id y plan_id.
+# Las fases se crean en order_phases.toml referenciando estos orders por @orders:UUID.
+
+[meta]
+table = "orders"
+id_field = "id"
+depends_on = ["users", "services"]
+
+[meta.casts]
+id = "uuid"
+client_id = "uuid"
+service_id = "uuid"
+plan_id = "uuid"
+assigned_employee_id = "uuid"
+payment_mode = "payment_mode"
+status = "order_status"
+
+# Orden 1: Diseño Web Básico - full - in_progress, asignada a empleado
+[[records]]
+id = "a0000001-0001-4000-8000-000000000001"
+client_id = "@users:cliente@test.com"
+service_id = "@services:diseno-de-sitios-web"
+plan_id = "@lookup:service_plans:slug=basico&service_id=@services:diseno-de-sitios-web"
+payment_mode = "full"
+base_price_cents = 10000
+discount_percent = 20
+final_price_cents = 8000
+currency = "USD"
+status = "in_progress"
+assigned_employee_id = "@users:empleado@test.com"
+current_phase = 2
+client_notes = "Quiero un diseño minimalista y moderno"
+
+# Orden 2: Desarrollo Apps Avanzado - phased - pending_payment, sin asignar
+[[records]]
+id = "a0000001-0001-4000-8000-000000000002"
+client_id = "@users:cliente@test.com"
+service_id = "@services:desarrollo-apps"
+plan_id = "@lookup:service_plans:slug=avanzado&service_id=@services:desarrollo-apps"
+payment_mode = "phased"
+base_price_cents = 50000
+discount_percent = 0
+final_price_cents = 50000
+currency = "USD"
+status = "pending_payment"
+current_phase = 0
+client_notes = "App para gestión de inventario"
+
+# Orden 3: Agentes IA Básico - full - completed, asignada a empleado
+[[records]]
+id = "a0000001-0001-4000-8000-000000000003"
+client_id = "@users:cliente@test.com"
+service_id = "@services:agentes-ia"
+plan_id = "@lookup:service_plans:slug=basico&service_id=@services:agentes-ia"
+payment_mode = "full"
+base_price_cents = 6000
+discount_percent = 20
+final_price_cents = 4800
+currency = "USD"
+status = "completed"
+assigned_employee_id = "@users:empleado@test.com"
+current_phase = 3
+client_notes = "Chatbot para atención al cliente"
+
+# Orden 4: Branding Avanzado - full - under_review, asignada a empleado
+[[records]]
+id = "a0000001-0001-4000-8000-000000000004"
+client_id = "@users:cliente@test.com"
+service_id = "@services:branding"
+plan_id = "@lookup:service_plans:slug=avanzado&service_id=@services:branding"
+payment_mode = "full"
+base_price_cents = 40000
+discount_percent = 0
+final_price_cents = 40000
+currency = "USD"
+status = "under_review"
+assigned_employee_id = "@users:empleado@test.com"
+current_phase = 3
+client_notes = "Rebranding completo de la empresa"

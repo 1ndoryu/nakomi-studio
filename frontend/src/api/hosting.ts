@@ -38,19 +38,19 @@ export interface CreateHostingRequest {
 /*    REST API */
 
 export async function apiListHostingSubscriptions(): Promise<HostingSubscription[]> {
-    const {data} = await axiosInstance.get<HostingSubscription[]>('/hosting/subscriptions');
+    const {data} = await axiosInstance.get<HostingSubscription[]>('/api/hosting/subscriptions');
     return data;
 }
 
 export async function apiGetHostingSubscription(id: string): Promise<HostingSubscription> {
-    const {data} = await axiosInstance.get<HostingSubscription>(`/hosting/subscriptions/${id}`);
+    const {data} = await axiosInstance.get<HostingSubscription>(`/api/hosting/subscriptions/${id}`);
     return data;
 }
 
 export async function apiCreateHostingSubscription(
     req: CreateHostingRequest,
 ): Promise<HostingSubscription> {
-    const {data} = await axiosInstance.post<HostingSubscription>('/hosting/subscriptions', req);
+    const {data} = await axiosInstance.post<HostingSubscription>('/api/hosting/subscriptions', req);
     return data;
 }
 
@@ -59,11 +59,11 @@ export async function apiUpdateHostingStatus(
     status: string,
     reason?: string,
 ): Promise<void> {
-    await axiosInstance.patch(`/hosting/subscriptions/${id}/status`, {status, reason});
+    await axiosInstance.patch(`/api/hosting/subscriptions/${id}/status`, {status, reason});
 }
 
 export async function apiListHostingEvents(id: string): Promise<HostingEvent[]> {
-    const {data} = await axiosInstance.get<HostingEvent[]>(`/hosting/subscriptions/${id}/events`);
+    const {data} = await axiosInstance.get<HostingEvent[]>(`/api/hosting/subscriptions/${id}/events`);
     return data;
 }
 

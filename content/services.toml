@@ -1,0 +1,38 @@
+# Servicios base de Nakomi Studio.
+# Estos registros ya existen por el CMS; el fixture los trackea en _glory_fixtures
+# para que orders.toml pueda referenciarlos con @services:slug.
+# IMPORTANTE: los slugs deben coincidir con los del CMS, no los de la migración original.
+
+[meta]
+table = "services"
+id_field = "slug"
+
+[meta.casts]
+
+[[records]]
+slug = "diseno-de-sitios-web"
+title = "Diseño de Sitios Web"
+description = "Diseño web profesional adaptado a las necesidades del negocio"
+base_price_cents = 10000
+sort_order = 1
+
+[[records]]
+slug = "desarrollo-apps"
+title = "Desarrollo de Aplicaciones"
+description = "Aplicaciones móviles y web a medida"
+base_price_cents = 20000
+sort_order = 2
+
+[[records]]
+slug = "agentes-ia"
+title = "Agentes de IA"
+description = "Soluciones de inteligencia artificial integradas"
+base_price_cents = 6000
+sort_order = 3
+
+[[records]]
+slug = "branding"
+title = "Identidad de Marca"
+description = "Diseño de identidad visual completa"
+base_price_cents = 15000
+sort_order = 4

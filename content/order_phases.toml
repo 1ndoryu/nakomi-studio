@@ -1,0 +1,189 @@
+# Fases de los pedidos de prueba.
+# Cada fase referencia su order_id desde orders.toml.
+# Precios calculados según los porcentajes de service_plan_phases.
+
+[meta]
+table = "order_phases"
+id_field = "id"
+depends_on = ["orders"]
+
+[meta.casts]
+id = "uuid"
+order_id = "uuid"
+status = "phase_status"
+
+# ── Orden 1: Diseño Web Básico ($80) - in_progress, fase 2 activa ──
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000001"
+order_id = "@orders:a0000001-0001-4000-8000-000000000001"
+phase_number = 1
+title = "Descubrimiento y Briefing"
+description = "Reunión inicial, análisis de requisitos y propuesta"
+price_cents = 1600
+status = "approved"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 3
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000002"
+order_id = "@orders:a0000001-0001-4000-8000-000000000001"
+phase_number = 2
+title = "Diseño y Maquetación"
+description = "Diseño visual, maqueta responsive y revisiones"
+price_cents = 4000
+status = "in_progress"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 7
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000003"
+order_id = "@orders:a0000001-0001-4000-8000-000000000001"
+phase_number = 3
+title = "Desarrollo y Entrega"
+description = "Implementación, pruebas, puesta en producción"
+price_cents = 2400
+status = "locked"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 5
+
+# ── Orden 2: Desarrollo Apps Avanzado ($500) - pending_payment ──
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000004"
+order_id = "@orders:a0000001-0001-4000-8000-000000000002"
+phase_number = 1
+title = "Descubrimiento y Estrategia"
+description = "Análisis de requisitos, arquitectura y planificación"
+price_cents = 7500
+status = "pending_payment"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 5
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000005"
+order_id = "@orders:a0000001-0001-4000-8000-000000000002"
+phase_number = 2
+title = "Diseño UI/UX"
+description = "Diseño de interfaces y experiencia de usuario"
+price_cents = 12500
+status = "locked"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 10
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000006"
+order_id = "@orders:a0000001-0001-4000-8000-000000000002"
+phase_number = 3
+title = "Desarrollo Frontend y Backend"
+description = "Implementación de la aplicación completa"
+price_cents = 17500
+status = "locked"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 10
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000007"
+order_id = "@orders:a0000001-0001-4000-8000-000000000002"
+phase_number = 4
+title = "Testing e Integración"
+description = "Pruebas, integración y despliegue"
+price_cents = 12500
+status = "locked"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 7
+
+# ── Orden 3: Agentes IA Básico ($48) - completed ──
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000008"
+order_id = "@orders:a0000001-0001-4000-8000-000000000003"
+phase_number = 1
+title = "Descubrimiento y Briefing"
+description = "Reunión inicial, análisis de requisitos y propuesta"
+price_cents = 960
+status = "approved"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 3
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000009"
+order_id = "@orders:a0000001-0001-4000-8000-000000000003"
+phase_number = 2
+title = "Implementación del Agente"
+description = "Desarrollo y entrenamiento del modelo de IA"
+price_cents = 2400
+status = "approved"
+max_revisions = 2
+revisions_used = 1
+estimated_days = 7
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000010"
+order_id = "@orders:a0000001-0001-4000-8000-000000000003"
+phase_number = 3
+title = "Integración y Entrega"
+description = "Integración en sistemas del cliente, pruebas finales"
+price_cents = 1440
+status = "approved"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 5
+
+# ── Orden 4: Branding Avanzado ($400) - under_review, fase 3 delivered ──
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000011"
+order_id = "@orders:a0000001-0001-4000-8000-000000000004"
+phase_number = 1
+title = "Descubrimiento y Estrategia"
+description = "Análisis de marca actual, competencia y posicionamiento"
+price_cents = 6000
+status = "approved"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 5
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000012"
+order_id = "@orders:a0000001-0001-4000-8000-000000000004"
+phase_number = 2
+title = "Diseño de Identidad"
+description = "Logo, paleta de colores, tipografía, manual de marca"
+price_cents = 10000
+status = "approved"
+max_revisions = 2
+revisions_used = 1
+estimated_days = 10
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000013"
+order_id = "@orders:a0000001-0001-4000-8000-000000000004"
+phase_number = 3
+title = "Aplicaciones de Marca"
+description = "Papelería, redes sociales, presentaciones"
+price_cents = 14000
+status = "delivered"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 10
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000014"
+order_id = "@orders:a0000001-0001-4000-8000-000000000004"
+phase_number = 4
+title = "Revisión Final y Entrega"
+description = "Entrega de archivos finales y manual de uso"
+price_cents = 10000
+status = "locked"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 7

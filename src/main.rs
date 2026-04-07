@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                tracing_subscriber::EnvFilter::new("glory_backend=debug,tower_http=debug")
+                tracing_subscriber::EnvFilter::new("glory_backend=debug,glory_rs=debug,tower_http=debug")
             }),
         )
         .init();
@@ -30,7 +30,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sqlx::migrate!().run(&pool).await?;
 
     /* [074A-22] Glory Fixtures: sincroniza archivos TOML de content/ con la BD.
-     * Inserta, actualiza datos declarativos y borra huérfanos automáticamente. */
+     * Inserta, actualiza datos declarativos y borra huérfanos automáticamente.
+     * [074A-23] Cleanup previo: borra pedidos y hosting legacy del seed que no
+     * están rastreados por fixtures para evitar duplicados. */
     let password_hasher: glory_rs::fixtures::PasswordHasher = Box::new(|plain| {
         let salt = SaltString::generate(&mut OsRng);
         let hash = Argon2::default()
@@ -43,8 +45,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     let fixture_manager = ContentManager::new(pool.clone(), "content")
         .with_password_hasher(password_hasher);
+
+    /* Limpiar datos de seed legacy no rastreados por fixtures.
+     * Solo afecta a órdenes/hosting de los emails de test conocidos.
+     * Es no-op si ya se ejecutó antes o no hay datos legacy. */
+    cleanup_legacy_seed(&pool).await;
+
     match fixture_manager.sync_all().await {
-        Ok(report) => tracing::info!("[fixtures] {}", report.summary()),
+        Ok(report) => {
+            tracing::info!("[fixtures] {}", report.summary());
+            for err in &report.errors {
+                tracing::error!("[fixtures] {err}");
+            }
+        }
         Err(e) => tracing::error!("[fixtures] Error syncing: {e}"),
     }
 
@@ -66,4 +79,97 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await?;
 
     Ok(())
+}
+
+/* [074A-23] Limpia datos de seed legacy que ahora son manejados por fixtures.
+ * Borra órdenes (con cascade FK completo) y hosting de test emails conocidos
+ * que NO están rastreados en _glory_fixtures. Es no-op si no hay datos legacy. */
+async fn cleanup_legacy_seed(pool: &sqlx::PgPool) {
+    let test_emails = &["cliente@test.com", "empleado@test.com"];
+    let tables_exist: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = '_glory_fixtures')",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+
+    if !tables_exist {
+        return;
+    }
+
+    /* Subquery: IDs de órdenes legacy (no fixture-tracked) de test users */
+    let legacy_orders_subquery =
+        "SELECT o.id FROM orders o
+         JOIN users u ON o.client_id = u.id
+         WHERE u.email = ANY($1)
+         AND NOT EXISTS (
+             SELECT 1 FROM _glory_fixtures gf
+             WHERE gf.table_name = 'orders' AND gf.db_id = o.id::text
+         )";
+
+    /* Romper FK circular orders↔chat_sessions */
+    let _ = sqlx::query(&format!(
+        "UPDATE orders SET chat_session_id = NULL WHERE id IN ({legacy_orders_subquery})"
+    ))
+    .bind(test_emails)
+    .execute(pool)
+    .await;
+
+    /* Cascade completo: chat → reviews → refunds → delegations → payments → deliverables → phases → orders */
+    let cascade_tables = [
+        ("chat_messages", "session_id IN (SELECT id FROM chat_sessions WHERE order_id IN ({q}))"),
+        ("chat_session_notes", "session_id IN (SELECT id FROM chat_sessions WHERE order_id IN ({q}))"),
+        ("chat_sessions", "order_id IN ({q})"),
+        ("order_reviews", "order_id IN ({q})"),
+        ("order_refunds", "order_id IN ({q})"),
+        ("order_delegations", "order_id IN ({q})"),
+        ("order_payments", "order_id IN ({q})"),
+        ("phase_deliverables", "phase_id IN (SELECT id FROM order_phases WHERE order_id IN ({q}))"),
+        ("order_phases", "order_id IN ({q})"),
+    ];
+
+    let mut total_deleted = 0u64;
+    for (table, condition_tpl) in &cascade_tables {
+        let condition = condition_tpl.replace("{q}", legacy_orders_subquery);
+        let sql = format!("DELETE FROM {table} WHERE {condition}");
+        if let Ok(r) = sqlx::query(&sql).bind(test_emails).execute(pool).await {
+            total_deleted += r.rows_affected();
+        }
+    }
+
+    /* Borrar órdenes legacy */
+    let sql = format!("DELETE FROM orders WHERE id IN ({legacy_orders_subquery})");
+    if let Ok(r) = sqlx::query(&sql).bind(test_emails).execute(pool).await {
+        total_deleted += r.rows_affected();
+    }
+
+    /* Borrar hosting legacy (no fixture-tracked) */
+    let legacy_hosting_subquery =
+        "SELECT hs.id FROM hosting_subscriptions hs
+         JOIN users u ON hs.user_id = u.id
+         WHERE u.email = ANY($1)
+         AND NOT EXISTS (
+             SELECT 1 FROM _glory_fixtures gf
+             WHERE gf.table_name = 'hosting_subscriptions' AND gf.db_id = hs.id::text
+         )";
+
+    let _ = sqlx::query(&format!(
+        "DELETE FROM hosting_events WHERE subscription_id IN ({legacy_hosting_subquery})"
+    ))
+    .bind(test_emails)
+    .execute(pool)
+    .await
+    .map(|r| total_deleted += r.rows_affected());
+
+    let _ = sqlx::query(&format!(
+        "DELETE FROM hosting_subscriptions WHERE id IN ({legacy_hosting_subquery})"
+    ))
+    .bind(test_emails)
+    .execute(pool)
+    .await
+    .map(|r| total_deleted += r.rows_affected());
+
+    if total_deleted > 0 {
+        tracing::info!("[cleanup] Legacy seed: {total_deleted} records deleted");
+    }
 }
