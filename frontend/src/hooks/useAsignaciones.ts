@@ -2,8 +2,10 @@
  * React Query para fetching + invalidación de cache.
  * useDisponibles: órdenes sin asignar + acción tomar.
  * useDelegaciones: lista + crear + responder delegaciones.
- * useEmpleados: lista de empleados (admin). */
+ * useEmpleados: lista de empleados (admin).
+ * [074A-55] CRÍTICO: query keys incluyen effectiveRole para invalidar cache al cambiar rol. */
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
+import {useAuthStore} from '../stores/authStore';
 import {
     apiListUnassigned,
     apiTakeOrder,
@@ -17,27 +19,28 @@ import {
 } from '../api/assignment';
 import type {OrderResponse} from '../api/orders';
 
-const UNASSIGNED_KEY = ['orders-unassigned'] as const;
-const DELEGATIONS_KEY = ['delegations'] as const;
+const unassignedKey = (role: string) => ['orders-unassigned', role] as const;
+const delegationsKey = (role: string) => ['delegations', role] as const;
 const EMPLOYEES_KEY = ['employees'] as const;
 
 /*    ÓRDENES SIN ASIGNAR (employee + admin) */
 
 export function useDisponibles() {
     const queryClient = useQueryClient();
+    const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'employee';
 
     const {
         data: disponibles = [],
         isLoading: cargando,
     } = useQuery<OrderResponse[]>({
-        queryKey: UNASSIGNED_KEY,
+        queryKey: unassignedKey(effectiveRole),
         queryFn: apiListUnassigned,
     });
 
     const tomarMutation = useMutation({
         mutationFn: (orderId: string) => apiTakeOrder(orderId),
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: UNASSIGNED_KEY});
+            queryClient.invalidateQueries({queryKey: unassignedKey(effectiveRole)});
             queryClient.invalidateQueries({queryKey: ['orders']});
         },
     });
@@ -54,12 +57,13 @@ export function useDisponibles() {
 
 export function useDelegaciones() {
     const queryClient = useQueryClient();
+    const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'employee';
 
     const {
         data: delegaciones = [],
         isLoading: cargando,
     } = useQuery<DelegationResponse[]>({
-        queryKey: DELEGATIONS_KEY,
+        queryKey: delegationsKey(effectiveRole),
         queryFn: apiListDelegations,
     });
 
@@ -67,7 +71,7 @@ export function useDelegaciones() {
         mutationFn: ({orderId, reason}: {orderId: string; reason: string}) =>
             apiCreateDelegation(orderId, {reason}),
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: DELEGATIONS_KEY});
+            queryClient.invalidateQueries({queryKey: delegationsKey(effectiveRole)});
         },
     });
 
@@ -75,7 +79,7 @@ export function useDelegaciones() {
         mutationFn: ({orderId, reason}: {orderId: string; reason: string}) =>
             apiCreateHelpRequest(orderId, {reason}),
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: DELEGATIONS_KEY});
+            queryClient.invalidateQueries({queryKey: delegationsKey(effectiveRole)});
         },
     });
 
@@ -83,8 +87,8 @@ export function useDelegaciones() {
         mutationFn: ({delegationId, accept}: {delegationId: string; accept: boolean}) =>
             apiRespondDelegation(delegationId, accept),
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: DELEGATIONS_KEY});
-            queryClient.invalidateQueries({queryKey: UNASSIGNED_KEY});
+            queryClient.invalidateQueries({queryKey: delegationsKey(effectiveRole)});
+            queryClient.invalidateQueries({queryKey: unassignedKey(effectiveRole)});
             queryClient.invalidateQueries({queryKey: ['orders']});
         },
     });

@@ -33,18 +33,22 @@ export const SeccionHosting: React.FC = () => {
     const [selectedSub, setSelectedSub] = useState<HostingSubscription | null>(null);
     const [showEvents, setShowEvents] = useState(false);
 
-    /* [064A-32] Detectar rol para ocultar features admin */
-    const isAdmin = useAuthStore(s => s.user?.effectiveRole) === 'admin';
+    /* [064A-32] Detectar rol para ocultar features admin
+     * [074A-55] effectiveRole en query key para invalidar cache al cambiar rol. */
+    const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
+    const isAdmin = effectiveRole === 'admin';
+
+    const hostingKey = ['hosting-subscriptions', effectiveRole] as const;
 
     const {data: subscriptions = [], isLoading} = useQuery({
-        queryKey: ['hosting-subscriptions'],
+        queryKey: hostingKey,
         queryFn: apiListHostingSubscriptions,
     });
 
     const createMutation = useMutation({
         mutationFn: (req: CreateHostingRequest) => apiCreateHostingSubscription(req),
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: ['hosting-subscriptions']});
+            queryClient.invalidateQueries({queryKey: hostingKey});
             toast.success('Suscripción creada');
             setShowCreateModal(false);
         },
@@ -55,7 +59,7 @@ export const SeccionHosting: React.FC = () => {
         mutationFn: ({id, status}: {id: string; status: string}) =>
             apiUpdateHostingStatus(id, status),
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: ['hosting-subscriptions']});
+            queryClient.invalidateQueries({queryKey: hostingKey});
             toast.success('Status actualizado');
         },
         onError: () => toast.error('Error al actualizar status'),
