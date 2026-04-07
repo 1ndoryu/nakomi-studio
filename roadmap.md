@@ -58,13 +58,13 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~Sigo sin ver hosting de prueba~~ ✅ (074A-23: fix API paths + fixtures re-inserted)
 
-- En el dato de prueba el boton de entregar no sirve, lo que supone que debería hacer es que abre un modal para escribr algo y adjuntar algo, lo que sea, no es obligatorio adjuntar.
+- ~~En el dato de prueba el boton de entregar no sirve~~ ✅ (074A-54: deliver modal con notas + archivos opcionales)
 
 - ~~Al cambiar al usuario de cliente no veo pedidos, ni hosting de prueba~~ ✅ (074A-23: orders/hosting TOML fixtures + hosting API fix)
 
 - ~~Ejecuta el plan Glory-RS Content Fixture System~~ ✅ (074A-22 + 074A-23: sistema completo con @lookup)
 
-- SIGO SIN VER DATOS DE PRUEBA EN EL USUARIO DE CLIENTE AL QUE ACCEDO DESDE EL PANEL ADMIN!!!!!!!!!!!!!!!!!!!!!!!!! NO VEO HISTORIAL DE PAGOS; NI HOSTING NI NADA EN EL USUARIO CLIENTE!!! Y en la descripciones de las ordenes falta el datalle del nombre del cliente. 
+- ~~SIGO SIN VER DATOS DE PRUEBA EN EL USUARIO DE CLIENTE~~ ✅ (074A-54: client_name en orders + payment fixtures con 3 pagos de prueba)
 
 - Falta hacer paginas individuales para cada usuario accesibles publicamente, similar a fiver. Iran sus reseñas dadas y recibidas.
 
@@ -73,3 +73,5 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Tambien necesito delegaciones y ordenes para tomar de prueba para el usuario empleado.
 
 - La tabla de hosting se ve mal, no es asi como debería de verse. Si debería de ser algo similar a proyectosLista.
+
+- SIGO SIN VER NINGUN FUCKING DATO DE PRueBA EN EL USUARIO CLIEnte AL QUE ACCEDO DESDE sidebarSwitchRole YA ES LA SECTA O NOVENA VEZ QUE LO DIGO
