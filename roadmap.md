@@ -68,10 +68,11 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - Falta hacer paginas individuales para cada usuario accesibles publicamente, similar a fiver. Iran sus reseñas dadas y recibidas.
 
-- entregablesModal esta agregando un padding innecesario.
+- ~~entregablesModal esta agregando un padding innecesario.~~ ✅ (074A-55: padding doble removido)
+
+- ~~SIGO SIN VER NINGUN FUCKING DATO DE PRueBA EN EL USUARIO CLIEnte~~ ✅ (074A-55: query keys dinámicas — cache se invalida al cambiar rol)
 
 - Tambien necesito delegaciones y ordenes para tomar de prueba para el usuario empleado.
 
 - La tabla de hosting se ve mal, no es asi como debería de verse. Si debería de ser algo similar a proyectosLista.
 
-- SIGO SIN VER NINGUN FUCKING DATO DE PRueBA EN EL USUARIO CLIEnte AL QUE ACCEDO DESDE sidebarSwitchRole YA ES LA SECTA O NOVENA VEZ QUE LO DIGO
