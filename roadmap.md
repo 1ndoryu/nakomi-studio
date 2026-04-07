@@ -56,14 +56,14 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - No veo donde se modifican los planes de los servicios.
 
-- Sigo sin ven hosting de prueba, esta mrd la he dicho ya la 4ta vez. 
+- ~~Sigo sin ver hosting de prueba~~ ✅ (074A-23: fix API paths + fixtures re-inserted)
 
 - En el dato de prueba el boton de entregar no sirve, lo que supone que debería hacer es que abre un modal para escribr algo y adjuntar algo, lo que sea, no es obligatorio adjuntar.
 
-- Al cambiar al usuario de cliente no veo pedidos, ni historial ni hosting de prueba!! De verdad esta mrd de los datos de prueba, necesitamos crear una solución de raiz, un codigo o algo robuzto en glory en que se encargue de los datos de prueba, que se encargue suministrar la logica de contenido, cms, y estas cosas para facilitar la gestión de contenido, tambien hay que actualizar las reglas en .github\instructions\test.instructions.md para que explique mejor /glory-rs es el nucleo de nuestro framework para agregar cosas utiles que sirven para todos los proyectos, agrega la regla de que /glory-rs debe ser agnostico, y que cuando es complete una tarea en la estructura de bajo de - **Sentinel:**  haya - **GLORY-RS:** Evualuando si la logica o lo que se hizo se puede mover a glory-rs para que pueda ser reutlizada en otro proyecto si es necesario, se tiene que pensar en GLORY-RS siempre como algo que sirve como nuestra caja de herramienta permantente. HEMOS ESTADO TOOD EL TIEMPO LUCHANDO CON LOS DATOS DE PRUEBA; NECESITO ALGO INFALIBLE BIEN PLANIFICADO PARA EVITARNOS ESTE PROBLEMA EN EL FUTURO. 
+- ~~Al cambiar al usuario de cliente no veo pedidos, ni hosting de prueba~~ ✅ (074A-23: orders/hosting TOML fixtures + hosting API fix)
 
-Nueva inforamción: La solución que me ocurre es que glory-rs sirva como cms cuando se necesite, y que pueda inyectar contenido dinamicamente, tiene que ser del tipo de contenido que escribas en un archivo y que se pueda modificar de alli, asi se puede agregar cualquier tipo de datos de prueba donde se necesita y de cualquier tipo, tiene que ser inteligente, si se borra un contenido en el codigo, se borra en la base de dato tambien, esto servira para datos iniciales en los proyectos que se necesiten que tambien sean reales e inyecten al correr e iniciar un proyecto en cualquier parte. 
+- ~~Ejecuta el plan Glory-RS Content Fixture System~~ ✅ (074A-22 + 074A-23: sistema completo con @lookup)
 
-- Ejecuta el plan # Plan: Glory-RS Content Fixture System (074A-22 completada: Fases 1-4 listas, faltan pedidos en TOML)
+- SIGO SIN VER DATOS DE PRUEBA EN EL USUARIO DE CLIENTE AL QUE ACCEDO DESDE EL PANEL ADMIN!!!!!!!!!!!!!!!!!!!!!!!!! NO VEO HISTORIAL DE PAGOS; NI HOSTING NI NADA EN EL USUARIO CLIENTE!!! Y en la descripciones de las ordenes falta el datalle del nombre del cliente. 
 
-- Vi que hiciste varios toml pero no vi que hicieras toml para los pedidos, borras los pedidos y hazlos de nuevo. Y sigo sin ver hosting de prueba. Ni siquiera cuando toy en el usuario de cliente al cambiar en el swift del panel.
+- Falta hacer paginas individuales para cada usuario. 
