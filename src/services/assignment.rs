@@ -69,6 +69,8 @@ impl AssignmentService {
         Ok(OrderResponse {
             id: assigned.id,
             order_number: assigned.order_number,
+            client_id: assigned.client_id,
+            client_name: None,
             service_title: svc_title,
             service_slug: svc_slug,
             plan_name,
@@ -105,6 +107,8 @@ impl AssignmentService {
             result.push(OrderResponse {
                 id: order.id,
                 order_number: order.order_number,
+                client_id: order.client_id,
+                client_name: None,
                 service_title: svc_title,
                 service_slug: svc_slug,
                 plan_name,

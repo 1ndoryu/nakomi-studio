@@ -30,6 +30,8 @@ export type PhaseStatus =
 export interface OrderResponse {
     id: string;
     order_number: number;
+    client_id: string;
+    client_name: string | null;
     service_title: string;
     service_slug: string;
     plan_name: string;

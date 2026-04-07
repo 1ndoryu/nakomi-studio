@@ -163,6 +163,8 @@ impl OrderService {
         Ok(OrderResponse {
             id: order.id,
             order_number: order.order_number,
+            client_id: order.client_id,
+            client_name: None,
             service_title: svc.title,
             service_slug: svc.slug,
             plan_name: plan.name,
@@ -200,10 +202,13 @@ impl OrderService {
             OrderRepository::get_order_display_info(pool, order.service_id, order.plan_id).await?;
 
         let employee_name = OrderRepository::get_employee_display_name(pool, order.assigned_employee_id).await?;
+        let client_name = OrderRepository::get_client_display_name(pool, order.client_id).await?;
 
         let response = OrderResponse {
             id: order.id,
             order_number: order.order_number,
+            client_id: order.client_id,
+            client_name,
             service_title: svc_title,
             service_slug: svc_slug,
             plan_name,
@@ -249,10 +254,13 @@ impl OrderService {
                     .await?;
             let phases = OrderRepository::list_order_phases(pool, order.id).await?;
             let employee_name = OrderRepository::get_employee_display_name(pool, order.assigned_employee_id).await?;
+            let client_name = OrderRepository::get_client_display_name(pool, order.client_id).await?;
 
             result.push(OrderResponse {
                 id: order.id,
                 order_number: order.order_number,
+                client_id: order.client_id,
+                client_name,
                 service_title: svc_title,
                 service_slug: svc_slug,
                 plan_name,

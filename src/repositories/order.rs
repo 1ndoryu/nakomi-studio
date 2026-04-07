@@ -663,6 +663,21 @@ impl OrderRepository {
         Ok(name)
     }
 
+    /* [074A-53] Obtener nombre del cliente para la respuesta de órdenes */
+    pub async fn get_client_display_name(
+        pool: &PgPool,
+        client_id: Uuid,
+    ) -> Result<Option<String>, sqlx::Error> {
+        let name: Option<String> = sqlx::query_scalar(
+            "SELECT display_name FROM users WHERE id = $1",
+        )
+        .bind(client_id)
+        .fetch_optional(pool)
+        .await?
+        .flatten();
+        Ok(name)
+    }
+
     /* ============================================================
        [044A-38 Fase 4] ASIGNACIÓN Y AUTO-ASIGNACIÓN
        ============================================================ */

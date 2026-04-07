@@ -178,6 +178,8 @@ pub struct SwitchRoleRequest {
 pub struct OrderResponse {
     pub id: Uuid,
     pub order_number: i32,
+    pub client_id: Uuid,
+    pub client_name: Option<String>,
     pub service_title: String,
     pub service_slug: String,
     pub plan_name: String,

@@ -1,10 +1,11 @@
 /* [044A-38 Fase 6] Panel de entregables dentro de cada fase.
- * [074A-51] Simplificado: sin upload de archivos. Entrega solo marca la fase.
- * Los archivos se comparten por chat. Botón primario. */
-import {Download, FileText, Package} from 'lucide-react';
+ * [074A-53] Modal de entrega: notas opcionales + archivos opcionales. */
+import {Download, FileText, Package, Paperclip, X} from 'lucide-react';
+import {useRef} from 'react';
 import {formatFileSize} from '../../api/deliverables';
 import {useEntregablesPanel} from '../../hooks/useEntregablesPanel';
 import {Button} from '../ui/Button';
+import {Modal} from '../ui/Modal';
 import './EntregablesPanel.css';
 
 interface EntregablesPanelProps {
@@ -17,26 +18,101 @@ export function EntregablesPanel({orderId, phaseNumber, canDeliver}: Entregables
     const {
         error, cargando, entregando,
         handleDeliver, handleDownload, sortedRevisions, revisionGroups,
+        modalAbierto, abrirModal, cerrarModal,
+        notas, setNotas, archivos, agregarArchivos, quitarArchivo,
     } = useEntregablesPanel(orderId, phaseNumber);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     return (
         <div className="entregablesPanel">
-            {/* [074A-51] Botón de entrega sin archivos — solo marca la fase como entregada */}
+            {/* [074A-53] Botón abre modal de entrega */}
             {canDeliver && (
                 <div className="entregablesEntregarZona">
-                    {error && <p className="entregablesError">{error}</p>}
+                    {error && !modalAbierto && <p className="entregablesError">{error}</p>}
                     <Button
                         variante="primario"
                         tamano="pequeno"
                         className="faseBtn"
-                        onClick={handleDeliver}
-                        disabled={entregando}
+                        onClick={abrirModal}
                         type="button"
                     >
-                        <Package size={14} /> {entregando ? 'Entregando...' : 'Entregar'}
+                        <Package size={14} /> Entregar
                     </Button>
                 </div>
             )}
+
+            {/* [074A-53] Modal de entrega con notas y adjuntos */}
+            <Modal abierto={modalAbierto} onCerrar={cerrarModal}>
+                <div className="entregablesModal">
+                    <h3 className="entregablesModalTitulo">Entregar fase</h3>
+                    <p className="entregablesModalDesc">
+                        Describe lo que entregas. Adjuntar archivos es opcional.
+                    </p>
+
+                    <textarea
+                        className="entregablesModalNotas"
+                        placeholder="Notas de la entrega (opcional)"
+                        value={notas}
+                        onChange={e => setNotas(e.target.value)}
+                        rows={4}
+                    />
+
+                    <div className="entregablesModalArchivos">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            className="entregablesModalFileInput"
+                            onChange={e => agregarArchivos(e.target.files)}
+                        />
+                        <Button
+                            variante="secundario"
+                            tamano="pequeno"
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Paperclip size={14} /> Adjuntar archivos
+                        </Button>
+
+                        {archivos.length > 0 && (
+                            <ul className="entregablesModalFileList">
+                                {archivos.map((f, i) => (
+                                    <li key={`${f.name}-${i}`} className="entregablesModalFileItem">
+                                        <FileText size={12} />
+                                        <span>{f.name}</span>
+                                        <span className="entregablesFileSize">{formatFileSize(f.size)}</span>
+                                        <button
+                                            type="button"
+                                            className="entregablesModalFileRemove"
+                                            onClick={() => quitarArchivo(i)}
+                                            aria-label={`Quitar ${f.name}`}
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    {error && <p className="entregablesError">{error}</p>}
+
+                    <div className="entregablesModalAcciones">
+                        <Button variante="texto" tamano="pequeno" onClick={cerrarModal} type="button">
+                            Cancelar
+                        </Button>
+                        <Button
+                            variante="primario"
+                            tamano="pequeno"
+                            onClick={handleDeliver}
+                            disabled={entregando}
+                            type="button"
+                        >
+                            <Package size={14} /> {entregando ? 'Entregando...' : 'Confirmar entrega'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Historial de entregables agrupado por revisión */}
             {cargando && <p className="entregablesCargando">Cargando entregables...</p>}

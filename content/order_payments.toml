@@ -1,0 +1,63 @@
+# [074A-53] Pagos de prueba para las órdenes fixture.
+# Usa @orders:UUID para resolver FK de order_id.
+# Usa @order_phases:UUID para resolver FK de phase_id (opcional).
+
+[meta]
+table = "order_payments"
+id_field = "id"
+depends_on = ["orders", "order_phases"]
+
+[meta.casts]
+id = "uuid"
+order_id = "uuid"
+phase_id = "uuid"
+status = "payment_status"
+payment_mode = "payment_mode"
+held_at = "timestamptz"
+released_at = "timestamptz"
+
+# Orden 1 — Diseño Web Básico (full, in_progress, $80 total con 20% desc → $64)
+# Pago completo retenido (held)
+[[records]]
+id = "c0000001-0001-4000-8000-000000000001"
+order_id = "@orders:a0000001-0001-4000-8000-000000000001"
+amount_cents = 6400
+currency = "USD"
+status = "held"
+payment_mode = "full"
+stripe_payment_intent_id = "pi_test_fixture_001"
+stripe_charge_id = "ch_test_fixture_001"
+description = "Pago completo — Diseño Web Básico"
+held_at = "2026-03-15T10:00:00Z"
+
+# Orden 2 — Desarrollo Apps Avanzado (phased, pending_payment, $500)
+# Sin pagos aún (pending_payment = aún no ha pagado)
+
+# Orden 3 — Agentes IA Básico (full, completed, $48 con 20% desc)
+# Pago completo released
+[[records]]
+id = "c0000001-0001-4000-8000-000000000002"
+order_id = "@orders:a0000001-0001-4000-8000-000000000003"
+amount_cents = 4800
+currency = "USD"
+status = "released"
+payment_mode = "full"
+stripe_payment_intent_id = "pi_test_fixture_003"
+stripe_charge_id = "ch_test_fixture_003"
+description = "Pago completo — Agentes IA Básico"
+held_at = "2026-02-01T10:00:00Z"
+released_at = "2026-03-01T10:00:00Z"
+
+# Orden 4 — Branding Avanzado (full, under_review, $400)
+# Pago retenido
+[[records]]
+id = "c0000001-0001-4000-8000-000000000003"
+order_id = "@orders:a0000001-0001-4000-8000-000000000004"
+amount_cents = 40000
+currency = "USD"
+status = "held"
+payment_mode = "full"
+stripe_payment_intent_id = "pi_test_fixture_004"
+stripe_charge_id = "ch_test_fixture_004"
+description = "Pago completo — Branding Avanzado"
+held_at = "2026-03-20T10:00:00Z"

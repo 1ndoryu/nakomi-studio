@@ -1,5 +1,5 @@
 /* [044A-38 Fase 6] Estilos del panel de entregables.
- * [074A-51] Simplificado: sin upload de archivos. Solo botón entregar + historial. */
+ * [074A-53] Modal de entrega con notas y adjuntos. */
 
 .entregablesPanel {
     margin-top: var(--spacing-sm);
@@ -101,4 +101,96 @@
 
 .entregablesDownloadBtn:hover {
     background-color: var(--color-info-bg);
+}
+
+/* [074A-53] Modal de entrega */
+.entregablesModal {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    max-width: 480px;
+    width: 100%;
+}
+
+.entregablesModalTitulo {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--brand-black);
+    margin: 0;
+}
+
+.entregablesModalDesc {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    margin: 0;
+}
+
+.entregablesModalNotas {
+    width: 100%;
+    min-height: 80px;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    resize: vertical;
+    background: var(--bg-primary);
+    color: var(--brand-black);
+}
+
+.entregablesModalNotas:focus {
+    outline: none;
+    border-color: var(--primary-500);
+}
+
+.entregablesModalArchivos {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.entregablesModalFileInput {
+    display: none;
+}
+
+.entregablesModalFileList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.entregablesModalFileItem {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--text-xs);
+    padding: 4px 8px;
+    background-color: var(--bg-dark);
+    border-radius: var(--radius-sm);
+}
+
+.entregablesModalFileRemove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.entregablesModalFileRemove:hover {
+    color: var(--color-error);
+}
+
+.entregablesModalAcciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
 }

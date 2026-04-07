@@ -1,6 +1,5 @@
 /* [044A-38 Fase 6] Hook para el panel de entregables.
- * [074A-51] Simplificado: sin upload de archivos. Entrega marca la fase como delivered.
- * Los archivos se comparten por chat. */
+ * [074A-53] Modal de entrega con notas opcionales y adjuntos opcionales. */
 
 import { useState, useCallback } from 'react';
 import { useDeliverables } from './useDeliverables';
@@ -9,16 +8,42 @@ import type { PhaseDeliverable } from '../api/deliverables';
 export function useEntregablesPanel(orderId: string, phaseNumber: number) {
     const {deliverables, cargando, entregarFase, entregando, descargar} = useDeliverables(orderId, phaseNumber);
     const [error, setError] = useState('');
+    const [modalAbierto, setModalAbierto] = useState(false);
+    const [notas, setNotas] = useState('');
+    const [archivos, setArchivos] = useState<File[]>([]);
 
-    /* [074A-51] Entregar sin archivos — solo marca la fase como entregada */
+    const abrirModal = useCallback(() => {
+        setNotas('');
+        setArchivos([]);
+        setError('');
+        setModalAbierto(true);
+    }, []);
+
+    const cerrarModal = useCallback(() => {
+        setModalAbierto(false);
+    }, []);
+
+    /* [074A-53] Entregar con notas y archivos opcionales */
     const handleDeliver = useCallback(async () => {
         try {
             setError('');
-            await entregarFase({});
+            await entregarFase({
+                files: archivos.length > 0 ? archivos : undefined,
+                notes: notas.trim() || undefined,
+            });
+            setModalAbierto(false);
         } catch {
             setError('Error al entregar. Intenta de nuevo.');
         }
-    }, [entregarFase]);
+    }, [entregarFase, archivos, notas]);
+
+    const agregarArchivos = useCallback((nuevos: FileList | null) => {
+        if (nuevos) setArchivos(prev => [...prev, ...Array.from(nuevos)]);
+    }, []);
+
+    const quitarArchivo = useCallback((index: number) => {
+        setArchivos(prev => prev.filter((_, i) => i !== index));
+    }, []);
 
     const handleDownload = useCallback(async (deliverableId: string, fileName: string) => {
         try {
@@ -49,5 +74,13 @@ export function useEntregablesPanel(orderId: string, phaseNumber: number) {
         handleDownload,
         sortedRevisions,
         revisionGroups,
+        modalAbierto,
+        abrirModal,
+        cerrarModal,
+        notas,
+        setNotas,
+        archivos,
+        agregarArchivos,
+        quitarArchivo,
     };
 }

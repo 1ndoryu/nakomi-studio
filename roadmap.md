@@ -66,4 +66,10 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - SIGO SIN VER DATOS DE PRUEBA EN EL USUARIO DE CLIENTE AL QUE ACCEDO DESDE EL PANEL ADMIN!!!!!!!!!!!!!!!!!!!!!!!!! NO VEO HISTORIAL DE PAGOS; NI HOSTING NI NADA EN EL USUARIO CLIENTE!!! Y en la descripciones de las ordenes falta el datalle del nombre del cliente. 
 
-- Falta hacer paginas individuales para cada usuario. 
+- Falta hacer paginas individuales para cada usuario accesibles publicamente, similar a fiver. Iran sus reseñas dadas y recibidas.
+
+- entregablesModal esta agregando un padding innecesario.
+
+- Tambien necesito delegaciones y ordenes para tomar de prueba para el usuario empleado.
+
+- La tabla de hosting se ve mal, no es asi como debería de verse. Si debería de ser algo similar a proyectosLista.
