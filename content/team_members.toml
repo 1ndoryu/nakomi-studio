@@ -1,0 +1,33 @@
+# Miembros del equipo para el CMS y la página pública.
+
+[meta]
+table = "team_members"
+id_field = "slug"
+depends_on = []
+
+[[records]]
+name = "Wan"
+slug = "wan"
+role = "CEO & Founder"
+bio = "Fundadora y directora creativa con visión estratégica para soluciones digitales de alto impacto."
+avatar = "/assets/equipo/wan.jpg"
+status = "published"
+sort_order = 0
+
+[[records]]
+name = "Anthony"
+slug = "anthony"
+role = "Lead Developer"
+bio = "Ingeniero de software principal, especializado en arquitecturas escalables y rendimiento."
+avatar = "/assets/equipo/anthony.jpg"
+status = "published"
+sort_order = 1
+
+[[records]]
+name = "Misael"
+slug = "misael"
+role = "DevOps Engineer"
+bio = "Ingeniero DevOps enfocado en la automatización, despliegue continuo y estabilidad de infraestructura."
+avatar = "/assets/equipo/misael.jpg"
+status = "published"
+sort_order = 2

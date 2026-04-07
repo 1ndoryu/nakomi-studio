@@ -102,8 +102,8 @@ Una vez implementado, el seed.rs de 700+ líneas se reemplaza por archivos TOML 
 
 ## Pendientes
 
-- [ ] Fase 1: Parser + modelo + migración
-- [ ] Fase 2: sync_all (insert/update)
-- [ ] Fase 3: orphan cleanup
-- [ ] Fase 4: FK dependencies
-- [ ] Fase 5: Migrar nakomi seed.rs
+- [x] Fase 1: Parser + modelo + migración
+- [x] Fase 2: sync_all (insert/update) 
+- [x] Fase 3: orphan cleanup
+- [x] Fase 4: FK dependencies (@table:record_id → db_id)
+- [ ] Fase 5: Migrar nakomi seed.rs (parcial: users, projects, team_members, hosting migrados a TOML. Falta: orders, chat, reviews, activity log, notifications)

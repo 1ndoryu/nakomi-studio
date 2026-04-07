@@ -1,0 +1,28 @@
+# Usuarios de prueba para desarrollo.
+# Passwords usan "plain:" para auto-hashear al sincronizar.
+
+[meta]
+table = "users"
+id_field = "email"
+depends_on = []
+
+[meta.casts]
+role = "user_role"
+
+[[records]]
+email = "admin@admin.com"
+password_hash = "plain:admin"
+role = "admin"
+display_name = "Admin"
+
+[[records]]
+email = "cliente@test.com"
+password_hash = "plain:cliente"
+role = "client"
+display_name = "Cliente"
+
+[[records]]
+email = "empleado@test.com"
+password_hash = "plain:empleado"
+role = "employee"
+display_name = "Empleado"

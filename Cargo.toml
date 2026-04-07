@@ -59,6 +59,9 @@ hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
 
+# Glory framework
+glory-rs = { path = "glory-rs/backend" }
+
 [dev-dependencies]
 tokio-test = "0.4"
 

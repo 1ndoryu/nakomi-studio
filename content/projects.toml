@@ -1,0 +1,115 @@
+# Proyectos de showcase para el CMS y la página pública.
+
+[meta]
+table = "projects"
+id_field = "slug"
+depends_on = []
+
+[[records]]
+title = "KAMPLES"
+slug = "kamples"
+client = "Open Source Platform"
+description = "Plataforma de samples musicales con algoritmo de recomendación, DAW integrado y funcionalidades de red social."
+featured_image = "/assets/Proyectos portadas/Kamples portada.jpg"
+status = "published"
+sort_order = 0
+categories = ["web", "software"]
+technologies = ["React", "Node.js", "PostgreSQL", "Web Audio API", "Redis"]
+gallery = []
+links = []
+
+[[records.skills]]
+titulo = "Full-Stack Development"
+descripcion = "Arquitectura completa: API, frontend SPA y procesamiento de audio."
+
+[[records.skills]]
+titulo = "Algoritmo de Recomendación"
+descripcion = "Motor de descubrimiento basado en samples, géneros y uso."
+
+[[records.skills]]
+titulo = "DAW Integrado"
+descripcion = "Workstation de audio embebida para previsualizar y mezclar samples."
+
+[[records]]
+title = "MABUHAY"
+slug = "mabuhay"
+client = "Agencia de Viajes"
+description = "Web y branding para agencia de viajes en España especializada en destinos asiáticos."
+featured_image = "/assets/Proyectos portadas/Mabuhay.jpg"
+status = "published"
+sort_order = 1
+categories = ["web", "branding"]
+technologies = ["WordPress", "PHP", "Figma", "Illustrator"]
+gallery = []
+links = []
+
+[[records.skills]]
+titulo = "Web Design"
+descripcion = "Sitio web responsive con catálogo de destinos y reservas."
+
+[[records.skills]]
+titulo = "Branding"
+descripcion = "Identidad visual inspirada en la hospitalidad filipina."
+
+[[records]]
+title = "Guillermo Chatbot"
+slug = "guillermochatbot"
+client = "Proyecto Interno"
+description = "Chatbot IA conversacional con personalidad, contexto persistente y streaming de respuestas."
+featured_image = "/assets/Proyectos portadas/GuillermoPortada.jpg"
+status = "published"
+sort_order = 2
+categories = ["software", "ia"]
+technologies = ["Rust", "Axum", "OpenAI", "WebSocket", "React"]
+gallery = []
+links = []
+
+[[records.skills]]
+titulo = "IA Conversacional"
+descripcion = "Motor de chat con memoria contextual y personalidad configurable."
+
+[[records.skills]]
+titulo = "Streaming"
+descripcion = "Respuestas en tiempo real con Server-Sent Events."
+
+[[records]]
+title = "Task Manager"
+slug = "task"
+client = "Herramienta Interna"
+description = "Gestor de tareas con tablero Kanban, delegación y seguimiento de tiempo."
+featured_image = "/assets/Proyectos portadas/TaskPortada.jpg"
+status = "published"
+sort_order = 3
+categories = ["software", "web"]
+technologies = ["React", "TypeScript", "Node.js", "PostgreSQL"]
+gallery = []
+links = []
+
+[[records.skills]]
+titulo = "Kanban Board"
+descripcion = "Tablero drag-and-drop con estados personalizables."
+
+[[records.skills]]
+titulo = "Time Tracking"
+descripcion = "Seguimiento de horas por tarea con reportes automáticos."
+
+[[records]]
+title = "Material de Pádel"
+slug = "material-de-padel"
+client = "E-commerce"
+description = "Tienda online especializada en equipamiento de pádel con comparador de productos."
+featured_image = "/assets/Proyectos portadas/PadelPortada.jpg"
+status = "draft"
+sort_order = 4
+categories = ["web", "ecommerce"]
+technologies = ["WordPress", "WooCommerce", "PHP", "JavaScript"]
+gallery = []
+links = []
+
+[[records.skills]]
+titulo = "E-commerce"
+descripcion = "Catálogo de productos con filtros avanzados y comparador."
+
+[[records.skills]]
+titulo = "SEO"
+descripcion = "Optimización para búsquedas de equipamiento deportivo."

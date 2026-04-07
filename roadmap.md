@@ -65,3 +65,5 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 Nueva inforamción: La solución que me ocurre es que glory-rs sirva como cms cuando se necesite, y que pueda inyectar contenido dinamicamente, tiene que ser del tipo de contenido que escribas en un archivo y que se pueda modificar de alli, asi se puede agregar cualquier tipo de datos de prueba donde se necesita y de cualquier tipo, tiene que ser inteligente, si se borra un contenido en el codigo, se borra en la base de dato tambien, esto servira para datos iniciales en los proyectos que se necesiten que tambien sean reales e inyecten al correr e iniciar un proyecto en cualquier parte. 
 
 - Ejecuta el plan # Plan: Glory-RS Content Fixture System
+
+- Vi que hiciste varios toml pero no vi que hicieras toml para los pedidos, borras los pedidos y hazlos de nuevo. Y sigo sin ver hosting de prueba. Ni siquiera cuando toy en el usuario de cliente al cambiar en el swift del panel.
