@@ -13,8 +13,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    AdminServiceResponse, CreateServiceRequest, ServicePlanPhaseResponse,
-    ServicePlanResponse, UpdateServiceRequest, UserRole,
+    AdminServiceResponse, CreateServiceRequest, SaveServicePlansRequest,
+    ServicePlanPhaseResponse, ServicePlanResponse, UpdateServiceRequest, UserRole,
 };
 use crate::repositories::OrderRepository;
 use crate::AppState;
@@ -23,6 +23,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/admin/services", get(list_all).post(create))
         .route("/admin/services/:id", put(update).delete(archive))
+        .route("/admin/services/:id/plans", put(save_plans))
 }
 
 /// Lista todos los servicios (incluyendo inactivos/draft) con sus planes
@@ -222,4 +223,51 @@ async fn archive(
     OrderRepository::archive_service(&state.pool, id).await?;
 
     Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/* [074A-66] Guarda (reemplaza) todos los planes de un servicio.
+ * Estrategia: DELETE CASCADE + INSERT en transacción — simple y consistente. */
+#[utoipa::path(
+    put,
+    path = "/api/admin/services/{id}/plans",
+    params(("id" = Uuid, Path, description = "ID del servicio")),
+    request_body = SaveServicePlansRequest,
+    responses(
+        (status = 200, description = "Planes guardados", body = Vec<ServicePlanResponse>)
+    ),
+    security(("bearer_auth" = []))
+)]
+async fn save_plans(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(body): Json<SaveServicePlansRequest>,
+) -> Result<Json<Vec<ServicePlanResponse>>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+    body.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+
+    OrderRepository::find_service_by_id(&state.pool, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
+
+    OrderRepository::save_plans_for_service(&state.pool, id, &body.plans).await?;
+
+    let plans = OrderRepository::list_plans_for_service(&state.pool, id).await?;
+    let mut responses = Vec::with_capacity(plans.len());
+    for plan in plans {
+        let phases = OrderRepository::list_plan_phases(&state.pool, plan.id).await?;
+        responses.push(ServicePlanResponse {
+            id: plan.id,
+            slug: plan.slug,
+            name: plan.name,
+            price_cents: plan.price_cents,
+            description: plan.description,
+            features: plan.features,
+            is_highlighted: plan.is_highlighted,
+            is_custom: plan.is_custom,
+            phases: phases.into_iter().map(ServicePlanPhaseResponse::from).collect(),
+        });
+    }
+
+    Ok(Json(responses))
 }

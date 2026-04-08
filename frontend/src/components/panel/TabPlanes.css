@@ -1,0 +1,207 @@
+/* [074A-66] Estilos para el editor de planes de servicio.
+ * Sigue el patrón dark del editor: bg-primary, white-10 borders. */
+
+.tabPlanes {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tabPlanesSinPlanes {
+    color: var(--text-tertiary);
+    font-size: 14px;
+    text-align: center;
+    padding: 24px 0;
+}
+
+.tabPlanCard {
+    border: 1px solid var(--white-10);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.tabPlanCard--abierto {
+    border-color: var(--brand-white);
+}
+
+.tabPlanCardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.tabPlanCardHeader:hover {
+    background: var(--white-10);
+}
+
+.tabPlanCardInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.tabPlanStar {
+    color: var(--brand-white);
+    flex-shrink: 0;
+}
+
+.tabPlanCardNombre {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--brand-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tabPlanCardPrecio {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.tabPlanCardAcciones {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-tertiary);
+}
+
+.tabPlanCardBody {
+    padding: 14px;
+    border-top: 1px solid var(--white-10);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tabPlanFila {
+    display: flex;
+    gap: 10px;
+}
+
+.tabPlanLabel {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    flex: 1;
+}
+
+.tabPlanLabelCorto {
+    flex: 0 0 100px;
+}
+
+.tabPlanLabelCheck {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+}
+
+.tabPlanTextarea {
+    resize: vertical;
+    min-height: 40px;
+}
+
+.tabPlanSeccion {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tabPlanSeccionTitulo {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand-white);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tabPlanFeatureFila {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tabPlanFeatureFila input {
+    flex: 1;
+}
+
+.tabPlanBtnIcono {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+}
+
+.tabPlanBtnEliminar:hover {
+    color: var(--brand-white);
+}
+
+.tabPlanBtnAgregar {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 1px dashed var(--white-10);
+    color: var(--text-tertiary);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    align-self: flex-start;
+}
+
+.tabPlanBtnAgregar:hover {
+    color: var(--brand-white);
+    border-color: var(--brand-white);
+}
+
+.tabPlanFase {
+    border: 1px solid var(--white-10);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tabPlanFaseHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tabPlanFaseNum {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand-white);
+}
+
+.tabPlanesBtnNuevo {
+    align-self: flex-start;
+}
+
+@media (max-width: 600px) {
+    .tabPlanFila {
+        flex-direction: column;
+    }
+
+    .tabPlanLabelCorto {
+        flex: 1;
+    }
+}

@@ -1,6 +1,7 @@
-/* [074A-9] Editor de servicio CMS — Modal con tabs: General, Media, SEO.
+/* [074A-9] Editor de servicio CMS — Modal con tabs: General, Media, Planes, SEO.
  * Reutiliza componentes existentes: Modal, Input, SlugInput, UploadImage, RichTextEditor, Textarea.
  * Lógica de formulario extraída a useEditorServicio para cumplir max 3 useState.
+ * [074A-66] Tab Planes agregada para editar planes de pricing inline.
  * sentinel-disable-file button-nativo: Tabs del editor y status toggles usan <button> nativo
  * porque botonBase interfiere con estilos del tab (mismo patrón 074A-47). */
 import React, {useState, useCallback} from 'react';
@@ -11,23 +12,25 @@ import {Button} from '../ui/Button';
 import {SlugInput} from '../ui/SlugInput';
 import {UploadImage} from '../ui/UploadImage';
 import {RichTextEditor} from '../ui/RichTextEditor';
+import {TabPlanes} from './TabPlanes';
 import {useEditorServicio} from '../../hooks/useEditorServicio';
-import type {AdminService, CreateServiceBody, UpdateServiceBody} from '../../api/admin-services';
+import type {AdminService, CreateServiceBody, UpdateServiceBody, SavePlanBody} from '../../api/admin-services';
 import './EditorServicio.css';
 
-type TabEditor = 'general' | 'media' | 'seo';
+type TabEditor = 'general' | 'media' | 'planes' | 'seo';
 
 interface EditorServicioProps {
     abierto: boolean;
     onCerrar: () => void;
     servicio: AdminService | null;
-    onGuardar: (body: CreateServiceBody | UpdateServiceBody) => Promise<void>;
+    onGuardar: (body: CreateServiceBody | UpdateServiceBody, planes: SavePlanBody[]) => Promise<void>;
     guardando: boolean;
 }
 
 const TABS: {id: TabEditor; label: string}[] = [
     {id: 'general', label: 'General'},
     {id: 'media', label: 'Media'},
+    {id: 'planes', label: 'Planes'},
     {id: 'seo', label: 'SEO'},
 ];
 
@@ -42,7 +45,7 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
     const form = useEditorServicio(servicio, abierto);
 
     const handleGuardar = useCallback(async () => {
-        await onGuardar(form.buildBody());
+        await onGuardar(form.buildBody(), form.buildPlansBody());
     }, [form, onGuardar]);
 
     return (
@@ -125,6 +128,12 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
                             onChange={form.setImagenUrl}
                             etiqueta="Imagen principal"
                         />
+                    </div>
+                )}
+
+                {tab === 'planes' && (
+                    <div className="editorServicioSeccion">
+                        <TabPlanes planes={form.planes} onChange={form.setPlanes} />
                     </div>
                 )}
 

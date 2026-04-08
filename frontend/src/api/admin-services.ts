@@ -96,6 +96,36 @@ export async function apiArchiveService(id: string): Promise<void> {
     await instance.delete(`/api/admin/services/${id}`);
 }
 
+/* [074A-66] Guardar (reemplazar) planes de un servicio */
+export interface SavePlanBody {
+    slug: string;
+    name: string;
+    price_cents: number;
+    description: string | null;
+    features: string[];
+    is_highlighted: boolean;
+    is_custom: boolean;
+    sort_order: number;
+    phases: SavePhaseBody[];
+}
+
+export interface SavePhaseBody {
+    phase_number: number;
+    title: string;
+    description: string | null;
+    percentage_of_total: number;
+    estimated_days: number;
+    max_revisions: number;
+}
+
+export async function apiSaveServicePlans(serviceId: string, plans: SavePlanBody[]): Promise<AdminServicePlan[]> {
+    const {data} = await instance.put<AdminServicePlan[]>(
+        `/api/admin/services/${serviceId}/plans`,
+        {plans},
+    );
+    return data;
+}
+
 /* [074A-21] Endpoints públicos de servicios (sin auth) */
 export interface PublicServicePlan {
     id: string;

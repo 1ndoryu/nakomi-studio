@@ -23,7 +23,8 @@ import {useContenidoServicios} from '../../hooks/useContenidoServicios';
 import {useContenidoBlog} from '../../hooks/useContenidoBlog';
 import {useContenidoProyectos} from '../../hooks/useContenidoProyectos';
 import {useContenidoEquipo} from '../../hooks/useContenidoEquipo';
-import type {AdminService, CreateServiceBody, UpdateServiceBody} from '../../api/admin-services';
+import type {AdminService, CreateServiceBody, UpdateServiceBody, SavePlanBody} from '../../api/admin-services';
+import {apiSaveServicePlans} from '../../api/admin-services';
 import type {AdminBlogPost, CreateBlogPostBody, UpdateBlogPostBody} from '../../api/admin-blog';
 import type {AdminProject, CreateProjectBody, UpdateProjectBody} from '../../api/admin-projects';
 import type {AdminTeamMember, CreateTeamMemberBody, UpdateTeamMemberBody} from '../../api/admin-team';
@@ -62,13 +63,21 @@ export const SeccionContenido: React.FC = () => {
         setEditorAbierto(true);
     }, []);
 
-    const handleGuardarServicio = useCallback(async (body: CreateServiceBody | UpdateServiceBody) => {
+    const handleGuardarServicio = useCallback(async (body: CreateServiceBody | UpdateServiceBody, planes: SavePlanBody[]) => {
         if (servicioEditando) {
             const result = await actualizar(servicioEditando.id, body as UpdateServiceBody);
-            if (result) setEditorAbierto(false);
+            if (result) {
+                await apiSaveServicePlans(servicioEditando.id, planes);
+                setEditorAbierto(false);
+            }
         } else {
             const result = await crear(body as CreateServiceBody);
-            if (result) setEditorAbierto(false);
+            if (result) {
+                if (planes.length > 0) {
+                    await apiSaveServicePlans(result.id, planes);
+                }
+                setEditorAbierto(false);
+            }
         }
     }, [servicioEditando, actualizar, crear]);
 

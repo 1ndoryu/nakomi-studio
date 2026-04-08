@@ -1,7 +1,31 @@
 /* [074A-9] Hook interno para el estado del formulario de EditorServicio.
- * Extrae los 10+ useState del componente para cumplir regla max 3 useState. */
+ * Extrae los 10+ useState del componente para cumplir regla max 3 useState.
+ * [074A-66] Agrega estado de planes (array mutable) para la tab Planes. */
 import {useState, useCallback, useEffect} from 'react';
-import type {AdminService, CreateServiceBody, UpdateServiceBody} from '../api/admin-services';
+import type {AdminService, CreateServiceBody, UpdateServiceBody, SavePlanBody} from '../api/admin-services';
+
+/* Estructura local editable para un plan */
+export interface PlanEditable {
+    key: string;
+    slug: string;
+    name: string;
+    priceCents: number;
+    description: string;
+    features: string[];
+    isHighlighted: boolean;
+    isCustom: boolean;
+    sortOrder: number;
+    phases: PhaseEditable[];
+}
+
+export interface PhaseEditable {
+    phaseNumber: number;
+    title: string;
+    description: string;
+    percentageOfTotal: number;
+    estimatedDays: number;
+    maxRevisions: number;
+}
 
 export interface EditorServicioState {
     titulo: string;
@@ -14,6 +38,7 @@ export interface EditorServicioState {
     metaDescription: string;
     status: string;
     sortOrder: number;
+    planes: PlanEditable[];
     setTitulo: (v: string) => void;
     setSlug: (v: string) => void;
     setDescripcion: (v: string) => void;
@@ -24,7 +49,9 @@ export interface EditorServicioState {
     setMetaDescription: (v: string) => void;
     setStatus: (v: string) => void;
     setSortOrder: (v: number) => void;
+    setPlanes: (v: PlanEditable[]) => void;
     buildBody: () => CreateServiceBody | UpdateServiceBody;
+    buildPlansBody: () => SavePlanBody[];
     resetear: () => void;
 }
 
@@ -39,6 +66,30 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
     const [metaDescription, setMetaDescription] = useState('');
     const [status, setStatus] = useState('draft');
     const [sortOrder, setSortOrder] = useState(0);
+    const [planes, setPlanes] = useState<PlanEditable[]>([]);
+
+    /* Convierte AdminServicePlan[] del servidor a PlanEditable[] editables */
+    const parsePlans = useCallback((svc: AdminService): PlanEditable[] => {
+        return svc.plans.map((p, i) => ({
+            key: `${p.id}-${i}`,
+            slug: p.slug,
+            name: p.name,
+            priceCents: p.price_cents,
+            description: p.description ?? '',
+            features: Array.isArray(p.features) ? (p.features as string[]) : [],
+            isHighlighted: p.is_highlighted,
+            isCustom: p.is_custom,
+            sortOrder: i,
+            phases: p.phases.map(ph => ({
+                phaseNumber: ph.phase_number,
+                title: ph.title,
+                description: ph.description ?? '',
+                percentageOfTotal: ph.percentage_of_total,
+                estimatedDays: ph.estimated_days,
+                maxRevisions: ph.max_revisions,
+            })),
+        }));
+    }, []);
 
     const resetear = useCallback(() => {
         setTitulo('');
@@ -51,6 +102,7 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
         setMetaDescription('');
         setStatus('draft');
         setSortOrder(0);
+        setPlanes([]);
     }, []);
 
     /* Sincronizar con servicio seleccionado */
@@ -66,10 +118,11 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
             setMetaDescription(servicio.meta_description ?? '');
             setStatus(servicio.status);
             setSortOrder(servicio.sort_order);
+            setPlanes(parsePlans(servicio));
         } else {
             resetear();
         }
-    }, [servicio, abierto, resetear]);
+    }, [servicio, abierto, resetear, parsePlans]);
 
     const buildBody = useCallback(() => ({
         title: titulo,
@@ -84,11 +137,33 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
         sort_order: sortOrder,
     }), [titulo, slug, descripcion, precioCents, imagenUrl, contenido, metaTitle, metaDescription, status, sortOrder]);
 
+    /* [074A-66] Convierte PlanEditable[] a SavePlanBody[] para el API */
+    const buildPlansBody = useCallback((): SavePlanBody[] => {
+        return planes.map((p, i) => ({
+            slug: p.slug,
+            name: p.name,
+            price_cents: p.priceCents,
+            description: p.description || null,
+            features: p.features,
+            is_highlighted: p.isHighlighted,
+            is_custom: p.isCustom,
+            sort_order: i,
+            phases: p.phases.map(ph => ({
+                phase_number: ph.phaseNumber,
+                title: ph.title,
+                description: ph.description || null,
+                percentage_of_total: ph.percentageOfTotal,
+                estimated_days: ph.estimatedDays,
+                max_revisions: ph.maxRevisions,
+            })),
+        }));
+    }, [planes]);
+
     return {
         titulo, slug, descripcion, contenido, precioCents, imagenUrl,
-        metaTitle, metaDescription, status, sortOrder,
+        metaTitle, metaDescription, status, sortOrder, planes,
         setTitulo, setSlug, setDescripcion, setContenido, setPrecioCents,
         setImagenUrl, setMetaTitle, setMetaDescription, setStatus, setSortOrder,
-        buildBody, resetear,
+        setPlanes, buildBody, buildPlansBody, resetear,
     };
 }

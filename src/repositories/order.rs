@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::models::{
     Order, OrderPhase, OrderStatus, PaymentMode, PhaseStatus,
-    ServicePlan, ServicePlanPhase, ServiceRecord,
+    SavePlanItem, ServicePlan, ServicePlanPhase, ServiceRecord,
 };
 
 /* Structs de parámetros para evitar too_many_arguments (clippy) */
@@ -112,6 +112,65 @@ impl OrderRepository {
         )
         .fetch_all(pool)
         .await
+    }
+
+    /* [074A-66] Batch replace de planes para un servicio.
+     * DELETE CASCADE elimina planes y fases existentes, luego inserta los nuevos. */
+    pub async fn save_plans_for_service(
+        pool: &PgPool,
+        service_id: Uuid,
+        plans: &[SavePlanItem],
+    ) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+
+        sqlx::query!(
+            "DELETE FROM service_plans WHERE service_id = $1",
+            service_id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        for plan in plans {
+            let plan_id = sqlx::query_scalar!(
+                r#"INSERT INTO service_plans
+                   (service_id, slug, name, price_cents, description, features,
+                    is_highlighted, is_custom, sort_order)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 RETURNING id"#,
+                service_id,
+                plan.slug,
+                plan.name,
+                plan.price_cents,
+                plan.description,
+                plan.features,
+                plan.is_highlighted,
+                plan.is_custom,
+                plan.sort_order,
+            )
+            .fetch_one(&mut *tx)
+            .await?;
+
+            for phase in &plan.phases {
+                sqlx::query!(
+                    r#"INSERT INTO service_plan_phases
+                       (plan_id, phase_number, title, description,
+                        percentage_of_total, estimated_days, max_revisions)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
+                    plan_id,
+                    phase.phase_number,
+                    phase.title,
+                    phase.description,
+                    phase.percentage_of_total,
+                    phase.estimated_days,
+                    phase.max_revisions,
+                )
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        tx.commit().await?;
+        Ok(())
     }
 
     /* ============================================================

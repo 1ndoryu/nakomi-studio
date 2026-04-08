@@ -339,3 +339,38 @@ impl From<ServicePlanPhase> for ServicePlanPhaseResponse {
         }
     }
 }
+
+/* [074A-66] Request para guardar planes de un servicio (batch replace).
+ * Se eliminan todos los planes existentes y se insertan los nuevos en una transacción. */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct SaveServicePlansRequest {
+    #[validate(nested)]
+    pub plans: Vec<SavePlanItem>,
+}
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct SavePlanItem {
+    #[validate(length(min = 1, max = 50))]
+    pub slug: String,
+    #[validate(length(min = 1, max = 100))]
+    pub name: String,
+    pub price_cents: i32,
+    pub description: Option<String>,
+    pub features: serde_json::Value,
+    pub is_highlighted: bool,
+    pub is_custom: bool,
+    pub sort_order: i32,
+    #[validate(nested)]
+    pub phases: Vec<SavePhaseItem>,
+}
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct SavePhaseItem {
+    pub phase_number: i32,
+    #[validate(length(min = 1, max = 200))]
+    pub title: String,
+    pub description: Option<String>,
+    pub percentage_of_total: i32,
+    pub estimated_days: i32,
+    pub max_revisions: i32,
+}
