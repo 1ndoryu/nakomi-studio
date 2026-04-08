@@ -1,7 +1,9 @@
 /* [084A-24] Servicio de suscripciones Stripe para hosting.
  * Crea Checkout Sessions en modo subscription usando los Price IDs de Stripe.
  * Maneja webhooks de invoice.paid y customer.subscription.* para sincronizar estado.
- * Gotcha: NO usa PaymentIntents directos — usa Stripe Subscriptions nativas. */
+ * Gotcha: NO usa PaymentIntents directos — usa Stripe Subscriptions nativas.
+ * [094A-9] Auditoría de seguridad: validación estricta de campos JSON en webhooks,
+ * idempotency key en checkout, verificación de status antes de activar. */
 
 use reqwest::Client;
 use serde::Deserialize;
@@ -27,6 +29,12 @@ impl HostingStripeConfig {
         let ecommerce = std::env::var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE").ok()?;
 
         if basico.is_empty() || pro.is_empty() || ecommerce.is_empty() {
+            return None;
+        }
+
+        /* [094A-9] Validar formato de Price IDs al iniciar */
+        if !basico.starts_with("price_") || !pro.starts_with("price_") || !ecommerce.starts_with("price_") {
+            tracing::error!("Stripe hosting Price IDs con formato inválido — deben empezar con 'price_'");
             return None;
         }
 
@@ -103,6 +111,8 @@ impl HostingStripeService {
         let resp = params.http_client
             .post("https://api.stripe.com/v1/checkout/sessions")
             .basic_auth(params.stripe_key, Option::<&str>::None)
+            /* [094A-9] Idempotency key: evita sesiones duplicadas si la request se reintenta */
+            .header("Idempotency-Key", format!("hosting-checkout-{}", params.subscription_id))
             .form(&form)
             .send()
             .await
@@ -171,17 +181,39 @@ impl HostingStripeService {
             return Ok(false);
         };
 
+        /* [094A-9] Validar que subscription ID no esté vacío — campo crítico para vincular Stripe */
         let stripe_sub_id = data["object"]["subscription"]
             .as_str()
-            .unwrap_or_default();
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| {
+                tracing::warn!("Webhook checkout.session.completed sin subscription ID para hosting {hosting_id}");
+                AppError::BadRequest("Missing subscription field in checkout event".into())
+            })?;
+
+        /* [094A-9] Verificar que la suscripción existe y está en estado pendiente antes de activar */
+        let existing = HostingRepository::find_by_id(pool, hosting_id).await?;
+        let Some(existing) = existing else {
+            tracing::warn!("Webhook: hosting subscription {hosting_id} no existe en BD");
+            return Ok(false);
+        };
+        if existing.status != "pending" && existing.status != "provisioning" {
+            tracing::warn!(
+                "Webhook: hosting {hosting_id} tiene status '{}', esperaba 'pending' o 'provisioning'",
+                existing.status
+            );
+            return Ok(false);
+        }
 
         HostingRepository::set_stripe_subscription_id(pool, hosting_id, stripe_sub_id).await?;
         HostingRepository::update_status(pool, hosting_id, "active").await?;
 
-        let _ = HostingRepository::add_event(
+        /* [094A-9] Log de errores en evento, no silenciar */
+        if let Err(e) = HostingRepository::add_event(
             pool, hosting_id, "stripe_checkout_completed",
             Some(serde_json::json!({"stripe_subscription_id": stripe_sub_id})),
-        ).await;
+        ).await {
+            tracing::warn!("Error registrando evento stripe_checkout_completed para {hosting_id}: {e}");
+        }
 
         tracing::info!("Hosting {hosting_id} activado via Stripe checkout (sub: {stripe_sub_id})");
         Ok(true)
@@ -192,10 +224,11 @@ impl HostingStripeService {
         pool: &PgPool,
         data: &serde_json::Value,
     ) -> Result<bool, AppError> {
-        let stripe_sub_id = data["object"]["subscription"].as_str().unwrap_or_default();
-        if stripe_sub_id.is_empty() {
-            return Ok(false);
-        }
+        /* [094A-9] Validar campo subscription explícitamente */
+        let stripe_sub_id = match data["object"]["subscription"].as_str() {
+            Some(id) if !id.is_empty() => id,
+            _ => return Ok(false),
+        };
 
         let Some(hosting) =
             HostingRepository::find_by_stripe_subscription(pool, stripe_sub_id).await?
@@ -207,13 +240,16 @@ impl HostingStripeService {
             HostingRepository::update_status(pool, hosting.id, "active").await?;
         }
 
-        let _ = HostingRepository::add_event(
+        /* [094A-9] Log de errores en evento, no silenciar */
+        if let Err(e) = HostingRepository::add_event(
             pool, hosting.id, "invoice_paid",
             Some(serde_json::json!({
                 "invoice_id": data["object"]["id"].as_str(),
                 "amount_paid": data["object"]["amount_paid"].as_i64(),
             })),
-        ).await;
+        ).await {
+            tracing::warn!("Error registrando evento invoice_paid para {}: {e}", hosting.id);
+        }
 
         tracing::info!("Hosting {} — invoice paid", hosting.id);
         Ok(true)
@@ -224,7 +260,11 @@ impl HostingStripeService {
         pool: &PgPool,
         data: &serde_json::Value,
     ) -> Result<bool, AppError> {
-        let stripe_sub_id = data["object"]["id"].as_str().unwrap_or_default();
+        /* [094A-9] Validar campo id explícitamente */
+        let stripe_sub_id = match data["object"]["id"].as_str() {
+            Some(id) if !id.is_empty() => id,
+            _ => return Ok(false),
+        };
         let Some(hosting) =
             HostingRepository::find_by_stripe_subscription(pool, stripe_sub_id).await?
         else {
@@ -232,9 +272,12 @@ impl HostingStripeService {
         };
 
         HostingRepository::update_status(pool, hosting.id, "cancelled").await?;
-        let _ = HostingRepository::add_event(
+        /* [094A-9] Log de errores en evento, no silenciar */
+        if let Err(e) = HostingRepository::add_event(
             pool, hosting.id, "stripe_subscription_cancelled", None,
-        ).await;
+        ).await {
+            tracing::warn!("Error registrando evento stripe_subscription_cancelled para {}: {e}", hosting.id);
+        }
 
         tracing::info!("Hosting {} cancelado via Stripe webhook", hosting.id);
         Ok(true)
@@ -245,7 +288,11 @@ impl HostingStripeService {
         pool: &PgPool,
         data: &serde_json::Value,
     ) -> Result<bool, AppError> {
-        let stripe_sub_id = data["object"]["subscription"].as_str().unwrap_or_default();
+        /* [094A-9] Validar campo subscription explícitamente */
+        let stripe_sub_id = match data["object"]["subscription"].as_str() {
+            Some(id) if !id.is_empty() => id,
+            _ => return Ok(false),
+        };
         let Some(hosting) =
             HostingRepository::find_by_stripe_subscription(pool, stripe_sub_id).await?
         else {
@@ -253,10 +300,13 @@ impl HostingStripeService {
         };
 
         HostingRepository::update_status(pool, hosting.id, "suspended").await?;
-        let _ = HostingRepository::add_event(
+        /* [094A-9] Log de errores en evento, no silenciar */
+        if let Err(e) = HostingRepository::add_event(
             pool, hosting.id, "payment_failed",
             Some(serde_json::json!({"invoice_id": data["object"]["id"].as_str()})),
-        ).await;
+        ).await {
+            tracing::warn!("Error registrando evento payment_failed para {}: {e}", hosting.id);
+        }
 
         tracing::warn!("Hosting {} suspendido por pago fallido", hosting.id);
         Ok(true)

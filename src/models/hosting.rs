@@ -1,13 +1,24 @@
 /* [054A-2] Modelos de hosting: suscripciones y eventos.
  * hosting_subscriptions: registra planes de hosting contratados por clientes.
- * hosting_events: log de eventos del ciclo de vida (provisioned, backup, health_fail, etc). */
+ * hosting_events: log de eventos del ciclo de vida (provisioned, backup, health_fail, etc).
+ * [094A-9] Validación de dominio con regex RFC 1035/1123 para prevenir inyección. */
 
 use chrono::{DateTime, Utc};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use std::sync::LazyLock;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
+
+/* [094A-9] Regex para validar nombres de dominio (RFC 1035/1123).
+ * Acepta subdominios, TLDs estándar. No acepta IPs, rutas ni esquemas. */
+static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"^(?i)(?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$"
+    ).expect("regex de dominio válida")
+});
 
 /* ============================================================
    MODELOS DE BD
@@ -51,7 +62,7 @@ pub struct CreateHostingRequest {
     pub client_email: String,
     #[validate(length(min = 1, max = 20))]
     pub plan: String,
-    #[validate(length(max = 253))]
+    #[validate(length(max = 253), regex(path = "*DOMAIN_REGEX", message = "Dominio inválido"))]
     pub domain: Option<String>,
 }
 
@@ -68,7 +79,7 @@ pub struct UpdateHostingStatusRequest {
 pub struct SelfSubscribeRequest {
     #[validate(length(min = 1, max = 20))]
     pub plan: String,
-    #[validate(length(max = 253))]
+    #[validate(length(max = 253), regex(path = "*DOMAIN_REGEX", message = "Dominio inválido"))]
     pub domain: Option<String>,
 }
 
@@ -77,7 +88,7 @@ pub struct SelfSubscribeRequest {
 pub struct UpdateHostingRequest {
     #[validate(length(min = 1, max = 20))]
     pub plan: String,
-    #[validate(length(max = 253))]
+    #[validate(length(max = 253), regex(path = "*DOMAIN_REGEX", message = "Dominio inválido"))]
     pub domain: Option<String>,
 }
 

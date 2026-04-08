@@ -115,13 +115,16 @@ pub async fn create_subscription(
     .await?;
 
     /* Registrar evento de creación */
-    let _ = HostingRepository::add_event(
+    /* [094A-9] Log de errores en evento, no silenciar */
+    if let Err(e) = HostingRepository::add_event(
         &state.pool,
         sub.id,
         "created",
         Some(serde_json::json!({"plan": req.plan, "by": auth.user_id.to_string()})),
     )
-    .await;
+    .await {
+        tracing::warn!("Error registrando evento created para {}: {e}", sub.id);
+    }
 
     Ok((StatusCode::CREATED, Json(sub.into())))
 }
@@ -180,7 +183,8 @@ pub async fn subscribe_self(
     )
     .await?;
 
-    let _ = HostingRepository::add_event(
+    /* [094A-9] Log de errores en evento, no silenciar */
+    if let Err(e) = HostingRepository::add_event(
         &state.pool,
         sub.id,
         "created",
@@ -190,7 +194,9 @@ pub async fn subscribe_self(
             "source": "self-service"
         })),
     )
-    .await;
+    .await {
+        tracing::warn!("Error registrando evento created (self-service) para {}: {e}", sub.id);
+    }
 
     /* Crear Stripe Checkout Session inmediatamente */
     let stripe_key = state
@@ -301,8 +307,8 @@ pub async fn update_status(
 
     HostingRepository::update_status(&state.pool, id, &req.status).await?;
 
-    /* Registrar evento */
-    let _ = HostingRepository::add_event(
+    /* [094A-9] Log de errores en evento, no silenciar */
+    if let Err(e) = HostingRepository::add_event(
         &state.pool,
         id,
         "status_change",
@@ -312,7 +318,9 @@ pub async fn update_status(
             "by": auth.user_id.to_string()
         })),
     )
-    .await;
+    .await {
+        tracing::warn!("Error registrando evento status_change para {id}: {e}");
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -399,7 +407,8 @@ pub async fn update_subscription(
     )
     .await?;
 
-    let _ = HostingRepository::add_event(
+    /* [094A-9] Log de errores en evento, no silenciar */
+    if let Err(e) = HostingRepository::add_event(
         &state.pool,
         id,
         "updated",
@@ -409,7 +418,9 @@ pub async fn update_subscription(
             "by": auth.user_id.to_string()
         })),
     )
-    .await;
+    .await {
+        tracing::warn!("Error registrando evento updated para {id}: {e}");
+    }
 
     Ok(Json(updated.into()))
 }
@@ -481,7 +492,8 @@ pub async fn request_cancel(
 
     HostingRepository::update_status(&state.pool, id, "cancelled").await?;
 
-    let _ = HostingRepository::add_event(
+    /* [094A-9] Log de errores en evento, no silenciar */
+    if let Err(e) = HostingRepository::add_event(
         &state.pool,
         id,
         "status_change",
@@ -491,7 +503,9 @@ pub async fn request_cancel(
             "by": auth.user_id.to_string()
         })),
     )
-    .await;
+    .await {
+        tracing::warn!("Error registrando evento cancellation para {id}: {e}");
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }

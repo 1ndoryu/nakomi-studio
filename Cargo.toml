@@ -59,6 +59,9 @@ hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
 
+# Validation (domain regex)
+regex = "1"
+
 # Glory framework
 glory-rs = { path = "glory-rs/backend" }
 
