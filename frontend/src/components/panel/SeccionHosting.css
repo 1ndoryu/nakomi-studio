@@ -85,7 +85,8 @@
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-lg);
     transition: all var(--transicion-rapida);
-    overflow: hidden;
+    /* [084A-2] overflow: visible para que MenuContextual no se clipee */
+    overflow: visible;
 }
 
 .hostingCard:hover {
