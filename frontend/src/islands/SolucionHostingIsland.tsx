@@ -1,16 +1,19 @@
 /* [064A-32] Página de Hosting Administrado.
- * Reemplaza el placeholder de /soluciones/hosting con página funcional.
- * Muestra planes, features y CTA (abre chat — flujo Stripe subscription pendiente). */
+ * [084A-20] CTA de planes ahora abre ModalCompra en vez de chat.
+ * "Conversar" sigue abriendo el chat. */
 
+import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Server, Shield, Zap, Clock, Globe, Headphones} from 'lucide-react';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
 import {SeccionContacto} from '../components/home/SeccionContacto';
+import {ModalCompra} from '../components/servicios/ModalCompra';
 import {useChatStore} from '../stores/chatStore';
 import {PLANES_HOSTING} from '../data/planes/planes-hosting';
 import {Button} from '../components/ui/Button';
 import {Tarjeta} from '../components/ui/Tarjeta';
+import type {PlanServicio} from '../data/planes/tipos';
 import '../components/servicios/SeccionPlanesServicio.css';
 import './SolucionHostingIsland.css';
 
@@ -31,6 +34,7 @@ const FEATURE_KEYS = ['performance', 'security', 'uptime', 'cdn', 'managed', 'su
 export const SolucionHostingIsland = (): JSX.Element => {
     const {t} = useTranslation();
     const abrirChat = useChatStore(s => s.abrir);
+    const [planSeleccionado, setPlanSeleccionado] = useState<PlanServicio | null>(null);
 
     const features = FEATURE_KEYS.map((key, i) => ({
         icono: FEATURE_ICONS[i],
@@ -130,7 +134,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
                                     <Button
                                         variante={plan.destacado ? 'primario' : 'outline'}
                                         tamano="mediano"
-                                        onClick={abrirChat}
+                                        onClick={() => setPlanSeleccionado(plan)}
                                     >
                                         {t(`content.plans.${plan.id}.cta`, plan.ctaTexto)}
                                     </Button>
@@ -145,6 +149,16 @@ export const SolucionHostingIsland = (): JSX.Element => {
             </section>
 
             <SeccionContacto />
+
+            {/* [084A-20] Modal de compra para planes de hosting */}
+            {planSeleccionado && (
+                <ModalCompra
+                    plan={planSeleccionado}
+                    servicioSlug="hosting"
+                    abierto={!!planSeleccionado}
+                    onCerrar={() => setPlanSeleccionado(null)}
+                />
+            )}
         </LayoutPagina>
     );
 };

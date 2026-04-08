@@ -54,11 +54,13 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - la nota en chatInfoSeccion chatInfoSeccionNotas no esta tomando el ancho completo. → ✅ 084A-15 completada
 - .hostingEventos no se que es pero quita eso, lo que sea que sea eso no tiene porque verse en un modal. → ✅ 084A-16 completada 
 - En modalCompraContenido el precio debería actualizarse segun el tipo de pago que se hará hay que revisar profundamente esto para ver que funcione.  → ✅ 084A-12 completada
-- Cuando elijo un plan de hosting abre el chat en vez de abrir modalCompraContenido
+- Cuando elijo un plan de hosting abre el chat en vez de abrir modalCompraContenido → ✅ 084A-20 completada
 - El historial de pago se ve muy mal, debería verse profesional, como una tabla o algo. 
 
 - Se requiere hacer una auditoría de principios solid a todo el front, todos los archivos para identificar inconsistencias, cosas que deberían ser componentes y no lo son, y cosas que no detecta glory sentinel. 
 - Uncaught SyntaxError: The requested module '/src/components/panel/OrdenDetalle.tsx?t=1775654447341' does not provide an export named 'OrdenDetalle' (at SeccionProyectos.tsx:13:9) → ✅ 084A-23 — Error transitorio de Vite HMR, exportación es correcta (named export)
+- Cuando llegue un mensaje nuevo estando logeada como admin debería sonar un sonido, y generar una notificación. 
+- Las notificaciones se ven mal, se hace un fondo negro al poner el cursor, en vez de bg-accent. Las notificaciones dberían marcarse como leida al abrirlas, el boton de leerlas es innecesario. 
 
 
 ## Hosting 
