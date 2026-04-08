@@ -31,6 +31,9 @@ export interface ChatMessage {
     /* [064A-70] Datos del sender enriquecidos por el backend */
     sender_avatar_url: string | null;
     sender_display_name: string | null;
+    /* [T-5] Mensajes ricos: tipo + metadatos estructurados */
+    message_type?: string | null;
+    metadata?: Record<string, unknown> | null;
 }
 
 export interface WsServerMessage {
@@ -42,6 +45,9 @@ export interface WsServerMessage {
     sender_id?: string | null;
     content?: string;
     created_at?: string;
+    /* [T-5] Rich message fields */
+    message_type?: string | null;
+    metadata?: Record<string, unknown> | null;
     /* status */
     value?: string;
     /* session_new */
@@ -94,6 +100,29 @@ export async function apiSendMessage(
 /* [054A-9] Cerrar sesión de chat (staff/admin) */
 export async function apiCloseSession(sessionId: string): Promise<void> {
     await axiosInstance.post(`/api/chat/sessions/${sessionId}/close`);
+}
+
+/* [T-5] Upload de archivo en chat (imágenes, audio, PDF) */
+export interface ChatUploadResponse {
+    message_id: string;
+    attachment_id: string;
+    file_name: string;
+    mime_type: string;
+    ai_description: string | null;
+}
+
+export async function apiUploadChatFile(
+    sessionId: string,
+    file: File,
+): Promise<ChatUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const {data} = await axiosInstance.post<ChatUploadResponse>(
+        `/api/chat/sessions/${sessionId}/upload`,
+        formData,
+        {headers: {'Content-Type': 'multipart/form-data'}},
+    );
+    return data;
 }
 
 /*    [064A-72] NOTAS DE SESIÓN Y RENOMBRAR VISITANTE */

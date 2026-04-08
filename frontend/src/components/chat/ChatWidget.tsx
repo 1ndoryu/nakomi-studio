@@ -6,7 +6,7 @@
 
 import React, {useState, useRef, useEffect} from 'react';
 import {useLocation} from 'react-router-dom';
-import {Send, User, Minus} from 'lucide-react';
+import {Send, User, Minus, Paperclip} from 'lucide-react';
 import {useChatWidget} from '../../hooks/useChatWidget';
 import {SENDER_LABELS} from '../../api/chat';
 import {useChatStore} from '../../stores/chatStore';
@@ -28,9 +28,11 @@ export const ChatWidget: React.FC = () => {
         connecting,
         messages,
         typing,
+        uploading,
         connect,
         sendMessage,
         sendTyping,
+        uploadFile,
     } = useChatWidget();
 
     /* [064A-67→074A-18] Widget de chat oculto en /panel — el panel tiene su propia SeccionChat */
@@ -105,9 +107,11 @@ export const ChatWidget: React.FC = () => {
                 <ChatWidgetInput
                     input={input}
                     connected={connected}
+                    uploading={uploading}
                     onInputChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     onSend={handleSend}
+                    onUpload={uploadFile}
                 />
             </div>
         </>
@@ -115,6 +119,59 @@ export const ChatWidget: React.FC = () => {
 };
 
 /* Sub-componentes (SRP) */
+
+/* [T-5] Renderiza contenido rico de mensajes: imágenes inline, audio player, enlace PDF.
+ * Si message_type es null/text, renderiza texto plano como antes. */
+function renderMessageContent(msg: {
+    content: string;
+    message_type?: string | null;
+    metadata?: Record<string, unknown> | null;
+}): React.ReactNode {
+    const fileUrl = (msg.metadata?.file_url as string) || '';
+    const fileName = (msg.metadata?.file_name as string) || 'archivo';
+
+    switch (msg.message_type) {
+        case 'image':
+            return (
+                <div className="chatWidgetMsgRich">
+                    <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                        <img
+                            src={fileUrl}
+                            alt={fileName}
+                            className="chatWidgetMsgImage"
+                            loading="lazy"
+                        />
+                    </a>
+                    {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
+                </div>
+            );
+        case 'audio':
+            return (
+                <div className="chatWidgetMsgRich">
+                    <audio controls preload="metadata" className="chatWidgetMsgAudio">
+                        <source src={fileUrl} />
+                    </audio>
+                    {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
+                </div>
+            );
+        case 'file':
+            return (
+                <div className="chatWidgetMsgRich">
+                    <a
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="chatWidgetMsgFileLink"
+                    >
+                        📄 {fileName}
+                    </a>
+                    {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
+                </div>
+            );
+        default:
+            return <>{msg.content}</>;
+    }
+}
 
 function ChatWidgetMessages({
     messages,
@@ -127,6 +184,8 @@ function ChatWidgetMessages({
         sender_id: string | null;
         content: string;
         created_at: string;
+        message_type?: string | null;
+        metadata?: Record<string, unknown> | null;
     }>;
     typing: {sender: string; content: string} | null;
     messagesEndRef: React.RefObject<HTMLDivElement>;
@@ -148,10 +207,11 @@ function ChatWidgetMessages({
                 const isAi = msg.sender_type === 'ai';
                 const label = SENDER_LABELS[msg.sender_type] || msg.sender_type;
 
-                /* [064A-52] AI: avatar al lado de la burbuja. Otros: icono User + label. */
+                /* [T-5] Renderizar contenido según message_type */
+                const bubbleContent = renderMessageContent(msg);
                 const bubble = (
                     <div className={`chatWidgetMsgBubble ${isOwn ? 'chatWidgetMsgBubbleOwn' : 'chatWidgetMsgBubbleOther'}`}>
-                        {msg.content}
+                        {bubbleContent}
                     </div>
                 );
 
@@ -212,41 +272,78 @@ function ChatWidgetMessages({
     );
 }
 
+/* [T-5] MIME types aceptados en el file picker */
+const CHAT_FILE_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/ogg,audio/wav,audio/webm,audio/mp4,audio/flac,application/pdf';
+
 function ChatWidgetInput({
     input,
     connected,
+    uploading,
     onInputChange,
     onKeyDown,
     onSend,
+    onUpload,
 }: {
     input: string;
     connected: boolean;
+    uploading: boolean;
     onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onKeyDown: (e: React.KeyboardEvent) => void;
     onSend: () => void;
+    onUpload: (file: File) => void;
 }) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            onUpload(file);
+            e.target.value = '';
+        }
+    };
+
     return (
         <div className="chatWidgetInputArea">
-            <Input
-                type="text"
-                placeholder={connected ? 'Escribe un mensaje...' : 'Conectando...'}
-                value={input}
-                onChange={onInputChange}
-                onKeyDown={onKeyDown}
-                disabled={!connected}
-                className="chatWidgetInput"
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept={CHAT_FILE_ACCEPT}
+                onChange={handleFileChange}
+                style={{display: 'none'}}
             />
             <Button
                 variante="texto"
                 tamano="pequeno"
-                className="chatWidgetSendBtn"
-                onClick={onSend}
-                disabled={!connected || !input.trim()}
-                aria-label="Enviar mensaje"
+                className="chatWidgetAttachBtn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!connected || uploading}
+                aria-label="Adjuntar archivo"
                 type="button"
             >
-                <Send size={18} />
+                <Paperclip size={18} />
             </Button>
+            <div className="chatWidgetInputWrapper">
+                <Input
+                    type="text"
+                    placeholder={uploading ? 'Subiendo archivo...' : connected ? 'Escribe un mensaje...' : 'Conectando...'}
+                    value={input}
+                    onChange={onInputChange}
+                    onKeyDown={onKeyDown}
+                    disabled={!connected || uploading}
+                    className="chatWidgetInput"
+                />
+                <Button
+                    variante="texto"
+                    tamano="pequeno"
+                    className="chatWidgetSendBtn"
+                    onClick={onSend}
+                    disabled={!connected || !input.trim() || uploading}
+                    aria-label="Enviar mensaje"
+                    type="button"
+                >
+                    <Send size={18} />
+                </Button>
+            </div>
         </div>
     );
 }

@@ -5,7 +5,7 @@
  * Independiente del hook useChat (que es para staff). */
 
 import {useState, useCallback, useRef, useEffect} from 'react';
-import {buildVisitorWsUrl, type WsServerMessage, type ChatMessage} from '../api/chat';
+import {buildVisitorWsUrl, apiUploadChatFile, type WsServerMessage, type ChatMessage} from '../api/chat';
 
 const STORAGE_KEY_VISITOR_ID = 'nakomi_visitor_id';
 const STORAGE_KEY_SESSION_ID = 'nakomi_chat_session_id';
@@ -67,6 +67,8 @@ export function useChatWidget() {
                                 created_at: msg.created_at || new Date().toISOString(),
                                 sender_avatar_url: null,
                                 sender_display_name: null,
+                                message_type: msg.message_type ?? null,
+                                metadata: msg.metadata ?? null,
                             },
                         ];
                     });
@@ -183,6 +185,22 @@ export function useChatWidget() {
         }
     }, []);
 
+    /* [T-5] Upload de archivo via REST (multipart). El backend crea el mensaje rico
+     * y procesa IA en background (Vision, Whisper, PDF extract). */
+    const [uploading, setUploading] = useState(false);
+    const uploadFile = useCallback(async (file: File) => {
+        if (!sessionId) return;
+        setUploading(true);
+        try {
+            await apiUploadChatFile(sessionId, file);
+            /* El mensaje aparece via WS broadcast — no necesitamos actualizar state local */
+        } catch (err) {
+            console.error('[ChatWidget] Upload error:', err);
+        } finally {
+            setUploading(false);
+        }
+    }, [sessionId]);
+
     /* Limpiar al desmontar */
     useEffect(() => () => disconnect(), [disconnect]);
 
@@ -212,9 +230,11 @@ export function useChatWidget() {
         messages,
         typing,
         sessionId,
+        uploading,
         connect,
         disconnect,
         sendMessage,
         sendTyping,
+        uploadFile,
     };
 }

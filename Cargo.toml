@@ -52,7 +52,7 @@ governor = "0.7"
 tower_governor = "0.4"
 
 # HTTP client (Stripe API)
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "multipart"] }
 
 # Webhook signature verification
 hmac = "0.12"
@@ -61,6 +61,12 @@ hex = "0.4"
 
 # Validation (domain regex)
 regex = "1"
+
+# PDF text extraction (T-5)
+pdf-extract = "0.7"
+
+# Base64 encoding (T-5 Groq Vision)
+base64 = "0.22"
 
 # Glory framework
 glory-rs = { path = "glory-rs/backend" }
