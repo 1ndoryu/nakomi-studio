@@ -10,6 +10,7 @@ import './NosotrosIsland.css';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
 import {SeccionHeader} from '../components/ui/SeccionHeader';
+import {AdminOverlay} from '../components/ui/AdminOverlay';
 import {SeccionContacto} from '../components/home/SeccionContacto';
 import {MIEMBROS_DATA} from '../data/miembros';
 import {Miembro} from '../types/contenido';
@@ -24,28 +25,30 @@ interface NosotrosIslandProps {
 const TarjetaMiembro: React.FC<{miembro: Miembro}> = ({miembro}) => {
     const {t} = useTranslation();
     return (
-    <article className="tarjetaMiembro">
-        <div className="miembroAvatar">
-            <img src={miembro.avatar} alt={miembro.nombre} loading="lazy" />
-        </div>
-        <div className="miembroInfo">
-            <h3 className="miembroNombre">{miembro.nombre}</h3>
-            <span className="miembroCargo">{t(`content.team.${miembro.id}.cargo`, miembro.cargo)}</span>
-            <p className="miembroBio">{t(`content.team.${miembro.id}.bio`, miembro.bio)}</p>
-            <div className="miembroRedes">
-                {miembro.linkedin && (
-                    <a href={miembro.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-                        LinkedIn
-                    </a>
-                )}
-                {miembro.github && (
-                    <a href={miembro.github} target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-                        GitHub
-                    </a>
-                )}
+    <AdminOverlay contentType="team" itemId={miembro.adminId || miembro.id}>
+        <article className="tarjetaMiembro">
+            <div className="miembroAvatar">
+                <img src={miembro.avatar} alt={miembro.nombre} loading="lazy" />
             </div>
-        </div>
-    </article>
+            <div className="miembroInfo">
+                <h3 className="miembroNombre">{miembro.nombre}</h3>
+                <span className="miembroCargo">{t(`content.team.${miembro.id}.cargo`, miembro.cargo)}</span>
+                <p className="miembroBio">{t(`content.team.${miembro.id}.bio`, miembro.bio)}</p>
+                <div className="miembroRedes">
+                    {miembro.linkedin && (
+                        <a href={miembro.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                            LinkedIn
+                        </a>
+                    )}
+                    {miembro.github && (
+                        <a href={miembro.github} target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                            GitHub
+                        </a>
+                    )}
+                </div>
+            </div>
+        </article>
+    </AdminOverlay>
     );
 };
 
@@ -53,6 +56,7 @@ const TarjetaMiembro: React.FC<{miembro: Miembro}> = ({miembro}) => {
 function convertirMiembro(m: AdminTeamMember): Miembro {
     return {
         id: m.slug,
+        adminId: m.id,
         nombre: m.name,
         cargo: m.role,
         bio: m.bio,

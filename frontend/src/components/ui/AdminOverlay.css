@@ -1,0 +1,44 @@
+/* [084A-29] Overlay de admin en contenido editable.
+ * Muestra un botón de 3 puntos en hover (esquina superior derecha).
+ * Opacidad 0 por defecto, 1 al hacer hover en el contenedor padre. */
+
+.adminOverlay {
+    position: relative;
+}
+
+.adminOverlayAcciones {
+    position: absolute;
+    top: var(--spacing-xs);
+    right: var(--spacing-xs);
+    opacity: 0;
+    transition: opacity var(--transicion-rapida);
+    z-index: 10;
+}
+
+.adminOverlay:hover .adminOverlayAcciones {
+    opacity: 1;
+}
+
+.adminOverlayTrigger {
+    background: var(--brand-white);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-full);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.adminOverlayTrigger:hover {
+    background: var(--bg-accent);
+    border-color: var(--border-hover);
+}
+
+.adminOverlayPanel {
+    right: 0;
+    left: auto;
+    min-width: 140px;
+}

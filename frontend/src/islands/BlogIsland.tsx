@@ -14,6 +14,7 @@ import {PostBlog} from '../types/contenido';
 import {obtenerImagenBlog} from '../hooks/useImagenes';
 import {navegar} from '../navegacionSPA';
 import {Button} from '../components/ui/Button';
+import {AdminOverlay} from '../components/ui/AdminOverlay';
 import {apiListPublicBlog} from '../api/admin-blog';
 import type {AdminBlogPost} from '../api/admin-blog';
 
@@ -30,13 +31,15 @@ const TarjetaArticulo: React.FC<{post: PostBlog; destacado?: boolean}> = ({post,
     const imagenFinal = post.imagen || obtenerImagenBlog(post.id);
 
     return (
-        <a href={post.link || '#'} onClick={(e) => { e.preventDefault(); if (post.link) navegar(post.link); }} className={`tarjetaArticulo ${destacado ? 'tarjetaArticuloDestacado' : ''}`}>
-            <img src={imagenFinal} alt={post.titulo} className="articuloImagen" loading="lazy" />
-            <div className="articuloOverlay">
-                <span className="articuloCategoria">{post.categoria}</span>
-                <h3 className="articuloTitulo">{post.titulo}</h3>
-            </div>
-        </a>
+        <AdminOverlay contentType="blog" itemId={post.adminId || String(post.id)}>
+            <a href={post.link || '#'} onClick={(e) => { e.preventDefault(); if (post.link) navegar(post.link); }} className={`tarjetaArticulo ${destacado ? 'tarjetaArticuloDestacado' : ''}`}>
+                <img src={imagenFinal} alt={post.titulo} className="articuloImagen" loading="lazy" />
+                <div className="articuloOverlay">
+                    <span className="articuloCategoria">{post.categoria}</span>
+                    <h3 className="articuloTitulo">{post.titulo}</h3>
+                </div>
+            </a>
+        </AdminOverlay>
     );
 };
 
@@ -44,6 +47,7 @@ const TarjetaArticulo: React.FC<{post: PostBlog; destacado?: boolean}> = ({post,
 function apiPostToPostBlog(post: AdminBlogPost): PostBlog {
     return {
         id: typeof post.id === 'string' ? parseInt(post.id.replace(/-/g, '').slice(0, 8), 16) : 0,
+        adminId: post.id,
         titulo: post.title,
         resumen: post.excerpt ?? '',
         contenido: post.content,

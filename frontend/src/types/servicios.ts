@@ -7,6 +7,8 @@ export interface Servicio {
     imagen: string;
     categorias: string[];
     link: string;
+    /* [084A-29] UUID original del backend para edición admin inline */
+    adminId?: string;
     skills?: Skill[];
     cta?: {
         titulo: string;

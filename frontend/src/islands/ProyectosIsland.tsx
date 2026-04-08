@@ -13,6 +13,7 @@ import {PROYECTOS_DATA} from '../data/showcase';
 import {CATEGORIAS_PROYECTOS} from '../data/navegacion';
 import {BarraFiltros} from '../components/servicios/BarraFiltros';
 import {Badge} from '../components/ui/Badge';
+import {AdminOverlay} from '../components/ui/AdminOverlay';
 import {obtenerImagenShowcase} from '../hooks/useImagenes';
 import {Proyecto} from '../types/contenido';
 import {apiListPublicProjects, AdminProject} from '../api/admin-projects';
@@ -30,20 +31,22 @@ const TarjetaProyecto: React.FC<{proyecto: Proyecto; indice: number}> = ({proyec
     const imagenSrc = proyecto.imagen || obtenerImagenShowcase(indice);
 
     return (
-        <a href={proyecto.link || '#'} className="tarjetaProyecto" onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
-            <div className="tarjetaProyectoImagen">
-                <img src={imagenSrc} alt={proyecto.titulo} loading="lazy" />
-            </div>
-            <div className="tarjetaProyectoInfo">
-                <h3 className="tarjetaProyectoTitulo">{proyecto.titulo}</h3>
-                <span className="tarjetaProyectoCliente">{t(`content.projects.${proyecto.id}.cliente`, proyecto.cliente)}</span>
-                <div className="tarjetaProyectoTags">
-                    {categorias.map(cat => (
-                        <Badge key={cat} label={cat} />
-                    ))}
+        <AdminOverlay contentType="project" itemId={proyecto.adminId || String(proyecto.id)}>
+            <a href={proyecto.link || '#'} className="tarjetaProyecto" onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
+                <div className="tarjetaProyectoImagen">
+                    <img src={imagenSrc} alt={proyecto.titulo} loading="lazy" />
                 </div>
-            </div>
-        </a>
+                <div className="tarjetaProyectoInfo">
+                    <h3 className="tarjetaProyectoTitulo">{proyecto.titulo}</h3>
+                    <span className="tarjetaProyectoCliente">{t(`content.projects.${proyecto.id}.cliente`, proyecto.cliente)}</span>
+                    <div className="tarjetaProyectoTags">
+                        {categorias.map(cat => (
+                            <Badge key={cat} label={cat} />
+                        ))}
+                    </div>
+                </div>
+            </a>
+        </AdminOverlay>
     );
 };
 
@@ -51,6 +54,7 @@ const TarjetaProyecto: React.FC<{proyecto: Proyecto; indice: number}> = ({proyec
 function convertirProyecto(p: AdminProject): Proyecto {
     return {
         id: p.slug,
+        adminId: p.id,
         titulo: p.title,
         cliente: p.client || '',
         categorias: p.categories,

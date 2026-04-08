@@ -32,6 +32,9 @@ import {ToastContainer} from './components/ui/ToastContainer';
 /* [054A-3] Chat widget flotante para visitantes */
 import {ChatWidget} from './components/chat/ChatWidget';
 
+/* [084A-29] Provider global de edición admin inline */
+import {AdminEditorProvider} from './components/AdminEditorProvider';
+
 /* Data para resolver slugs */
 import {SERVICIOS_DATA} from './data/servicios';
 import {PROYECTOS_DATA} from './data/showcase';
@@ -128,6 +131,8 @@ function App() {
                 </Routes>
                 {/* [054A-3] Chat flotante para visitantes (se oculta en /panel) */}
                 <ChatWidget />
+                {/* [084A-29] Editores admin accesibles desde páginas públicas */}
+                <AdminEditorProvider />
             </BrowserRouter>
         </QueryClientProvider>
     );

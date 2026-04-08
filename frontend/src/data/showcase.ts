@@ -108,6 +108,7 @@ export function mapAdminProjectsToProyectos(projects: AdminProject[]): Proyecto[
         .filter(p => p.status === 'published' && p.featured_image)
         .map(p => ({
             id: p.id,
+            adminId: p.id,
             titulo: p.title.toUpperCase(),
             cliente: p.client || '',
             categorias: p.categories,

@@ -8,6 +8,7 @@ import {apiListPublicServices, type PublicService} from '../api/admin-services';
 function convertirServicio(s: PublicService): Servicio {
     return {
         id: s.slug,
+        adminId: s.id,
         titulo: s.title,
         descripcion: s.description || '',
         imagen: s.image_url || '',

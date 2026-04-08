@@ -20,6 +20,8 @@ export interface PostBlog {
     categoria: string;
     link?: string;
     imagen?: string;
+    /* [084A-29] UUID original del backend para edición admin inline */
+    adminId?: string;
 }
 
 export interface EnlaceProyecto {
@@ -42,6 +44,8 @@ export interface Proyecto {
     /* [064A-8] Detalles técnicos y enlaces del proyecto */
     tecnologias?: string[];
     enlaces?: EnlaceProyecto[];
+    /* [084A-29] UUID original del backend para edición admin inline */
+    adminId?: string;
 }
 
 export interface CategoriaShowcase {
@@ -64,6 +68,8 @@ export interface Miembro {
     linkedin?: string;
     twitter?: string;
     github?: string;
+    /* [084A-29] UUID original del backend para edición admin inline */
+    adminId?: string;
 }
 
 export interface Marca {
