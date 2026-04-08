@@ -1,0 +1,60 @@
+# [084A-14] Reembolsos de prueba para testear el flujo de refunds en el panel.
+# Usa @orders:UUID para FK de order_id, @order_payments:UUID para payment_id.
+# Usa @users:email para requested_by / reviewed_by.
+
+[meta]
+table = "order_refunds"
+id_field = "id"
+depends_on = ["orders", "order_payments", "users"]
+
+[meta.casts]
+id = "uuid"
+order_id = "uuid"
+payment_id = "uuid"
+requested_by = "uuid"
+reviewed_by = "uuid"
+status = "refund_status"
+requested_at = "timestamptz"
+reviewed_at = "timestamptz"
+completed_at = "timestamptz"
+
+# Reembolso 1: Orden completada (IA Básico) — solicitado y aprobado
+# Cliente pide reembolso parcial del pago released ($48 → pide $20)
+[[records]]
+id = "d0000001-0001-4000-8000-000000000001"
+order_id = "@orders:a0000001-0001-4000-8000-000000000003"
+payment_id = "@order_payments:c0000001-0001-4000-8000-000000000002"
+requested_by = "@users:cliente@test.com"
+reviewed_by = "@users:empleado@test.com"
+amount_cents = 2000
+reason = "El chatbot no responde correctamente a preguntas complejas. Solicito reembolso parcial."
+admin_response = "Reembolso parcial aprobado. Se ajustará el monto en la próxima facturación."
+status = "approved"
+requested_at = "2026-03-05T14:00:00Z"
+reviewed_at = "2026-03-06T10:00:00Z"
+
+# Reembolso 2: Orden in_progress (Web Básico) — solicitado, bajo revisión
+# Cliente pide reembolso completo del pago held ($64)
+[[records]]
+id = "d0000001-0001-4000-8000-000000000002"
+order_id = "@orders:a0000001-0001-4000-8000-000000000001"
+payment_id = "@order_payments:c0000001-0001-4000-8000-000000000001"
+requested_by = "@users:cliente@test.com"
+amount_cents = 6400
+reason = "No estoy satisfecho con el progreso del diseño. Lleva demasiado tiempo sin avances visibles."
+status = "under_review"
+requested_at = "2026-03-20T09:30:00Z"
+
+# Reembolso 3: Orden under_review (Branding) — solicitado por error, rechazado
+[[records]]
+id = "d0000001-0001-4000-8000-000000000003"
+order_id = "@orders:a0000001-0001-4000-8000-000000000004"
+payment_id = "@order_payments:c0000001-0001-4000-8000-000000000003"
+requested_by = "@users:cliente@test.com"
+reviewed_by = "@users:empleado@test.com"
+amount_cents = 40000
+reason = "Quiero cancelar el proyecto de branding."
+admin_response = "El proyecto está en revisión final con un 95% completado. No aplica reembolso en esta etapa."
+status = "rejected"
+requested_at = "2026-03-22T16:00:00Z"
+reviewed_at = "2026-03-23T11:00:00Z"

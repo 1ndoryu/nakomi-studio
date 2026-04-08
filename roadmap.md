@@ -45,7 +45,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - elimina la especificacion de color y borde en .editorServicioStatusBtn--activo → ✅ 084A-17 completada
 - En la lista de proyecto no se ve lo que hay en el cms se ve otra cosa. → ✅ 084A-11 completada
 - En el panel al recergar debería permanecer en la misma tab incluyendo la tab interna, no ir siempre a la primera tab. → ✅ 084A-9 completada
-- No veo contenido de prueba para los reembolso, necesito ver como se ven los reembolsos.
+- No veo contenido de prueba para los reembolso, necesito ver como se ven los reembolsos. → ✅ 084A-14 completada (fixture TOML + seed cleanup)
 
 - El boton de 3 puntos de las opciones de hostig no se entiende, claramente es un desastre tantas opciones en vez de ser mas claro "cambiar estado" y luego abrir un modal, en vez de tener los estados sueltos. → ✅ 084A-13 completada
 - Nada de lo que esta en hostingCard tiene que estar en (--text-xs); subelo  a sm → ✅ 084A-18 completada
@@ -61,7 +61,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Uncaught SyntaxError: The requested module '/src/components/panel/OrdenDetalle.tsx?t=1775654447341' does not provide an export named 'OrdenDetalle' (at SeccionProyectos.tsx:13:9) → ✅ 084A-23 — Error transitorio de Vite HMR, exportación es correcta (named export)
 - Cuando llegue un mensaje nuevo estando logeada como admin debería sonar un sonido, y generar una notificación. 
 - Las notificaciones se ven mal, se hace un fondo negro al poner el cursor, en vez de bg-accent. Las notificaciones dberían marcarse como leida al abrirlas, el boton de leerlas es innecesario. 
-
+- Los planes de los hosting no necesitan modos de pago "modalCompraModos" Lo que si necesita es elegir cuantos meses pagar y generar un descuesto por cada mes pago (maximo 33%)
 
 ## Hosting 
 
