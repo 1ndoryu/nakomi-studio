@@ -100,7 +100,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~No veo que el cliente tenga capacidad de gestionar su hosting, hay que revisar lo que falta e implementar.~~ ✅ (084A-4: cliente ahora puede editar plan/dominio de sus suscripciones y solicitar cancelación — context menu visible para todos los roles)
 
-- Veo muchos planes que no estan en la carpeta de completados, claramente hay revisarlos todos para ver cuales mover y si hay cosas pendientes completarlas todo.
+- ~~Veo muchos planes que no estan en la carpeta de completados, claramente hay revisarlos todos para ver cuales mover y si hay cosas pendientes completarlas todo.~~ ✅ (084A-5: revisados 8 planes activos — movidos 3 a completados: plan-pendientes-consolidado, plan-impersonacion (100% implementado), plan-cms-admin (Fases 1-4 completas). 5 planes se mantienen activos con trabajo pendiente genuino)
 
 - ~~El menu contextual de 3 punto de los hosting no se ve.~~ ✅ (084A-2: overflow:hidden→visible en hostingCard)
 
