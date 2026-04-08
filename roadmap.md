@@ -88,6 +88,10 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~Quita los colores de hostingStatus hostingStatus--suspended, no quiero colores.~~ ✅ (074A-62: colores eliminados, estado neutral)
 
-- Los hosting deberían estar en tab como los proyectos. 
+- ~~Los hosting deberían estar en tab como los proyectos.~~ ✅ (074A-63: tabs Activos/Inactivos + sub-componentes extraidos)
 
-- hostingCardTitulo debería estar el nombre del hosting, no
+- ~~hostingCardTitulo debería estar el nombre del hosting, en vez del nombre del plan.~~ ✅ (074A-63: titulo ahora muestra dominio o client_name, plan va como subtitulo)
+
+- hostingTabs no se ve como proyectosTabs, es una inconsistencia visual. 
+
+- No veo que se pueda gestionar los hosting de prueba. 
