@@ -66,7 +66,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~SIGO SIN VER DATOS DE PRUEBA EN EL USUARIO DE CLIENTE~~ ✅ (074A-54: client_name en orders + payment fixtures con 3 pagos de prueba)
 
-- Falta hacer paginas individuales para cada usuario accesibles publicamente, similar a fiver. Iran sus reseñas dadas y recibidas.
+- ~~Falta hacer paginas individuales para cada usuario accesibles publicamente, similar a fiver. Iran sus reseñas dadas y recibidas.~~ ✅ (084A-7: perfiles públicos Fiverr-style con username, 4 endpoints API + frontend completo)
 
 - ~~entregablesModal esta agregando un padding innecesario.~~ ✅ (074A-55: padding doble removido)
 

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE users SET status = $2\n             WHERE id = $1\n             RETURNING id, email, password_hash,\n                       role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                       email_verified, status, avatar_url, display_name, created_at",
+  "query": "INSERT INTO users (id, email, password_hash, username)\n             VALUES ($1, $2, $3, $4)\n             RETURNING id, email, password_hash,\n                       role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                       email_verified, status, avatar_url, display_name, username, created_at",
   "describe": {
     "columns": [
       {
@@ -72,6 +72,11 @@
       },
       {
         "ordinal": 9,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -79,6 +84,8 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Varchar",
+        "Text",
         "Varchar"
       ]
     },
@@ -92,8 +99,9 @@
       false,
       true,
       true,
+      false,
       false
     ]
   },
-  "hash": "7bb59e894fc332de88ae8089ac0215e00c9b56f6e7fc317e6a1b17df5f72804d"
+  "hash": "f00340d358db81fce0f82ec1a5e3cceecb472795f2c322de2bcb02278ec35cf8"
 }

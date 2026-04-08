@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, password_hash,\n                      role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                      email_verified, status, avatar_url, display_name, created_at\n             FROM users WHERE email = $1",
+  "query": "UPDATE users SET active_role = $2\n             WHERE id = $1\n             RETURNING id, email, password_hash,\n                       role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                       email_verified, status, avatar_url, display_name, username, created_at",
   "describe": {
     "columns": [
       {
@@ -72,13 +72,30 @@
       },
       {
         "ordinal": 9,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid",
+        {
+          "Custom": {
+            "name": "user_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "employee",
+                "client"
+              ]
+            }
+          }
+        }
       ]
     },
     "nullable": [
@@ -91,8 +108,9 @@
       false,
       true,
       true,
+      false,
       false
     ]
   },
-  "hash": "c880d95628bc7128686d7eb3921bc2f9b7616ea041bf5563886ad85d21e68ec2"
+  "hash": "62fef56ddc966a81f64260f940d645298e54d60e3ec3e0c4ec3fdc283957d9ba"
 }

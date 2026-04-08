@@ -23,6 +23,7 @@ import {SolucionesIsland} from './islands/SolucionesIsland';
 import {SolucionPlaceholderIsland} from './islands/SolucionPlaceholderIsland';
 import {SolucionHostingIsland} from './islands/SolucionHostingIsland';
 import {PanelIsland} from './islands/PanelIsland';
+import {UsuarioPublicoIsland} from './islands/UsuarioPublicoIsland';
 import {NotFoundIsland} from './islands/NotFoundIsland';
 
 /* [054A-5] Toast system */
@@ -120,6 +121,7 @@ function App() {
                     <Route path="/soluciones/hosting" element={<SolucionHostingIsland />} />
                     <Route path="/soluciones/:slug" element={<SolucionPlaceholderIsland />} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
+                    <Route path="/usuario/:username" element={<UsuarioPublicoIsland />} />
                     <Route path="/panel" element={<PanelIsland />} />
                     {/* [044A-28] Página 404 real en vez de redirigir silenciosamente al home */}
                     <Route path="*" element={<NotFoundIsland />} />

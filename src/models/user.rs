@@ -40,6 +40,7 @@ pub struct User {
     pub status: String,
     pub avatar_url: Option<String>,
     pub display_name: Option<String>,
+    pub username: String,
     pub created_at: DateTime<Utc>,
 }
 

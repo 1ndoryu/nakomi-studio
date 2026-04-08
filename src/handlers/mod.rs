@@ -17,6 +17,7 @@ mod notifications;
 mod orders;
 mod payments;
 mod projects;
+mod public_users;
 mod refunds;
 mod reviews;
 mod seo;
@@ -134,6 +135,10 @@ impl utoipa::Modify for SecurityAddon {
         team_members::create,
         team_members::update,
         team_members::archive,
+        public_users::get_profile,
+        public_users::get_reviews_received,
+        public_users::get_reviews_given,
+        public_users::get_rating_distribution,
     ),
     components(schemas(
         health::HealthResponse,
@@ -209,6 +214,10 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::TeamMemberResponse,
         crate::models::CreateTeamMemberRequest,
         crate::models::UpdateTeamMemberRequest,
+        crate::models::PublicUserProfile,
+        crate::models::PublicReviewItem,
+        crate::models::PaginatedPublicReviews,
+        crate::models::RatingDistribution,
         profile::AvatarResponse,
         uploads::UploadResponse,
         crate::errors::ErrorResponse,
@@ -359,6 +368,7 @@ fn api_routes() -> Router<AppState> {
         .merge(projects::admin_routes())
         .merge(team_members::public_routes())
         .merge(team_members::admin_routes())
+        .merge(public_users::public_routes())
         .merge(admin_seed::seed_routes())
         .merge(hosting::hosting_routes())
         .merge(uploads::routes())

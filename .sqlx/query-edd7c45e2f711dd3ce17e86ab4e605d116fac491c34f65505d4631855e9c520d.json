@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COUNT(*) FILTER (WHERE rating = 5) as stars_5,\n                COUNT(*) FILTER (WHERE rating = 4) as stars_4,\n                COUNT(*) FILTER (WHERE rating = 3) as stars_3,\n                COUNT(*) FILTER (WHERE rating = 2) as stars_2,\n                COUNT(*) FILTER (WHERE rating = 1) as stars_1,\n                COUNT(*) as total,\n                AVG(rating)::float8 as average\n            FROM order_reviews\n            WHERE employee_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "stars_5",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "stars_4",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "stars_3",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "stars_2",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "stars_1",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "total",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "average",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "edd7c45e2f711dd3ce17e86ab4e605d116fac491c34f65505d4631855e9c520d"
+}

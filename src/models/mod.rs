@@ -9,6 +9,7 @@ mod notification;
 mod order;
 mod payment;
 mod project;
+mod public_profile;
 mod refund;
 mod review;
 mod team_member;
@@ -70,4 +71,8 @@ pub use user::{
 pub use hosting::{
     CreateHostingRequest, HostingEvent, HostingSubscription,
     HostingSubscriptionResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
+};
+pub use public_profile::{
+    GivenReviewRow, PaginatedPublicReviews, PublicProfileRow, PublicReviewItem,
+    PublicUserProfile, RatingDistribution, ReceivedReviewRow,
 };

@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                u.username,\n                u.display_name,\n                u.avatar_url,\n                up.bio as \"bio?\",\n                ep.specialties as \"specialties?: Vec<String>\",\n                ep.average_rating::float8 as \"average_rating?: f64\",\n                ep.total_completed_orders as \"total_completed_orders?\",\n                up.linkedin as \"linkedin?\",\n                up.twitter as \"twitter?\",\n                up.website as \"website?\",\n                u.created_at\n            FROM users u\n            LEFT JOIN user_profiles up ON up.user_id = u.id\n            LEFT JOIN employee_profiles ep ON ep.user_id = u.id\n            WHERE u.username = $1 AND u.status = 'active'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "avatar_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "bio?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "specialties?: Vec<String>",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 5,
+        "name": "average_rating?: f64",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_completed_orders?",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "linkedin?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "twitter?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "website?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false,
+      null,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "b44bd63d51a2bd08a975840ef888db4d5f0dbdcd6fa6a76e40d59fa01f4da083"
+}
