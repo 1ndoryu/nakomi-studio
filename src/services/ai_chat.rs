@@ -116,6 +116,7 @@ impl AiChatService {
         http_client: &reqwest::Client,
         stripe_key: Option<&str>,
         session_id: Uuid,
+        visitor_id: Option<&str>,
         user_message: &str,
     ) -> Result<AiResponse, String> {
         if !config.is_configured() {
@@ -129,7 +130,7 @@ impl AiChatService {
             });
         }
 
-        let system_prompt = build_system_prompt(pool, session_id).await;
+        let system_prompt = build_system_prompt(pool, session_id, visitor_id).await;
         let history = ChatRepository::list_messages(pool, session_id, 20, 0)
             .await
             .unwrap_or_default();
@@ -156,7 +157,7 @@ impl AiChatService {
                 /* La IA quiere llamar tools — ejecutarlas */
                 messages.push(choice["message"].clone());
                 let tool_results = process_tool_calls(
-                    pool, http_client, stripe_key, tool_calls, &mut rich_messages,
+                    pool, http_client, stripe_key, visitor_id, tool_calls, &mut rich_messages,
                 ).await;
 
                 if tool_results.iter().any(|r| r.contains("\"status\":\"escalated\"")) {
@@ -261,11 +262,13 @@ async fn call_groq_api(
 }
 
 /* [T-2] Ejecutar tool calls y recopilar rich messages.
- * Retorna Vec<String> con los resultados JSON de cada tool. */
+ * Retorna Vec<String> con los resultados JSON de cada tool.
+ * [T-3] visitor_id para tools que actualizan visitor_profiles. */
 async fn process_tool_calls(
     pool: &PgPool,
     http_client: &reqwest::Client,
     stripe_key: Option<&str>,
+    visitor_id: Option<&str>,
     tool_calls: &Value,
     rich_messages: &mut Vec<RichMessage>,
 ) -> Vec<String> {
@@ -279,7 +282,7 @@ async fn process_tool_calls(
         let args_str = call["function"]["arguments"].as_str().unwrap_or("{}");
         let args: Value = serde_json::from_str(args_str).unwrap_or_default();
 
-        let result = ai_tools::execute_tool(pool, http_client, stripe_key, name, &args).await;
+        let result = ai_tools::execute_tool(pool, http_client, stripe_key, visitor_id, name, &args).await;
         if let Some(rm) = result.rich_message {
             rich_messages.push(rm);
         }
@@ -318,11 +321,12 @@ fn parse_escalation(raw: &str) -> (String, bool) {
     }
 }
 
-/// Construye system prompt dinámico según contexto de la sesión
-async fn build_system_prompt(pool: &PgPool, session_id: Uuid) -> String {
+/// Construye system prompt dinámico según contexto de la sesión y visitante
+async fn build_system_prompt(pool: &PgPool, session_id: Uuid, visitor_id: Option<&str>) -> String {
     let mut prompt = String::from(
         /* [T-7] El agente NO debe revelar que es IA. Se presenta como miembro del equipo.
-         * [T-2] Incluye instrucciones de tool use para mostrar servicios y crear facturas. */
+         * [T-2] Incluye instrucciones de tool use para mostrar servicios y crear facturas.
+         * [T-3] Herramientas de captura de email e info del cliente. */
         "Eres un miembro del equipo de Nakomi Studio, una agencia de desarrollo web y diseño. \
          Tu nombre es Nakomi. Responde de forma concisa, amable y profesional en el mismo \
          idioma que el usuario. Nunca menciones que eres una inteligencia artificial, chatbot, \
@@ -335,7 +339,15 @@ async fn build_system_prompt(pool: &PgPool, session_id: Uuid) -> String {
          - list_services: Lista todos los servicios. Úsala cuando el cliente pida ver opciones.\n\
          - create_invoice: Genera factura con link de pago. SOLO cuando el cliente confirme que quiere pagar y tengas su email.\n\
          - request_human_assistance: Escala a un humano. Úsala en los casos de la REGLA DE ESCALACIÓN.\n\
+         - capture_email: Guarda el email del cliente. Úsala cuando el cliente comparta su correo de forma natural.\n\
+         - save_client_info: Guarda info relevante del cliente (industria, presupuesto, intereses). Úsala cuando \
+           el cliente mencione datos útiles sobre su negocio o proyecto.\n\
          Usa las herramientas de forma natural en la conversación. No menciones las herramientas directamente al cliente.\n\n\
+         CAPTURA DE EMAIL: No pidas el email de forma forzada. Después de 2-3 intercambios productivos, puedes \
+         preguntar de forma natural: '¿Me compartes tu correo para enviarte la información?' Si el cliente lo da, \
+         usa capture_email inmediatamente. Si no quiere, no insistas.\n\n\
+         CAPTURA DE INFO: Cuando el cliente mencione su industria, presupuesto, tipo de proyecto o necesidades \
+         específicas, usa save_client_info para guardar esos datos. Esto ayuda a personalizar futuras conversaciones.\n\n\
          REGLA DE ESCALACIÓN: Si detectas alguna de estas situaciones, usa request_human_assistance O inicia tu respuesta \
          con el tag exacto [ESCALATE] (el tag se eliminará antes de mostrarse al usuario):\n\
          - El cliente pide hablar con un humano\n\
@@ -344,6 +356,36 @@ async fn build_system_prompt(pool: &PgPool, session_id: Uuid) -> String {
          - No puedes resolver la solicitud con la información disponible\n\
          - El cliente reporta un problema técnico urgente que requiere intervención manual\n\n"
     );
+
+    /* [T-3] Agregar contexto del visitante si tiene perfil previo */
+    if let Some(vid) = visitor_id {
+        if let Ok(Some(profile)) = ChatRepository::find_visitor_profile(pool, vid).await {
+            prompt.push_str("CONTEXTO DEL VISITANTE (conversaciones anteriores):\n");
+            if let Some(name) = &profile.display_name {
+                let _ = writeln!(prompt, "- Nombre: {name}");
+            }
+            if let Some(email) = &profile.email {
+                let _ = writeln!(prompt, "- Email: {email} (ya capturado, no volver a pedir)");
+            }
+            if profile.total_sessions > 1 {
+                let _ = writeln!(prompt, "- Visitas anteriores: {}", profile.total_sessions);
+            }
+            if let Some(summary) = &profile.context_summary {
+                if !summary.is_empty() {
+                    let _ = writeln!(prompt, "- Resumen de conversaciones previas: {summary}");
+                }
+            }
+            if let Some(prefs) = &profile.preferences {
+                if let Some(obj) = prefs.as_object() {
+                    if !obj.is_empty() {
+                        let _ = writeln!(prompt, "- Info del cliente: {prefs}");
+                    }
+                }
+            }
+            prompt.push_str("Usa esta información para personalizar la atención. Si el visitante \
+                            vuelve, salúdalo por su nombre si lo conoces.\n\n");
+        }
+    }
 
     /* Agregar contexto de servicios */
     if let Ok(services) = OrderRepository::list_services(pool).await {

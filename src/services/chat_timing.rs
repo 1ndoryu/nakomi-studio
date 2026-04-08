@@ -15,6 +15,7 @@
  * Rate limiting: max 10 msgs/min por visitor_id, cooldown progresivo.
  * Relevancia: modelo pequeño (llama-3.1-8b-instant) filtra spam/off-topic. */
 
+use std::fmt::Write;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -35,6 +36,7 @@ pub struct TimingSessionDeps {
     pub notification_hub: NotificationHub,
     pub http_client: reqwest::Client,
     pub stripe_key: Option<String>,
+    pub visitor_id: String,
 }
 
 /* Constantes de timing configurables */
@@ -183,6 +185,7 @@ impl ChatTimingService {
             deps.notification_hub,
             deps.http_client,
             deps.stripe_key,
+            deps.visitor_id,
         ));
 
         tx
@@ -221,6 +224,7 @@ async fn session_timing_loop(
     notification_hub: NotificationHub,
     http_client: reqwest::Client,
     stripe_key: Option<String>,
+    visitor_id: String,
 ) {
     let mut buffer: Vec<String> = Vec::new();
     let mut is_typing = false;
@@ -262,6 +266,7 @@ async fn session_timing_loop(
         irrelevant_count = generate_ai_response(
             session_id,
             visitor_name.as_deref(),
+            &visitor_id,
             &combined,
             irrelevant_count,
             &pool,
@@ -273,6 +278,15 @@ async fn session_timing_loop(
         )
         .await;
     }
+
+    /* [T-3] Al cerrar sesión, generar resumen de contexto para futuras conversaciones.
+     * Usa modelo pequeño para resumir el historial y lo guarda en visitor_profiles. */
+    tokio::spawn(generate_context_summary(
+        pool.clone(),
+        ai_config.clone(),
+        session_id,
+        visitor_id,
+    ));
 }
 
 /* Acumula mensajes del buffer hasta que expira el timeout.
@@ -345,6 +359,7 @@ fn drain_pending(
 async fn generate_ai_response(
     session_id: Uuid,
     visitor_name: Option<&str>,
+    visitor_id: &str,
     combined: &str,
     mut irrelevant_count: u32,
     pool: &PgPool,
@@ -389,7 +404,7 @@ async fn generate_ai_response(
     irrelevant_count = 0;
 
     let ai_resp = AiChatService::generate_response(
-        pool, ai_config, http_client, stripe_key, session_id, combined,
+        pool, ai_config, http_client, stripe_key, session_id, Some(visitor_id), combined,
     )
     .await
     .unwrap_or_else(|e| AiResponse {
@@ -520,6 +535,140 @@ async fn send_escalation(
             };
             let _ = notification_hub.notify_many(&admin_ids, &base).await;
             tracing::info!("Escalación enviada a {} admins para sesión {session_id}", admin_ids.len());
+        }
+    }
+}
+
+/* [T-3] Genera resumen de la conversación al cerrar sesión.
+ * Usa modelo pequeño (llama-3.1-8b-instant) para resumir el historial
+ * del visitante y lo guarda en visitor_profiles.context_summary.
+ * Se ejecuta como tokio::spawn para no bloquear el cierre de WS. */
+async fn generate_context_summary(
+    pool: PgPool,
+    config: AiChatConfig,
+    session_id: Uuid,
+    visitor_id: String,
+) {
+    if !config.is_configured() {
+        return;
+    }
+
+    /* Obtener historial de la sesión */
+    let messages = match crate::repositories::ChatRepository::list_messages(
+        &pool, session_id, 50, 0,
+    )
+    .await
+    {
+        Ok(msgs) if !msgs.is_empty() => msgs,
+        _ => return,
+    };
+
+    /* Construir transcript compacto */
+    let mut transcript = String::new();
+    for msg in &messages {
+        let role = if msg.sender_type == "ai" { "Nakomi" } else { "Cliente" };
+        let _ = writeln!(transcript, "{role}: {}", msg.content);
+    }
+
+    if transcript.len() < 100 {
+        return;
+    }
+
+    let transcript_truncated = if transcript.len() > 3000 {
+        &transcript[..3000]
+    } else {
+        &transcript
+    };
+
+    let Some(summary) = call_summary_api(&config, transcript_truncated).await else {
+        return;
+    };
+
+    /* Cargar resumen previo y concatenar (max 2000 chars total) */
+    let existing = match crate::repositories::ChatRepository::find_visitor_profile(
+        &pool, &visitor_id,
+    )
+    .await
+    {
+        Ok(Some(p)) => p.context_summary.unwrap_or_default(),
+        _ => String::new(),
+    };
+
+    let final_summary = if existing.is_empty() {
+        summary
+    } else {
+        let combined = format!("{existing}\n---\n{summary}");
+        if combined.len() > 2000 {
+            combined[combined.len() - 2000..].to_string()
+        } else {
+            combined
+        }
+    };
+
+    if let Err(e) =
+        crate::repositories::ChatRepository::update_context_summary(&pool, &visitor_id, &final_summary)
+            .await
+    {
+        tracing::warn!("Error guardando context summary para {visitor_id}: {e}");
+    } else {
+        tracing::info!("Context summary actualizado para visitor {visitor_id}");
+    }
+}
+
+/* [T-3] Llama a la API de Groq con modelo ligero para generar resumen de sesión.
+ * Retorna None si la API falla o el resumen está vacío. */
+async fn call_summary_api(
+    config: &AiChatConfig,
+    transcript: &str,
+) -> Option<String> {
+    let summary_model = std::env::var("AI_RELEVANCE_MODEL")
+        .unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
+
+    let body = serde_json::json!({
+        "model": summary_model,
+        "messages": [
+            {
+                "role": "system",
+                "content": "Genera un resumen conciso (máximo 500 caracteres) de esta conversación \
+                 de chat de soporte. Incluye: qué necesitaba el cliente, qué servicios le interesaron, \
+                 si se capturó email, si se generó factura, si quedó algo pendiente, y cualquier \
+                 preferencia o dato relevante del cliente. Solo el resumen, sin formato especial."
+            },
+            {
+                "role": "user",
+                "content": transcript
+            }
+        ],
+        "max_tokens": 200,
+        "temperature": 0.3,
+    });
+
+    let key = config.next_key()?;
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&config.api_url)
+        .header("Authorization", format!("Bearer {key}"))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await;
+
+    match resp {
+        Ok(r) if r.status().is_success() => {
+            let json: serde_json::Value = r.json().await.unwrap_or_default();
+            let s = json["choices"][0]["message"]["content"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+            if s.is_empty() { None } else { Some(s) }
+        }
+        Ok(r) => {
+            tracing::warn!("Context summary API error: {}", r.status());
+            None
+        }
+        Err(e) => {
+            tracing::warn!("Context summary request error: {e}");
+            None
         }
     }
 }

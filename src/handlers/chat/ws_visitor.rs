@@ -12,6 +12,7 @@ use futures::{SinkExt, StreamExt};
 use std::net::SocketAddr;
 
 use crate::models::{WsClientMessage, WsServerMessage};
+use crate::repositories::ChatRepository;
 use crate::services::{RateCheckResult, TimingEvent};
 use crate::AppState;
 
@@ -78,6 +79,19 @@ async fn handle_visitor_ws(
     let mut rx = state.chat_hub.subscribe(session_id);
     let (mut sender, mut receiver) = socket.split();
 
+    /* [T-3] Upsert visitor_profile: crea o actualiza perfil persistente.
+     * Trackea IPs, fingerprints, sesiones. Usado para contexto IA. */
+    if let Err(e) = ChatRepository::upsert_visitor_profile(
+        &state.pool,
+        &params.visitor_id,
+        visitor_ip.as_deref(),
+        visitor_ua.as_deref(),
+    )
+    .await
+    {
+        tracing::warn!("Error upserting visitor_profile: {e}");
+    }
+
     /* [064A-29] Enviar historial de mensajes previos al reconectar */
     if send_history(&state, session_id, &mut sender).await.is_err() {
         return;
@@ -113,6 +127,7 @@ async fn handle_visitor_ws(
             notification_hub: state.notification_hub.clone(),
             http_client: state.http_client.clone(),
             stripe_key: state.stripe_secret_key.clone(),
+            visitor_id: params.visitor_id.clone(),
         },
     );
 

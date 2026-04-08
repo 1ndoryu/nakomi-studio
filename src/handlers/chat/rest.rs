@@ -187,6 +187,7 @@ pub async fn send_message(
                     &state.http_client,
                     state.stripe_secret_key.as_deref(),
                     session_id,
+                    s.visitor_id.as_deref(),
                     &req.content,
                 )
                 .await

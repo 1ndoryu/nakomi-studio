@@ -7,7 +7,7 @@
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
-use crate::repositories::OrderRepository;
+use crate::repositories::{ChatRepository, OrderRepository};
 
 /* Resultado de ejecutar una tool: JSON para la IA y opcionalmente un
  * mensaje rico para mostrar en el chat del visitante. */
@@ -24,9 +24,19 @@ pub struct RichMessage {
     pub metadata: Value,
 }
 
-/* [T-2] Definiciones de tools en formato OpenAI/Groq.
- * Se incluyen en el body de la API junto con los mensajes. */
+/* [T-2][T-3] Definiciones de tools en formato OpenAI/Groq.
+ * Se incluyen en el body de la API junto con los mensajes.
+ * Dividido en service_tools + visitor_tools para no exceder líneas. */
 pub fn tool_definitions() -> Value {
+    let mut tools = service_tool_defs();
+    if let Some(arr) = tools.as_array_mut() {
+        arr.extend(visitor_tool_defs().as_array().cloned().unwrap_or_default());
+    }
+    tools
+}
+
+/* Tools de servicios, facturas y escalación (T-2) */
+fn service_tool_defs() -> Value {
     json!([
         {
             "type": "function",
@@ -50,10 +60,7 @@ pub fn tool_definitions() -> Value {
             "function": {
                 "name": "list_services",
                 "description": "Lista todos los servicios disponibles con precios. Úsalo cuando el cliente pida ver todos los servicios o no sepa qué necesita.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {}
-                }
+                "parameters": { "type": "object", "properties": {} }
             }
         },
         {
@@ -64,18 +71,9 @@ pub fn tool_definitions() -> Value {
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "amount_cents": {
-                            "type": "integer",
-                            "description": "Monto en centavos USD (ej: 10000 = $100.00)"
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "Descripción del concepto de la factura"
-                        },
-                        "client_email": {
-                            "type": "string",
-                            "description": "Email del cliente para la factura de Stripe"
-                        }
+                        "amount_cents": { "type": "integer", "description": "Monto en centavos USD (ej: 10000 = $100.00)" },
+                        "description": { "type": "string", "description": "Descripción del concepto de la factura" },
+                        "client_email": { "type": "string", "description": "Email del cliente para la factura de Stripe" }
                     },
                     "required": ["amount_cents", "description", "client_email"]
                 }
@@ -88,12 +86,7 @@ pub fn tool_definitions() -> Value {
                 "description": "Solicita intervención humana. Úsalo cuando no puedas resolver la solicitud, el cliente esté frustrado, pida hablar con una persona, o el tema sea legal/contractual.",
                 "parameters": {
                     "type": "object",
-                    "properties": {
-                        "reason": {
-                            "type": "string",
-                            "description": "Motivo breve de la escalación"
-                        }
-                    },
+                    "properties": { "reason": { "type": "string", "description": "Motivo breve de la escalación" } },
                     "required": ["reason"]
                 }
             }
@@ -101,12 +94,52 @@ pub fn tool_definitions() -> Value {
     ])
 }
 
+/* Tools de captura de email e info del cliente (T-3) */
+fn visitor_tool_defs() -> Value {
+    json!([
+        {
+            "type": "function",
+            "function": {
+                "name": "capture_email",
+                "description": "Guarda el email del cliente. Úsalo cuando el cliente comparta su correo electrónico durante la conversación. No lo pidas de forma forzada — espera a que surja naturalmente o cuando sea necesario para una factura.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "email": { "type": "string", "description": "Email del cliente" },
+                        "display_name": { "type": "string", "description": "Nombre del cliente (si lo mencionó)" }
+                    },
+                    "required": ["email"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "save_client_info",
+                "description": "Guarda información relevante del cliente para futuras conversaciones (industria, presupuesto, intereses, tipo de proyecto). Úsalo cuando el cliente mencione datos útiles sobre su negocio o necesidades.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "industry": { "type": "string", "description": "Sector o industria del cliente" },
+                        "budget_range": { "type": "string", "description": "Rango de presupuesto mencionado" },
+                        "interests": { "type": "array", "items": { "type": "string" }, "description": "Servicios o temas de interés" },
+                        "project_description": { "type": "string", "description": "Descripción breve del proyecto que necesita" },
+                        "notes": { "type": "string", "description": "Cualquier otra info relevante" }
+                    }
+                }
+            }
+        }
+    ])
+}
+
 /* Ejecutar una tool call retornada por la IA.
- * Despacha al handler correcto según el nombre de la función. */
+ * Despacha al handler correcto según el nombre de la función.
+ * visitor_id necesario para tools que actualizan visitor_profiles (T-3). */
 pub async fn execute_tool(
     pool: &PgPool,
     http_client: &reqwest::Client,
     stripe_key: Option<&str>,
+    visitor_id: Option<&str>,
     tool_name: &str,
     arguments: &Value,
 ) -> ToolExecResult {
@@ -115,6 +148,8 @@ pub async fn execute_tool(
         "list_services" => exec_list_services(pool).await,
         "create_invoice" => exec_create_invoice(http_client, stripe_key, arguments).await,
         "request_human_assistance" => exec_request_human(arguments),
+        "capture_email" => exec_capture_email(pool, visitor_id, arguments).await,
+        "save_client_info" => exec_save_client_info(pool, visitor_id, arguments).await,
         _ => ToolExecResult {
             tool_result_json: json!({"error": "Tool desconocida"}).to_string(),
             rich_message: None,
@@ -436,4 +471,119 @@ async fn create_stripe_invoice(
         .map_err(|e| format!("Parse finalized error: {e}"))?;
 
     Ok(finalized)
+}
+
+/* ============================================================
+   VISITOR PROFILE TOOLS (T-3 — Memoria y contexto)
+   ============================================================ */
+
+/* [T-3] capture_email: guarda email del visitante en visitor_profiles.
+ * También actualiza display_name si lo proporcionó. No bloquea la conversación. */
+async fn exec_capture_email(
+    pool: &PgPool,
+    visitor_id: Option<&str>,
+    args: &Value,
+) -> ToolExecResult {
+    let Some(vid) = visitor_id else {
+        return ToolExecResult {
+            tool_result_json: json!({"error": "visitor_id no disponible"}).to_string(),
+            rich_message: None,
+        };
+    };
+
+    let email = args["email"].as_str().unwrap_or("");
+    if email.is_empty() || !email.contains('@') {
+        return ToolExecResult {
+            tool_result_json: json!({"error": "Email inválido"}).to_string(),
+            rich_message: None,
+        };
+    }
+
+    let display_name = args["display_name"].as_str();
+
+    match ChatRepository::update_visitor_email(pool, vid, email, display_name).await {
+        Ok(profile) => {
+            tracing::info!("Email capturado para visitor {vid}: {email}");
+            ToolExecResult {
+                tool_result_json: json!({
+                    "status": "ok",
+                    "email": profile.email,
+                    "display_name": profile.display_name,
+                    "message": "Email guardado correctamente."
+                })
+                .to_string(),
+                rich_message: None,
+            }
+        }
+        Err(e) => {
+            tracing::error!("Error guardando email visitor {vid}: {e}");
+            ToolExecResult {
+                tool_result_json: json!({"error": "Error guardando email"}).to_string(),
+                rich_message: None,
+            }
+        }
+    }
+}
+
+/* [T-3] save_client_info: guarda preferencias/datos del cliente en visitor_profiles.
+ * Hace merge con preferencias existentes (JSON ||). */
+async fn exec_save_client_info(
+    pool: &PgPool,
+    visitor_id: Option<&str>,
+    args: &Value,
+) -> ToolExecResult {
+    let Some(vid) = visitor_id else {
+        return ToolExecResult {
+            tool_result_json: json!({"error": "visitor_id no disponible"}).to_string(),
+            rich_message: None,
+        };
+    };
+
+    /* Construir objeto de preferencias solo con campos que la IA proporcionó */
+    let mut prefs = serde_json::Map::new();
+    if let Some(v) = args.get("industry") {
+        prefs.insert("industry".to_string(), v.clone());
+    }
+    if let Some(v) = args.get("budget_range") {
+        prefs.insert("budget_range".to_string(), v.clone());
+    }
+    if let Some(v) = args.get("interests") {
+        prefs.insert("interests".to_string(), v.clone());
+    }
+    if let Some(v) = args.get("project_description") {
+        prefs.insert("project_description".to_string(), v.clone());
+    }
+    if let Some(v) = args.get("notes") {
+        prefs.insert("notes".to_string(), v.clone());
+    }
+
+    if prefs.is_empty() {
+        return ToolExecResult {
+            tool_result_json: json!({"status": "ok", "message": "Sin datos nuevos"}).to_string(),
+            rich_message: None,
+        };
+    }
+
+    let prefs_value = Value::Object(prefs);
+    match ChatRepository::update_visitor_preferences(pool, vid, &prefs_value).await {
+        Ok(()) => {
+            tracing::info!("Preferencias actualizadas para visitor {vid}");
+            ToolExecResult {
+                tool_result_json: json!({
+                    "status": "ok",
+                    "saved_fields": prefs_value,
+                    "message": "Información del cliente guardada."
+                })
+                .to_string(),
+                rich_message: None,
+            }
+        }
+        Err(e) => {
+            tracing::error!("Error guardando preferencias visitor {vid}: {e}");
+            ToolExecResult {
+                tool_result_json: json!({"error": "Error guardando información"}).to_string(),
+                rich_message: None,
+            }
+        }
+    }
 }
