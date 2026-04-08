@@ -68,12 +68,12 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~T-2: Generación pedidos + facturas (tool use Groq, mensajes ricos, Stripe invoices, botones acción)~~ ✅
 - ~~T-3: Memoria usuario + contexto (visitor_profiles, captura email, resúmenes, contexto por rol)~~ ✅
 - ~~T-4: Sync cross-device/tab (BroadcastChannel, multi-conexión WS, sesión única por identidad)~~ ✅
-- T-5: Archivos en chat (upload multipart, Groq Vision imágenes, Whisper STT audio, PDF extraction)
+- ~~T-5: Archivos en chat (upload multipart, Groq Vision imágenes, Whisper STT audio, PDF extraction)~~ ✅
 - T-6: Escalación humana (detección IA, notificación admin, flujo handoff) ✅
 - ~~T-7: Sin disclosure IA (system prompt, branding agente, UI sin indicadores IA)~~ ✅
 
 ### Fase II
-- T-9: Clientes registrados (detección JWT, contexto de servicios/pedidos/hosting, reportes)
+- ~~T-9: Clientes registrados (detección JWT, contexto de servicios/pedidos/hosting, reportes)~~ ✅
 - T-10: IA intermediaria pedidos (toggle por orden, contexto completo, resúmenes automáticos)
 
 
@@ -122,12 +122,49 @@ Implica que la IA siempre genera un resumen dentro de los detalles de los pedido
 
 4. Hasta ahora hay muchas tareas, mucho contexto, el agente puede alucinar con tanta información, la organización del contento tiene que hacerse de manera precisa, muy probablmenente todo lo anterior dicho deben ser mcp resumidos que puedan brindar mas detalles, o tal vez lo mejor sea separar en agentes y crear subagentes, no lo se, estudiar y evaluar las tecnicas mas aficientes a aplicar, limitar el contexto a 64k tokens y que genere un resumen detallado cuando supere el limite en una conversacion. 
 
+5. Algo que olvide mencionar es que todas las conversaciones entre la IA y los clientes tienen que guardarse ordenamente para ser evaluadas despues, para retroalimentanción. 
+
+6. Tuve esta conversacion pero
+
+yo: Estoy testeando tus funcionalidades, puedes crear una factura o crear un pedido? para ver como se ve
+
+IA: 
+Factura por $100.00 USD — Servicio de prueba
+
+Aquí tienes una factura de prueba y una lista de nuestros servicios. ¿Necesitas algo más?
+
+No veo ningun boton para pagar ni nada en el mensaje, esperaba un mensaje con un boton o algo y un resumen de la facturara para abrir en un modal.
+
+- Hay que hacer auditoría de seguridad a todo el sistema de chat, y si todo es seguro subir los cambios al servidor vps nakomi.studio
+
+## Detalles
+
+useCarruselInfinito.ts:12 Warning: React has detected a change in the order of Hooks called by CarruselShowcase. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://reactjs.org/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useContext                 useContext
+2. useContext                 useContext
+3. useContext                 useContext
+4. useEffect                  useEffect
+5. useState                   useState
+6. useCallback                useCallback
+7. useSyncExternalStore       useSyncExternalStore
+8. useEffect                  useEffect
+9. useMemo                    useMemo
+10. undefined                 useState
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    at CarruselShowcase (
+
+chunk-RPCDYKBN.js?v=57755138:11678 Uncaught Error: Rendered more hooks than during the previous render.
+    at useCarruselInfinito (useCarruselInfinito.ts:12:45)
+    at CarruselShowcase (CarruselShowcase.tsx:42:65)
+
 # La tarea final
 
 Tienes que comunicarte con el chatbot para probarlo y testearlo, eres un modelo superior claramente tienes que evaluarlo en todos los escenarios, auditarlo, evaluarlo, ir anotando fallos, posible mejoras e ir configurando para maximar el mejor resultado posible. La simulación tiene que ser lo mas parecida a un escenario real y el modelo no se tiene que dar cuenta que esta hablando con otra IA, solo tu. Lo mejor para esto es hacer un plan detallado de una lista de pruebas y cosas que verificar y ver si las pasa todas.
 
-Segunda tarea final: revisar que realmente se este usando la rotacion de api en cada solicitud para evitar rate limits, que se esten usando principalmente los modelos mas inteligentes, y que pase a un segundo modelo mas inteligente de groq y luego a un tercero y asi sucesivamente si falla por rate limits. 
-
-
+Segunda tarea final: revisar que realmente se este usando la rotacion de api en cada solicitud para evitar rate limits, que se esten usando principalmente los modelos mas inteligentes, y que pase a un segundo modelo mas inteligente de groq y luego a un tercero y asi sucesivamente si falla por rate limits. En allowed_models veo que claramente no esta usando los modelos mas inteligente.
 
 
