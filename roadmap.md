@@ -50,7 +50,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 ### Bugs / UX reportados por usuario
 
 
-- La pagina de disponibles para el usuario empleado se ve mal, hay que reahacerla desde cero, no la entiendo. Igual la pagina delegaciones. (Nota: colores CSS corregidos en 074A-15, falta rediseño estructural)
+- ~~La pagina de disponibles para el usuario empleado se ve mal, hay que reahacerla desde cero, no la entiendo. Igual la pagina delegaciones.~~ ✅ (074A-58: rediseño completo — cards horizontales light con icon panel)
 
 - El contenido de los servicios del CMS no matchea el front. (Nota: 074A-21 conectó servicios públicos a API. Si persiste en blog/proyectos especificar cuál)
 
@@ -76,3 +76,8 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~La tabla de hosting se ve mal, no es asi como debería de verse. Si debería de ser algo similar a proyectosLista.~~ ✅ (074A-57: rediseño cards flex)
 
+- Sobre "(074A-54: client_name en orders + payment fixtures con 3 pagos de prueba)" MENTIRA SIGO SIN VER NADA.
+
+- chunk-RPCDYKBN.js?v=57755138:14032 The above error occurred in the <SeccionGaleriaServicio> component:
+
+    at SeccionGaleriaServicio (http://localhost:5173/src/components/servicios/SeccionGaleri
