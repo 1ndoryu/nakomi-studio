@@ -252,7 +252,8 @@ const SERVICE_IMAGE: Record<string, string> = {
 /* Sub-componente: card de orden en la lista */
 /* [054A-6] Rediseño: quita numeración, plan_name, barra de progreso.
  * Agrega imagen del servicio resuelta por slug.
- * [084A-1] Vista admin muestra empleado responsable en footer. */
+ * [084A-1] Vista admin muestra empleado responsable en footer.
+ * [074A-59] Admin/empleado ven client_name en footer. */
 function OrdenCard({orden, onClick, mostrarEmpleado}: {orden: OrderResponse; onClick: () => void; mostrarEmpleado?: boolean}) {
     const imgSrc = SERVICE_IMAGE[orden.service_slug] || '/assets/Servicios/diseno web.jpg';
 
@@ -274,6 +275,9 @@ function OrdenCard({orden, onClick, mostrarEmpleado}: {orden: OrderResponse; onC
                 <div className="ordenCardFooter">
                     <span className="ordenCardPrecio">{formatPrice(orden.final_price_cents, orden.currency)}</span>
                     <span className="ordenCardModo">{PAYMENT_MODE_LABELS[orden.payment_mode]}</span>
+                    {mostrarEmpleado && orden.client_name && (
+                        <span className="ordenCardCliente">{orden.client_name}</span>
+                    )}
                     {mostrarEmpleado && (
                         <span className="ordenCardEmpleado">
                             {orden.assigned_employee_name ?? 'Sin asignar'}

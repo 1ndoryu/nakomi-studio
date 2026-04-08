@@ -213,6 +213,13 @@
     font-style: italic;
 }
 
+/* [074A-59] Nombre del cliente en card footer (admin/empleado) */
+.ordenCardCliente {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
 /* [084A-1] Filtros admin: búsqueda + filtro empleado — siempre en fila */
 .proyectosFiltros {
     display: flex;

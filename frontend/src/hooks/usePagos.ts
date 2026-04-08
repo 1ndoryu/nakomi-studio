@@ -1,9 +1,11 @@
 /* [044A-38 Fase 3] Hook de pagos: React Query para historial + mutation para iniciar pago.
- * Integra con Stripe Elements para confirmar el pago en el frontend. */
+ * Integra con Stripe Elements para confirmar el pago en el frontend.
+ * [074A-59] Query key incluye effectiveRole para invalidar cache al cambiar rol. */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiInitiatePayment, apiListPayments } from '../api/payments';
 import type { InitiatePaymentRequest } from '../api/payments';
+import { useAuthStore } from '../stores/authStore';
 import { isAxiosError } from 'axios';
 
 function extraerError(err: unknown): string {
@@ -16,13 +18,14 @@ function extraerError(err: unknown): string {
 
 export function usePagos(orderId: string | null) {
     const queryClient = useQueryClient();
+    const effectiveRole = useAuthStore(s => s.user?.effectiveRole ?? s.user?.role ?? 'client');
 
     const {
         data: pagos,
         isLoading: cargandoPagos,
         error: errorPagos,
     } = useQuery({
-        queryKey: ['payments', orderId],
+        queryKey: ['payments', orderId, effectiveRole],
         queryFn: () => apiListPayments(orderId!),
         enabled: !!orderId,
     });
@@ -32,7 +35,7 @@ export function usePagos(orderId: string | null) {
             apiInitiatePayment(req.orderId, { phase_number: req.phase_number }),
         onSuccess: () => {
             if (orderId) {
-                void queryClient.invalidateQueries({ queryKey: ['payments', orderId] });
+                void queryClient.invalidateQueries({ queryKey: ['payments', orderId, effectiveRole] });
                 void queryClient.invalidateQueries({ queryKey: ['order', orderId] });
             }
             void queryClient.invalidateQueries({ queryKey: ['orders'] });

@@ -223,7 +223,9 @@ impl UserRepository {
     }
 
     /* [084A-1] Busca el primer usuario activo con un rol dado.
-     * Usado por switch_role para encontrar un usuario real a impersonar. */
+     * Usado por switch_role para encontrar un usuario real a impersonar.
+     * [074A-59] Prioriza usuarios de fixtures (@test.com) para que switch-role
+     * impersone al usuario que tiene datos de prueba, no un registro vacío. */
     pub async fn find_first_by_role(
         pool: &PgPool,
         role: UserRole,
@@ -235,7 +237,9 @@ impl UserRepository {
                       email_verified, status, avatar_url, display_name, created_at
              FROM users
              WHERE role = $1 AND status = 'active'
-             ORDER BY created_at ASC
+             ORDER BY
+                 CASE WHEN email LIKE '%@test.com' THEN 0 ELSE 1 END,
+                 created_at DESC
              LIMIT 1"#,
             role as UserRole,
         )

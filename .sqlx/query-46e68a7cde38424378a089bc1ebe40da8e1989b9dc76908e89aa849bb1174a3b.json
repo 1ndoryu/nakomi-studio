@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, password_hash,\n                      role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                      email_verified, status, avatar_url, display_name, created_at\n             FROM users\n             WHERE role = $1 AND status = 'active'\n             ORDER BY created_at ASC\n             LIMIT 1",
+  "query": "SELECT id, email, password_hash,\n                      role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                      email_verified, status, avatar_url, display_name, created_at\n             FROM users\n             WHERE role = $1 AND status = 'active'\n             ORDER BY\n                 CASE WHEN email LIKE '%@test.com' THEN 0 ELSE 1 END,\n                 created_at DESC\n             LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -105,5 +105,5 @@
       false
     ]
   },
-  "hash": "32bd7e9a396a90cc3c3240afc899bfbf3cef1a6348d82cdb3008d7453d89c6fd"
+  "hash": "46e68a7cde38424378a089bc1ebe40da8e1989b9dc76908e89aa849bb1174a3b"
 }

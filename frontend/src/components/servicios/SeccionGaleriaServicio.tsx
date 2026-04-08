@@ -16,17 +16,18 @@ export const SeccionGaleriaServicio: React.FC<SeccionGaleriaServicioProps> = ({i
     const {imagenes: imagenesHook} = useImagenes();
     const imagenes = (imagenesProp && imagenesProp.length > 0) ? imagenesProp : imagenesHook;
 
-    // Si no hay imagenes, no renderizar nada
+    /* [074A-59] Hook movido antes del early return para no violar Rules of Hooks.
+     * Cuando galeria pasa de [] a [urls] entre renders, el conteo de hooks debe ser estable. */
+    const {indiceActual, conTransicion, dragOffset, handlers} = useCarruselInfinito({
+        totalItems: imagenes.length || 1,
+        tiempoEspera: 6000,
+        tiempoTransicion: 800
+    });
+
     if (imagenes.length === 0) return null;
 
     // Duplicamos las imagenes para efecto infinito
     const itemsTotales = [...imagenes, ...imagenes];
-
-    const {indiceActual, conTransicion, dragOffset, handlers} = useCarruselInfinito({
-        totalItems: imagenes.length,
-        tiempoEspera: 6000,
-        tiempoTransicion: 800
-    });
 
     return (
         <section className="seccionGaleriaServicio">
