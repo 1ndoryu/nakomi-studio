@@ -831,3 +831,143 @@ pub fn hosting_routes() -> Router<AppState> {
         .route("/hosting/vps", get(list_vps))
         .route("/hosting/vps/:instance_id", get(get_vps))
 }
+
+/* ============================================================
+   TESTS — [094A-10] Lógica de negocio del hosting
+   ============================================================ */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /* --- plan_price_cents --- */
+
+    #[test]
+    fn plan_price_cents_valid_plans() {
+        assert_eq!(plan_price_cents("basico"), Some(500));
+        assert_eq!(plan_price_cents("pro"), Some(1000));
+        assert_eq!(plan_price_cents("ecommerce"), Some(1500));
+    }
+
+    #[test]
+    fn plan_price_cents_invalid_returns_none() {
+        assert_eq!(plan_price_cents(""), None);
+        assert_eq!(plan_price_cents("premium"), None);
+        assert_eq!(plan_price_cents("Basico"), None);
+    }
+
+    /* --- plan_storage_mb --- */
+
+    #[test]
+    fn plan_storage_mb_returns_correct_limits() {
+        assert_eq!(plan_storage_mb("basico"), 5120);
+        assert_eq!(plan_storage_mb("pro"), 20_480);
+        assert_eq!(plan_storage_mb("ecommerce"), 51_200);
+        assert_eq!(plan_storage_mb("custom"), 102_400);
+    }
+
+    #[test]
+    fn plan_storage_mb_unknown_plan_returns_default() {
+        assert_eq!(plan_storage_mb("unknown"), 5120);
+        assert_eq!(plan_storage_mb(""), 5120);
+    }
+
+    /* --- plan_bandwidth_gb --- */
+
+    #[test]
+    fn plan_bandwidth_gb_returns_correct_limits() {
+        assert_eq!(plan_bandwidth_gb("basico"), 50);
+        assert_eq!(plan_bandwidth_gb("pro"), 200);
+        assert_eq!(plan_bandwidth_gb("ecommerce"), 500);
+    }
+
+    #[test]
+    fn plan_bandwidth_gb_unknown_plan_returns_default() {
+        assert_eq!(plan_bandwidth_gb("unknown"), 50);
+    }
+
+    /* --- calculate_uptime --- */
+
+    #[test]
+    fn calculate_uptime_no_events_active_status() {
+        /* Suscripción activa sin eventos status_change → 100% uptime desde creación */
+        let created = chrono::Utc::now() - chrono::Duration::hours(24);
+        let events: Vec<crate::models::HostingEvent> = vec![];
+        let (uptime, first_active) = calculate_uptime(created, "active", &events);
+        assert!((uptime - 100.0).abs() < 0.1);
+        assert_eq!(first_active, Some(created));
+    }
+
+    #[test]
+    fn calculate_uptime_no_events_pending_status() {
+        /* Suscripción pending sin eventos → 0% uptime */
+        let created = chrono::Utc::now() - chrono::Duration::hours(24);
+        let events: Vec<crate::models::HostingEvent> = vec![];
+        let (uptime, first_active) = calculate_uptime(created, "pending", &events);
+        assert!((uptime - 0.0).abs() < 0.1);
+        assert!(first_active.is_none());
+    }
+
+    fn make_status_event(
+        created_at: chrono::DateTime<chrono::Utc>,
+        new_status: &str,
+    ) -> crate::models::HostingEvent {
+        crate::models::HostingEvent {
+            id: uuid::Uuid::new_v4(),
+            subscription_id: uuid::Uuid::new_v4(),
+            event_type: "status_change".to_string(),
+            details: Some(serde_json::json!({"new_status": new_status})),
+            created_at,
+        }
+    }
+
+    #[test]
+    fn calculate_uptime_active_then_suspended() {
+        /* Activada a las 0h, suspendida a las 12h, total 24h → ~50% */
+        let created = chrono::Utc::now() - chrono::Duration::hours(24);
+        let activated_at = created + chrono::Duration::hours(0);
+        let suspended_at = created + chrono::Duration::hours(12);
+
+        let events = vec![
+            make_status_event(activated_at, "active"),
+            make_status_event(suspended_at, "suspended"),
+        ];
+
+        let (uptime, first_active) = calculate_uptime(created, "suspended", &events);
+        assert!((uptime - 50.0).abs() < 1.0);
+        assert_eq!(first_active, Some(activated_at));
+    }
+
+    #[test]
+    fn calculate_uptime_active_suspended_active_again() {
+        /* Activada 0h, suspendida 6h, reactivada 12h, ahora activa — ~75% uptime */
+        let created = chrono::Utc::now() - chrono::Duration::hours(24);
+        let events = vec![
+            make_status_event(created, "active"),
+            make_status_event(created + chrono::Duration::hours(6), "suspended"),
+            make_status_event(created + chrono::Duration::hours(12), "active"),
+        ];
+
+        let (uptime, first_active) = calculate_uptime(created, "active", &events);
+        /* 6h active + 12h active (12h-24h) = 18h / 24h = 75% */
+        assert!((uptime - 75.0).abs() < 2.0);
+        assert_eq!(first_active, Some(created));
+    }
+
+    #[test]
+    fn calculate_uptime_ignores_non_status_events() {
+        let created = chrono::Utc::now() - chrono::Duration::hours(24);
+        let events = vec![crate::models::HostingEvent {
+            id: uuid::Uuid::new_v4(),
+            subscription_id: uuid::Uuid::new_v4(),
+            event_type: "created".to_string(),
+            details: Some(serde_json::json!({"plan": "basico"})),
+            created_at: created,
+        }];
+
+        let (uptime, first_active) = calculate_uptime(created, "active", &events);
+        /* No hay status_change events, pero status es active → 100% */
+        assert!((uptime - 100.0).abs() < 0.1);
+        assert_eq!(first_active, Some(created));
+    }
+}

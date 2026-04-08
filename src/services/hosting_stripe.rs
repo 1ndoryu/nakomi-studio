@@ -312,3 +312,78 @@ impl HostingStripeService {
         Ok(true)
     }
 }
+
+/* ============================================================
+   TESTS — [094A-10] Validación de config y lógica Stripe
+   ============================================================ */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /* --- HostingStripeConfig::from_env --- */
+
+    #[test]
+    fn config_from_env_valid_prices() {
+        /* Simular variables de entorno con Price IDs válidos */
+        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_BASICO", "price_test_basico");
+        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_PRO", "price_test_pro");
+        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE", "price_test_ecommerce");
+
+        let config = HostingStripeConfig::from_env();
+        assert!(config.is_some());
+
+        let config = config.unwrap();
+        assert_eq!(config.price_basico, "price_test_basico");
+        assert_eq!(config.price_pro, "price_test_pro");
+        assert_eq!(config.price_ecommerce, "price_test_ecommerce");
+
+        /* Cleanup */
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_BASICO");
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_PRO");
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE");
+    }
+
+    #[test]
+    fn config_from_env_invalid_format_rejected() {
+        /* Price IDs que no empiezan con "price_" deben ser rechazados */
+        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_BASICO", "invalid_basico");
+        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_PRO", "price_test_pro");
+        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE", "price_test_ecommerce");
+
+        let config = HostingStripeConfig::from_env();
+        assert!(config.is_none());
+
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_BASICO");
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_PRO");
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE");
+    }
+
+    #[test]
+    fn config_from_env_missing_var_returns_none() {
+        /* Sin variables de entorno debería retornar None */
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_BASICO");
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_PRO");
+        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE");
+
+        let config = HostingStripeConfig::from_env();
+        assert!(config.is_none());
+    }
+
+    /* --- price_for_plan --- */
+
+    #[test]
+    fn price_for_plan_returns_correct_id() {
+        let config = HostingStripeConfig {
+            price_basico: "price_aaa".to_string(),
+            price_pro: "price_bbb".to_string(),
+            price_ecommerce: "price_ccc".to_string(),
+        };
+
+        assert_eq!(config.price_for_plan("basico"), Some("price_aaa"));
+        assert_eq!(config.price_for_plan("pro"), Some("price_bbb"));
+        assert_eq!(config.price_for_plan("ecommerce"), Some("price_ccc"));
+        assert_eq!(config.price_for_plan("unknown"), None);
+        assert_eq!(config.price_for_plan(""), None);
+    }
+}

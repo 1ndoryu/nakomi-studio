@@ -158,3 +158,88 @@ pub struct HostingStatsResponse {
     /// true si hay agente de monitoreo configurado (`coolify_site_name` != null)
     pub monitoring_available: bool,
 }
+
+/* ============================================================
+   TESTS — [094A-10] Validación de modelos hosting
+   ============================================================ */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /* --- Domain regex --- */
+
+    #[test]
+    fn domain_regex_valid_domains() {
+        let valid = [
+            "example.com",
+            "sub.example.com",
+            "my-site.example.co.uk",
+            "a.b.c.d.example.com",
+            "x.com",
+            "example123.com",
+        ];
+        for d in valid {
+            assert!(DOMAIN_REGEX.is_match(d), "Should be valid: {d}");
+        }
+    }
+
+    #[test]
+    fn domain_regex_rejects_invalid() {
+        let invalid = [
+            "",
+            " ",
+            "http://example.com",
+            "https://example.com",
+            "example.com/path",
+            "-example.com",
+            "example-.com",
+            "example..com",
+            "'; DROP TABLE users; --",
+            "javascript:alert(1)",
+            "../../etc/passwd",
+            "example .com",
+        ];
+        for d in invalid {
+            assert!(!DOMAIN_REGEX.is_match(d), "Should be invalid: {d}");
+        }
+    }
+
+    /* --- Validator integration: domain field --- */
+
+    #[test]
+    fn self_subscribe_request_valid_domain() {
+        let req = SelfSubscribeRequest {
+            plan: "basico".to_string(),
+            domain: Some("example.com".to_string()),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn self_subscribe_request_invalid_domain_rejected() {
+        let req = SelfSubscribeRequest {
+            plan: "basico".to_string(),
+            domain: Some("'; DROP TABLE hosting_subscriptions; --".to_string()),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn self_subscribe_request_no_domain_ok() {
+        let req = SelfSubscribeRequest {
+            plan: "basico".to_string(),
+            domain: None,
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn self_subscribe_request_empty_plan_rejected() {
+        let req = SelfSubscribeRequest {
+            plan: String::new(),
+            domain: None,
+        };
+        assert!(req.validate().is_err());
+    }
+}
