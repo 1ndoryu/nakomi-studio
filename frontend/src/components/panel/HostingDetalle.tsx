@@ -18,8 +18,9 @@ import {
 import {Button} from '../ui/Button';
 import {
     TabGeneral, TabRecursos, TabDominio,
-    TabAcceso, TabFacturacion, TabEventos,
+    TabAcceso, TabEventos,
 } from './HostingDetalleTabs';
+import {TabFacturacion} from './TabFacturacion';
 import './HostingDetalle.css';
 
 const TABS: {key: HostingDetalleTab; label: string; icon: React.ReactNode}[] = [

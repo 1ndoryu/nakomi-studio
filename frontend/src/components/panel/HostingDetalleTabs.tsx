@@ -1,16 +1,15 @@
 /* [094A-2] Contenido de las tabs del detalle de hosting.
  * Extraído de HostingDetalle.tsx para cumplir límite de 300 líneas.
- * Tabs: General, Recursos, Dominio & SSL, Acceso SSH, Facturación, Eventos.
- * [094A-6] TabFacturacion ahora incluye "Cambiar plan" con comparación de planes. */
+ * Tabs: General, Recursos, Dominio & SSL, Acceso SSH, Eventos.
+ * [094A-4] TabDominio mejorada: instrucciones DNS con registros A/CNAME.
+ * [094A-5] TabAcceso mejorada: info SSH incluso sin coolify_site_name.
+ * [094A-6] TabFacturacion extraída a TabFacturacion.tsx por límite de líneas. */
 
-import {useState} from 'react';
-
-import {Server, Shield, Terminal, ExternalLink, ArrowUpCircle} from 'lucide-react';
+import {Server, Shield, Terminal, ExternalLink} from 'lucide-react';
 import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
 import {
     HOSTING_PLAN_LABELS,
     HOSTING_STATUS_LABELS,
-    HOSTING_PLANS,
 } from '../../api/hosting';
 import {Button} from '../ui/Button';
 import {HostingStats} from './HostingStats';
@@ -83,6 +82,7 @@ export function TabRecursos({sub}: {sub: Subscription}) {
 }
 
 /* ── Tab: Dominio & SSL ──────────────────── */
+/* [094A-4] Instrucciones DNS claras: registros A/CNAME, propagación, SSL auto. */
 export function TabDominio({domainInfo}: {
     domainInfo: ReturnType<typeof useHostingDetalle>['domainInfo'];
 }) {
@@ -104,9 +104,35 @@ export function TabDominio({domainInfo}: {
                 </p>
             )}
 
-            <h3 className="hostingDetalleSectionTitle">Nameservers</h3>
+            <h3 className="hostingDetalleSectionTitle">Configuración DNS</h3>
             <p className="hostingDetalleSectionDesc">
-                Apunta tu dominio a estos nameservers en tu registrador de dominios:
+                Configura estos registros en tu registrador de dominios (GoDaddy, Namecheap, Cloudflare, etc.):
+            </p>
+
+            {domainInfo.serverIp && (
+                <div className="hostingDetalleDnsRecords">
+                    <div className="hostingDetalleDnsRecord">
+                        <span className="hostingDetalleDnsType">A</span>
+                        <span className="hostingDetalleDnsHost">@</span>
+                        <span className="hostingDetalleDnsValue">
+                            {domainInfo.serverIp}
+                            <CopyButton text={domainInfo.serverIp} />
+                        </span>
+                    </div>
+                    <div className="hostingDetalleDnsRecord">
+                        <span className="hostingDetalleDnsType">A</span>
+                        <span className="hostingDetalleDnsHost">www</span>
+                        <span className="hostingDetalleDnsValue">
+                            {domainInfo.serverIp}
+                            <CopyButton text={domainInfo.serverIp} />
+                        </span>
+                    </div>
+                </div>
+            )}
+
+            <h4 className="hostingDetalleSubTitle">Nameservers (alternativa)</h4>
+            <p className="hostingDetalleSectionDesc">
+                Si prefieres usar nameservers en lugar de registros A:
             </p>
             <div className="hostingDetalleNameservers">
                 {domainInfo.nameservers.map(ns => (
@@ -116,6 +142,10 @@ export function TabDominio({domainInfo}: {
                     </div>
                 ))}
             </div>
+
+            <p className="hostingDetalleDnsPropagation">
+                Los cambios DNS pueden tardar entre 15 minutos y 48 horas en propagarse globalmente.
+            </p>
 
             <h3 className="hostingDetalleSectionTitle">
                 <Shield size={16} /> Certificado SSL
@@ -137,149 +167,59 @@ export function TabDominio({domainInfo}: {
 }
 
 /* ── Tab: Acceso SSH/SFTP ────────────────── */
+/* [094A-5] Muestra info SSH del contenedor si existe, o acceso base al VPS si no.
+ * PuTTY + terminal instructions para ambos casos. */
 export function TabAcceso({sshInfo}: {
     sshInfo: ReturnType<typeof useHostingDetalle>['sshInfo'];
 }) {
-    if (!sshInfo) {
-        return (
-            <div className="hostingDetalleSection">
-                <h3 className="hostingDetalleSectionTitle">Acceso SSH</h3>
-                <div className="hostingDetalleAccesoInactivo">
-                    <Terminal size={32} strokeWidth={1.2} />
-                    <p>El acceso SSH estará disponible una vez que el hosting esté configurado con Coolify.</p>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="hostingDetalleSection">
             <h3 className="hostingDetalleSectionTitle">Acceso SSH</h3>
-            <div className="hostingDetalleInfoGrid">
-                <InfoRow label="Host" value={sshInfo.host} copyable />
-                <InfoRow label="Puerto" value={String(sshInfo.port)} />
-                <InfoRow label="Usuario" value={sshInfo.user} copyable />
-            </div>
-
-            <h4 className="hostingDetalleSubTitle">Comando de conexión</h4>
-            <div className="hostingDetalleCodeBlock">
-                <code>{sshInfo.command}</code>
-                <CopyButton text={sshInfo.command} />
-            </div>
-
-            <h4 className="hostingDetalleSubTitle">Conexión SFTP</h4>
-            <div className="hostingDetalleInfoGrid">
-                <InfoRow label="Protocolo" value="SFTP" />
-                <InfoRow label="Host" value={sshInfo.host} copyable />
-                <InfoRow label="Puerto" value={String(sshInfo.port)} />
-                <InfoRow label="Usuario" value={sshInfo.user} copyable />
-            </div>
-            <p className="hostingDetalleSectionDesc">
-                Usa FileZilla, WinSCP o cualquier cliente SFTP para conectarte.
-            </p>
-        </div>
-    );
-}
-
-/* ── Tab: Facturación ────────────────────── */
-/* [094A-6] Incluye cambio de plan (upgrade/downgrade) con comparación de planes. */
-export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
-    sub: Subscription;
-    onPlanChange?: (plan: string, domain?: string) => void;
-    planChangeLoading?: boolean;
-}) {
-    const [showPlanChange, setShowPlanChange] = useState(false);
-    const currentPlanInfo = HOSTING_PLANS.find(p => p.id === sub.plan);
-    const otherPlans = HOSTING_PLANS.filter(p => p.id !== sub.plan);
-
-    const handleSelectPlan = (planId: string) => {
-        if (onPlanChange) {
-            onPlanChange(planId, sub.domain ?? undefined);
-            setShowPlanChange(false);
-        }
-    };
-
-    return (
-        <div className="hostingDetalleSection">
-            <h3 className="hostingDetalleSectionTitle">Plan actual</h3>
-            <div className="hostingDetallePlanCard">
-                <div className="hostingDetallePlanInfo">
-                    <span className="hostingDetallePlanNombre">
-                        {HOSTING_PLAN_LABELS[sub.plan] || sub.plan}
-                    </span>
-                    <span className="hostingDetallePlanPrecio">
-                        ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
-                    </span>
-                </div>
-                <div className="hostingDetallePlanFeatures">
-                    {currentPlanInfo?.features.map(f => (
-                        <span key={f}>{f}</span>
-                    )) ?? (
-                        <>
-                            <span>Almacenamiento: {(sub.storage_limit_mb / 1024).toFixed(0)} GB</span>
-                            <span>SSL incluido</span>
-                            <span>Backups automáticos</span>
-                        </>
-                    )}
-                </div>
-                {onPlanChange && sub.status !== 'cancelled' && (
-                    <Button
-                        type="button"
-                        variante="outline"
-                        tamano="pequeno"
-                        onClick={() => setShowPlanChange(!showPlanChange)}
-                        className="hostingDetallePlanChangeBtn"
-                    >
-                        <ArrowUpCircle size={14} />
-                        {showPlanChange ? 'Cancelar cambio' : 'Cambiar plan'}
-                    </Button>
-                )}
-            </div>
-
-            {showPlanChange && (
-                <div className="hostingDetallePlanOptions">
-                    <h4 className="hostingDetalleSubTitle">Opciones disponibles</h4>
-                    <p className="hostingDetalleSectionDesc">
-                        El cambio se aplica inmediatamente. Se ajustará el cobro proporcionalmente.
-                    </p>
-                    <div className="hostingDetallePlanGrid">
-                        {otherPlans.map(plan => {
-                            const isUpgrade = plan.priceCents > (currentPlanInfo?.priceCents ?? 0);
-                            return (
-                                <div key={plan.id} className="hostingDetallePlanOption">
-                                    <div className="hostingDetallePlanOptionHeader">
-                                        <span className="hostingDetallePlanNombre">{plan.label}</span>
-                                        <span className={`hostingDetallePlanBadge ${isUpgrade ? 'hostingDetallePlanBadge--upgrade' : 'hostingDetallePlanBadge--downgrade'}`}>
-                                            {isUpgrade ? 'Upgrade' : 'Downgrade'}
-                                        </span>
-                                    </div>
-                                    <span className="hostingDetallePlanPrecio">
-                                        ${(plan.priceCents / 100).toFixed(0)}/mes
-                                    </span>
-                                    <div className="hostingDetallePlanFeatures">
-                                        {plan.features.map(f => <span key={f}>{f}</span>)}
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variante={isUpgrade ? 'primario' : 'secundario'}
-                                        tamano="pequeno"
-                                        onClick={() => handleSelectPlan(plan.id)}
-                                        disabled={planChangeLoading}
-                                    >
-                                        {planChangeLoading ? 'Cambiando…' : `Cambiar a ${plan.label}`}
-                                    </Button>
-                                </div>
-                            );
-                        })}
+            {sshInfo ? (
+                <>
+                    <div className="hostingDetalleInfoGrid">
+                        <InfoRow label="Host" value={sshInfo.host} copyable />
+                        <InfoRow label="Puerto" value={String(sshInfo.port)} />
+                        <InfoRow label="Usuario" value={sshInfo.user} copyable />
                     </div>
+
+                    <h4 className="hostingDetalleSubTitle">Conexión por terminal</h4>
+                    <div className="hostingDetalleCodeBlock">
+                        <code>{sshInfo.command}</code>
+                        <CopyButton text={sshInfo.command} />
+                    </div>
+
+                    <h4 className="hostingDetalleSubTitle">Conexión con PuTTY (Windows)</h4>
+                    <div className="hostingDetalleInfoGrid">
+                        <InfoRow label="Host Name" value={sshInfo.host} copyable />
+                        <InfoRow label="Port" value={String(sshInfo.port)} />
+                        <InfoRow label="Connection type" value="SSH" />
+                    </div>
+                    <p className="hostingDetalleSectionDesc">
+                        Ingresa estos datos en PuTTY y haz clic en "Open". Se te pedirá el usuario y contraseña.
+                    </p>
+
+                    <h4 className="hostingDetalleSubTitle">Conexión SFTP</h4>
+                    <div className="hostingDetalleInfoGrid">
+                        <InfoRow label="Protocolo" value="SFTP" />
+                        <InfoRow label="Host" value={sshInfo.host} copyable />
+                        <InfoRow label="Puerto" value={String(sshInfo.port)} />
+                        <InfoRow label="Usuario" value={sshInfo.user} copyable />
+                    </div>
+                    <p className="hostingDetalleSectionDesc">
+                        Usa FileZilla, WinSCP o cualquier cliente SFTP para transferir archivos.
+                    </p>
+                </>
+            ) : (
+                <div className="hostingDetalleAccesoInactivo">
+                    <Terminal size={32} strokeWidth={1.2} />
+                    <p>El acceso SSH estará disponible una vez que el hosting esté provisionado en el servidor.</p>
+                    <p className="hostingDetalleSectionDesc">
+                        Una vez activo, aquí verás las credenciales SSH y SFTP para acceder a tu hosting
+                        desde terminal (Linux/Mac), PuTTY (Windows) o clientes SFTP como FileZilla.
+                    </p>
                 </div>
             )}
-
-            <h3 className="hostingDetalleSectionTitle">Historial de pagos</h3>
-            <p className="hostingDetalleSectionDesc">
-                Los pagos se gestionan a través de Stripe. Consulta tu historial de facturación
-                en tu correo electrónico registrado.
-            </p>
         </div>
     );
 }

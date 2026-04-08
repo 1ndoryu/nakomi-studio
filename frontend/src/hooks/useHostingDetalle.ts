@@ -18,12 +18,14 @@ interface SshInfo {
     command: string;
 }
 
-/* [094A-2] Info de dominio derivada del hosting */
+/* [094A-4] Info de dominio derivada del hosting.
+ * serverIp se usa para instrucciones de registros A en la tab de dominio. */
 interface DomainInfo {
     domain: string | null;
     nameservers: string[];
     sslStatus: 'active' | 'pending' | 'none';
     sslProvider: string;
+    serverIp: string | null;
 }
 
 export function useHostingDetalle(hostingId: string) {
@@ -54,15 +56,20 @@ export function useHostingDetalle(hostingId: string) {
         };
     }, [subscription]);
 
-    /* [094A-2] Derivar info de dominio.
-     * SSL es automático vía Let's Encrypt en Coolify para dominios configurados. */
+    /* [094A-4] Derivar info de dominio.
+     * SSL es automático vía Let's Encrypt en Coolify para dominios configurados.
+     * serverIp se usa para instrucciones DNS (registro A). Por ahora, valor fijo
+     * del VPS único; en el futuro vendrá del backend cuando haya multi-VPS. */
     const domainInfo = useMemo((): DomainInfo => {
         const domain = subscription?.domain ?? null;
+        /* IP del VPS de producción (Contabo). En setup multi-VPS, vendrá de la API. */
+        const serverIp = subscription?.coolify_site_name ? '66.94.100.241' : null;
         return {
             domain,
             nameservers: ['ns1.contabo.net', 'ns2.contabo.net', 'ns3.contabo.net'],
             sslStatus: domain ? 'active' : 'none',
             sslProvider: 'Let\'s Encrypt (automático vía Coolify)',
+            serverIp: serverIp ?? (subscription?.status === 'active' ? '66.94.100.241' : null),
         };
     }, [subscription]);
 
