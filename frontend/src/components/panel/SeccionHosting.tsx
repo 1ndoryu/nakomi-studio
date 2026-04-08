@@ -32,6 +32,7 @@ export const SeccionHosting: React.FC = () => {
         updateMutation,
         deleteMutation,
         cancelMutation,
+        checkoutMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -120,6 +121,8 @@ export const SeccionHosting: React.FC = () => {
                             }
                             onDelete={() => deleteMutation.mutate(sub.id)}
                             onCancel={() => cancelMutation.mutate(sub.id)}
+                            onCheckout={() => checkoutMutation.mutate(sub.id)}
+                            checkoutLoading={checkoutMutation.isPending}
                         />
                     ))}
                 </div>

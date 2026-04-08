@@ -32,6 +32,8 @@ export function HostingCard({
     onUpdate,
     onDelete,
     onCancel,
+    onCheckout,
+    checkoutLoading,
 }: {
     sub: HostingSubscription;
     isAdmin: boolean;
@@ -39,6 +41,8 @@ export function HostingCard({
     onUpdate: (req: UpdateHostingRequest) => void;
     onDelete: () => void;
     onCancel: () => void;
+    onCheckout: () => void;
+    checkoutLoading?: boolean;
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -114,6 +118,18 @@ export function HostingCard({
                             ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
                         </span>
                         <div className="hostingCardAcciones">
+                            {/* [084A-24] Botón de checkout Stripe para suscripciones pendientes */}
+                            {sub.status === 'pending' && (
+                                <Button
+                                    type="button"
+                                    variante="primario"
+                                    tamano="pequeno"
+                                    onClick={onCheckout}
+                                    disabled={checkoutLoading}
+                                >
+                                    {checkoutLoading ? 'Redirigiendo…' : 'Pagar'}
+                                </Button>
+                            )}
                             {/* [084A-4] Menú visible para todos los roles, items varían por rol */}
                             <MenuContextual
                                 abierto={menuOpen}

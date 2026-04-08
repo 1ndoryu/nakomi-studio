@@ -170,4 +170,39 @@ impl HostingRepository {
         .await?;
         Ok(rows)
     }
+
+    /* [084A-24] Buscar suscripción por stripe_subscription_id (para webhooks) */
+    pub async fn find_by_stripe_subscription(
+        pool: &PgPool,
+        stripe_sub_id: &str,
+    ) -> Result<Option<HostingSubscription>, AppError> {
+        let row = sqlx::query_as!(
+            HostingSubscription,
+            "SELECT id, user_id, client_name, client_email, plan, domain,
+                    coolify_site_name, status, stripe_subscription_id,
+                    monthly_price_cents, storage_limit_mb, created_at, updated_at
+             FROM hosting_subscriptions
+             WHERE stripe_subscription_id = $1",
+            stripe_sub_id
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(row)
+    }
+
+    /* [084A-24] Asignar stripe_subscription_id a una suscripción de hosting */
+    pub async fn set_stripe_subscription_id(
+        pool: &PgPool,
+        id: Uuid,
+        stripe_sub_id: &str,
+    ) -> Result<(), AppError> {
+        sqlx::query!(
+            "UPDATE hosting_subscriptions SET stripe_subscription_id = $1, updated_at = NOW() WHERE id = $2",
+            stripe_sub_id,
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
 }

@@ -88,6 +88,15 @@ export async function apiRequestCancelHosting(id: string): Promise<void> {
     await axiosInstance.post(`/api/hosting/subscriptions/${id}/cancel`);
 }
 
+/* [084A-24] Iniciar checkout Stripe para suscripción de hosting.
+ * Retorna la URL de Stripe Checkout a la que redirigir al cliente. */
+export async function apiCreateHostingCheckout(id: string): Promise<string> {
+    const { data } = await axiosInstance.post<{ checkout_url: string }>(
+        `/api/hosting/subscriptions/${id}/checkout`,
+    );
+    return data.checkout_url;
+}
+
 export async function apiListHostingEvents(id: string): Promise<HostingEvent[]> {
     const {data} = await axiosInstance.get<HostingEvent[]>(`/api/hosting/subscriptions/${id}/events`);
     return data;

@@ -14,7 +14,7 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{InitiatePaymentRequest, PaymentIntentResponse, PaymentResponse, UserRole};
 use crate::repositories::{OrderRepository, UserRepository};
-use crate::services::{AuditService, PaymentService};
+use crate::services::{AuditService, HostingStripeService, PaymentService};
 use crate::AppState;
 
 /// Iniciar pago de una orden (crea `PaymentIntent` en Stripe)
@@ -133,6 +133,11 @@ pub async fn stripe_webhook(
     }
 
     PaymentService::handle_webhook(&state.pool, event_type, &event["data"]).await?;
+
+    /* [084A-24] Hosting subscriptions: procesar eventos de checkout.session.completed,
+     * invoice.paid, invoice.payment_failed, customer.subscription.deleted.
+     * HostingStripeService retorna bool indicando si procesó el evento. */
+    HostingStripeService::handle_webhook(&state.pool, event_type, &event["data"]).await?;
 
     /* [064A-73] Audit: webhook procesado exitosamente */
     AuditService::log(

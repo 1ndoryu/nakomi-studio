@@ -1,7 +1,8 @@
 /* [054A-2] Handlers de hosting: CRUD suscripciones + eventos.
  * Admin puede gestionar todo. Clientes pueden actualizar dominio/plan de sus propias
  * suscripciones y solicitar cancelación.
- * [084A-4] Cliente ahora puede editar su suscripción y solicitar cancelación. */
+ * [084A-4] Cliente ahora puede editar su suscripción y solicitar cancelación.
+ * [084A-24] Endpoints Contabo VPS + Stripe hosting checkout. */
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -388,6 +389,78 @@ pub async fn request_cancel(
 }
 
 /* ============================================================
+   STRIPE CHECKOUT — Suscripción de hosting
+   [084A-24] Crea Stripe Checkout Session para pagar hosting mensual
+   ============================================================ */
+
+/// Crear Checkout Session de Stripe para suscripción de hosting
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/checkout",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "URL de checkout"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+        (status = 503, description = "Stripe no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn create_checkout(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    /* Solo el dueño o admin puede generar checkout */
+    if auth.effective_role == UserRole::Client && sub.user_id != Some(auth.user_id) {
+        return Err(AppError::Forbidden("Sin permisos".into()));
+    }
+
+    /* Ya tiene suscripción Stripe activa */
+    if sub.stripe_subscription_id.is_some() && sub.status == "active" {
+        return Err(AppError::Conflict(
+            "La suscripción ya tiene un pago activo en Stripe".into(),
+        ));
+    }
+
+    let stripe_key = state
+        .stripe_secret_key
+        .as_deref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Stripe no configurado".into()))?;
+
+    let config = state
+        .hosting_stripe_config
+        .as_ref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Precios de hosting no configurados".into()))?;
+
+    /* URLs de retorno (frontend SPA) */
+    let base_url = std::env::var("GLORY_PUBLIC_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let success_url = format!("{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}");
+    let cancel_url = format!("{base_url}/panel?hosting=cancelled");
+
+    let url = crate::services::HostingStripeService::create_checkout_session(
+        &crate::services::CheckoutParams {
+            http_client: &state.http_client,
+            stripe_key,
+            config,
+            subscription_id: id,
+            plan: &sub.plan,
+            customer_email: &sub.client_email,
+            success_url: &success_url,
+            cancel_url: &cancel_url,
+        },
+    )
+    .await?;
+
+    Ok(Json(serde_json::json!({ "checkout_url": url })))
+}
+
+/* ============================================================
    VPS STATS — Proxy a Contabo API (solo admin)
    [084A-24] Permite al panel admin ver estado real de las VPS
    ============================================================ */
@@ -486,6 +559,11 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/subscriptions/:id/cancel",
             axum::routing::post(request_cancel),
+        )
+        /* [084A-24] Stripe checkout para hosting */
+        .route(
+            "/hosting/subscriptions/:id/checkout",
+            axum::routing::post(create_checkout),
         )
         /* [084A-24] VPS stats: proxy a Contabo API */
         .route("/hosting/vps", get(list_vps))

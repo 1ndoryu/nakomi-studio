@@ -248,6 +248,12 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         crate::services::ContaboService::new(cfg, reqwest::Client::new())
     });
 
+    /* [084A-24] Stripe Hosting: config de prices para checkout de suscripciones */
+    let hosting_stripe_config = crate::services::HostingStripeConfig::from_env();
+    if hosting_stripe_config.is_some() {
+        tracing::info!("Stripe Hosting configurado (3 planes)");
+    }
+
     let state = AppState {
         pool,
         jwt_secret: config.jwt_secret,
@@ -258,6 +264,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         ai_config,
         notification_hub,
         contabo_service,
+        hosting_stripe_config,
     };
 
     /* [064A-73] CORS: restringir orígenes en producción. Si GLORY_ALLOWED_ORIGINS vacío, allow all (dev). */

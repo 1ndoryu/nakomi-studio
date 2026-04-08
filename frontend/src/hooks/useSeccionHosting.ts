@@ -1,7 +1,7 @@
 /* [074A-63] Hook de estado para SeccionHosting.
  * Extrae los 4 useState + queries + mutations para cumplir regla max 3 useState. */
 
-import {useState, useMemo} from 'react';
+import {useState, useMemo, useEffect} from 'react';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {
     apiListHostingSubscriptions,
@@ -10,6 +10,7 @@ import {
     apiUpdateHostingSubscription,
     apiDeleteHostingSubscription,
     apiRequestCancelHosting,
+    apiCreateHostingCheckout,
     type CreateHostingRequest,
     type UpdateHostingRequest,
 } from '../api/hosting';
@@ -25,6 +26,23 @@ export function useSeccionHosting() {
 
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
     const isAdmin = effectiveRole === 'admin';
+
+    /* [084A-24] Detectar retorno de Stripe Checkout (?hosting=success/cancelled) */
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const hostingResult = params.get('hosting');
+        if (hostingResult === 'success') {
+            toast.success('¡Pago completado! Tu hosting se activará en breve.');
+        } else if (hostingResult === 'cancelled') {
+            toast.warning('Checkout cancelado. Puedes intentarlo de nuevo.');
+        }
+        if (hostingResult) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('hosting');
+            url.searchParams.delete('session_id');
+            window.history.replaceState({}, '', url.pathname + url.search);
+        }
+    }, []);
 
     const hostingKey = ['hosting-subscriptions', effectiveRole] as const;
 
@@ -94,6 +112,15 @@ export function useSeccionHosting() {
         onError: () => toast.error('Error al cancelar suscripción'),
     });
 
+    /* [084A-24] Checkout Stripe — redirige al cliente a Stripe para pagar */
+    const checkoutMutation = useMutation({
+        mutationFn: (id: string) => apiCreateHostingCheckout(id),
+        onSuccess: (checkoutUrl) => {
+            window.location.href = checkoutUrl;
+        },
+        onError: () => toast.error('Error al iniciar checkout'),
+    });
+
     return {
         subscriptions,
         isLoading,
@@ -110,5 +137,6 @@ export function useSeccionHosting() {
         updateMutation,
         deleteMutation,
         cancelMutation,
+        checkoutMutation,
     };
 }
