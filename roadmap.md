@@ -41,7 +41,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Plan de hosting: `Agente/planes/plan-hosting-coolify-2026-04-04.md` (5 fases) — Fases 3-4 ✅, Fases 1-2-5 bloqueadas por infraestructura externa (VPS2, DNS, Google Drive OAuth)
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 
-- En el cms en los botones de 3 puntos no salen opciones de eliminar el contenido, solo archivar, falta opciones directa para eliminar, cambiar status a publicar, etc.
+- En el cms en los botones de 3 puntos no salen opciones de eliminar el contenido, solo archivar, falta opciones directa para eliminar, cambiar status a publicar, etc. → ✅ 084A-10 completada
 - elimina la especificacion de color y borde en .editorServicioStatusBtn--activo
 - En la lista de proyecto no se ve lo que hay en el cms se ve otra cosa.
 - En el panel al recergar debería permanecer en la misma tab incluyendo la tab interna, no ir siempre a la primera tab. → ✅ 084A-9 completada
@@ -58,6 +58,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - El historial de pago se ve muy mal, debería verse profesional, como una tabla o algo. 
 
 - Se requiere hacer una auditoría de principios solid a todo el front, todos los archivos para identificar inconsistencias, cosas que deberían ser componentes y no lo son, y cosas que no detecta glory sentinel. 
+- Uncaught SyntaxError: The requested module '/src/components/panel/OrdenDetalle.tsx?t=1775654447341' does not provide an export named 'OrdenDetalle' (at SeccionProyectos.tsx:13:9)
 
 
 ## Hosting 
