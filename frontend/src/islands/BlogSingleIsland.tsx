@@ -4,6 +4,7 @@
  * [074A-11] Conectado a API pública /api/blog/:slug con fallback a datos estáticos.
  * Lógica de datos extraída a useBlogSingle. */
 import {useTranslation} from 'react-i18next';
+import DOMPurify from 'dompurify';
 import {spaClick} from '../navegacionSPA';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
@@ -81,7 +82,7 @@ export const BlogSingleIsland = ({
                     {contenido ? (
                         <div
                             className="blogSingleTexto"
-                            dangerouslySetInnerHTML={{__html: contenido}}
+                            dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(contenido)}}
                         />
                     ) : (
                         <div className="blogSingleTexto">

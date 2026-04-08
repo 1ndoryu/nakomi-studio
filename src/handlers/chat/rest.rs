@@ -400,6 +400,27 @@ pub struct ChatUploadResponse {
     pub ai_description: Option<String>,
 }
 
+/* [084A-30] Mapea MIME type a extensión de archivo segura.
+ * Nunca confiar en la extensión del nombre original del archivo — un atacante
+ * puede subir "malware.php" con content-type "image/jpeg". Derivamos la extensión
+ * exclusivamente del MIME ya validado contra ALLOWED_CHAT_MIMES. */
+fn mime_to_safe_extension(mime: &str) -> &'static str {
+    match mime {
+        "image/jpeg" => "jpg",
+        "image/png" => "png",
+        "image/webp" => "webp",
+        "image/gif" => "gif",
+        "audio/mpeg" => "mp3",
+        "audio/ogg" => "ogg",
+        "audio/wav" => "wav",
+        "audio/webm" => "webm",
+        "audio/mp4" => "m4a",
+        "audio/flac" => "flac",
+        "application/pdf" => "pdf",
+        _ => "bin",
+    }
+}
+
 // [T-5] Determina el message_type según MIME.
 // image -> image, audio -> audio, application/pdf -> file
 fn mime_to_message_type(mime: &str) -> &'static str {
@@ -469,8 +490,9 @@ pub async fn upload_chat_file(
         )));
     }
 
-    /* Generar nombre seguro y guardar en disco */
-    let ext = original_name.rsplit('.').next().unwrap_or("bin");
+    /* [084A-30] Seguridad: mapear MIME type a extensión segura.
+     * Nunca confiar en la extensión del nombre original (puede ser .php, .exe, etc.) */
+    let ext = mime_to_safe_extension(&content_type);
     let unique_name = format!("{}.{ext}", Uuid::new_v4());
     let upload_dir = std::path::PathBuf::from(CHAT_UPLOAD_DIR).join(session_id.to_string());
     tokio::fs::create_dir_all(&upload_dir)

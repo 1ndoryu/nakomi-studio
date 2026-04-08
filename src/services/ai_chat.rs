@@ -14,6 +14,21 @@ use crate::repositories::{ChatRepository, HostingRepository, OrderRepository, Us
 use crate::models::{ChatMessage, Order};
 use crate::services::ai_tools::{self, RichMessage};
 
+/* [084A-30] Sanitiza texto controlado por el usuario antes de inyectarlo en el system prompt.
+ * Previene prompt injection: elimina caracteres de control, trunca longitud excesiva,
+ * y envuelve el dato en delimitadores para que el modelo lo trate como dato, no instrucción. */
+fn sanitize_for_prompt(input: &str, max_len: usize) -> String {
+    input
+        .chars()
+        .filter(|c| !c.is_control() || *c == '\n')
+        .take(max_len)
+        .collect::<String>()
+        .replace("INSTRUCCIÓN", "")
+        .replace("INSTRUCTION", "")
+        .replace("IGNORE", "")
+        .replace("SYSTEM", "")
+}
+
 /* [064A-29] Contador global para rotacion round-robin de API keys.
  * Cada llamada a generate_response incrementa y usa mod num_keys. */
 static KEY_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -633,23 +648,28 @@ async fn append_visitor_context(prompt: &mut String, pool: &PgPool, visitor_id: 
     if let Ok(Some(profile)) = ChatRepository::find_visitor_profile(pool, visitor_id).await {
         prompt.push_str("CONTEXTO DEL VISITANTE (conversaciones anteriores):\n");
         if let Some(name) = &profile.display_name {
-            let _ = writeln!(prompt, "- Nombre: {name}");
+            /* [084A-30] Sanitizar datos de usuario contra prompt injection */
+            let safe = sanitize_for_prompt(name, 100);
+            let _ = writeln!(prompt, "- Nombre: {safe}");
         }
         if let Some(email) = &profile.email {
-            let _ = writeln!(prompt, "- Email: {email} (ya capturado, no volver a pedir)");
+            let safe = sanitize_for_prompt(email, 200);
+            let _ = writeln!(prompt, "- Email: {safe} (ya capturado, no volver a pedir)");
         }
         if profile.total_sessions > 1 {
             let _ = writeln!(prompt, "- Visitas anteriores: {}", profile.total_sessions);
         }
         if let Some(summary) = &profile.context_summary {
             if !summary.is_empty() {
-                let _ = writeln!(prompt, "- Resumen de conversaciones previas: {summary}");
+                let safe = sanitize_for_prompt(summary, 500);
+                let _ = writeln!(prompt, "- Resumen de conversaciones previas: {safe}");
             }
         }
         if let Some(prefs) = &profile.preferences {
             if let Some(obj) = prefs.as_object() {
                 if !obj.is_empty() {
-                    let _ = writeln!(prompt, "- Info del cliente: {prefs}");
+                    let safe = sanitize_for_prompt(&prefs.to_string(), 500);
+                    let _ = writeln!(prompt, "- Info del cliente: {safe}");
                 }
             }
         }
@@ -662,8 +682,12 @@ async fn append_visitor_context(prompt: &mut String, pool: &PgPool, visitor_id: 
 async fn append_registered_client_context(prompt: &mut String, pool: &PgPool, uid: Uuid) {
     let Ok(Some(user)) = UserRepository::find_by_id(pool, uid).await else { return };
     prompt.push_str("CLIENTE REGISTRADO:\n");
-    let display = user.display_name.as_deref().unwrap_or(&user.username);
-    let _ = writeln!(prompt, "- Nombre: {display} ({email})", email = user.email);
+    /* [084A-30] Sanitizar datos del usuario contra prompt injection */
+    let display = sanitize_for_prompt(
+        user.display_name.as_deref().unwrap_or(&user.username), 100,
+    );
+    let email = sanitize_for_prompt(&user.email, 200);
+    let _ = writeln!(prompt, "- Nombre: {display} ({email})");
     let _ = writeln!(prompt, "- Rol: {:?}", user.role);
     prompt.push_str("Ya está registrado — no pedir email ni nombre.\n\n");
 
@@ -754,11 +778,12 @@ async fn append_page_context(prompt: &mut String, pool: &PgPool, ctx: &str) {
             }
         }
         "page" => {
+            /* [084A-30] Sanitizar nombre de página — viene del cliente vía WS */
+            let safe_page = sanitize_for_prompt(parts[1], 100);
             let _ = writeln!(
                 prompt,
-                "CONTEXTO DE ORIGEN: El usuario abrió el chat desde la página de {page}.\n\
-                 Saluda al usuario y ofrece información relevante sobre {page}.\n",
-                page = parts[1],
+                "CONTEXTO DE ORIGEN: El usuario abrió el chat desde la página de {safe_page}.\n\
+                 Saluda al usuario y ofrece información relevante sobre {safe_page}.\n",
             );
         }
         _ => {}
