@@ -62,7 +62,8 @@ export async function apiUpdateHostingStatus(
     await axiosInstance.patch(`/api/hosting/subscriptions/${id}/status`, {status, reason});
 }
 
-/* [074A-65] Actualizar suscripción (plan, dominio) — solo admin */
+/* [074A-65] Actualizar suscripción (plan, dominio) — admin o dueño de la suscripción
+ * [084A-4] Ya no es solo admin — clientes pueden editar sus propias suscripciones */
 export interface UpdateHostingRequest {
     plan: string;
     domain?: string;
@@ -79,6 +80,12 @@ export async function apiUpdateHostingSubscription(
 /* [074A-65] Eliminar suscripción — solo admin */
 export async function apiDeleteHostingSubscription(id: string): Promise<void> {
     await axiosInstance.delete(`/api/hosting/subscriptions/${id}`);
+}
+
+/* [084A-4] Solicitar cancelación — cliente o admin.
+ * Cambia status a 'cancelled' y registra evento de auditoría. */
+export async function apiRequestCancelHosting(id: string): Promise<void> {
+    await axiosInstance.post(`/api/hosting/subscriptions/${id}/cancel`);
 }
 
 export async function apiListHostingEvents(id: string): Promise<HostingEvent[]> {

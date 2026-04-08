@@ -23,13 +23,15 @@ import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
 
 /* [074A-57] Card de hosting — layout similar a ordenCard de proyectosLista
  * [074A-63] Titulo = dominio o nombre del hosting (identidad unica), plan va debajo.
- * [074A-65] Context menu con editar/eliminar + edit modal inline. */
+ * [074A-65] Context menu con editar/eliminar + edit modal inline.
+ * [084A-4] Clientes ahora tienen context menu con Editar/Cancelar. */
 export function HostingCard({
     sub,
     isAdmin,
     onStatusChange,
     onUpdate,
     onDelete,
+    onCancel,
     onViewEvents,
 }: {
     sub: HostingSubscription;
@@ -37,6 +39,7 @@ export function HostingCard({
     onStatusChange: (status: string) => void;
     onUpdate: (req: UpdateHostingRequest) => void;
     onDelete: () => void;
+    onCancel: () => void;
     onViewEvents: () => void;
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -44,21 +47,32 @@ export function HostingCard({
     const [editPlan, setEditPlan] = useState(sub.plan);
     const [editDomain, setEditDomain] = useState(sub.domain || '');
 
-    const statusItems: MenuContextualItem[] = (['pending', 'provisioning', 'active', 'suspended', 'cancelled'] as const)
-        .filter(s => s !== sub.status)
-        .map(s => ({
-            id: s,
-            label: HOSTING_STATUS_LABELS[s] || s,
-            onSelect: () => onStatusChange(s),
-            danger: s === 'suspended' || s === 'cancelled',
-        }));
+    /* [084A-4] Context menu unificado: admin ve status changes + editar + eliminar,
+     * cliente ve editar + cancelar. Ambos roles ven el menú. */
+    const menuItems: MenuContextualItem[] = [];
 
-    /* [074A-65] Items de gestión: editar y eliminar */
     if (isAdmin) {
-        statusItems.push(
-            {id: 'edit', label: 'Editar', onSelect: () => setEditing(true)},
-            {id: 'delete', label: 'Eliminar', onSelect: onDelete, danger: true},
-        );
+        /* Admin: cambios de status rápidos */
+        (['pending', 'provisioning', 'active', 'suspended', 'cancelled'] as const)
+            .filter(s => s !== sub.status)
+            .forEach(s => menuItems.push({
+                id: s,
+                label: HOSTING_STATUS_LABELS[s] || s,
+                onSelect: () => onStatusChange(s),
+                danger: s === 'suspended' || s === 'cancelled',
+            }));
+    }
+
+    /* Editar: admin y cliente */
+    menuItems.push({id: 'edit', label: 'Editar', onSelect: () => setEditing(true)});
+
+    if (isAdmin) {
+        menuItems.push({id: 'delete', label: 'Eliminar', onSelect: onDelete, danger: true});
+    }
+
+    /* Cancelar: disponible para cliente (y admin) si no está ya cancelada */
+    if (sub.status !== 'cancelled') {
+        menuItems.push({id: 'cancel', label: 'Cancelar suscripción', onSelect: onCancel, danger: true});
     }
 
     const handleEditSubmit = useCallback(() => {
@@ -103,15 +117,14 @@ export function HostingCard({
                             >
                                 <History size={16} />
                             </Button>
-                            {isAdmin && (
-                                <MenuContextual
-                                    abierto={menuOpen}
-                                    onToggle={() => setMenuOpen(prev => !prev)}
-                                    onCerrar={() => setMenuOpen(false)}
-                                    items={statusItems}
-                                    ariaLabel="Gestionar suscripción"
-                                />
-                            )}
+                            {/* [084A-4] Menú visible para todos los roles, items varían por rol */}
+                            <MenuContextual
+                                abierto={menuOpen}
+                                onToggle={() => setMenuOpen(prev => !prev)}
+                                onCerrar={() => setMenuOpen(false)}
+                                items={menuItems}
+                                ariaLabel="Gestionar suscripción"
+                            />
                         </div>
                     </div>
                 </div>

@@ -33,6 +33,7 @@ export const SeccionHosting: React.FC = () => {
         statusMutation,
         updateMutation,
         deleteMutation,
+        cancelMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -106,6 +107,7 @@ export const SeccionHosting: React.FC = () => {
                                 updateMutation.mutate({id: sub.id, req})
                             }
                             onDelete={() => deleteMutation.mutate(sub.id)}
+                            onCancel={() => cancelMutation.mutate(sub.id)}
                             onViewEvents={() => {
                                 setSelectedSub(sub);
                                 setShowEvents(true);

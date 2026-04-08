@@ -9,6 +9,7 @@ import {
     apiUpdateHostingStatus,
     apiUpdateHostingSubscription,
     apiDeleteHostingSubscription,
+    apiRequestCancelHosting,
     type HostingSubscription,
     type CreateHostingRequest,
     type UpdateHostingRequest,
@@ -86,6 +87,16 @@ export function useSeccionHosting() {
         onError: () => toast.error('Error al eliminar suscripción'),
     });
 
+    /* [084A-4] Cancelar suscripción (cliente o admin) */
+    const cancelMutation = useMutation({
+        mutationFn: (id: string) => apiRequestCancelHosting(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success('Suscripción cancelada');
+        },
+        onError: () => toast.error('Error al cancelar suscripción'),
+    });
+
     return {
         subscriptions,
         isLoading,
@@ -105,5 +116,6 @@ export function useSeccionHosting() {
         statusMutation,
         updateMutation,
         deleteMutation,
+        cancelMutation,
     };
 }
