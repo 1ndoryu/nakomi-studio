@@ -16,12 +16,21 @@
     gap: var(--spacing-sm);
 }
 
+/* [094A-11] Estilo consistente con ordenDetalleVolver */
 .hostingDetalleBack {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
     align-self: flex-start;
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
     color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs) 0;
+    transition: color var(--transicion-rapida);
 }
 
 .hostingDetalleBack:hover {
@@ -118,10 +127,15 @@
     min-height: 200px;
 }
 
+/* [094A-11] Cada sección del detalle es una card con fondo blanco y borde */
 .hostingDetalleSection {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
 }
 
 .hostingDetalleSectionTitle {
@@ -165,7 +179,7 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--bg-card);
+    background: var(--bg-card-subtle);
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
     min-height: 36px;
@@ -228,7 +242,7 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--bg-card);
+    background: var(--bg-card-subtle);
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-md);
 }
@@ -274,7 +288,7 @@
     flex-direction: column;
     gap: var(--spacing-sm);
     padding: var(--spacing-md);
-    background: var(--bg-card);
+    background: var(--bg-card-subtle);
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-lg);
 }
@@ -330,7 +344,7 @@
     flex-direction: column;
     gap: var(--spacing-sm);
     padding: var(--spacing-md);
-    background: var(--bg-card);
+    background: var(--bg-card-subtle);
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-lg);
     transition: border-color var(--transicion-rapida);
@@ -396,7 +410,7 @@
     font-size: var(--text-sm);
     color: var(--text-muted);
     padding: var(--spacing-md);
-    background: var(--bg-card);
+    background: var(--bg-card-subtle);
     border-radius: var(--radius-md);
     text-align: center;
     margin: 0;
@@ -423,7 +437,7 @@
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--bg-card);
+    background: var(--bg-card-subtle);
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-md);
     font-size: var(--text-sm);

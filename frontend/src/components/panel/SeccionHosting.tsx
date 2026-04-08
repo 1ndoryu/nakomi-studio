@@ -161,7 +161,7 @@ export const SeccionHosting: React.FC = () => {
 
             {/* Modal: admin ve form de crear, cliente ve selector de planes */}
             {showCreateModal && (
-                <Modal abierto={showCreateModal} onCerrar={() => setShowCreateModal(false)}>
+                <Modal abierto={showCreateModal} onCerrar={() => setShowCreateModal(false)} className={!isAdmin ? 'modalPlanSelector' : undefined}>
                     {isAdmin ? (
                         <CreateHostingForm
                             onSubmit={(req) => createMutation.mutate(req)}

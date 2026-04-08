@@ -20,7 +20,6 @@ import {Input} from '../ui/Input';
 import {Select} from '../ui/Select';
 import {Button} from '../ui/Button';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
-import {HostingStats} from './HostingStats';
 
 /* [074A-57] Card de hosting — layout similar a ordenCard de proyectosLista
  * [074A-63] Titulo = dominio o nombre del hosting (identidad unica), plan va debajo.
@@ -105,21 +104,17 @@ export function HostingCard({
                             {sub.client_name} · {sub.client_email}
                         </span>
                     )}
-                    {/* [084A-24] Stats de recursos: simulados para active/provisioning, info básica para otros */}
-                    {(sub.status === 'active' || sub.status === 'provisioning') ? (
-                        <HostingStats sub={sub} />
-                    ) : (
-                        <div className="hostingCardRecursos">
+                    {/* [094A-11] Info básica en card — stats completas están en el detalle (tab Recursos) */}
+                    <div className="hostingCardRecursos">
+                        <span className="hostingCardRecurso">
+                            Almacenamiento: {(sub.storage_limit_mb / 1024).toFixed(0)} GB
+                        </span>
+                        {sub.domain && (
                             <span className="hostingCardRecurso">
-                                Almacenamiento: {(sub.storage_limit_mb / 1024).toFixed(0)} GB
+                                Dominio: {sub.domain}
                             </span>
-                            {sub.domain && (
-                                <span className="hostingCardRecurso">
-                                    Dominio: {sub.domain}
-                                </span>
-                            )}
-                        </div>
-                    )}
+                        )}
+                    </div>
                     <div className="hostingCardFooter">
                         <span className="hostingCardPrecio">
                             ${(sub.monthly_price_cents / 100).toFixed(0)}/mes

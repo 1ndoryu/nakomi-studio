@@ -154,7 +154,7 @@
     flex-wrap: wrap;
     gap: var(--spacing-xs) var(--spacing-md);
     font-size: var(--text-sm);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
 }
 
 .hostingCardRecurso {
@@ -344,6 +344,8 @@
     font-size: var(--text-mini);
     overflow-x: auto;
     white-space: pre-wrap;
+    /* [094A-11] Texto blanco sobre fondo oscuro para que sea legible */
+    color: var(--brand-white);
 }
 
 /* ── Responsive ────────────────────────────── */
