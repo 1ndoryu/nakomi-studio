@@ -66,7 +66,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 ### Fase I (por dificultad descendente)
 - ~~T-1: Anti-spam + timing inteligente (rate limit WS, clasificador relevancia, máquina de estados para pausas)~~ ✅
 - ~~T-2: Generación pedidos + facturas (tool use Groq, mensajes ricos, Stripe invoices, botones acción)~~ ✅
-- T-3: Memoria usuario + contexto (visitor_profiles, captura email, resúmenes, contexto por rol)
+- ~~T-3: Memoria usuario + contexto (visitor_profiles, captura email, resúmenes, contexto por rol)~~ ✅
 - T-4: Sync cross-device/tab (BroadcastChannel, multi-conexión WS, sesión única por identidad)
 - T-5: Archivos en chat (upload multipart, Groq Vision imágenes, Whisper STT audio, PDF extraction)
 - T-6: Escalación humana (detección IA, notificación admin, flujo handoff) ✅
