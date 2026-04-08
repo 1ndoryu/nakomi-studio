@@ -35,6 +35,25 @@ impl HostingRepository {
         Ok(rows)
     }
 
+    /* [T-9] Listar suscripciones de hosting de un usuario específico */
+    pub async fn list_by_user_id(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<Vec<HostingSubscription>, AppError> {
+        let rows = sqlx::query_as::<_, HostingSubscription>(
+            "SELECT id, user_id, client_name, client_email, plan, domain,
+                    coolify_site_name, status, stripe_subscription_id,
+                    monthly_price_cents, storage_limit_mb, created_at, updated_at
+             FROM hosting_subscriptions
+             WHERE user_id = $1
+             ORDER BY created_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
     pub async fn find_by_id(
         pool: &PgPool,
         id: Uuid,

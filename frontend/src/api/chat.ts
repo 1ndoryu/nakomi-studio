@@ -163,12 +163,16 @@ export async function apiUpdateVisitorName(
 /*    WEBSOCKET HELPERS */
 
 /** Construye URL de WebSocket para visitante */
-export function buildVisitorWsUrl(visitorId: string, visitorName?: string): string {
+/* [T-9] Acepta token JWT opcional para clientes autenticados */
+export function buildVisitorWsUrl(visitorId: string, visitorName?: string, token?: string | null): string {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = getApiHost();
     let url = `${protocol}//${host}/ws/chat/visitor?visitor_id=${encodeURIComponent(visitorId)}`;
     if (visitorName) {
         url += `&visitor_name=${encodeURIComponent(visitorName)}`;
+    }
+    if (token) {
+        url += `&token=${encodeURIComponent(token)}`;
     }
     return url;
 }

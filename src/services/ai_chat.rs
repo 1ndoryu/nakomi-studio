@@ -10,7 +10,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::repositories::{ChatRepository, OrderRepository};
+use crate::repositories::{ChatRepository, HostingRepository, OrderRepository, UserRepository};
 use crate::services::ai_tools::{self, RichMessage};
 
 /* [064A-29] Contador global para rotacion round-robin de API keys.
@@ -106,6 +106,14 @@ pub struct AiResponse {
     pub rich_messages: Vec<RichMessage>,
 }
 
+/* [T-9] Contexto de la sesión de chat para generate_response.
+ * Agrupa parámetros relacionados para no exceder 7 argumentos. */
+pub struct AiSessionContext<'a> {
+    pub session_id: Uuid,
+    pub visitor_id: Option<&'a str>,
+    pub user_id: Option<Uuid>,
+}
+
 impl AiChatService {
     /// Genera respuesta de IA con soporte para tool use (function calling).
     /// Loop: envía mensajes → si la IA llama tools → ejecuta → reenvía resultados → repite.
@@ -115,8 +123,7 @@ impl AiChatService {
         config: &AiChatConfig,
         http_client: &reqwest::Client,
         stripe_key: Option<&str>,
-        session_id: Uuid,
-        visitor_id: Option<&str>,
+        ctx: AiSessionContext<'_>,
         user_message: &str,
     ) -> Result<AiResponse, String> {
         if !config.is_configured() {
@@ -130,8 +137,8 @@ impl AiChatService {
             });
         }
 
-        let system_prompt = build_system_prompt(pool, session_id, visitor_id).await;
-        let history = ChatRepository::list_messages(pool, session_id, 20, 0)
+        let system_prompt = build_system_prompt(pool, ctx.session_id, ctx.visitor_id, ctx.user_id).await;
+        let history = ChatRepository::list_messages(pool, ctx.session_id, 20, 0)
             .await
             .unwrap_or_default();
 
@@ -157,7 +164,7 @@ impl AiChatService {
                 /* La IA quiere llamar tools — ejecutarlas */
                 messages.push(choice["message"].clone());
                 let tool_results = process_tool_calls(
-                    pool, http_client, stripe_key, visitor_id, tool_calls, &mut rich_messages,
+                    pool, http_client, stripe_key, ctx.visitor_id, tool_calls, &mut rich_messages,
                 ).await;
 
                 if tool_results.iter().any(|r| r.contains("\"status\":\"escalated\"")) {
@@ -321,8 +328,14 @@ fn parse_escalation(raw: &str) -> (String, bool) {
     }
 }
 
-/// Construye system prompt dinámico según contexto de la sesión y visitante
-async fn build_system_prompt(pool: &PgPool, session_id: Uuid, visitor_id: Option<&str>) -> String {
+/// Construye system prompt dinámico según contexto de la sesión, visitante y usuario autenticado
+async fn build_system_prompt(
+    pool: &PgPool,
+    session_id: Uuid,
+    visitor_id: Option<&str>,
+    /* [T-9] user_id para clientes autenticados — agrega contexto de pedidos/hosting */
+    user_id: Option<Uuid>,
+) -> String {
     let mut prompt = String::from(
         /* [T-7] El agente NO debe revelar que es IA. Se presenta como miembro del equipo.
          * [T-2] Incluye instrucciones de tool use para mostrar servicios y crear facturas.
@@ -359,32 +372,7 @@ async fn build_system_prompt(pool: &PgPool, session_id: Uuid, visitor_id: Option
 
     /* [T-3] Agregar contexto del visitante si tiene perfil previo */
     if let Some(vid) = visitor_id {
-        if let Ok(Some(profile)) = ChatRepository::find_visitor_profile(pool, vid).await {
-            prompt.push_str("CONTEXTO DEL VISITANTE (conversaciones anteriores):\n");
-            if let Some(name) = &profile.display_name {
-                let _ = writeln!(prompt, "- Nombre: {name}");
-            }
-            if let Some(email) = &profile.email {
-                let _ = writeln!(prompt, "- Email: {email} (ya capturado, no volver a pedir)");
-            }
-            if profile.total_sessions > 1 {
-                let _ = writeln!(prompt, "- Visitas anteriores: {}", profile.total_sessions);
-            }
-            if let Some(summary) = &profile.context_summary {
-                if !summary.is_empty() {
-                    let _ = writeln!(prompt, "- Resumen de conversaciones previas: {summary}");
-                }
-            }
-            if let Some(prefs) = &profile.preferences {
-                if let Some(obj) = prefs.as_object() {
-                    if !obj.is_empty() {
-                        let _ = writeln!(prompt, "- Info del cliente: {prefs}");
-                    }
-                }
-            }
-            prompt.push_str("Usa esta información para personalizar la atención. Si el visitante \
-                            vuelve, salúdalo por su nombre si lo conoces.\n\n");
-        }
+        append_visitor_context(&mut prompt, pool, vid).await;
     }
 
     /* Agregar contexto de servicios */
@@ -429,5 +417,94 @@ async fn build_system_prompt(pool: &PgPool, session_id: Uuid, visitor_id: Option
         }
     }
 
+    /* [T-9] Contexto de cliente registrado (autenticado con JWT).
+     * Incluye datos del usuario, pedidos activos y suscripciones de hosting. */
+    if let Some(uid) = user_id {
+        append_registered_client_context(&mut prompt, pool, uid).await;
+    }
+
     prompt
+}
+
+/* [T-9] Helper: agrega contexto del visitante (perfil previo) al system prompt */
+async fn append_visitor_context(prompt: &mut String, pool: &PgPool, visitor_id: &str) {
+    if let Ok(Some(profile)) = ChatRepository::find_visitor_profile(pool, visitor_id).await {
+        prompt.push_str("CONTEXTO DEL VISITANTE (conversaciones anteriores):\n");
+        if let Some(name) = &profile.display_name {
+            let _ = writeln!(prompt, "- Nombre: {name}");
+        }
+        if let Some(email) = &profile.email {
+            let _ = writeln!(prompt, "- Email: {email} (ya capturado, no volver a pedir)");
+        }
+        if profile.total_sessions > 1 {
+            let _ = writeln!(prompt, "- Visitas anteriores: {}", profile.total_sessions);
+        }
+        if let Some(summary) = &profile.context_summary {
+            if !summary.is_empty() {
+                let _ = writeln!(prompt, "- Resumen de conversaciones previas: {summary}");
+            }
+        }
+        if let Some(prefs) = &profile.preferences {
+            if let Some(obj) = prefs.as_object() {
+                if !obj.is_empty() {
+                    let _ = writeln!(prompt, "- Info del cliente: {prefs}");
+                }
+            }
+        }
+        prompt.push_str("Usa esta información para personalizar la atención. Si el visitante \
+                        vuelve, salúdalo por su nombre si lo conoces.\n\n");
+    }
+}
+
+/* [T-9] Helper: agrega contexto de cliente registrado (usuario, pedidos, hosting) */
+async fn append_registered_client_context(prompt: &mut String, pool: &PgPool, uid: Uuid) {
+    let Ok(Some(user)) = UserRepository::find_by_id(pool, uid).await else { return };
+    prompt.push_str("CLIENTE REGISTRADO:\n");
+    let display = user.display_name.as_deref().unwrap_or(&user.username);
+    let _ = writeln!(prompt, "- Nombre: {display} ({email})", email = user.email);
+    let _ = writeln!(prompt, "- Rol: {:?}", user.role);
+    prompt.push_str("Ya está registrado — no pedir email ni nombre.\n\n");
+
+    /* Pedidos del cliente */
+    if let Ok(orders) = OrderRepository::list_orders_for_client(pool, uid).await {
+        if !orders.is_empty() {
+            prompt.push_str("PEDIDOS DEL CLIENTE:\n");
+            for order in orders.iter().take(5) {
+                let svc_info = OrderRepository::get_order_display_info(
+                    pool, order.service_id, order.plan_id,
+                )
+                .await
+                .ok();
+                let svc_title = svc_info
+                    .as_ref()
+                    .map_or("Servicio", |(t, _, _)| t.as_str());
+                let plan_name = svc_info
+                    .as_ref()
+                    .map_or("", |(_, _, p)| p.as_str());
+                let _ = writeln!(
+                    prompt,
+                    "- Orden #{}: {} ({}) — Estado: {:?}, Fase: {}",
+                    order.order_number, svc_title, plan_name,
+                    order.status, order.current_phase,
+                );
+            }
+            prompt.push_str("Puedes responder preguntas sobre el estado de sus pedidos.\n\n");
+        }
+    }
+
+    /* Suscripciones de hosting */
+    if let Ok(hostings) = HostingRepository::list_by_user_id(pool, uid).await {
+        if !hostings.is_empty() {
+            prompt.push_str("HOSTING DEL CLIENTE:\n");
+            for h in &hostings {
+                let domain = h.domain.as_deref().unwrap_or("sin dominio");
+                let _ = writeln!(
+                    prompt,
+                    "- Plan: {} — Dominio: {domain} — Estado: {}",
+                    h.plan, h.status,
+                );
+            }
+            prompt.push_str("Puedes responder preguntas sobre el estado de su hosting.\n\n");
+        }
+    }
 }

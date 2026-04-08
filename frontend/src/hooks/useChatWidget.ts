@@ -6,6 +6,7 @@
 
 import {useState, useCallback, useRef, useEffect} from 'react';
 import {buildVisitorWsUrl, apiUploadChatFile, type WsServerMessage, type ChatMessage} from '../api/chat';
+import {useAuthStore} from '../stores/authStore';
 
 const STORAGE_KEY_VISITOR_ID = 'nakomi_visitor_id';
 const STORAGE_KEY_SESSION_ID = 'nakomi_chat_session_id';
@@ -116,7 +117,9 @@ export function useChatWidget() {
         setConnecting(true);
 
         const visitorId = getOrCreateVisitorId();
-        const url = buildVisitorWsUrl(visitorId, visitorName);
+        /* [T-9] Enviar JWT si el usuario está autenticado */
+        const authToken = useAuthStore.getState().token;
+        const url = buildVisitorWsUrl(visitorId, visitorName, authToken);
         const ws = new WebSocket(url);
         wsRef.current = ws;
 

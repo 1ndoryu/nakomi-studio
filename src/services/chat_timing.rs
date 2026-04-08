@@ -37,6 +37,8 @@ pub struct TimingSessionDeps {
     pub http_client: reqwest::Client,
     pub stripe_key: Option<String>,
     pub visitor_id: String,
+    /* [T-9] user_id del cliente autenticado (None para visitantes anónimos) */
+    pub user_id: Option<uuid::Uuid>,
 }
 
 /* Constantes de timing configurables */
@@ -193,6 +195,7 @@ impl ChatTimingService {
             deps.http_client,
             deps.stripe_key,
             deps.visitor_id,
+            deps.user_id,
         ));
 
         tx
@@ -232,6 +235,7 @@ async fn session_timing_loop(
     http_client: reqwest::Client,
     stripe_key: Option<String>,
     visitor_id: String,
+    user_id: Option<Uuid>,
 ) {
     let mut buffer: Vec<String> = Vec::new();
     let mut is_typing = false;
@@ -274,6 +278,7 @@ async fn session_timing_loop(
             session_id,
             visitor_name.as_deref(),
             &visitor_id,
+            user_id,
             &combined,
             irrelevant_count,
             &pool,
@@ -367,6 +372,7 @@ async fn generate_ai_response(
     session_id: Uuid,
     visitor_name: Option<&str>,
     visitor_id: &str,
+    user_id: Option<Uuid>,
     combined: &str,
     mut irrelevant_count: u32,
     pool: &PgPool,
@@ -411,7 +417,9 @@ async fn generate_ai_response(
     irrelevant_count = 0;
 
     let ai_resp = AiChatService::generate_response(
-        pool, ai_config, http_client, stripe_key, session_id, Some(visitor_id), combined,
+        pool, ai_config, http_client, stripe_key,
+        crate::services::AiSessionContext { session_id, visitor_id: Some(visitor_id), user_id },
+        combined,
     )
     .await
     .unwrap_or_else(|e| AiResponse {

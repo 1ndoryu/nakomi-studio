@@ -13,7 +13,7 @@ mod order;
 mod payment;
 mod seed;
 
-pub use ai_chat::{AiChatConfig, AiChatService, AiResponse};
+pub use ai_chat::{AiChatConfig, AiChatService, AiResponse, AiSessionContext};
 pub use assignment::AssignmentService;
 pub use audit::AuditService;
 pub use auth::AuthService;

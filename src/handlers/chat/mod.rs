@@ -29,6 +29,8 @@ use crate::models::{ChatMessage, ChatMessageResponse};
 pub struct VisitorWsParams {
     pub visitor_id: String,
     pub visitor_name: Option<String>,
+    /* [T-9] Token JWT opcional para clientes autenticados */
+    pub token: Option<String>,
 }
 
 #[derive(Deserialize)]

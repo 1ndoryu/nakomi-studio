@@ -31,6 +31,8 @@ pub fn tool_definitions() -> Value {
     let mut tools = service_tool_defs();
     if let Some(arr) = tools.as_array_mut() {
         arr.extend(visitor_tool_defs().as_array().cloned().unwrap_or_default());
+        /* [T-9] Tools para clientes registrados */
+        arr.extend(registered_client_tool_defs().as_array().cloned().unwrap_or_default());
     }
     tools
 }
@@ -150,6 +152,7 @@ pub async fn execute_tool(
         "request_human_assistance" => exec_request_human(arguments),
         "capture_email" => exec_capture_email(pool, visitor_id, arguments).await,
         "save_client_info" => exec_save_client_info(pool, visitor_id, arguments).await,
+        "create_support_ticket" => exec_create_support_ticket(pool, visitor_id, arguments).await,
         _ => ToolExecResult {
             tool_result_json: json!({"error": "Tool desconocida"}).to_string(),
             rich_message: None,
@@ -585,5 +588,95 @@ async fn exec_save_client_info(
                 rich_message: None,
             }
         }
+    }
+}
+
+/* [T-9] Definición de tools para clientes registrados */
+fn registered_client_tool_defs() -> Value {
+    json!([
+        {
+            "type": "function",
+            "function": {
+                "name": "create_support_ticket",
+                "description": "Crea un ticket de soporte para el cliente. Úsalo cuando el cliente reporte un problema con su hosting, pedido, facturación o necesite asistencia técnica. Esto crea una nota interna que el equipo revisará.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "category": {
+                            "type": "string",
+                            "enum": ["hosting_issue", "order_issue", "billing_issue", "general"],
+                            "description": "Categoría del problema"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "Descripción detallada del problema reportado"
+                        },
+                        "priority": {
+                            "type": "string",
+                            "enum": ["low", "medium", "high"],
+                            "description": "Prioridad del ticket"
+                        }
+                    },
+                    "required": ["category", "description"]
+                }
+            }
+        }
+    ])
+}
+
+/* [T-9] Crear ticket de soporte: guarda como nota interna en la sesión de chat. */
+async fn exec_create_support_ticket(
+    pool: &PgPool,
+    visitor_id: Option<&str>,
+    args: &Value,
+) -> ToolExecResult {
+    let category = args["category"].as_str().unwrap_or("general");
+    let description = args["description"].as_str().unwrap_or("");
+    let priority = args["priority"].as_str().unwrap_or("medium");
+
+    if description.is_empty() {
+        return ToolExecResult {
+            tool_result_json: json!({"error": "Se necesita una descripción del problema"}).to_string(),
+            rich_message: None,
+        };
+    }
+
+    let ticket_content = format!(
+        "[TICKET SOPORTE] Cat: {category} | Prioridad: {priority} | Visitor: {} | Descripción: {description}",
+        visitor_id.unwrap_or("anónimo"),
+    );
+
+    /* Se almacena como nota en visitor_profile.context_summary para que el equipo lo vea.
+     * En el futuro se puede crear una tabla dedicada de tickets. */
+    if let Some(vid) = visitor_id {
+        let ticket_json = json!({
+            "type": "support_ticket",
+            "category": category,
+            "priority": priority,
+            "description": description,
+            "created_at": chrono::Utc::now().to_rfc3339(),
+        });
+        let _ = ChatRepository::update_visitor_preferences(pool, vid, &ticket_json).await;
+    }
+
+    tracing::info!("Ticket de soporte creado: {ticket_content}");
+
+    ToolExecResult {
+        tool_result_json: json!({
+            "status": "ok",
+            "message": "Ticket de soporte creado exitosamente. El equipo lo revisará pronto.",
+            "category": category,
+            "priority": priority,
+        })
+        .to_string(),
+        rich_message: Some(RichMessage {
+            content: format!("📋 Ticket de soporte creado — {category} ({priority})"),
+            message_type: "support_ticket".to_string(),
+            metadata: json!({
+                "category": category,
+                "priority": priority,
+                "description": description,
+            }),
+        }),
     }
 }

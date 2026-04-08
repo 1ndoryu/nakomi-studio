@@ -187,8 +187,11 @@ pub async fn send_message(
                     &state.ai_config,
                     &state.http_client,
                     state.stripe_secret_key.as_deref(),
-                    session_id,
-                    s.visitor_id.as_deref(),
+                    crate::services::AiSessionContext {
+                        session_id,
+                        visitor_id: s.visitor_id.as_deref(),
+                        user_id: None,
+                    },
                     &req.content,
                 )
                 .await
@@ -511,8 +514,13 @@ fn spawn_file_ai_processing(
                     };
 
                     if let Ok(ai_resp) = AiChatService::generate_response(
-                        &pool, &ai_config, &http_client,
-                        None, session_id, s.visitor_id.as_deref(), &user_msg,
+                        &pool, &ai_config, &http_client, None,
+                        crate::services::AiSessionContext {
+                            session_id,
+                            visitor_id: s.visitor_id.as_deref(),
+                            user_id: None,
+                        },
+                        &user_msg,
                     ).await {
                         for rm in &ai_resp.rich_messages {
                             let _ = chat_hub.send_rich_message(

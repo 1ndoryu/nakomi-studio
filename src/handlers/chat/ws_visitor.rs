@@ -51,6 +51,16 @@ async fn ws_visitor(
     })
 }
 
+/* [T-9] Verificar JWT opcional y extraer user_id si es válido.
+ * No bloquea la conexión si falla — simplemente trata al usuario como anónimo. */
+fn try_extract_user_id(token: Option<&str>, jwt_secret: &str) -> Option<uuid::Uuid> {
+    token.and_then(|t| {
+        crate::services::AuthService::verify_token(t, jwt_secret)
+            .ok()
+            .map(|claims| claims.sub)
+    })
+}
+
 async fn handle_visitor_ws(
     socket: WebSocket,
     state: AppState,
@@ -58,6 +68,12 @@ async fn handle_visitor_ws(
     visitor_ip: Option<String>,
     visitor_ua: Option<String>,
 ) {
+    /* [T-9] Detectar usuario autenticado si envió token JWT */
+    let user_id = try_extract_user_id(params.token.as_deref(), &state.jwt_secret);
+    if let Some(uid) = user_id {
+        tracing::info!("Chat visitor autenticado como user_id={uid}");
+    }
+
     let session = match state
         .chat_hub
         .get_or_create_visitor_session(
@@ -128,6 +144,7 @@ async fn handle_visitor_ws(
             http_client: state.http_client.clone(),
             stripe_key: state.stripe_secret_key.clone(),
             visitor_id: params.visitor_id.clone(),
+            user_id,
         },
     );
 
