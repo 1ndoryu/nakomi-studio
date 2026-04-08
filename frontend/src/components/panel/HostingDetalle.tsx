@@ -7,7 +7,7 @@
 import React from 'react';
 import {
     ArrowLeft, Globe, Server, Terminal,
-    CreditCard, Clock, ExternalLink, Copy, Zap,
+    CreditCard, Clock, ExternalLink, Copy, Zap, MessageSquare,
 } from 'lucide-react';
 import {useHostingDetalle, type HostingDetalleTab} from '../../hooks/useHostingDetalle';
 import {
@@ -134,6 +134,18 @@ export function HostingDetalle({
                         <span className="hostingDetalleHeaderPlan">
                             {HOSTING_PLAN_LABELS[sub.plan] || sub.plan} · ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
                         </span>
+                        {/* [094A-7] Contactar soporte: navega al chat del panel con contexto */}
+                        <Button
+                            type="button"
+                            variante="outline"
+                            tamano="pequeno"
+                            className="hostingDetalleSoporte"
+                            onClick={() => {
+                                window.dispatchEvent(new CustomEvent('panel-cambiar-tab', {detail: 'mensajes'}));
+                            }}
+                        >
+                            <MessageSquare size={14} /> Soporte
+                        </Button>
                     </div>
                 </div>
             </div>

@@ -54,6 +54,14 @@
     font-weight: 500;
 }
 
+/* [094A-7] Botón soporte en header de hosting detalle */
+.hostingDetalleSoporte {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+}
+
 /* ── Loading ─────────────────────────────── */
 
 .hostingDetalleLoading {
