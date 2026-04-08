@@ -30,6 +30,9 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     const [errorMsg, setErrorMsg] = useState('');
     /* [064A-60] Modo de pago seleccionable: full (20% desc), half_half (10%), phased (0%) */
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('full');
+    /* [084A-28] Meses de pago para hosting (1-12). No aplica a servicios. */
+    const [months, setMonths] = useState(1);
+    const isHosting = !!plan.periodo;
 
     /* Crear orden y redirigir a pasarela de pago */
     const crearOrdenYPagar = async () => {
@@ -38,8 +41,8 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             const orden = await apiCreateOrder({
                 service_slug: servicioSlug,
                 plan_slug: plan.id,
-                payment_mode: paymentMode,
-                client_notes: undefined
+                payment_mode: isHosting ? 'full' : paymentMode,
+                client_notes: isHosting && months > 1 ? `Pago anticipado: ${months} meses` : undefined
             });
 
             /* Intentar iniciar pago Stripe */
@@ -127,6 +130,9 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         errorMsg,
         paymentMode,
         setPaymentMode,
+        months,
+        setMonths,
+        isHosting,
         handleContinuar,
         handleAuth,
         reintentar

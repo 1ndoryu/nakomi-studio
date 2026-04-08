@@ -52,14 +52,22 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
     const {
         paso, email, setEmail, password, setPassword,
         emailExiste, errorMsg, paymentMode, setPaymentMode,
+        months, setMonths, isHosting,
         handleContinuar, handleAuth, reintentar
     } = useModalCompra({plan, servicioSlug, onClose: onCerrar});
 
-    /* [084A-12] Precio dinámico según modo de pago seleccionado */
+    /* [084A-28] Descuento progresivo por meses para hosting: 0% (1m) → 33% (12m) */
+    const hostingDescuento = isHosting ? (months - 1) * 3 : 0;
+
+    /* [084A-12] Precio dinámico según modo de pago o meses seleccionados */
     const baseCents = parsePrecioCents(plan.precio);
-    const descuento = PAYMENT_MODE_DISCOUNT[paymentMode];
-    const finalCents = baseCents != null ? Math.round(baseCents * (1 - descuento / 100)) : null;
-    const precioFinal = finalCents != null ? formatPrecioDescontado(finalCents) : plan.precio;
+    const descuento = isHosting ? hostingDescuento : PAYMENT_MODE_DISCOUNT[paymentMode];
+    const totalCents = baseCents != null
+        ? (isHosting
+            ? Math.round(baseCents * months * (1 - descuento / 100))
+            : Math.round(baseCents * (1 - descuento / 100)))
+        : null;
+    const precioFinal = totalCents != null ? formatPrecioDescontado(totalCents) : plan.precio;
     const tieneDescuento = baseCents != null && descuento > 0;
 
     return (
@@ -75,28 +83,64 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
             {/* Paso resumen: selector de modo de pago + botón continuar */}
             {paso === 'resumen' && (
                 <div className="modalCompraAcciones">
-                    {/* [064A-60] Selector de modo de pago */}
-                    <div className="modalCompraModos" role="radiogroup" aria-label="Modo de pago">
-                        {(['full', 'half_half', 'phased'] as PaymentMode[]).map(mode => (
-                            <div
-                                key={mode}
-                                role="radio"
-                                aria-checked={paymentMode === mode}
-                                tabIndex={0}
-                                className={`modalCompraModo ${paymentMode === mode ? 'modalCompraModoActivo' : ''}`}
-                                onClick={() => setPaymentMode(mode)}
-                                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setPaymentMode(mode); }}
-                            >
-                                <span className="modalCompraModoNombre">{PAYMENT_MODE_LABELS[mode]}</span>
-                                <span className="modalCompraModoDesc">{PAYMENT_MODE_DESC[mode]}</span>
-                                {PAYMENT_MODE_DISCOUNT[mode] > 0 && (
-                                    <span className="modalCompraModoDescuento">
-                                        {PAYMENT_MODE_DISCOUNT[mode]}% descuento
-                                    </span>
-                                )}
+                    {/* [084A-28] Hosting: selector de meses con descuento progresivo */}
+                    {isHosting ? (
+                        <div className="modalCompraMeses">
+                            <p className="modalCompraMesesLabel">¿Cuántos meses quieres pagar?</p>
+                            <div className="modalCompraMesesStepper">
+                                <Button
+                                    variante="outline"
+                                    tamano="pequeno"
+                                    onClick={() => setMonths(Math.max(1, months - 1))}
+                                    disabled={months <= 1}
+                                    type="button"
+                                >−</Button>
+                                <span className="modalCompraMesesValor">{months}</span>
+                                <Button
+                                    variante="outline"
+                                    tamano="pequeno"
+                                    onClick={() => setMonths(Math.min(12, months + 1))}
+                                    disabled={months >= 12}
+                                    type="button"
+                                >+</Button>
                             </div>
-                        ))}
-                    </div>
+                            {baseCents != null && (
+                                <div className="modalCompraMesesDetalle">
+                                    <span className="modalCompraMesesCalculo">
+                                        {plan.precio}/mes × {months} {months === 1 ? 'mes' : 'meses'}
+                                    </span>
+                                    {tieneDescuento && (
+                                        <span className="modalCompraMesesDescuento">
+                                            {descuento}% descuento
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        /* [064A-60] Servicios: selector de modo de pago */
+                        <div className="modalCompraModos" role="radiogroup" aria-label="Modo de pago">
+                            {(['full', 'half_half', 'phased'] as PaymentMode[]).map(mode => (
+                                <div
+                                    key={mode}
+                                    role="radio"
+                                    aria-checked={paymentMode === mode}
+                                    tabIndex={0}
+                                    className={`modalCompraModo ${paymentMode === mode ? 'modalCompraModoActivo' : ''}`}
+                                    onClick={() => setPaymentMode(mode)}
+                                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setPaymentMode(mode); }}
+                                >
+                                    <span className="modalCompraModoNombre">{PAYMENT_MODE_LABELS[mode]}</span>
+                                    <span className="modalCompraModoDesc">{PAYMENT_MODE_DESC[mode]}</span>
+                                    {PAYMENT_MODE_DISCOUNT[mode] > 0 && (
+                                        <span className="modalCompraModoDescuento">
+                                            {PAYMENT_MODE_DISCOUNT[mode]}% descuento
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     {/* [084A-12] Resumen de precio con descuento aplicado */}
                     {baseCents != null && (
                         <div className="modalCompraPrecioResumen">

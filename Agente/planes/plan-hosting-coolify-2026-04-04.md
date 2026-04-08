@@ -1,4 +1,5 @@
 # Plan: Servicio de Hosting con Coolify Manager RS
+
 **Fecha:** 2026-04-04  
 **ID tarea:** 044A-29  
 **Estado:** Planificación
@@ -14,6 +15,7 @@ Convertir Coolify Manager RS en la infraestructura operativa que permite a Nakom
 ## Estado actual de Coolify Manager RS
 
 ### Lo que YA funciona (no hay que reimplementar)
+
 - 29 comandos CLI + 26 herramientas MCP
 - Backups externos a Google Drive con retención configurable
 - Restore validado con rollback transaccional
@@ -25,6 +27,7 @@ Convertir Coolify Manager RS en la infraestructura operativa que permite a Nakom
 - Configuración declarativa en `settings.json`
 
 ### Lo que está BLOQUEADO o INCOMPLETO
+
 - **VPS2 sin Coolify operativo** — necesita `apiToken`, `serverUuid`, `projectUuid`
 - **Contabo DNS API** — `apiPassword` no validada, conmutación DNS manual
 - **Google Drive OAuth** — requiere `auth-drive` manual por primera vez
@@ -47,6 +50,7 @@ coolify-manager install-coolify --target standby-vps2
 ```
 
 **Pasos:**
+
 1. Verificar que VPS2 está accesible por SSH
 2. Ejecutar `install-coolify` para instalar Coolify en VPS2
 3. Obtener `apiToken`, `serverUuid`, `projectUuid` de la nueva instancia Coolify
@@ -58,15 +62,18 @@ coolify-manager install-coolify --target standby-vps2
 #### 1.2 Activar backups automáticos
 
 **Google Drive:**
+
 1. Ejecutar `auth-drive` para autorizar OAuth (una sola vez)
 2. Verificar que el `rootFolderId` apunta a la carpeta correcta
 3. Crear backup manual de prueba: `backup --name nakomi-rust --tier manual --label test`
 4. Verificar que el backup se sube a Google Drive
 
 **Programar backups:**
+
 ```bash
 coolify-manager schedule-backup --name nakomi-rust
 ```
+
 - Diarios: retener 2 copias
 - Semanales: retener 2 copias
 
@@ -80,6 +87,7 @@ coolify-manager schedule-backup --name nakomi-rust
 #### 1.4 Configurar failover automático
 
 **Pipeline de failover (cuando VPS1 cae):**
+
 ```
 1. Health check detecta fallo
 2. failover --name {sitio} --target standby-vps2
@@ -116,13 +124,13 @@ coolify-manager schedule-backup --name nakomi-rust
 
 Coolify Manager ya soporta templates en `config/templates/`. Crear templates para los servicios de Nakomi:
 
-| Template | Contenido | Para plan |
-|---|---|---|
-| `wordpress-basico` | WP + MariaDB + Apache, sin cache | Hosting Básico |
-| `wordpress-pro` | WP + MariaDB + Apache + Redis cache + CDN headers | Hosting Pro |
-| `wordpress-ecommerce` | WP + MariaDB + WooCommerce + Redis + SMTP | E-commerce |
-| `rust-app` | Rust + PostgreSQL + Nginx proxy | Aplicación custom |
-| `static-site` | Nginx + build artifacts | Landing pages |
+| Template              | Contenido                                         | Para plan         |
+| --------------------- | ------------------------------------------------- | ----------------- |
+| `wordpress-basico`    | WP + MariaDB + Apache, sin cache                  | Hosting Básico    |
+| `wordpress-pro`       | WP + MariaDB + Apache + Redis cache + CDN headers | Hosting Pro       |
+| `wordpress-ecommerce` | WP + MariaDB + WooCommerce + Redis + SMTP         | E-commerce        |
+| `rust-app`            | Rust + PostgreSQL + Nginx proxy                   | Aplicación custom |
+| `static-site`         | Nginx + build artifacts                           | Landing pages     |
 
 #### 2.3 Configuración por cliente en settings.json
 
@@ -135,7 +143,7 @@ Coolify Manager ya soporta templates en `config/templates/`. Crear templates par
             "template": "wordpress-pro",
             "target": "produccion-vps1",
             "plan": "pro",
-            "backupPolicy": { "daily": 2, "weekly": 2 },
+            "backupPolicy": {"daily": 2, "weekly": 2},
             "cliente": {
                 "nombre": "Empresa Ejemplo",
                 "email": "admin@ejemplo.com",
@@ -156,12 +164,12 @@ Coolify Manager ya soporta templates en `config/templates/`. Crear templates par
 
 Crear planes en el frontend (misma estructura que los planes existentes de otros servicios):
 
-| Plan | Precio | Incluye |
-|---|---|---|
-| **Básico** | $15/mes | 1 sitio WP, 5GB, SSL, backup semanal, soporte email |
-| **Profesional** | $35/mes | 1 sitio WP, 20GB, SSL, backup diario, Redis, soporte prioritario |
-| **E-commerce** | $60/mes | 1 sitio WP + Woo, 50GB, SSL, backup diario, Redis, SMTP, soporte 24h |
-| **Custom** | Cotización | Apps Rust/React, PostgreSQL, WebSocket, infra dedicada |
+| Plan            | Precio     | Incluye                                                              |
+| --------------- | ---------- | -------------------------------------------------------------------- |
+| **Básico**      | $15/mes    | 1 sitio WP, 5GB, SSL, backup semanal, soporte email                  |
+| **Profesional** | $35/mes    | 1 sitio WP, 20GB, SSL, backup diario, Redis, soporte prioritario     |
+| **E-commerce**  | $60/mes    | 1 sitio WP + Woo, 50GB, SSL, backup diario, Redis, SMTP, soporte 24h |
+| **Custom**      | Cotización | Apps Rust/React, PostgreSQL, WebSocket, infra dedicada               |
 
 #### 3.2 Backend: endpoint de provisioning
 
@@ -180,6 +188,7 @@ struct ProvisionRequest {
 ```
 
 **Flujo inicial (semi-automático):**
+
 1. Cliente selecciona plan y paga (Stripe)
 2. Backend recibe webhook de Stripe → crea registro en BD
 3. Notificación a admin (email/panel) con datos del pedido
@@ -187,6 +196,7 @@ struct ProvisionRequest {
 5. Admin confirma en el panel → cliente recibe email con credenciales
 
 **Flujo futuro (Fase 5 — automático):**
+
 1. Cliente paga → webhook Stripe
 2. Backend llama a Coolify Manager RS vía subprocess o HTTP
 3. Provisioning automático sin intervención humana
@@ -227,6 +237,7 @@ CREATE TABLE hosting_events (
 #### 4.1 Ruta: `/panel/hosting`
 
 **Vista principal:**
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Hosting Dashboard                                          │
@@ -246,6 +257,7 @@ CREATE TABLE hosting_events (
 ```
 
 **Acciones por sitio:**
+
 - Health check en tiempo real
 - Ver logs (últimas 50 líneas)
 - Trigger backup manual
@@ -256,19 +268,20 @@ CREATE TABLE hosting_events (
 
 #### 4.2 Backend: endpoints de gestión
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/hosting/sites` | Listar sitios con estado |
-| GET | `/api/hosting/sites/:name/health` | Health check de un sitio |
-| GET | `/api/hosting/sites/:name/logs` | Logs del contenedor |
-| POST | `/api/hosting/sites/:name/backup` | Trigger backup |
-| POST | `/api/hosting/sites/:name/restore` | Restaurar backup |
-| POST | `/api/hosting/sites/:name/restart` | Reiniciar servicios |
-| GET | `/api/hosting/sites/:name/events` | Historial de eventos |
-| PATCH | `/api/hosting/sites/:name/status` | Suspender/reactivar |
+| Método | Ruta                               | Descripción              |
+| ------ | ---------------------------------- | ------------------------ |
+| GET    | `/api/hosting/sites`               | Listar sitios con estado |
+| GET    | `/api/hosting/sites/:name/health`  | Health check de un sitio |
+| GET    | `/api/hosting/sites/:name/logs`    | Logs del contenedor      |
+| POST   | `/api/hosting/sites/:name/backup`  | Trigger backup           |
+| POST   | `/api/hosting/sites/:name/restore` | Restaurar backup         |
+| POST   | `/api/hosting/sites/:name/restart` | Reiniciar servicios      |
+| GET    | `/api/hosting/sites/:name/events`  | Historial de eventos     |
+| PATCH  | `/api/hosting/sites/:name/status`  | Suspender/reactivar      |
 
 **Integración con Coolify Manager RS:**
 Los endpoints del backend Rust de Nakomi invocan `coolify-manager` como subprocess:
+
 ```rust
 use std::process::Command;
 
@@ -292,13 +305,15 @@ Stripe webhook → Backend Nakomi → Ejecuta coolify-manager new → Health che
 ```
 
 Requiere:
+
 - Coolify Manager RS compilado y accesible en el servidor
 - SSH keys configuradas automáticamente
-- DNS wildcarding (*.nakomi-hosting.com) o Contabo API operativa
+- DNS wildcarding (\*.nakomi-hosting.com) o Contabo API operativa
 
 #### 5.2 Health monitoring continuo
 
 **Servicio en background (`src/services/hosting_monitor.rs`):**
+
 ```
 Loop cada 5 minutos:
   Para cada sitio activo:
@@ -324,30 +339,30 @@ Suspensión = el sitio se apaga pero los datos se preservan por 30 días. Despu�
 
 ## Orden de ejecución recomendado
 
-| Prioridad | Fase | Dependencias | Complejidad |
-|---|---|---|---|
-| 1 | Fase 1.1 — VPS2 standby | Acceso SSH a VPS2 | Alta |
-| 2 | Fase 1.2 — Backups automáticos | Google Drive OAuth | Media |
-| 3 | Fase 2.1 — Workflow de alta | Fase 1 | Media |
-| 4 | Fase 3.1 — Planes en frontend | Ninguna | Baja |
-| 5 | Fase 3.3 — Modelo de datos | Ninguna | Baja |
-| 6 | Fase 3.2 — Endpoint provisioning | Fase 3.3 + Stripe | Media |
-| 7 | Fase 4 — Panel admin | Fase 3.3 + Coolify Manager | Alta |
-| 8 | Fase 1.3 — Contabo DNS | Credenciales Contabo | Media |
-| 9 | Fase 1.4 — Failover automático | Fase 1.1 + 1.3 | Alta |
-| 10 | Fase 5 — Automatización | Todo lo anterior | Alta |
+| Prioridad | Fase                             | Dependencias               | Complejidad |
+| --------- | -------------------------------- | -------------------------- | ----------- |
+| 1         | Fase 1.1 — VPS2 standby          | Acceso SSH a VPS2          | Alta        |
+| 2         | Fase 1.2 — Backups automáticos   | Google Drive OAuth         | Media       |
+| 3         | Fase 2.1 — Workflow de alta      | Fase 1                     | Media       |
+| 4         | Fase 3.1 — Planes en frontend    | Ninguna                    | Baja        |
+| 5         | Fase 3.3 — Modelo de datos       | Ninguna                    | Baja        |
+| 6         | Fase 3.2 — Endpoint provisioning | Fase 3.3 + Stripe          | Media       |
+| 7         | Fase 4 — Panel admin             | Fase 3.3 + Coolify Manager | Alta        |
+| 8         | Fase 1.3 — Contabo DNS           | Credenciales Contabo       | Media       |
+| 9         | Fase 1.4 — Failover automático   | Fase 1.1 + 1.3             | Alta        |
+| 10        | Fase 5 — Automatización          | Todo lo anterior           | Alta        |
 
 ---
 
 ## Dependencias externas
 
-| Recurso | Estado | Acción requerida |
-|---|---|---|
-| VPS2 SSH | Por verificar | Confirmar acceso |
-| Google Drive OAuth | Manual (una vez) | Ejecutar `auth-drive` |
-| Contabo API password | Bloqueado | Validar credenciales |
-| Stripe account | Existente (planes actuales) | Crear products de hosting |
-| Coolify Manager RS binario en VPS | No desplegado | Compilar y subir |
+| Recurso                           | Estado                      | Acción requerida          |
+| --------------------------------- | --------------------------- | ------------------------- |
+| VPS2 SSH                          | Por verificar               | Confirmar acceso          |
+| Google Drive OAuth                | Manual (una vez)            | Ejecutar `auth-drive`     |
+| Contabo API password              | Bloqueado                   | Validar credenciales      |
+| Stripe account                    | Existente (planes actuales) | Crear products de hosting |
+| Coolify Manager RS binario en VPS | No desplegado               | Compilar y subir          |
 
 ---
 
