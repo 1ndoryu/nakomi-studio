@@ -52,7 +52,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~La pagina de disponibles para el usuario empleado se ve mal, hay que reahacerla desde cero, no la entiendo. Igual la pagina delegaciones.~~ ✅ (074A-58: rediseño completo — cards horizontales light con icon panel)
 
-- El contenido de los servicios del CMS no matchea el front. (Nota: 074A-21 conectó servicios públicos a API. Si persiste en blog/proyectos especificar cuál)
+- ~~El contenido de los servicios del CMS no matchea el front.~~ ✅ (084A-6: ServiceDetailResponse ampliado con content, gallery, meta_title, meta_description — la API pública ahora devuelve todos los campos editables del CMS)
 
 - ~~No veo donde se modifican los planes de los servicios.~~ ✅ (074A-66: tab Planes en EditorServicio + PUT endpoint batch save)
 

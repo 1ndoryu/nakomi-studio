@@ -229,7 +229,9 @@ impl From<OrderPhase> for OrderPhaseResponse {
 
 /// Detalle completo de un servicio con sus planes
 /* [074A-21] Ampliado con image_url y base_price_cents para que el frontend público
- * pueda mostrar la misma info que el CMS. */
+ * pueda mostrar la misma info que el CMS.
+ * [084A-6] Añadidos content, gallery, meta_title, meta_description para que
+ * la API pública devuelva todo lo que el admin edita en el CMS. */
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ServiceDetailResponse {
     pub id: Uuid,
@@ -239,6 +241,10 @@ pub struct ServiceDetailResponse {
     pub image_url: Option<String>,
     pub base_price_cents: i32,
     pub skills: serde_json::Value,
+    pub content: Option<String>,
+    pub gallery: serde_json::Value,
+    pub meta_title: Option<String>,
+    pub meta_description: Option<String>,
     pub plans: Vec<ServicePlanResponse>,
 }
 

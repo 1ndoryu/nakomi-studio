@@ -126,7 +126,9 @@ export async function apiSaveServicePlans(serviceId: string, plans: SavePlanBody
     return data;
 }
 
-/* [074A-21] Endpoints públicos de servicios (sin auth) */
+/* [074A-21] Endpoints públicos de servicios (sin auth)
+ * [084A-6] Añadidos content, gallery, meta_title, meta_description
+ * para que el frontend público reciba todo lo que el admin edita. */
 export interface PublicServicePlan {
     id: string;
     slug: string;
@@ -147,6 +149,10 @@ export interface PublicService {
     image_url: string | null;
     base_price_cents: number;
     skills: unknown[];
+    content: string | null;
+    gallery: unknown;
+    meta_title: string | null;
+    meta_description: string | null;
     plans: PublicServicePlan[];
 }
 

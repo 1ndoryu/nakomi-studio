@@ -48,6 +48,10 @@ impl OrderService {
                 image_url: svc.image_url,
                 base_price_cents: svc.base_price_cents,
                 skills: svc.skills,
+                content: svc.content,
+                gallery: svc.gallery,
+                meta_title: svc.meta_title,
+                meta_description: svc.meta_description,
                 plans: plan_responses,
             });
         }
@@ -90,6 +94,10 @@ impl OrderService {
             image_url: svc.image_url,
             base_price_cents: svc.base_price_cents,
             skills: svc.skills,
+            content: svc.content,
+            gallery: svc.gallery,
+            meta_title: svc.meta_title,
+            meta_description: svc.meta_description,
             plans: plan_responses,
         })
     }
