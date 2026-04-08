@@ -266,6 +266,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         chat_hub,
         ai_config,
         notification_hub,
+        chat_timing: crate::services::ChatTimingService::new(),
         contabo_service,
         hosting_stripe_config,
     };

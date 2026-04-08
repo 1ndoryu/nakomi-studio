@@ -210,9 +210,10 @@ pub async fn send_message(
                                 notification_type: crate::models::NOTIF_ESCALATION_NEEDED
                                     .to_string(),
                                 title: format!("Escalación: {visitor} necesita ayuda"),
-                                body: Some(format!(
+                                body: Some(
                                     "La IA detectó que se requiere intervención humana en la sesión de chat."
-                                )),
+                                        .to_string()
+                                ),
                                 link: Some(format!("/admin/chat?session={session_id}")),
                                 reference_type: Some("chat_session".to_string()),
                                 reference_id: Some(session_id),

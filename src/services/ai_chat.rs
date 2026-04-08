@@ -84,7 +84,7 @@ impl AiChatConfig {
     }
 
     /* [064A-29] Selecciona la siguiente API key en rotacion round-robin */
-    fn next_key(&self) -> Option<&str> {
+    pub(crate) fn next_key(&self) -> Option<&str> {
         if self.api_keys.is_empty() {
             return None;
         }

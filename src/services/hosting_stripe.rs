@@ -320,12 +320,16 @@ impl HostingStripeService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    /* Mutex para serializar tests que tocan env vars (set_var no es thread-safe) */
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     /* --- HostingStripeConfig::from_env --- */
 
     #[test]
     fn config_from_env_valid_prices() {
-        /* Simular variables de entorno con Price IDs válidos */
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_BASICO", "price_test_basico");
         std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_PRO", "price_test_pro");
         std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE", "price_test_ecommerce");
@@ -338,7 +342,6 @@ mod tests {
         assert_eq!(config.price_pro, "price_test_pro");
         assert_eq!(config.price_ecommerce, "price_test_ecommerce");
 
-        /* Cleanup */
         std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_BASICO");
         std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_PRO");
         std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE");
@@ -346,7 +349,7 @@ mod tests {
 
     #[test]
     fn config_from_env_invalid_format_rejected() {
-        /* Price IDs que no empiezan con "price_" deben ser rechazados */
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_BASICO", "invalid_basico");
         std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_PRO", "price_test_pro");
         std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE", "price_test_ecommerce");
@@ -361,7 +364,7 @@ mod tests {
 
     #[test]
     fn config_from_env_missing_var_returns_none() {
-        /* Sin variables de entorno debería retornar None */
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_BASICO");
         std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_PRO");
         std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE");

@@ -1,6 +1,7 @@
 /* [P-1 Chatbot v2] WS handler del visitante (anónimo o cliente).
  * Endpoint: /ws/chat/visitor?visitor_id=X&visitor_name=Y
- * Captura IP y User-Agent, reutiliza sesión activa, reenvía historial. */
+ * Captura IP y User-Agent, reutiliza sesión activa, reenvía historial.
+ * [T-1] Usa ChatTimingService para rate limiting y timing inteligente. */
 
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{ConnectInfo, Query, State, WebSocketUpgrade};
@@ -11,7 +12,7 @@ use futures::{SinkExt, StreamExt};
 use std::net::SocketAddr;
 
 use crate::models::{WsClientMessage, WsServerMessage};
-use crate::services::AiChatService;
+use crate::services::{RateCheckResult, TimingEvent};
 use crate::AppState;
 
 use super::VisitorWsParams;
@@ -77,28 +78,9 @@ async fn handle_visitor_ws(
     let mut rx = state.chat_hub.subscribe(session_id);
     let (mut sender, mut receiver) = socket.split();
 
-    /* [064A-29] Enviar historial de mensajes previos al reconectar.
-     * El frontend deduplica por ID, asi que no hay riesgo de duplicados. */
-    if let Ok(history) =
-        crate::repositories::ChatRepository::list_messages(&state.pool, session_id, 50, 0).await
-    {
-        for msg in history {
-            let ws_msg = WsServerMessage::Message {
-                id: msg.id,
-                session_id: msg.session_id,
-                sender: msg.sender_type,
-                sender_id: msg.sender_id,
-                content: msg.content,
-                created_at: msg.created_at,
-                message_type: msg.message_type,
-                metadata: msg.metadata,
-            };
-            if let Ok(json) = serde_json::to_string(&ws_msg) {
-                if sender.send(Message::Text(json)).await.is_err() {
-                    return;
-                }
-            }
-        }
+    /* [064A-29] Enviar historial de mensajes previos al reconectar */
+    if send_history(&state, session_id, &mut sender).await.is_err() {
+        return;
     }
 
     /* Notificar a staff de nueva sesión */
@@ -120,13 +102,70 @@ async fn handle_visitor_ws(
         }
     });
 
-    /* Recibir mensajes del visitante */
-    let hub = state.chat_hub.clone();
-    let ai_config = state.ai_config.clone();
-    let pool = state.pool.clone();
-    let notif_hub = state.notification_hub.clone();
-    let vid = params.visitor_id.clone();
+    /* [T-1] Registrar sesión en timing service */
+    let timing_tx = state.chat_timing.register_session(
+        session_id,
+        session.visitor_name.clone(),
+        state.pool.clone(),
+        state.ai_config.clone(),
+        state.chat_hub.clone(),
+        state.notification_hub.clone(),
+    );
 
+    /* Procesar mensajes del visitante */
+    process_visitor_messages(
+        &mut receiver,
+        &state,
+        session_id,
+        &params.visitor_id,
+        &timing_tx,
+    )
+    .await;
+
+    /* Cleanup */
+    state.chat_timing.unregister_session(session_id);
+    send_task.abort();
+}
+
+/* Enviar historial de mensajes al visitante al reconectar */
+async fn send_history(
+    state: &AppState,
+    session_id: uuid::Uuid,
+    sender: &mut futures::stream::SplitSink<WebSocket, Message>,
+) -> Result<(), ()> {
+    if let Ok(history) =
+        crate::repositories::ChatRepository::list_messages(&state.pool, session_id, 50, 0).await
+    {
+        for msg in history {
+            let ws_msg = WsServerMessage::Message {
+                id: msg.id,
+                session_id: msg.session_id,
+                sender: msg.sender_type,
+                sender_id: msg.sender_id,
+                content: msg.content,
+                created_at: msg.created_at,
+                message_type: msg.message_type,
+                metadata: msg.metadata,
+            };
+            if let Ok(json) = serde_json::to_string(&ws_msg) {
+                if sender.send(Message::Text(json)).await.is_err() {
+                    return Err(());
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/* Loop principal de procesamiento de mensajes del visitante.
+ * Aplica rate limiting, persiste mensajes y envía eventos al timing service. */
+async fn process_visitor_messages(
+    receiver: &mut futures::stream::SplitStream<WebSocket>,
+    state: &AppState,
+    session_id: uuid::Uuid,
+    visitor_id: &str,
+    timing_tx: &tokio::sync::mpsc::Sender<TimingEvent>,
+) {
     while let Some(Ok(msg)) = receiver.next().await {
         let Message::Text(text) = msg else {
             continue;
@@ -137,76 +176,50 @@ async fn handle_visitor_ws(
 
         match ws_msg {
             WsClientMessage::Message { content } => {
-                let _ = hub
-                    .send_message(session_id, "client", Some(&vid), &content)
+                /* [T-1] Rate limiting antes de procesar */
+                let (rate_result, rate_msg) =
+                    state.chat_timing.check_rate(visitor_id);
+                match rate_result {
+                    RateCheckResult::Muted => {
+                        if let Some(w) = rate_msg {
+                            let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                        }
+                        continue;
+                    }
+                    RateCheckResult::Closed => {
+                        if let Some(w) = rate_msg {
+                            let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                        }
+                        let _ = state.chat_hub.close_session(session_id).await;
+                        return;
+                    }
+                    RateCheckResult::Warning => {
+                        if let Some(w) = rate_msg {
+                            let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                        }
+                    }
+                    RateCheckResult::Ok => {}
+                }
+
+                let _ = state.chat_hub
+                    .send_message(session_id, "client", Some(visitor_id), &content)
                     .await;
-                maybe_ai_reply(&pool, &ai_config, &hub, &notif_hub, session_id, &content).await;
+                let _ = timing_tx.send(TimingEvent::Message(content)).await;
             }
             WsClientMessage::Typing { content } => {
-                hub.send_typing(session_id, "client", &content);
-            }
-            WsClientMessage::Close => {
-                let _ = hub.close_session(session_id).await;
-                break;
-            }
-            _ => {} /* join/toggle_ai son solo para staff */
-        }
-    }
-
-    send_task.abort();
-}
-
-/* Si IA habilitada y no hay staff asignado, generar y enviar respuesta AI.
- * [T-6] Si la IA señala escalación, notificar a todos los admins. */
-async fn maybe_ai_reply(
-    pool: &sqlx::PgPool,
-    ai_config: &crate::services::AiChatConfig,
-    hub: &crate::services::ChatHub,
-    notification_hub: &crate::services::NotificationHub,
-    session_id: uuid::Uuid,
-    content: &str,
-) {
-    if let Ok(Some(s)) =
-        crate::repositories::ChatRepository::find_session_by_id(pool, session_id).await
-    {
-        if s.ai_enabled && s.assigned_staff_id.is_none() {
-            let ai_resp = AiChatService::generate_response(pool, ai_config, session_id, content)
-                .await
-                .unwrap_or_else(|e| crate::services::AiResponse {
-                    text: format!("Error IA: {e}"),
-                    needs_escalation: true,
-                });
-            let _ = hub
-                .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
-                .await;
-
-            /* [T-6] Notificar admins si se detectó escalación */
-            if ai_resp.needs_escalation {
-                if let Ok(admin_ids) =
-                    crate::repositories::UserRepository::admin_ids(pool).await
-                {
-                    if !admin_ids.is_empty() {
-                        let visitor_name = s.visitor_name.as_deref().unwrap_or("Visitante");
-                        let base = crate::models::CreateNotification {
-                            user_id: uuid::Uuid::nil(),
-                            notification_type: crate::models::NOTIF_ESCALATION_NEEDED
-                                .to_string(),
-                            title: format!("Escalación: {visitor_name} necesita ayuda"),
-                            body: Some(format!(
-                                "La IA detectó que se requiere intervención humana en la sesión de chat con {visitor_name}."
-                            )),
-                            link: Some(format!("/admin/chat?session={session_id}")),
-                            reference_type: Some("chat_session".to_string()),
-                            reference_id: Some(session_id),
-                        };
-                        let _ = notification_hub.notify_many(&admin_ids, &base).await;
-                        tracing::info!(
-                            "T-6: escalación enviada a {} admins para sesión {session_id}",
-                            admin_ids.len()
-                        );
-                    }
+                state.chat_hub.send_typing(session_id, "client", &content);
+                if content.is_empty() {
+                    let _ = timing_tx.send(TimingEvent::TypingStop).await;
+                } else {
+                    let _ = timing_tx.send(TimingEvent::TypingStart).await;
                 }
             }
+            WsClientMessage::Close => {
+                let _ = timing_tx.send(TimingEvent::Disconnect).await;
+                let _ = state.chat_hub.close_session(session_id).await;
+                return;
+            }
+            _ => {} /* join/toggle_ai son solo para staff */
         }
     }
 }
