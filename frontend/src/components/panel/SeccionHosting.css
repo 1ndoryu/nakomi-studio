@@ -131,18 +131,13 @@
     margin-left: auto;
 }
 
-/* Status badges */
+/* Status badges — [074A-62] Colores eliminados por request del usuario */
 .hostingStatus {
     font-size: var(--text-xs);
     font-weight: 600;
     flex-shrink: 0;
+    color: var(--text-tertiary);
 }
-
-.hostingStatus--pending     { color: var(--color-warning); }
-.hostingStatus--provisioning { color: var(--color-info); }
-.hostingStatus--active       { color: var(--color-success); }
-.hostingStatus--suspended    { color: var(--color-error); }
-.hostingStatus--cancelled    { color: var(--text-tertiary); }
 
 .hostingMenuWrapper {
     position: relative;
