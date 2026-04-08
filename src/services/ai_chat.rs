@@ -95,22 +95,31 @@ impl AiChatConfig {
 
 pub struct AiChatService;
 
+/* [T-6] Respuesta de IA con señal de escalación.
+ * needs_escalation = true si la IA detecta que necesita intervención humana. */
+pub struct AiResponse {
+    pub text: String,
+    pub needs_escalation: bool,
+}
+
 impl AiChatService {
     /// Genera respuesta de IA para un mensaje en una sesión.
     /// Usa Groq API (OpenAI-compatible) con rotación de keys y retry automático.
+    /// Si la IA detecta que necesita escalación humana, retorna `needs_escalation` = true.
     pub async fn generate_response(
         pool: &PgPool,
         config: &AiChatConfig,
         session_id: Uuid,
         user_message: &str,
-    ) -> Result<String, String> {
+    ) -> Result<AiResponse, String> {
         if !config.is_configured() {
             tracing::warn!("AI: sin API keys configuradas, usando fallback");
-            return Ok(
-                "Un miembro del equipo se conectará pronto para ayudarte. \
-                 Mientras tanto, ¿en qué puedo orientarte?"
+            return Ok(AiResponse {
+                text: "Un miembro del equipo se conectará pronto para ayudarte. \
+                       Mientras tanto, ¿en qué puedo orientarte?"
                     .to_string(),
-            );
+                needs_escalation: true,
+            });
         }
 
         let system_prompt = build_system_prompt(pool, session_id).await;
@@ -203,17 +212,36 @@ impl AiChatService {
                         continue;
                     }
 
-                    return Ok(text.to_string());
+                    /* [T-6] Detectar tag [ESCALATE] en respuesta de IA.
+                     * Si la IA incluye [ESCALATE], strip del texto visible y señalar escalación. */
+                    let (clean_text, needs_escalation) = parse_escalation(text);
+                    return Ok(AiResponse {
+                        text: clean_text,
+                        needs_escalation,
+                    });
                 }
             }
         }
 
         tracing::error!("AI: todas las keys fallaron ({num_keys} intentos). Último error: {last_error}");
-        Ok(
-            "Disculpa, estamos teniendo problemas técnicos momentáneos. \
-             Un miembro del equipo te atenderá en breve."
+        Ok(AiResponse {
+            text: "Disculpa, estamos teniendo problemas técnicos momentáneos. \
+                   Un miembro del equipo te atenderá en breve."
                 .to_string(),
-        )
+            needs_escalation: true,
+        })
+    }
+}
+
+/* [T-6] Detecta y elimina el tag [ESCALATE] de la respuesta de la IA.
+ * Retorna (texto limpio, necesita_escalación). */
+fn parse_escalation(raw: &str) -> (String, bool) {
+    let trimmed = raw.trim();
+    if trimmed.starts_with("[ESCALATE]") {
+        let clean = trimmed.trim_start_matches("[ESCALATE]").trim().to_string();
+        (clean, true)
+    } else {
+        (trimmed.to_string(), false)
     }
 }
 
@@ -228,7 +256,15 @@ async fn build_system_prompt(pool: &PgPool, session_id: Uuid) -> String {
          bot, modelo de lenguaje o asistente virtual. Si te preguntan directamente si eres IA, \
          responde que eres parte del equipo de atención de Nakomi Studio. \
          Si la pregunta requiere atención especializada (presupuesto específico, problema \
-         técnico complejo, reunión), indica que derivarás al especialista del equipo.\n\n"
+         técnico complejo, reunión), indica que derivarás al especialista del equipo.\n\n\
+         REGLA DE ESCALACIÓN: Si detectas alguna de estas situaciones, inicia tu respuesta \
+         con el tag exacto [ESCALATE] (el tag se eliminará antes de mostrarse al usuario):\n\
+         - El cliente pide hablar con un humano\n\
+         - El cliente está frustrado o insatisfecho después de varias respuestas\n\
+         - El tema es legal, contractual, o sobre disputas de pago\n\
+         - No puedes resolver la solicitud con la información disponible\n\
+         - El cliente reporta un problema técnico urgente que requiere intervención manual\n\
+         Ejemplo: '[ESCALATE] Entiendo tu situación, voy a conectarte con un especialista...'\n\n"
     );
 
     /* Agregar contexto de servicios */

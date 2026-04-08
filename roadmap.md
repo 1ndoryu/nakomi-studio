@@ -61,7 +61,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ### Prerequisitos
 - ~~P-1: Refactorizar handlers/chat.rs (660 líneas → módulo con 4 archivos)~~ ✅
-- P-2: Migración BD (visitor_profiles, chat_attachments, message_type/metadata, ai_intermediary)
+- ~~P-2: Migración BD (visitor_profiles, chat_attachments, message_type/metadata, ai_intermediary)~~ ✅
 
 ### Fase I (por dificultad descendente)
 - T-1: Anti-spam + timing inteligente (rate limit WS, clasificador relevancia, máquina de estados para pausas)
@@ -69,8 +69,8 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - T-3: Memoria usuario + contexto (visitor_profiles, captura email, resúmenes, contexto por rol)
 - T-4: Sync cross-device/tab (BroadcastChannel, multi-conexión WS, sesión única por identidad)
 - T-5: Archivos en chat (upload multipart, Groq Vision imágenes, Whisper STT audio, PDF extraction)
-- T-6: Escalación humana (detección IA, notificación admin, flujo handoff)
-- T-7: Sin disclosure IA (system prompt, branding agente, UI sin indicadores IA)
+- T-6: Escalación humana (detección IA, notificación admin, flujo handoff) ✅
+- ~~T-7: Sin disclosure IA (system prompt, branding agente, UI sin indicadores IA)~~ ✅
 
 ### Fase II
 - T-9: Clientes registrados (detección JWT, contexto de servicios/pedidos/hosting, reportes)

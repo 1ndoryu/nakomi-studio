@@ -45,6 +45,9 @@ pub const NOTIF_DELEGATION_RECEIVED: &str = "delegation_received";
 pub const NOTIF_DELEGATION_RESOLVED: &str = "delegation_resolved";
 #[allow(dead_code)]
 pub const NOTIF_NEW_MESSAGE: &str = "new_message";
+/* [T-6] Notificación de escalación: la IA detectó que se necesita intervención humana */
+#[allow(dead_code)]
+pub const NOTIF_ESCALATION_NEEDED: &str = "escalation_needed";
 
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
 pub struct Notification {

@@ -124,6 +124,7 @@ async fn handle_visitor_ws(
     let hub = state.chat_hub.clone();
     let ai_config = state.ai_config.clone();
     let pool = state.pool.clone();
+    let notif_hub = state.notification_hub.clone();
     let vid = params.visitor_id.clone();
 
     while let Some(Ok(msg)) = receiver.next().await {
@@ -139,7 +140,7 @@ async fn handle_visitor_ws(
                 let _ = hub
                     .send_message(session_id, "client", Some(&vid), &content)
                     .await;
-                maybe_ai_reply(&pool, &ai_config, &hub, session_id, &content).await;
+                maybe_ai_reply(&pool, &ai_config, &hub, &notif_hub, session_id, &content).await;
             }
             WsClientMessage::Typing { content } => {
                 hub.send_typing(session_id, "client", &content);
@@ -155,11 +156,13 @@ async fn handle_visitor_ws(
     send_task.abort();
 }
 
-/* Si IA habilitada y no hay staff asignado, generar y enviar respuesta AI */
+/* Si IA habilitada y no hay staff asignado, generar y enviar respuesta AI.
+ * [T-6] Si la IA señala escalación, notificar a todos los admins. */
 async fn maybe_ai_reply(
     pool: &sqlx::PgPool,
     ai_config: &crate::services::AiChatConfig,
     hub: &crate::services::ChatHub,
+    notification_hub: &crate::services::NotificationHub,
     session_id: uuid::Uuid,
     content: &str,
 ) {
@@ -167,12 +170,43 @@ async fn maybe_ai_reply(
         crate::repositories::ChatRepository::find_session_by_id(pool, session_id).await
     {
         if s.ai_enabled && s.assigned_staff_id.is_none() {
-            let ai_response = AiChatService::generate_response(pool, ai_config, session_id, content)
+            let ai_resp = AiChatService::generate_response(pool, ai_config, session_id, content)
                 .await
-                .unwrap_or_else(|e| format!("Error IA: {e}"));
+                .unwrap_or_else(|e| crate::services::AiResponse {
+                    text: format!("Error IA: {e}"),
+                    needs_escalation: true,
+                });
             let _ = hub
-                .send_message(session_id, "ai", Some("ai"), &ai_response)
+                .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
                 .await;
+
+            /* [T-6] Notificar admins si se detectó escalación */
+            if ai_resp.needs_escalation {
+                if let Ok(admin_ids) =
+                    crate::repositories::UserRepository::admin_ids(pool).await
+                {
+                    if !admin_ids.is_empty() {
+                        let visitor_name = s.visitor_name.as_deref().unwrap_or("Visitante");
+                        let base = crate::models::CreateNotification {
+                            user_id: uuid::Uuid::nil(),
+                            notification_type: crate::models::NOTIF_ESCALATION_NEEDED
+                                .to_string(),
+                            title: format!("Escalación: {visitor_name} necesita ayuda"),
+                            body: Some(format!(
+                                "La IA detectó que se requiere intervención humana en la sesión de chat con {visitor_name}."
+                            )),
+                            link: Some(format!("/admin/chat?session={session_id}")),
+                            reference_type: Some("chat_session".to_string()),
+                            reference_id: Some(session_id),
+                        };
+                        let _ = notification_hub.notify_many(&admin_ids, &base).await;
+                        tracing::info!(
+                            "T-6: escalación enviada a {} admins para sesión {session_id}",
+                            admin_ids.len()
+                        );
+                    }
+                }
+            }
         }
     }
 }

@@ -58,7 +58,7 @@ pub use review::{
 };
 pub use notification::{
     CreateNotification, MarkReadBody, Notification, NotificationResponse,
-    UnreadCountResponse, WsNotification,
+    UnreadCountResponse, WsNotification, NOTIF_ESCALATION_NEEDED,
 };
 pub use dashboard::{
     DashboardAlerts, DashboardResponse, EmployeePerformance, OrderCounts, RevenueStats,

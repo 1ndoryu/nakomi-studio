@@ -249,4 +249,14 @@ impl UserRepository {
         .fetch_optional(pool)
         .await
     }
+
+    /* [T-6] IDs de todos los admins activos para notificaciones de escalación */
+    pub async fn admin_ids(pool: &PgPool) -> Result<Vec<Uuid>, sqlx::Error> {
+        let rows = sqlx::query_scalar!(
+            r#"SELECT id FROM users WHERE role = 'admin' AND status = 'active'"#
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
 }

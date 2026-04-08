@@ -181,19 +181,46 @@ pub async fn send_message(
             crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
         {
             if s.ai_enabled && s.assigned_staff_id.is_none() {
-                let ai_response = AiChatService::generate_response(
+                let ai_resp = AiChatService::generate_response(
                     &state.pool,
                     &state.ai_config,
                     session_id,
                     &req.content,
                 )
                 .await
-                .unwrap_or_else(|e| format!("Error IA: {e}"));
+                .unwrap_or_else(|e| crate::services::AiResponse {
+                    text: format!("Error IA: {e}"),
+                    needs_escalation: true,
+                });
 
                 let _ = state
                     .chat_hub
-                    .send_message(session_id, "ai", Some("ai"), &ai_response)
+                    .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
                     .await;
+
+                /* [T-6] Escalación: notificar admins si la IA lo señala */
+                if ai_resp.needs_escalation {
+                    if let Ok(admin_ids) =
+                        crate::repositories::UserRepository::admin_ids(&state.pool).await
+                    {
+                        if !admin_ids.is_empty() {
+                            let visitor = s.visitor_name.as_deref().unwrap_or("Visitante");
+                            let base = crate::models::CreateNotification {
+                                user_id: uuid::Uuid::nil(),
+                                notification_type: crate::models::NOTIF_ESCALATION_NEEDED
+                                    .to_string(),
+                                title: format!("Escalación: {visitor} necesita ayuda"),
+                                body: Some(format!(
+                                    "La IA detectó que se requiere intervención humana en la sesión de chat."
+                                )),
+                                link: Some(format!("/admin/chat?session={session_id}")),
+                                reference_type: Some("chat_session".to_string()),
+                                reference_id: Some(session_id),
+                            };
+                            let _ = state.notification_hub.notify_many(&admin_ids, &base).await;
+                        }
+                    }
+                }
             }
         }
     }
