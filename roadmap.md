@@ -76,8 +76,10 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~La tabla de hosting se ve mal, no es asi como debería de verse. Si debería de ser algo similar a proyectosLista.~~ ✅ (074A-57: rediseño cards flex)
 
-- Sobre "(074A-54: client_name en orders + payment fixtures con 3 pagos de prueba)" MENTIRA SIGO SIN VER NADA.
+- ~~Sobre "(074A-54: client_name en orders + payment fixtures con 3 pagos de prueba)" MENTIRA SIGO SIN VER NADA.~~ ✅ (074A-59: find_first_by_role priorizaba usuario sin datos — ahora prioriza @test.com + fix galería crash + client_name en cards + usePagos role key)
 
-- chunk-RPCDYKBN.js?v=57755138:14032 The above error occurred in the <SeccionGaleriaServicio> component:
+- ~~chunk-RPCDYKBN.js?v=57755138:14032 The above error occurred in the <SeccionGaleriaServicio> component:~~
 
-    at SeccionGaleriaServicio (http://localhost:5173/src/components/servicios/SeccionGaleri
+    ~~at SeccionGaleriaServicio (http://localhost:5173/src/components/servicios/SeccionGaleri~~ ✅ (074A-59: Rules of Hooks violation — useCarruselInfinito se llamaba después de return null condicional)
+
+- 
