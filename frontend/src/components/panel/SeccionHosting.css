@@ -59,6 +59,10 @@
     transition: color var(--transicion-rapida), border-color var(--transicion-rapida);
 }
 
+.hostingTab:hover {
+    color: var(--brand-black);
+}
+
 .hostingTab--activa {
     color: var(--brand-black);
     border-bottom-color: var(--brand-black);

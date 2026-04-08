@@ -68,5 +68,5 @@ pub use user::{
 };
 pub use hosting::{
     CreateHostingRequest, HostingEvent, HostingSubscription,
-    HostingSubscriptionResponse, UpdateHostingStatusRequest,
+    HostingSubscriptionResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
 };

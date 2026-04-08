@@ -31,6 +31,8 @@ export const SeccionHosting: React.FC = () => {
         setShowEvents,
         createMutation,
         statusMutation,
+        updateMutation,
+        deleteMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -59,15 +61,20 @@ export const SeccionHosting: React.FC = () => {
                 )}
             </div>
 
-            {/* [074A-63] Tabs como en proyectos: Activos / Inactivos */}
+            {/* [074A-63] Tabs como en proyectos: Activos / Inactivos
+             * [074A-64] Mismo variante="texto" y type="button" que proyectosTabs */}
             <div className="hostingTabs">
                 <Button
+                    type="button"
+                    variante="texto"
                     className={`hostingTab ${tabActiva === 'activos' ? 'hostingTab--activa' : ''}`}
                     onClick={() => setTabActiva('activos')}
                 >
                     Activos ({activos.length})
                 </Button>
                 <Button
+                    type="button"
+                    variante="texto"
                     className={`hostingTab ${tabActiva === 'inactivos' ? 'hostingTab--activa' : ''}`}
                     onClick={() => setTabActiva('inactivos')}
                 >
@@ -95,6 +102,10 @@ export const SeccionHosting: React.FC = () => {
                             onStatusChange={(status) =>
                                 statusMutation.mutate({id: sub.id, status})
                             }
+                            onUpdate={(req) =>
+                                updateMutation.mutate({id: sub.id, req})
+                            }
+                            onDelete={() => deleteMutation.mutate(sub.id)}
                             onViewEvents={() => {
                                 setSelectedSub(sub);
                                 setShowEvents(true);

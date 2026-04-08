@@ -62,6 +62,15 @@ pub struct UpdateHostingStatusRequest {
     pub reason: Option<String>,
 }
 
+/* [074A-65] Request para editar suscripción (plan, dominio) */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct UpdateHostingRequest {
+    #[validate(length(min = 1, max = 20))]
+    pub plan: String,
+    #[validate(length(max = 253))]
+    pub domain: Option<String>,
+}
+
 /* ============================================================
    RESPONSES
    ============================================================ */

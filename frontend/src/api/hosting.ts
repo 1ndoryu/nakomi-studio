@@ -62,6 +62,25 @@ export async function apiUpdateHostingStatus(
     await axiosInstance.patch(`/api/hosting/subscriptions/${id}/status`, {status, reason});
 }
 
+/* [074A-65] Actualizar suscripción (plan, dominio) — solo admin */
+export interface UpdateHostingRequest {
+    plan: string;
+    domain?: string;
+}
+
+export async function apiUpdateHostingSubscription(
+    id: string,
+    req: UpdateHostingRequest,
+): Promise<HostingSubscription> {
+    const {data} = await axiosInstance.put<HostingSubscription>(`/api/hosting/subscriptions/${id}`, req);
+    return data;
+}
+
+/* [074A-65] Eliminar suscripción — solo admin */
+export async function apiDeleteHostingSubscription(id: string): Promise<void> {
+    await axiosInstance.delete(`/api/hosting/subscriptions/${id}`);
+}
+
 export async function apiListHostingEvents(id: string): Promise<HostingEvent[]> {
     const {data} = await axiosInstance.get<HostingEvent[]>(`/api/hosting/subscriptions/${id}/events`);
     return data;

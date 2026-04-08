@@ -13,7 +13,7 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     CreateHostingRequest, HostingEvent, HostingSubscriptionResponse,
-    UpdateHostingStatusRequest, UserRole,
+    UpdateHostingRequest, UpdateHostingStatusRequest, UserRole,
 };
 use crate::repositories::{CreateHostingParams, HostingRepository};
 use crate::AppState;
@@ -241,13 +241,106 @@ pub async fn list_events(
    ROUTES
    ============================================================ */
 
+/* [074A-65] Actualizar suscripción de hosting (solo admin) */
+#[utoipa::path(
+    put,
+    path = "/api/hosting/subscriptions/{id}",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    request_body = UpdateHostingRequest,
+    responses(
+        (status = 200, description = "Suscripción actualizada", body = HostingSubscriptionResponse),
+        (status = 400, description = "Datos inválidos"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn update_subscription(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateHostingRequest>,
+) -> Result<Json<HostingSubscriptionResponse>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+    req.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+
+    let price = plan_price_cents(&req.plan).ok_or_else(|| {
+        AppError::Validation(format!("Plan inválido: {}. Opciones: basico, pro, ecommerce, custom", req.plan))
+    })?;
+    let storage = plan_storage_mb(&req.plan);
+
+    HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    let updated = HostingRepository::update(
+        &state.pool,
+        id,
+        &req.plan,
+        req.domain.as_deref(),
+        price,
+        storage,
+    )
+    .await?;
+
+    let _ = HostingRepository::add_event(
+        &state.pool,
+        id,
+        "updated",
+        Some(serde_json::json!({
+            "plan": req.plan,
+            "domain": req.domain,
+            "by": auth.user_id.to_string()
+        })),
+    )
+    .await;
+
+    Ok(Json(updated.into()))
+}
+
+/* [074A-65] Eliminar suscripción de hosting (solo admin) */
+#[utoipa::path(
+    delete,
+    path = "/api/hosting/subscriptions/{id}",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 204, description = "Eliminada"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn delete_subscription(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    /* CASCADE borra eventos asociados automáticamente */
+    HostingRepository::delete(&state.pool, id).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn hosting_routes() -> Router<AppState> {
     Router::new()
         .route(
             "/hosting/subscriptions",
             get(list_subscriptions).post(create_subscription),
         )
-        .route("/hosting/subscriptions/:id", get(get_subscription))
+        .route(
+            "/hosting/subscriptions/:id",
+            get(get_subscription)
+                .put(update_subscription)
+                .delete(delete_subscription),
+        )
         .route(
             "/hosting/subscriptions/:id/status",
             axum::routing::patch(update_status),

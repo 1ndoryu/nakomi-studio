@@ -1,5 +1,6 @@
 /* [074A-63] Sub-componentes de SeccionHosting extraidos para cumplir limite de 300 lineas.
- * HostingCard, CreateHostingForm, EventsPanel, EventItem. */
+ * HostingCard, CreateHostingForm, EventsPanel, EventItem.
+ * [074A-65] HostingCard ahora incluye editar/eliminar en context menu. */
 
 import React, {useState, useCallback} from 'react';
 import {useQuery} from '@tanstack/react-query';
@@ -12,26 +13,36 @@ import {
     type HostingSubscription,
     type HostingEvent,
     type CreateHostingRequest,
+    type UpdateHostingRequest,
 } from '../../api/hosting';
+import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';
 import {Select} from '../ui/Select';
 import {Button} from '../ui/Button';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
 
 /* [074A-57] Card de hosting — layout similar a ordenCard de proyectosLista
- * [074A-63] Titulo = dominio o nombre del hosting (identidad unica), plan va debajo. */
+ * [074A-63] Titulo = dominio o nombre del hosting (identidad unica), plan va debajo.
+ * [074A-65] Context menu con editar/eliminar + edit modal inline. */
 export function HostingCard({
     sub,
     isAdmin,
     onStatusChange,
+    onUpdate,
+    onDelete,
     onViewEvents,
 }: {
     sub: HostingSubscription;
     isAdmin: boolean;
     onStatusChange: (status: string) => void;
+    onUpdate: (req: UpdateHostingRequest) => void;
+    onDelete: () => void;
     onViewEvents: () => void;
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [editPlan, setEditPlan] = useState(sub.plan);
+    const [editDomain, setEditDomain] = useState(sub.domain || '');
 
     const statusItems: MenuContextualItem[] = (['pending', 'provisioning', 'active', 'suspended', 'cancelled'] as const)
         .filter(s => s !== sub.status)
@@ -42,55 +53,98 @@ export function HostingCard({
             danger: s === 'suspended' || s === 'cancelled',
         }));
 
+    /* [074A-65] Items de gestión: editar y eliminar */
+    if (isAdmin) {
+        statusItems.push(
+            {id: 'edit', label: 'Editar', onSelect: () => setEditing(true)},
+            {id: 'delete', label: 'Eliminar', onSelect: onDelete, danger: true},
+        );
+    }
+
+    const handleEditSubmit = useCallback(() => {
+        onUpdate({plan: editPlan, domain: editDomain.trim() || undefined});
+        setEditing(false);
+    }, [editPlan, editDomain, onUpdate]);
+
     return (
-        <div className="hostingCard">
-            <div className="hostingCardIcono">
-                <Server size={28} strokeWidth={1.4} />
-            </div>
-            <div className="hostingCardBody">
-                <div className="hostingCardHeader">
-                    <h3 className="hostingCardTitulo">
-                        {sub.domain || sub.client_name || HOSTING_PLAN_LABELS[sub.plan] || sub.plan}
-                    </h3>
-                    <span className={`hostingStatus ${HOSTING_STATUS_CLASS[sub.status] || ''}`}>
-                        {HOSTING_STATUS_LABELS[sub.status] || sub.status}
-                    </span>
+        <>
+            <div className="hostingCard">
+                <div className="hostingCardIcono">
+                    <Server size={28} strokeWidth={1.4} />
                 </div>
-                <span className="hostingCardPlan">
-                    {HOSTING_PLAN_LABELS[sub.plan] || sub.plan}
-                </span>
-                {isAdmin && (
-                    <span className="hostingCardCliente">
-                        {sub.client_name} · {sub.client_email}
+                <div className="hostingCardBody">
+                    <div className="hostingCardHeader">
+                        <h3 className="hostingCardTitulo">
+                            {sub.domain || sub.client_name || HOSTING_PLAN_LABELS[sub.plan] || sub.plan}
+                        </h3>
+                        <span className={`hostingStatus ${HOSTING_STATUS_CLASS[sub.status] || ''}`}>
+                            {HOSTING_STATUS_LABELS[sub.status] || sub.status}
+                        </span>
+                    </div>
+                    <span className="hostingCardPlan">
+                        {HOSTING_PLAN_LABELS[sub.plan] || sub.plan}
                     </span>
-                )}
-                <div className="hostingCardFooter">
-                    <span className="hostingCardPrecio">
-                        ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
-                    </span>
-                    <div className="hostingCardAcciones">
-                        <Button
-                            variante="texto"
-                            tamano="pequeno"
-                            type="button"
-                            onClick={onViewEvents}
-                            title="Ver historial"
-                        >
-                            <History size={16} />
-                        </Button>
-                        {isAdmin && (
-                            <MenuContextual
-                                abierto={menuOpen}
-                                onToggle={() => setMenuOpen(prev => !prev)}
-                                onCerrar={() => setMenuOpen(false)}
-                                items={statusItems}
-                                ariaLabel="Cambiar status de suscripción"
-                            />
-                        )}
+                    {isAdmin && (
+                        <span className="hostingCardCliente">
+                            {sub.client_name} · {sub.client_email}
+                        </span>
+                    )}
+                    <div className="hostingCardFooter">
+                        <span className="hostingCardPrecio">
+                            ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
+                        </span>
+                        <div className="hostingCardAcciones">
+                            <Button
+                                variante="texto"
+                                tamano="pequeno"
+                                type="button"
+                                onClick={onViewEvents}
+                                title="Ver historial"
+                            >
+                                <History size={16} />
+                            </Button>
+                            {isAdmin && (
+                                <MenuContextual
+                                    abierto={menuOpen}
+                                    onToggle={() => setMenuOpen(prev => !prev)}
+                                    onCerrar={() => setMenuOpen(false)}
+                                    items={statusItems}
+                                    ariaLabel="Gestionar suscripción"
+                                />
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* [074A-65] Modal de edición */}
+            {editing && (
+                <Modal abierto={editing} onCerrar={() => setEditing(false)}>
+                    <div className="hostingFormCrear">
+                        <h3>Editar suscripción</h3>
+                        <Select
+                            className="hostingSelect"
+                            value={editPlan}
+                            onChange={e => setEditPlan(e.target.value)}
+                        >
+                            <option value="basico">Básico ($5/mes)</option>
+                            <option value="pro">Profesional ($10/mes)</option>
+                            <option value="ecommerce">E-commerce ($15/mes)</option>
+                            <option value="custom">Custom (cotización)</option>
+                        </Select>
+                        <Input
+                            type="text"
+                            placeholder="Dominio (opcional)"
+                            value={editDomain}
+                            onChange={e => setEditDomain(e.target.value)}
+                        />
+                        <Button type="button" onClick={handleEditSubmit}>
+                            Guardar cambios
+                        </Button>
+                    </div>
+                </Modal>
+            )}
+        </>
     );
 }
 

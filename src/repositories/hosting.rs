@@ -92,6 +92,45 @@ impl HostingRepository {
         Ok(())
     }
 
+    /* [074A-65] Actualizar campos editables de una suscripción (plan, dominio, precio, almacenamiento) */
+    pub async fn update(
+        pool: &PgPool,
+        id: Uuid,
+        plan: &str,
+        domain: Option<&str>,
+        monthly_price_cents: i32,
+        storage_limit_mb: i32,
+    ) -> Result<HostingSubscription, AppError> {
+        let row = sqlx::query_as!(
+            HostingSubscription,
+            "UPDATE hosting_subscriptions
+             SET plan = $1, domain = $2, monthly_price_cents = $3, storage_limit_mb = $4, updated_at = NOW()
+             WHERE id = $5
+             RETURNING id, user_id, client_name, client_email, plan, domain,
+                       coolify_site_name, status, stripe_subscription_id,
+                       monthly_price_cents, storage_limit_mb, created_at, updated_at",
+            plan,
+            domain,
+            monthly_price_cents,
+            storage_limit_mb,
+            id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
+    }
+
+    /* [074A-65] Eliminar suscripción de hosting */
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
+        sqlx::query!(
+            "DELETE FROM hosting_subscriptions WHERE id = $1",
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn add_event(
         pool: &PgPool,
         subscription_id: Uuid,

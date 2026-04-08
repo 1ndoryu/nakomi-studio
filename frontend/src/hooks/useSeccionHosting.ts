@@ -7,8 +7,11 @@ import {
     apiListHostingSubscriptions,
     apiCreateHostingSubscription,
     apiUpdateHostingStatus,
+    apiUpdateHostingSubscription,
+    apiDeleteHostingSubscription,
     type HostingSubscription,
     type CreateHostingRequest,
+    type UpdateHostingRequest,
 } from '../api/hosting';
 import {toast} from '../stores/toastStore';
 import {useAuthStore} from '../stores/authStore';
@@ -62,6 +65,27 @@ export function useSeccionHosting() {
         onError: () => toast.error('Error al actualizar status'),
     });
 
+    /* [074A-65] Editar suscripción (plan, dominio) */
+    const updateMutation = useMutation({
+        mutationFn: ({id, req}: {id: string; req: UpdateHostingRequest}) =>
+            apiUpdateHostingSubscription(id, req),
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success('Suscripción actualizada');
+        },
+        onError: () => toast.error('Error al actualizar suscripción'),
+    });
+
+    /* [074A-65] Eliminar suscripción */
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => apiDeleteHostingSubscription(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success('Suscripción eliminada');
+        },
+        onError: () => toast.error('Error al eliminar suscripción'),
+    });
+
     return {
         subscriptions,
         isLoading,
@@ -79,5 +103,7 @@ export function useSeccionHosting() {
         setShowEvents,
         createMutation,
         statusMutation,
+        updateMutation,
+        deleteMutation,
     };
 }
