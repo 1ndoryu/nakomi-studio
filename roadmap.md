@@ -42,22 +42,44 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 > 084A-24: Contabo API + Stripe checkout + VPS panel admin + resource stats → ✅ completada (3 commits)
 
-## Hosting (ESTO TIENE QUE ESTAR LISTO PRIMERO ANTES DE PASAR A OTRA COSA)
+## Hosting — ✅ Plan v2 completado (094A-1 a 094A-10)
 
-No. No parece que lo del hosting este listo, se requiere un nuevo plan. 
+> Plan v2: `Agente/planes/plan-hosting-v2-2026-04-09.md` — ✅ 10 tareas completadas
+> Auditoría de seguridad: `Agente/documentacion/hosting/auditoria-seguridad-hosting-2026-04-09.md`
+> Completadas: `Agente/completados/tareas-2026-04-09.md`
+>
+> Resumen: Página detalle individual (6 tabs), self-service + Stripe checkout, dominios DNS,
+> SSH/PuTTY, upgrade/downgrade, soporte, stats reales uptime, auditoría seguridad (6 fixes), 21 tests unitarios.
 
-1. Estoy en la vista del cliente, veo hostingStats, no va ahí, debería tener una pagina accesible individual para cada hosting, debería haber las opciones tipica que trae un hosting, no se cuales son asi que necesitas investigar e intuir, no parece un hosting real, claramente esto no esta listo a nivel interfaz. ¿Donde estan las opciones para que los usuarios puedan contratar un nuevo hosting en el panel? ¿Donde estan las opciones para que los usuarios puedan comprar un nuevo dominio, y gestionar el dominio que a tienen? ¿Donde estan las opciones para que los usuarios puedan acceder al ssh de su hosting? ¿Donde estan las opciones para que los usuarios puedan hacer las cosas que se suelen hacer en un hosting? ¿Ya hay para contactar soporte, pedir aumento de plan? ¿Ya esta el vps preparada para mostrar datos reales de uso, almacenamiento? ¿Ya esta coolify preparado para gestionar hosting en vps? ¿Ya hay test para verificar que todo funcione? ¿Ya hay un plan para todo esto y de las cosas que me estoy olvidando para que todo funcione como un hosting profesional?
+### Fases futuras de hosting (no bloqueantes)
 
+- Administración de archivos (File Manager via Coolify)
+- Control DNS avanzado (API Contabo DNS)
+- Backups automáticos (Google Drive OAuth — bloqueado por infraestructura)
+- Multi-VPS: serverIp dinámico desde backend (cuando haya VPS2)
+- Monitoreo real de storage/bandwidth (cAdvisor/Coolify metrics)
+- Paginación en `list_subscriptions` (cuando haya >100 suscripciones)
+- TTL en `stripe_processed_events` (cleanup job)
 
-## Notas adicionales sobre el plan de hosting
+## Otra nota sobre el hosting
 
-- Algo que me falto aclarar que para ahorrar costos, comprar vps de contabo solo se puede hacer en caso que tengamos una vps que ya no soporta mas despliegues, tenemos que controlar la ram y uso cpu, esto implica otro plan de optimización para revisar los despliegues actuales. La api de contabo debe documentarse bien, es para los dominios, dns, etc, todo lo que pueda ser necesario para crear un servicio de hosting 100% funcional y completo. Lo mas importante, la acciones de compra de cualquier cosa de contabo requiere confirmación directa del usuario, mejor, no autorizar la IA ni ningun proceso automatico para hacer compras, aún no, hasta que todo este revisado y asegurado de que va a funcionar.
+- El modal de Elige tu plan de hosting se ve mal, los planes tiene que ser mas compactos y simples.
 
-- Esto sería la tarea final de hosting y tambien es una tarea gigante, se necesita revisiones de seguridad profunda, asegurarse que no hayan hackeos, caidas del vps completo debido a malas acciones de los usuarios, etc, revisar todo detadallamente y hacer un plan detallado de preveción y auditoría de seguridad.
+- Las secciones en los de detalles de hosting deberían tener este diseño. 
 
-## Otra nota sobre hosting
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
 
-- Se necesita una planificación de las siguientes fases pendientes, administrar archivos, controlar dns, etc cosas avanzadas para que todo termine siendo un servicio de hosting completo.
+la parte de dominio ssl se ve mal se siente ocmo que le faltara estilos, el texto de los eventos no se ve es negro y el fondo es negro.
+
+- La tarjeta de hosting en la lista de hosting aparece "cargando estadisticas" a pesar de que las estadisticas fueron removidas.
+
+- Hay inconsistencia visual en los botoenes de volver, todos los botones de volver deberían ser como .ordenDetalleVolver
 
 ## Chatbot
 
@@ -89,7 +111,7 @@ Fase II - Atención de clientes ya considados o registrados
 
 1. El flujo de atención de clientes que ya esta registrados, esto implica muchas cosas, porque hay que ser cuidadadosos, suponiendo que la funcionalidad de memoria funciona y distingue por usuarios, entonces la IA debería poder ver si el cliente tiene servicios activos, pedidos, hosting, etc, debería ser capaz de atender reportes, siempre y cuando considerando que habrán cosas que necesiten asistencia humana. 
 
-2. Las conversaciones en los pedidos entre cliente y quien atiende el pedido la IA no responde, esos son chat directos, pero, 
+2. Las conversaciones en los pedidos entre cliente y quien atiende el pedido la IA no responde, esos son chat directos, pero, los empleados y admin en las conversaciones de los pedidos pueden activar o desactivar que la IA atienda el cliente, para estos casos la IA necesita un contexto distinto, necesita tener toda la informacion del pedido completa, para estos casos casi siempre se necesitará atención humana, asi que la IA en este caso debe ser como un intermediario, imagina que esto se activa casi siempre para clientes que fastidian mucho, un empleado o admin puede estar agotado y activar esto para que la IA atienda el cliente, en configuraciones tambien debe tener una opcion ver en que pedidos esto esta activado o no. Esto implica una cosa. 
 
 
 
