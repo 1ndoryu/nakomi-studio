@@ -121,7 +121,7 @@
 
 .editorServicioSeoTitulo {
     font-size: var(--text-base);
-    color: #1a0dab;
+    color: var(--seo-title);
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -130,7 +130,7 @@
 
 .editorServicioSeoUrl {
     font-size: var(--text-xs);
-    color: #006621;
+    color: var(--seo-url);
 }
 
 .editorServicioSeoDesc {
@@ -173,9 +173,8 @@
     border-color: var(--text-tertiary);
 }
 
+/* [084A-17] Removido color y border-color del estado activo por indicación de usuario */
 .editorServicioStatusBtn--activo {
-    border-color: var(--brand-primary);
-    color: var(--brand-primary);
     background: var(--bg-item-active);
 }
 

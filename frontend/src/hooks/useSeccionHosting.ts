@@ -10,7 +10,6 @@ import {
     apiUpdateHostingSubscription,
     apiDeleteHostingSubscription,
     apiRequestCancelHosting,
-    type HostingSubscription,
     type CreateHostingRequest,
     type UpdateHostingRequest,
 } from '../api/hosting';
@@ -22,8 +21,6 @@ const ACTIVE_STATUSES = new Set(['pending', 'provisioning', 'active']);
 export function useSeccionHosting() {
     const queryClient = useQueryClient();
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [selectedSub, setSelectedSub] = useState<HostingSubscription | null>(null);
-    const [showEvents, setShowEvents] = useState(false);
     const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos'>('activos');
 
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
@@ -108,10 +105,6 @@ export function useSeccionHosting() {
         listaActual,
         showCreateModal,
         setShowCreateModal,
-        selectedSub,
-        setSelectedSub,
-        showEvents,
-        setShowEvents,
         createMutation,
         statusMutation,
         updateMutation,

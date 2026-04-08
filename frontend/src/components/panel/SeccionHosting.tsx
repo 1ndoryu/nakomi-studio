@@ -10,7 +10,7 @@ import {Server, Plus} from 'lucide-react';
 import {useSeccionHosting} from '../../hooks/useSeccionHosting';
 import {Modal} from '../ui/Modal';
 import {Button} from '../ui/Button';
-import {HostingCard, CreateHostingForm, EventsPanel} from './HostingSubComponents';
+import {HostingCard, CreateHostingForm} from './HostingSubComponents';
 import './SeccionHosting.css';
 
 export const SeccionHosting: React.FC = () => {
@@ -25,10 +25,6 @@ export const SeccionHosting: React.FC = () => {
         listaActual,
         showCreateModal,
         setShowCreateModal,
-        selectedSub,
-        setSelectedSub,
-        showEvents,
-        setShowEvents,
         createMutation,
         statusMutation,
         updateMutation,
@@ -108,10 +104,6 @@ export const SeccionHosting: React.FC = () => {
                             }
                             onDelete={() => deleteMutation.mutate(sub.id)}
                             onCancel={() => cancelMutation.mutate(sub.id)}
-                            onViewEvents={() => {
-                                setSelectedSub(sub);
-                                setShowEvents(true);
-                            }}
                         />
                     ))}
                 </div>
@@ -127,12 +119,6 @@ export const SeccionHosting: React.FC = () => {
                 </Modal>
             )}
 
-            {/* Modal eventos */}
-            {showEvents && selectedSub && (
-                <Modal abierto={showEvents} onCerrar={() => setShowEvents(false)}>
-                    <EventsPanel subscriptionId={selectedSub.id} clientName={selectedSub.client_name} />
-                </Modal>
-            )}
         </div>
     );
 };

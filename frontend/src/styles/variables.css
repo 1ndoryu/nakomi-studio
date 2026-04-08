@@ -109,6 +109,10 @@
     /* Brand */
     --brand-primary: #c8a97e;
 
+    /* SEO Preview (Google-style) */
+    --seo-title: #1a0dab;
+    --seo-url: #006621;
+
     /* Status - Error */
     --color-error: #ef4444;
     --color-error-text: #991b1b;

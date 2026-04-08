@@ -4,7 +4,7 @@
 
 import React, {useState, useCallback} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {Server, History} from 'lucide-react';
+import {Server} from 'lucide-react';
 import {
     apiListHostingEvents,
     HOSTING_PLAN_LABELS,
@@ -32,7 +32,6 @@ export function HostingCard({
     onUpdate,
     onDelete,
     onCancel,
-    onViewEvents,
 }: {
     sub: HostingSubscription;
     isAdmin: boolean;
@@ -40,7 +39,6 @@ export function HostingCard({
     onUpdate: (req: UpdateHostingRequest) => void;
     onDelete: () => void;
     onCancel: () => void;
-    onViewEvents: () => void;
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -108,15 +106,6 @@ export function HostingCard({
                             ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
                         </span>
                         <div className="hostingCardAcciones">
-                            <Button
-                                variante="texto"
-                                tamano="pequeno"
-                                type="button"
-                                onClick={onViewEvents}
-                                title="Ver historial"
-                            >
-                                <History size={16} />
-                            </Button>
                             {/* [084A-4] Menú visible para todos los roles, items varían por rol */}
                             <MenuContextual
                                 abierto={menuOpen}

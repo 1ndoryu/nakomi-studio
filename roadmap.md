@@ -42,23 +42,23 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 
 - En el cms en los botones de 3 puntos no salen opciones de eliminar el contenido, solo archivar, falta opciones directa para eliminar, cambiar status a publicar, etc. → ✅ 084A-10 completada
-- elimina la especificacion de color y borde en .editorServicioStatusBtn--activo
+- elimina la especificacion de color y borde en .editorServicioStatusBtn--activo → ✅ 084A-17 completada
 - En la lista de proyecto no se ve lo que hay en el cms se ve otra cosa.
 - En el panel al recergar debería permanecer en la misma tab incluyendo la tab interna, no ir siempre a la primera tab. → ✅ 084A-9 completada
 - No veo contenido de prueba para los reembolso, necesito ver como se ven los reembolsos.
 
 - El boton de 3 puntos de las opciones de hostig no se entiende, claramente es un desastre tantas opciones en vez de ser mas claro "cambiar estado" y luego abrir un modal, en vez de tener los estados sueltos.
-- Nada de lo que esta en hostingCard tiene que estar en (--text-xs); subelo  a sm
-- .hostingCardIcono quita el fondo negro y usa bg accent y pon 140px de ancho. 
+- Nada de lo que esta en hostingCard tiene que estar en (--text-xs); subelo  a sm → ✅ 084A-18 completada
+- .hostingCardIcono quita el fondo negro y usa bg accent y pon 140px de ancho. → ✅ 084A-19 completada 
 - No hay consistencia visual entre todos los modales → ✅ 084A-8 completada
-- la nota en chatInfoSeccion chatInfoSeccionNotas no esta tomando el ancho completo. 
-- .hostingEventos no se que es pero quita eso, lo que sea que sea eso no tiene porque verse en un modal. 
+- la nota en chatInfoSeccion chatInfoSeccionNotas no esta tomando el ancho completo. → ✅ 084A-15 completada
+- .hostingEventos no se que es pero quita eso, lo que sea que sea eso no tiene porque verse en un modal. → ✅ 084A-16 completada 
 - En modalCompraContenido el precio debería actualizarse segun el tipo de pago que se hará hay que revisar profundamente esto para ver que funcione. 
 - Cuando elijo un plan de hosting abre el chat en vez de abrir modalCompraContenido
 - El historial de pago se ve muy mal, debería verse profesional, como una tabla o algo. 
 
 - Se requiere hacer una auditoría de principios solid a todo el front, todos los archivos para identificar inconsistencias, cosas que deberían ser componentes y no lo son, y cosas que no detecta glory sentinel. 
-- Uncaught SyntaxError: The requested module '/src/components/panel/OrdenDetalle.tsx?t=1775654447341' does not provide an export named 'OrdenDetalle' (at SeccionProyectos.tsx:13:9)
+- Uncaught SyntaxError: The requested module '/src/components/panel/OrdenDetalle.tsx?t=1775654447341' does not provide an export named 'OrdenDetalle' (at SeccionProyectos.tsx:13:9) → ✅ 084A-23 — Error transitorio de Vite HMR, exportación es correcta (named export)
 
 
 ## Hosting 

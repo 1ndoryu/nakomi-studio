@@ -107,14 +107,16 @@
     border-color: var(--border-default);
 }
 
-/* [074A-21] Notas: sección separada visualmente */
+/* [074A-21] [084A-15] Notas: sección separada visualmente, display flex para ancho completo */
 .chatInfoSeccionNotas {
+    display: flex;
     flex: 1;
     min-height: 0;
     flex-direction: column;
     gap: var(--spacing-xs);
     border-top: 1px solid var(--bg-accent);
     padding-top: var(--spacing-md);
+    width: 100%;
 }
 
 .chatInfoNotas {

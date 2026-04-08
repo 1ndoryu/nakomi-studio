@@ -93,13 +93,14 @@
     border-color: var(--border-hover);
 }
 
+/* [084A-19] Fondo accent y 140px de ancho por indicación del usuario */
 .hostingCardIcono {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 80px;
+    width: 140px;
     flex-shrink: 0;
-    background: var(--bg-dark);
+    background: var(--bg-accent);
     color: var(--text-tertiary);
 }
 
@@ -127,29 +128,30 @@
     margin: 0;
 }
 
-/* [074A-63] Plan como subtitulo debajo del nombre */
+/* [074A-63] [084A-18] Plan como subtitulo debajo del nombre — subido a --text-sm */
 .hostingCardPlan {
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     color: var(--text-tertiary);
     font-weight: 500;
 }
 
 .hostingCardDominio {
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     color: var(--text-tertiary);
 }
 
 .hostingCardCliente {
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     color: var(--text-muted);
     font-style: italic;
 }
 
+/* [084A-18] Footer también subido a --text-sm */
 .hostingCardFooter {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     color: var(--text-muted);
     padding-top: var(--spacing-xs);
     border-top: 1px solid var(--bg-item-hover);
@@ -167,9 +169,9 @@
     margin-left: auto;
 }
 
-/* Status badges — [074A-62] Colores eliminados por request del usuario */
+/* Status badges — [074A-62] Colores eliminados por request del usuario [084A-18] subido a --text-sm */
 .hostingStatus {
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: 600;
     flex-shrink: 0;
     color: var(--text-tertiary);
@@ -289,7 +291,7 @@
     padding: var(--spacing-xs) var(--spacing-sm);
     border: 1px solid var(--bg-accent);
     border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
 }
 
 .hostingEventoTipo {
