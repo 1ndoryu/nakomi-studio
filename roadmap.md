@@ -53,7 +53,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - No hay consistencia visual entre todos los modales → ✅ 084A-8 completada
 - la nota en chatInfoSeccion chatInfoSeccionNotas no esta tomando el ancho completo. → ✅ 084A-15 completada
 - .hostingEventos no se que es pero quita eso, lo que sea que sea eso no tiene porque verse en un modal. → ✅ 084A-16 completada 
-- En modalCompraContenido el precio debería actualizarse segun el tipo de pago que se hará hay que revisar profundamente esto para ver que funcione. 
+- En modalCompraContenido el precio debería actualizarse segun el tipo de pago que se hará hay que revisar profundamente esto para ver que funcione.  → ✅ 084A-12 completada
 - Cuando elijo un plan de hosting abre el chat en vez de abrir modalCompraContenido
 - El historial de pago se ve muy mal, debería verse profesional, como una tabla o algo. 
 

@@ -27,6 +27,19 @@ const PAYMENT_MODE_DESC: Record<PaymentMode, string> = {
     phased: 'Paga cada fase por separado',
 };
 
+/* [084A-12] Parsea precio string ("$100", "$350") a cents.
+ * Retorna null si no es numérico ("A medida", "Contactar"). */
+function parsePrecioCents(precio: string): number | null {
+    const match = precio.replace(/,/g, '').match(/\$?\s*([\d.]+)/);
+    return match ? Math.round(parseFloat(match[1]) * 100) : null;
+}
+
+/* [084A-12] Formatea cents a precio visible */
+function formatPrecioDescontado(cents: number): string {
+    const val = cents / 100;
+    return val % 1 === 0 ? `$${val}` : `$${val.toFixed(2)}`;
+}
+
 interface ModalCompraProps {
     plan: PlanServicio;
     servicioSlug: string;
@@ -41,6 +54,13 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
         emailExiste, errorMsg, paymentMode, setPaymentMode,
         handleContinuar, handleAuth, reintentar
     } = useModalCompra({plan, servicioSlug, onClose: onCerrar});
+
+    /* [084A-12] Precio dinámico según modo de pago seleccionado */
+    const baseCents = parsePrecioCents(plan.precio);
+    const descuento = PAYMENT_MODE_DISCOUNT[paymentMode];
+    const finalCents = baseCents != null ? Math.round(baseCents * (1 - descuento / 100)) : null;
+    const precioFinal = finalCents != null ? formatPrecioDescontado(finalCents) : plan.precio;
+    const tieneDescuento = baseCents != null && descuento > 0;
 
     return (
         <Modal abierto={abierto} onCerrar={onCerrar} className="modalCompraContenido">
@@ -77,8 +97,24 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                             </div>
                         ))}
                     </div>
+                    {/* [084A-12] Resumen de precio con descuento aplicado */}
+                    {baseCents != null && (
+                        <div className="modalCompraPrecioResumen">
+                            {tieneDescuento ? (
+                                <>
+                                    <span className="modalCompraPrecioOriginal">{plan.precio}</span>
+                                    <span className="modalCompraPrecioFinal">{precioFinal}</span>
+                                    <span className="modalCompraPrecioAhorro">
+                                        Ahorras {descuento}%
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="modalCompraPrecioFinal">{plan.precio}</span>
+                            )}
+                        </div>
+                    )}
                     <Button variante="primario" tamano="mediano" onClick={handleContinuar}>
-                        {t('purchase.continue', 'Continuar')} ({plan.precio})
+                        {t('purchase.continue', 'Continuar')} ({precioFinal})
                     </Button>
                     <p className="modalCompraAviso">{t('purchase.no_charge_yet', 'Aún no se te cobrará')}</p>
                 </div>
@@ -112,7 +148,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                         />
                     )}
                     <Button variante="primario" tamano="mediano" type="submit">
-                        {t('purchase.continue_pay', 'Continuar al pago')} ({plan.precio})
+                        {t('purchase.continue_pay', 'Continuar al pago')} ({precioFinal})
                     </Button>
                     <p className="modalCompraAviso">{t('purchase.no_charge_yet', 'Aún no se te cobrará')}</p>
                 </form>
