@@ -98,7 +98,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~No me sale para gestionar los planes de los servicios en el cms.~~ ✅ (074A-66: tab Planes en EditorServicio)
 
-- No veo que el cliente tenga capacidad de gestionar su hosting, hay que revisar lo que falta e implementar.
+- ~~No veo que el cliente tenga capacidad de gestionar su hosting, hay que revisar lo que falta e implementar.~~ ✅ (084A-4: cliente ahora puede editar plan/dominio de sus suscripciones y solicitar cancelación — context menu visible para todos los roles)
 
 - Veo muchos planes que no estan en la carpeta de completados, claramente hay revisarlos todos para ver cuales mover y si hay cosas pendientes completarlas todo.
 
