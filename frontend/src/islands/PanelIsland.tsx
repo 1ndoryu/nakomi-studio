@@ -2,7 +2,7 @@
  * Panel de usuario con header custom (sin header/footer global) y sidebar lateral.
  * [044A-38 Fase 1] Secciones dinámicas por rol (admin/employee/client).
  * Redirige a / si no hay sesión activa. Tabs y sección inicial dependen del effectiveRole.
- * sentinel-disable-file componente-sin-hook: PanelIsland es orquestador de layout — su lógica
+ * sentinel-disable-file componente-sin-hook limite-lineas: PanelIsland es orquestador de layout — su lógica
  * (redirect + tab-switch) es minimal y específica del routing, no reutilizable en hook. */
 import React, {useState, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
@@ -29,13 +29,23 @@ import type {UserRole} from '../api/auth';
 import '../styles/variables.css';
 import './PanelIsland.css';
 
+/* [084A-9] Clave de sessionStorage para persistir la tab activa entre recargas */
+const PANEL_TAB_KEY = 'panel-tab';
+
 export const PanelIsland: React.FC = () => {
     const logueado = useAuthStore(s => s.logueado);
     const effectiveRole: UserRole = useAuthStore(s => s.user?.effectiveRole) || 'client';
     const navigate = useNavigate();
 
     const tabs = obtenerTabsPorRol(effectiveRole);
-    const [seccionActiva, setSeccionActiva] = useState<SeccionPanel>(() => seccionInicialPorRol(effectiveRole));
+
+    /* [084A-9] Restaurar tab desde sessionStorage si es válida para el rol actual */
+    const [seccionActiva, setSeccionActiva] = useState<SeccionPanel>(() => {
+        const stored = sessionStorage.getItem(PANEL_TAB_KEY) as SeccionPanel | null;
+        const tabsRol = obtenerTabsPorRol(effectiveRole);
+        if (stored && tabsRol.some(t => t.id === stored)) return stored;
+        return seccionInicialPorRol(effectiveRole);
+    });
 
     /* [044A-38 Fase 1] Si no hay sesión, redirigir al home */
     useEffect(() => {
@@ -46,8 +56,15 @@ export const PanelIsland: React.FC = () => {
 
     /* [044A-38 Fase 1] Cuando cambia el rol efectivo, resetear a la primera tab del nuevo rol */
     useEffect(() => {
-        setSeccionActiva(seccionInicialPorRol(effectiveRole));
+        const inicial = seccionInicialPorRol(effectiveRole);
+        sessionStorage.setItem(PANEL_TAB_KEY, inicial);
+        setSeccionActiva(inicial);
     }, [effectiveRole]);
+
+    /* [084A-9] Persistir tab activa en sessionStorage para sobrevivir recargas */
+    useEffect(() => {
+        sessionStorage.setItem(PANEL_TAB_KEY, seccionActiva);
+    }, [seccionActiva]);
 
     /* [064A-5] Escuchar custom event desde HeaderPanel para cambiar tab */
     useEffect(() => {

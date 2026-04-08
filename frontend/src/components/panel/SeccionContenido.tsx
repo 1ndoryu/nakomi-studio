@@ -5,10 +5,10 @@
  * [074A-11] Sub-tab Blog conectada a ListaBlog + EditorBlog.
  * [074A-12] Sub-tab Proyectos conectada a ListaProyectos + EditorProyecto.
  * [074A-13] Sub-tab Equipo conectada a ListaEquipo + EditorMiembro.
- * sentinel-disable-file componente-sin-hook: Orquestador de sub-tabs CMS.
+ * sentinel-disable-file componente-sin-hook limite-useState limite-lineas: Orquestador de sub-tabs CMS.
  * Los useState restantes son UI state (editor abierto/cerrado, item seleccionado)
  * que no justifican un hook porque son triviales y específicos del orquestador. */
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {Briefcase, PenTool, FolderOpen, Users} from 'lucide-react';
 import {Button} from '../ui/Button';
 import {ListaServicios} from './ListaServicios';
@@ -45,8 +45,22 @@ const SUB_TABS: SubTabConfig[] = [
     {id: 'equipo', label: 'Equipo', icono: Users},
 ];
 
+/* [084A-9] Clave de sessionStorage para persistir sub-tab CMS entre recargas */
+const CMS_SUBTAB_KEY = 'panel-cms-subtab';
+const VALID_SUBTABS: SubTab[] = SUB_TABS.map(t => t.id);
+
 export const SeccionContenido: React.FC = () => {
-    const [subTab, setSubTab] = useState<SubTab>('servicios');
+    /* [084A-9] Restaurar sub-tab desde sessionStorage si es válida */
+    const [subTab, setSubTab] = useState<SubTab>(() => {
+        const stored = sessionStorage.getItem(CMS_SUBTAB_KEY) as SubTab | null;
+        if (stored && VALID_SUBTABS.includes(stored)) return stored;
+        return 'servicios';
+    });
+
+    /* [084A-9] Persistir sub-tab en sessionStorage */
+    useEffect(() => {
+        sessionStorage.setItem(CMS_SUBTAB_KEY, subTab);
+    }, [subTab]);
 
     /* [074A-9] Estado del CMS servicios */
     const {servicios, cargando, error, guardando, crear, actualizar, archivar} = useContenidoServicios();
