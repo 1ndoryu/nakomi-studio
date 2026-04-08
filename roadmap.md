@@ -51,7 +51,36 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Resumen: Página detalle individual (6 tabs), self-service + Stripe checkout, dominios DNS,
 > SSH/PuTTY, upgrade/downgrade, soporte, stats reales uptime, auditoría seguridad (6 fixes), 21 tests unitarios.
 
-### Fases futuras de hosting (no bloqueantes)
+## Chatbot — Plan v2 en ejecución
+
+> Plan maestro: `Agente/planes/plan-chatbot-v2-2026-04-10.md`
+> MemPalace evaluado: no aplica (Python/ChromaDB, no justifica agregar al stack Rust)
+>
+> **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
+> **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos
+
+### Prerequisitos
+- P-1: Refactorizar handlers/chat.rs (660 líneas → módulo con 5 archivos)
+- P-2: Migración BD (visitor_profiles, chat_attachments, message_type/metadata, ai_intermediary)
+
+### Fase I (por dificultad descendente)
+- T-1: Anti-spam + timing inteligente (rate limit WS, clasificador relevancia, máquina de estados para pausas)
+- T-2: Generación pedidos + facturas (tool use Groq, mensajes ricos, Stripe invoices, botones acción)
+- T-3: Memoria usuario + contexto (visitor_profiles, captura email, resúmenes, contexto por rol)
+- T-4: Sync cross-device/tab (BroadcastChannel, multi-conexión WS, sesión única por identidad)
+- T-5: Archivos en chat (upload multipart, Groq Vision imágenes, Whisper STT audio, PDF extraction)
+- T-6: Escalación humana (detección IA, notificación admin, flujo handoff)
+- T-7: Sin disclosure IA (system prompt, branding agente, UI sin indicadores IA)
+
+### Fase II
+- T-9: Clientes registrados (detección JWT, contexto de servicios/pedidos/hosting, reportes)
+- T-10: IA intermediaria pedidos (toggle por orden, contexto completo, resúmenes automáticos)
+
+
+
+################################### 
+
+Esto lo tienes que volver a revisar todo para ver que se hizo o que falto, esta es la solicitud original
 
 ## Chatbot
 
@@ -83,8 +112,16 @@ Fase II - Atención de clientes ya considados o registrados
 
 1. El flujo de atención de clientes que ya esta registrados, esto implica muchas cosas, porque hay que ser cuidadadosos, suponiendo que la funcionalidad de memoria funciona y distingue por usuarios, entonces la IA debería poder ver si el cliente tiene servicios activos, pedidos, hosting, etc, debería ser capaz de atender reportes, siempre y cuando considerando que habrán cosas que necesiten asistencia humana. 
 
+## Mas dtalles de la fase II (probablemente no evaluadas en el plan)
+
 2. Las conversaciones en los pedidos entre cliente y quien atiende el pedido la IA no responde, esos son chat directos, pero, los empleados y admin en las conversaciones de los pedidos pueden activar o desactivar que la IA atienda el cliente, para estos casos la IA necesita un contexto distinto, necesita tener toda la informacion del pedido completa, para estos casos casi siempre se necesitará atención humana, asi que la IA en este caso debe ser como un intermediario, imagina que esto se activa casi siempre para clientes que fastidian mucho, un empleado o admin puede estar agotado y activar esto para que la IA atienda el cliente, en configuraciones tambien debe tener una opcion ver en que pedidos esto esta activado o no. Esto implica una cosa. 
 
+Implica que la IA siempre genera un resumen dentro de los detalles de los pedidos (se puede actualizar), de las solicitudes del cliente, dentro del chat de los pedidos el cliente si debería distiguir entre los mensajes del asistente y el del empleado. 
 
+3. Ya de soporte, para los servicios, tendran boton de soporte, esto abrira el chat del agente, el agente tiene que entender la intención del usuario, abrio el chat desde el boton de soporte del hosting tal o servicio tal, asi mismo tiene que identificarse de donde abrio el chat en todos los casos, no solo para los chat de soporte, y atender la solicitud del cliente, para esto el cliente necesitas capacidades y poder realizar acciones, esto requiere un plan. 
+
+4. Hasta ahora hay muchas tareas, mucho contexto, el agente puede alucinar con tanta información, la organización del contento tiene que hacerse de manera precisa, muy probablmenente todo lo anterior dicho deben ser mcp resumidos que puedan brindar mas detalles, o tal vez lo mejor sea separar en agentes y crear subagentes, no lo se, estudiar y evaluar las tecnicas mas aficientes a aplicar, limitar el contexto a 64k tokens y que genere un resumen detallado cuando supere el limite en una conversacion. 
+
+5. No se si ya lo dije antes: 
 
 
