@@ -84,10 +84,14 @@ export function HostingDetalle({
     hostingId,
     isAdmin,
     onVolver,
+    onPlanChange,
+    planChangeLoading,
 }: {
     hostingId: string;
     isAdmin: boolean;
     onVolver: () => void;
+    onPlanChange?: (plan: string, domain?: string) => void;
+    planChangeLoading?: boolean;
 }) {
     const {
         subscription: sub,
@@ -154,7 +158,13 @@ export function HostingDetalle({
                 {tabActiva === 'recursos' && <TabRecursos sub={sub} />}
                 {tabActiva === 'dominio' && <TabDominio domainInfo={domainInfo} />}
                 {tabActiva === 'acceso' && <TabAcceso sshInfo={sshInfo} />}
-                {tabActiva === 'facturacion' && <TabFacturacion sub={sub} />}
+                {tabActiva === 'facturacion' && (
+                    <TabFacturacion
+                        sub={sub}
+                        onPlanChange={onPlanChange}
+                        planChangeLoading={planChangeLoading}
+                    />
+                )}
                 {tabActiva === 'eventos' && <TabEventos hostingId={hostingId} clientName={sub.client_name} />}
             </div>
         </div>

@@ -297,6 +297,66 @@
     color: var(--text-tertiary);
 }
 
+/* [094A-6] Botón cambiar plan dentro de la plan card */
+.hostingDetallePlanChangeBtn {
+    align-self: flex-start;
+    margin-top: var(--spacing-xs);
+}
+
+/* [094A-6] Grid de opciones de plan (upgrade/downgrade) */
+.hostingDetallePlanOptions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.hostingDetallePlanGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.hostingDetallePlanOption {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: var(--bg-card);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+    transition: border-color var(--transicion-rapida);
+}
+
+.hostingDetallePlanOption:hover {
+    border-color: var(--brand-primary);
+}
+
+.hostingDetallePlanOptionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hostingDetallePlanBadge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.hostingDetallePlanBadge--upgrade {
+    background: color-mix(in srgb, var(--color-success) 15%, transparent);
+    color: var(--color-success);
+}
+
+.hostingDetallePlanBadge--downgrade {
+    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+    color: var(--color-warning);
+}
+
 /* ── Estados vacíos (acceso, recursos) ───── */
 
 .hostingDetalleAccesoInactivo,

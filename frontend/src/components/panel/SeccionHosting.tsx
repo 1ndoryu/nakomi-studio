@@ -56,6 +56,10 @@ export const SeccionHosting: React.FC = () => {
                 hostingId={selectedHostingId}
                 isAdmin={isAdmin}
                 onVolver={() => setSelectedHostingId(null)}
+                onPlanChange={(plan, domain) =>
+                    updateMutation.mutate({id: selectedHostingId, req: {plan, domain}})
+                }
+                planChangeLoading={updateMutation.isPending}
             />
         );
     }

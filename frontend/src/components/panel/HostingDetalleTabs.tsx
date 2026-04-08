@@ -1,12 +1,16 @@
 /* [094A-2] Contenido de las tabs del detalle de hosting.
  * Extraído de HostingDetalle.tsx para cumplir límite de 300 líneas.
- * Tabs: General, Recursos, Dominio & SSL, Acceso SSH, Facturación, Eventos. */
+ * Tabs: General, Recursos, Dominio & SSL, Acceso SSH, Facturación, Eventos.
+ * [094A-6] TabFacturacion ahora incluye "Cambiar plan" con comparación de planes. */
 
-import {Server, Shield, Terminal, ExternalLink} from 'lucide-react';
+import {useState} from 'react';
+
+import {Server, Shield, Terminal, ExternalLink, ArrowUpCircle} from 'lucide-react';
 import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
 import {
     HOSTING_PLAN_LABELS,
     HOSTING_STATUS_LABELS,
+    HOSTING_PLANS,
 } from '../../api/hosting';
 import {Button} from '../ui/Button';
 import {HostingStats} from './HostingStats';
@@ -178,7 +182,23 @@ export function TabAcceso({sshInfo}: {
 }
 
 /* ── Tab: Facturación ────────────────────── */
-export function TabFacturacion({sub}: {sub: Subscription}) {
+/* [094A-6] Incluye cambio de plan (upgrade/downgrade) con comparación de planes. */
+export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
+    sub: Subscription;
+    onPlanChange?: (plan: string, domain?: string) => void;
+    planChangeLoading?: boolean;
+}) {
+    const [showPlanChange, setShowPlanChange] = useState(false);
+    const currentPlanInfo = HOSTING_PLANS.find(p => p.id === sub.plan);
+    const otherPlans = HOSTING_PLANS.filter(p => p.id !== sub.plan);
+
+    const handleSelectPlan = (planId: string) => {
+        if (onPlanChange) {
+            onPlanChange(planId, sub.domain ?? undefined);
+            setShowPlanChange(false);
+        }
+    };
+
     return (
         <div className="hostingDetalleSection">
             <h3 className="hostingDetalleSectionTitle">Plan actual</h3>
@@ -192,11 +212,68 @@ export function TabFacturacion({sub}: {sub: Subscription}) {
                     </span>
                 </div>
                 <div className="hostingDetallePlanFeatures">
-                    <span>Almacenamiento: {(sub.storage_limit_mb / 1024).toFixed(0)} GB</span>
-                    <span>SSL incluido</span>
-                    <span>Backups automáticos</span>
+                    {currentPlanInfo?.features.map(f => (
+                        <span key={f}>{f}</span>
+                    )) ?? (
+                        <>
+                            <span>Almacenamiento: {(sub.storage_limit_mb / 1024).toFixed(0)} GB</span>
+                            <span>SSL incluido</span>
+                            <span>Backups automáticos</span>
+                        </>
+                    )}
                 </div>
+                {onPlanChange && sub.status !== 'cancelled' && (
+                    <Button
+                        type="button"
+                        variante="outline"
+                        tamano="pequeno"
+                        onClick={() => setShowPlanChange(!showPlanChange)}
+                        className="hostingDetallePlanChangeBtn"
+                    >
+                        <ArrowUpCircle size={14} />
+                        {showPlanChange ? 'Cancelar cambio' : 'Cambiar plan'}
+                    </Button>
+                )}
             </div>
+
+            {showPlanChange && (
+                <div className="hostingDetallePlanOptions">
+                    <h4 className="hostingDetalleSubTitle">Opciones disponibles</h4>
+                    <p className="hostingDetalleSectionDesc">
+                        El cambio se aplica inmediatamente. Se ajustará el cobro proporcionalmente.
+                    </p>
+                    <div className="hostingDetallePlanGrid">
+                        {otherPlans.map(plan => {
+                            const isUpgrade = plan.priceCents > (currentPlanInfo?.priceCents ?? 0);
+                            return (
+                                <div key={plan.id} className="hostingDetallePlanOption">
+                                    <div className="hostingDetallePlanOptionHeader">
+                                        <span className="hostingDetallePlanNombre">{plan.label}</span>
+                                        <span className={`hostingDetallePlanBadge ${isUpgrade ? 'hostingDetallePlanBadge--upgrade' : 'hostingDetallePlanBadge--downgrade'}`}>
+                                            {isUpgrade ? 'Upgrade' : 'Downgrade'}
+                                        </span>
+                                    </div>
+                                    <span className="hostingDetallePlanPrecio">
+                                        ${(plan.priceCents / 100).toFixed(0)}/mes
+                                    </span>
+                                    <div className="hostingDetallePlanFeatures">
+                                        {plan.features.map(f => <span key={f}>{f}</span>)}
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variante={isUpgrade ? 'primario' : 'secundario'}
+                                        tamano="pequeno"
+                                        onClick={() => handleSelectPlan(plan.id)}
+                                        disabled={planChangeLoading}
+                                    >
+                                        {planChangeLoading ? 'Cambiando…' : `Cambiar a ${plan.label}`}
+                                    </Button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             <h3 className="hostingDetalleSectionTitle">Historial de pagos</h3>
             <p className="hostingDetalleSectionDesc">
