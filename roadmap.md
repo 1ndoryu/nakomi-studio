@@ -90,7 +90,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~084A-32: Subir context budget a 64k tokens + resumen mejorado~~ ✅
 - ~~084A-33: Plan de pruebas end-to-end del chatbot + 11 unit tests~~ ✅
 - ~~084A-34: Verificar empíricamente rotación de API keys + fallback de modelos~~ ✅
-- 084A-35: Deploy a nakomi.studio (subir cambios al VPS)
+- 084A-35: Deploy a nakomi.studio — **BLOQUEADO**: No existe Dockerfile ni docker-compose.yml. Requiere crear infraestructura Docker (Dockerfile multistage Rust + docker-compose con PostgreSQL) antes de poder desplegar. El código está pushed al repo y verificado con tests. Pendiente de preparación de infraestructura.
 
 
 - llama-4-maverick-17b-128e-instruct esta deprecated!! se debe usar el gpt 
