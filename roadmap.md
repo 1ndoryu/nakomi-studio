@@ -47,7 +47,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - En el panel al recergar debería permanecer en la misma tab incluyendo la tab interna, no ir siempre a la primera tab. → ✅ 084A-9 completada
 - No veo contenido de prueba para los reembolso, necesito ver como se ven los reembolsos.
 
-- El boton de 3 puntos de las opciones de hostig no se entiende, claramente es un desastre tantas opciones en vez de ser mas claro "cambiar estado" y luego abrir un modal, en vez de tener los estados sueltos.
+- El boton de 3 puntos de las opciones de hostig no se entiende, claramente es un desastre tantas opciones en vez de ser mas claro "cambiar estado" y luego abrir un modal, en vez de tener los estados sueltos. → ✅ 084A-13 completada
 - Nada de lo que esta en hostingCard tiene que estar en (--text-xs); subelo  a sm → ✅ 084A-18 completada
 - .hostingCardIcono quita el fondo negro y usa bg accent y pon 140px de ancho. → ✅ 084A-19 completada 
 - No hay consistencia visual entre todos los modales → ✅ 084A-8 completada

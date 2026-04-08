@@ -169,6 +169,19 @@
     margin-left: auto;
 }
 
+/* [084A-13] Modal de cambio de estado */
+.hostingStatusModalSub {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    margin-bottom: var(--spacing-md);
+}
+
+.hostingStatusModalOpciones {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
 /* Status badges — [074A-62] Colores eliminados por request del usuario [084A-18] subido a --text-sm */
 .hostingStatus {
     font-size: var(--text-sm);

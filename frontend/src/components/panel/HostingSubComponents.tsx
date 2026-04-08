@@ -42,23 +42,20 @@ export function HostingCard({
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [editing, setEditing] = useState(false);
+    const [showStatusModal, setShowStatusModal] = useState(false);
     const [editPlan, setEditPlan] = useState(sub.plan);
     const [editDomain, setEditDomain] = useState(sub.domain || '');
 
-    /* [084A-4] Context menu unificado: admin ve status changes + editar + eliminar,
-     * cliente ve editar + cancelar. Ambos roles ven el menú. */
+    /* [084A-13] Context menu simplificado: "Cambiar estado" abre modal,
+     * ya no lista cada status individualmente en el menú. */
     const menuItems: MenuContextualItem[] = [];
 
     if (isAdmin) {
-        /* Admin: cambios de status rápidos */
-        (['pending', 'provisioning', 'active', 'suspended', 'cancelled'] as const)
-            .filter(s => s !== sub.status)
-            .forEach(s => menuItems.push({
-                id: s,
-                label: HOSTING_STATUS_LABELS[s] || s,
-                onSelect: () => onStatusChange(s),
-                danger: s === 'suspended' || s === 'cancelled',
-            }));
+        menuItems.push({
+            id: 'change-status',
+            label: 'Cambiar estado',
+            onSelect: () => setShowStatusModal(true),
+        });
     }
 
     /* Editar: admin y cliente */
@@ -143,6 +140,35 @@ export function HostingCard({
                         <Button type="button" onClick={handleEditSubmit}>
                             Guardar cambios
                         </Button>
+                    </div>
+                </Modal>
+            )}
+
+            {/* [084A-13] Modal de cambio de estado — reemplaza los status sueltos del menú */}
+            {showStatusModal && isAdmin && (
+                <Modal abierto={showStatusModal} onCerrar={() => setShowStatusModal(false)}>
+                    <div className="hostingFormCrear">
+                        <h3 className="modalTitulo">Cambiar estado</h3>
+                        <p className="hostingStatusModalSub">
+                            Estado actual: <strong>{HOSTING_STATUS_LABELS[sub.status] || sub.status}</strong>
+                        </p>
+                        <div className="hostingStatusModalOpciones">
+                            {(['pending', 'provisioning', 'active', 'suspended', 'cancelled'] as const)
+                                .filter(s => s !== sub.status)
+                                .map(s => (
+                                    <Button
+                                        key={s}
+                                        variante={s === 'suspended' || s === 'cancelled' ? 'peligro' : 'secundario'}
+                                        type="button"
+                                        onClick={() => {
+                                            onStatusChange(s);
+                                            setShowStatusModal(false);
+                                        }}
+                                    >
+                                        {HOSTING_STATUS_LABELS[s] || s}
+                                    </Button>
+                                ))}
+                        </div>
                     </div>
                 </Modal>
             )}
