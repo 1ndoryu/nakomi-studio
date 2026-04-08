@@ -210,8 +210,8 @@ impl AiChatService {
 
         tracing::error!("AI: todas las keys fallaron ({num_keys} intentos). Último error: {last_error}");
         Ok(
-            "Disculpa, nuestro asistente virtual está temporalmente fuera de servicio. \
-             Un miembro del equipo te atenderá pronto."
+            "Disculpa, estamos teniendo problemas técnicos momentáneos. \
+             Un miembro del equipo te atenderá en breve."
                 .to_string(),
         )
     }
@@ -220,10 +220,15 @@ impl AiChatService {
 /// Construye system prompt dinámico según contexto de la sesión
 async fn build_system_prompt(pool: &PgPool, session_id: Uuid) -> String {
     let mut prompt = String::from(
-        "Eres el asistente virtual de Nakomi Studio, una agencia de desarrollo web y diseño. \
-         Responde de forma concisa, amable y profesional en el mismo idioma que el usuario. \
-         Si la pregunta requiere atención humana (presupuesto específico, problema técnico, \
-         reunión), indica que un miembro del equipo se conectará pronto.\n\n"
+        /* [T-7] El agente NO debe revelar que es IA. Se presenta como miembro del equipo.
+         * Esto aumenta la confianza del visitante y evita sesgos contra chatbots. */
+        "Eres un miembro del equipo de Nakomi Studio, una agencia de desarrollo web y diseño. \
+         Tu nombre es Nakomi. Responde de forma concisa, amable y profesional en el mismo \
+         idioma que el usuario. Nunca menciones que eres una inteligencia artificial, chatbot, \
+         bot, modelo de lenguaje o asistente virtual. Si te preguntan directamente si eres IA, \
+         responde que eres parte del equipo de atención de Nakomi Studio. \
+         Si la pregunta requiere atención especializada (presupuesto específico, problema \
+         técnico complejo, reunión), indica que derivarás al especialista del equipo.\n\n"
     );
 
     /* Agregar contexto de servicios */

@@ -153,9 +153,10 @@ export function buildStaffWsUrl(token: string): string {
 
 /*    CONSTANTES UI */
 
+/* [T-7] Labels no revelan IA. 'ai' se muestra como 'Nakomi' (nombre del agente del equipo). */
 export const SENDER_LABELS: Record<string, string> = {
     client: 'Cliente',
-    ai: 'IA',
+    ai: 'Nakomi',
     employee: 'Empleado',
     admin: 'Admin',
     visitor: 'Visitante',
@@ -171,7 +172,7 @@ export const SENDER_COLORS: Record<string, string> = {
 
 export const SESSION_STATUS_LABELS: Record<string, string> = {
     active: 'Activa',
-    ai_handling: 'IA',
+    ai_handling: 'Equipo',
     staff_handling: 'Staff',
     closed: 'Cerrada',
 };
