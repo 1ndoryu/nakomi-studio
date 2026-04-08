@@ -102,6 +102,8 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - Veo muchos planes que no estan en la carpeta de completados, claramente hay revisarlos todos para ver cuales mover y si hay cosas pendientes completarlas todo.
 
-- El menu contextual de 3 punto de los hosting no se ve.
+- ~~El menu contextual de 3 punto de los hosting no se ve.~~ ✅ (084A-2: overflow:hidden→visible en hostingCard)
 
-- La parte de planes se ve mal, los colores de las letras no se ven
+- ~~La parte de planes se ve mal, los colores de las letras no se ven~~ ✅ (084A-1: colores corregidos de dark theme a light theme)
+
+- En los planes las caracteristicas es ven asi [object Object]
