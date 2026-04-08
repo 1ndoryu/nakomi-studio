@@ -2,11 +2,10 @@
  * Badge de no leídas, dropdown con lista, marcar leídas, navegar a link. */
 
 import { useCallback, useState } from 'react';
-import { Bell, Check, CheckCheck } from 'lucide-react';
+import { Bell } from 'lucide-react';
 
 import { NOTIF_TYPES, type NotificationType } from '../../api/notifications';
 import { useNotifications, useNotificationWs } from '../../hooks/useNotifications';
-import { Button } from '../ui/Button';
 import { MenuContextual } from '../ui/ContextMenu';
 import './NotificationBell.css';
 
@@ -14,7 +13,6 @@ export default function NotificationBell() {
   const {
     notifications,
     unreadCount,
-    marcarLeidas,
     marcarTodasLeidas,
   } = useNotifications();
 
@@ -23,24 +21,20 @@ export default function NotificationBell() {
 
   const [open, setOpen] = useState(false);
 
+  /* [084A-27] Al abrir el dropdown, marcar todas como leídas automáticamente */
   const toggleDropdown = useCallback(() => {
-    setOpen((prev) => !prev);
-  }, []);
+    setOpen((prev) => {
+      const willOpen = !prev;
+      if (willOpen && unreadCount > 0) {
+        marcarTodasLeidas();
+      }
+      return willOpen;
+    });
+  }, [unreadCount, marcarTodasLeidas]);
 
   const closeDropdown = useCallback(() => {
     setOpen(false);
   }, []);
-
-  const handleMarkRead = useCallback(
-    (id: string) => {
-      marcarLeidas([id]);
-    },
-    [marcarLeidas]
-  );
-
-  const handleMarkAll = useCallback(() => {
-    marcarTodasLeidas();
-  }, [marcarTodasLeidas]);
 
   /* Formatear fecha relativa simple */
   const formatTime = (iso: string): string => {
@@ -76,18 +70,6 @@ export default function NotificationBell() {
     >
       <div className="notificationBell__header">
         <h3 className="notificationBell__title">Notificaciones</h3>
-        {unreadCount > 0 && (
-          <Button
-            className="notificationBell__markAll"
-            onClick={handleMarkAll}
-            title="Marcar todas como leídas"
-            type="button"
-            variante="texto"
-            tamano="pequeno"
-          >
-            <CheckCheck size={16} />
-          </Button>
-        )}
       </div>
 
       <div className="notificationBell__list">
@@ -112,18 +94,7 @@ export default function NotificationBell() {
                     {formatTime(n.created_at)}
                   </span>
                 </div>
-                {!n.read && (
-                  <Button
-                    className="notificationBell__markRead"
-                    onClick={() => handleMarkRead(n.id)}
-                    title="Marcar como leída"
-                    type="button"
-                    variante="texto"
-                    tamano="pequeno"
-                  >
-                    <Check size={14} />
-                  </Button>
-                )}
+
               </div>
             );
           })

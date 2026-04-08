@@ -79,17 +79,8 @@
   margin: 0;
 }
 
-.notificationBell__markAll {
-  color: var(--bg-accent);
-  padding: 4px;
-  border-radius: var(--radius-sm);
-  transition: background 0.2s;
-  text-decoration: none;
-}
-
-.notificationBell__markAll:hover {
-  background: var(--bg-dark);
-}
+/* [084A-27] Eliminados .notificationBell__markAll y .notificationBell__markRead.
+ * Las notificaciones se marcan como leídas automáticamente al abrir el dropdown. */
 
 .notificationBell__list {
   overflow-y: auto;
@@ -116,8 +107,9 @@
   border-bottom: none;
 }
 
+/* [084A-27] Hover con bg-accent en vez de bg-dark (negro) */
 .notificationBell__item:hover {
-  background: var(--bg-dark);
+  background: var(--bg-accent);
 }
 
 .notificationBell__item--unread {
@@ -162,18 +154,7 @@
   color: var(--text-tertiary);
 }
 
-.notificationBell__markRead {
-  color: var(--text-tertiary);
-  padding: 2px;
-  border-radius: var(--radius-sm);
-  transition: color 0.15s;
-  flex-shrink: 0;
-  text-decoration: none;
-}
 
-.notificationBell__markRead:hover {
-  color: var(--bg-accent);
-}
 
 /* Responsive */
 @media (max-width: 480px) {
