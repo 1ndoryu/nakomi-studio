@@ -102,6 +102,22 @@ export async function apiListHostingEvents(id: string): Promise<HostingEvent[]> 
     return data;
 }
 
+/* [094A-3] Self-service: cliente selecciona plan y recibe URL de Stripe Checkout */
+export interface SelfSubscribeRequest {
+    plan: string;
+    domain?: string;
+}
+
+export interface SelfSubscribeResponse {
+    subscription: HostingSubscription;
+    checkout_url: string;
+}
+
+export async function apiSelfSubscribe(req: SelfSubscribeRequest): Promise<SelfSubscribeResponse> {
+    const {data} = await axiosInstance.post<SelfSubscribeResponse>('/api/hosting/subscribe', req);
+    return data;
+}
+
 /*    CONSTANTES */
 
 export const HOSTING_PLAN_LABELS: Record<string, string> = {
@@ -134,6 +150,39 @@ export const HOSTING_STATUS_CLASS: Record<string, string> = {
     suspended: 'hostingStatus--suspended',
     cancelled: 'hostingStatus--cancelled',
 };
+
+/* [094A-3] Info de planes para el selector de contratación self-service */
+export interface HostingPlanInfo {
+    id: string;
+    label: string;
+    priceCents: number;
+    storageMb: number;
+    features: string[];
+}
+
+export const HOSTING_PLANS: HostingPlanInfo[] = [
+    {
+        id: 'basico',
+        label: 'Básico',
+        priceCents: 500,
+        storageMb: 5120,
+        features: ['5 GB almacenamiento', 'SSL gratuito', '1 dominio', 'Soporte por email'],
+    },
+    {
+        id: 'pro',
+        label: 'Profesional',
+        priceCents: 1000,
+        storageMb: 20480,
+        features: ['20 GB almacenamiento', 'SSL gratuito', '3 dominios', 'Soporte prioritario', 'Backups diarios'],
+    },
+    {
+        id: 'ecommerce',
+        label: 'E-commerce',
+        priceCents: 1500,
+        storageMb: 51200,
+        features: ['50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'Soporte 24/7', 'Backups diarios', 'CDN incluido'],
+    },
+];
 
 /* [084A-24] VPS stats — proxy a Contabo API (admin only) */
 

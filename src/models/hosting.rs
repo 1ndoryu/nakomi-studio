@@ -62,6 +62,16 @@ pub struct UpdateHostingStatusRequest {
     pub reason: Option<String>,
 }
 
+/* [094A-3] Self-service: cliente contrata hosting sin form admin.
+ * Solo necesita plan y dominio opcional — nombre/email se toman del perfil del usuario. */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct SelfSubscribeRequest {
+    #[validate(length(min = 1, max = 20))]
+    pub plan: String,
+    #[validate(length(max = 253))]
+    pub domain: Option<String>,
+}
+
 /* [074A-65] Request para editar suscripción (plan, dominio) */
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateHostingRequest {
@@ -108,4 +118,11 @@ impl From<HostingSubscription> for HostingSubscriptionResponse {
             updated_at: s.updated_at,
         }
     }
+}
+
+/* [094A-3] Respuesta self-service: suscripción creada + URL de Stripe Checkout */
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SelfSubscribeResponse {
+    pub subscription: HostingSubscriptionResponse,
+    pub checkout_url: String,
 }

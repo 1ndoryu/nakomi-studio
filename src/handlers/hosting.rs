@@ -15,9 +15,10 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     CreateHostingRequest, HostingEvent, HostingSubscriptionResponse,
+    SelfSubscribeRequest, SelfSubscribeResponse,
     UpdateHostingRequest, UpdateHostingStatusRequest, UserRole,
 };
-use crate::repositories::{CreateHostingParams, HostingRepository};
+use crate::repositories::{CreateHostingParams, HostingRepository, UserRepository};
 use crate::AppState;
 
 /* [084A-10] Precios por plan en centavos: Básico $5, Pro $10, E-commerce $15 */
@@ -123,6 +124,113 @@ pub async fn create_subscription(
     .await;
 
     Ok((StatusCode::CREATED, Json(sub.into())))
+}
+
+/* [094A-3] Self-service: cliente contrata hosting + paga en un solo paso.
+ * Toma plan y dominio opcional, obtiene nombre/email del perfil del usuario autenticado,
+ * crea la suscripción y la Stripe Checkout Session, retorna URL de pago. */
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscribe",
+    request_body = SelfSubscribeRequest,
+    responses(
+        (status = 201, description = "Suscripción creada + URL de checkout", body = SelfSubscribeResponse),
+        (status = 400, description = "Plan inválido"),
+        (status = 401, description = "No autorizado"),
+        (status = 503, description = "Stripe no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn subscribe_self(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<SelfSubscribeRequest>,
+) -> Result<(StatusCode, Json<SelfSubscribeResponse>), AppError> {
+    req.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+
+    let price = plan_price_cents(&req.plan).ok_or_else(|| {
+        AppError::Validation(format!(
+            "Plan inválido: {}. Opciones: basico, pro, ecommerce",
+            req.plan
+        ))
+    })?;
+    let storage = plan_storage_mb(&req.plan);
+
+    /* Obtener nombre y email del perfil del usuario autenticado */
+    let user = UserRepository::find_by_id(&state.pool, auth.user_id)
+        .await?
+        .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+
+    let client_name = user.display_name.unwrap_or_else(|| user.email.clone());
+    let client_email = user.email;
+
+    /* Crear la suscripción en estado pending */
+    let sub = HostingRepository::create(
+        &state.pool,
+        CreateHostingParams {
+            user_id: Some(auth.user_id),
+            client_name: &client_name,
+            client_email: &client_email,
+            plan: &req.plan,
+            domain: req.domain.as_deref(),
+            monthly_price_cents: price,
+            storage_limit_mb: storage,
+        },
+    )
+    .await?;
+
+    let _ = HostingRepository::add_event(
+        &state.pool,
+        sub.id,
+        "created",
+        Some(serde_json::json!({
+            "plan": req.plan,
+            "by": auth.user_id.to_string(),
+            "source": "self-service"
+        })),
+    )
+    .await;
+
+    /* Crear Stripe Checkout Session inmediatamente */
+    let stripe_key = state
+        .stripe_secret_key
+        .as_deref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Stripe no configurado".into()))?;
+
+    let config = state
+        .hosting_stripe_config
+        .as_ref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Precios de hosting no configurados".into()))?;
+
+    let base_url = std::env::var("GLORY_PUBLIC_URL")
+        .unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let success_url = format!(
+        "{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}"
+    );
+    let cancel_url = format!("{base_url}/panel?hosting=cancelled");
+
+    let checkout_url = crate::services::HostingStripeService::create_checkout_session(
+        &crate::services::CheckoutParams {
+            http_client: &state.http_client,
+            stripe_key,
+            config,
+            subscription_id: sub.id,
+            plan: &sub.plan,
+            customer_email: &client_email,
+            success_url: &success_url,
+            cancel_url: &cancel_url,
+        },
+    )
+    .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(SelfSubscribeResponse {
+            subscription: sub.into(),
+            checkout_url,
+        }),
+    ))
 }
 
 /// Obtener suscripción por ID
@@ -564,6 +672,11 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/subscriptions/:id/checkout",
             axum::routing::post(create_checkout),
+        )
+        /* [094A-3] Self-service: cliente contrata + paga en un solo paso */
+        .route(
+            "/hosting/subscribe",
+            axum::routing::post(subscribe_self),
         )
         /* [084A-24] VPS stats: proxy a Contabo API */
         .route("/hosting/vps", get(list_vps))

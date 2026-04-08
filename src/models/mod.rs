@@ -70,7 +70,8 @@ pub use user::{
 };
 pub use hosting::{
     CreateHostingRequest, HostingEvent, HostingSubscription,
-    HostingSubscriptionResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
+    HostingSubscriptionResponse, SelfSubscribeRequest, SelfSubscribeResponse,
+    UpdateHostingRequest, UpdateHostingStatusRequest,
 };
 pub use public_profile::{
     GivenReviewRow, PaginatedPublicReviews, PublicProfileRow, PublicReviewItem,

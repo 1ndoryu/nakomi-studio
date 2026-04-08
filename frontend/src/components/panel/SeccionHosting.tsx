@@ -13,6 +13,7 @@ import {Modal} from '../ui/Modal';
 import {Button} from '../ui/Button';
 import {HostingCard, CreateHostingForm} from './HostingSubComponents';
 import {HostingDetalle} from './HostingDetalle';
+import {HostingPlanSelector} from './HostingPlanSelector';
 import {VpsPanel} from './VpsPanel';
 import './SeccionHosting.css';
 
@@ -36,6 +37,7 @@ export const SeccionHosting: React.FC = () => {
         deleteMutation,
         cancelMutation,
         checkoutMutation,
+        subscribeMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -62,7 +64,7 @@ export const SeccionHosting: React.FC = () => {
         <div className="hostingContenedor">
             <div className="hostingHeader">
                 <h2>Hosting</h2>
-                {isAdmin && (
+                {isAdmin ? (
                     <Button
                         variante="primario"
                         tamano="pequeno"
@@ -71,6 +73,16 @@ export const SeccionHosting: React.FC = () => {
                         type="button"
                     >
                         <Plus size={16} /> Nueva suscripción
+                    </Button>
+                ) : (
+                    <Button
+                        variante="primario"
+                        tamano="pequeno"
+                        className="hostingBtnCrear"
+                        onClick={() => setShowCreateModal(true)}
+                        type="button"
+                    >
+                        <Plus size={16} /> Contratar hosting
                     </Button>
                 )}
             </div>
@@ -143,13 +155,20 @@ export const SeccionHosting: React.FC = () => {
                 </div>
             )}
 
-            {/* Modal crear suscripción */}
+            {/* Modal: admin ve form de crear, cliente ve selector de planes */}
             {showCreateModal && (
                 <Modal abierto={showCreateModal} onCerrar={() => setShowCreateModal(false)}>
-                    <CreateHostingForm
-                        onSubmit={(req) => createMutation.mutate(req)}
-                        submitting={createMutation.isPending}
-                    />
+                    {isAdmin ? (
+                        <CreateHostingForm
+                            onSubmit={(req) => createMutation.mutate(req)}
+                            submitting={createMutation.isPending}
+                        />
+                    ) : (
+                        <HostingPlanSelector
+                            onSelect={(plan, domain) => subscribeMutation.mutate({plan, domain})}
+                            loading={subscribeMutation.isPending}
+                        />
+                    )}
                 </Modal>
             )}
 

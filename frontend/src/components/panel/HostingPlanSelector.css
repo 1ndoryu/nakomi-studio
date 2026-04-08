@@ -1,0 +1,151 @@
+/* [094A-3] Estilos del selector de planes de hosting.
+ * Grid responsive de 3 cards con features, precios, y paso de dominio. */
+
+.planSelectorGrid {
+    width: 100%;
+    max-width: 800px;
+}
+
+.planSelectorTitulo {
+    text-align: center;
+    margin-bottom: var(--spacing-lg, 1.5rem);
+    font-size: 1.25rem;
+}
+
+.planSelectorCards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md, 1rem);
+}
+
+/* Card individual */
+.planCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-lg, 12px);
+    padding: var(--spacing-lg, 1.5rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color var(--transicion-rapida, 0.2s),
+                box-shadow var(--transicion-rapida, 0.2s);
+    position: relative;
+}
+
+.planCard:hover,
+.planCard:focus-visible {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+}
+
+.planCard--selected {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-primary) 30%, transparent);
+}
+
+.planCard--recommended {
+    border-color: var(--brand-primary);
+}
+
+.planCardBadge {
+    position: absolute;
+    top: -10px;
+    background: var(--brand-primary);
+    color: var(--brand-white, #fff);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 12px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.planCardName {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: var(--spacing-sm, 0.5rem);
+}
+
+.planCardPrice {
+    margin: var(--spacing-sm, 0.5rem) 0;
+}
+
+.planCardPriceAmount {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--brand-primary);
+}
+
+.planCardPricePeriod {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.planCardFeatures {
+    list-style: none;
+    padding: 0;
+    margin: var(--spacing-md, 1rem) 0;
+    width: 100%;
+    text-align: left;
+}
+
+.planCardFeatures li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.planCardFeatures li svg {
+    color: var(--color-success, #22c55e);
+    flex-shrink: 0;
+}
+
+.planCardBtn {
+    margin-top: auto;
+    width: 100%;
+}
+
+/* Paso dominio */
+.planSelectorDomain {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md, 1rem);
+    max-width: 450px;
+    width: 100%;
+}
+
+.planSelectorDomainHint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.planSelectorDomainActions {
+    display: flex;
+    gap: var(--spacing-sm, 0.5rem);
+    justify-content: flex-end;
+}
+
+/* Responsive: stack cards en mobile */
+@media (max-width: 767px) {
+    .planSelectorCards {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    .planSelectorCards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .planCard:last-child {
+        grid-column: span 2;
+        max-width: 50%;
+        justify-self: center;
+    }
+}

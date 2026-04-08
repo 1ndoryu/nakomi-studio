@@ -1,27 +1,18 @@
 /* [074A-63] Hook de estado para SeccionHosting.
  * [094A-2] Ahora incluye selectedHostingId para navegación lista→detalle.
+ * [094A-3] Mutations extraídas a useHostingMutations para cumplir límite 120 líneas.
  * 3 useState: showCreateModal, tabActiva, selectedHostingId. */
 
-import {useState, useMemo, useEffect} from 'react';
-import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
-import {
-    apiListHostingSubscriptions,
-    apiCreateHostingSubscription,
-    apiUpdateHostingStatus,
-    apiUpdateHostingSubscription,
-    apiDeleteHostingSubscription,
-    apiRequestCancelHosting,
-    apiCreateHostingCheckout,
-    type CreateHostingRequest,
-    type UpdateHostingRequest,
-} from '../api/hosting';
+import {useState, useMemo, useEffect, useCallback} from 'react';
+import {useQuery} from '@tanstack/react-query';
+import {apiListHostingSubscriptions} from '../api/hosting';
 import {toast} from '../stores/toastStore';
 import {useAuthStore} from '../stores/authStore';
+import {useHostingMutations} from './useHostingMutations';
 
 const ACTIVE_STATUSES = new Set(['pending', 'provisioning', 'active']);
 
 export function useSeccionHosting() {
-    const queryClient = useQueryClient();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos' | 'servidores'>('activos');
     const [selectedHostingId, setSelectedHostingId] = useState<string | null>(null);
@@ -63,65 +54,8 @@ export function useSeccionHosting() {
     );
     const listaActual = tabActiva === 'activos' ? activos : inactivos;
 
-    const createMutation = useMutation({
-        mutationFn: (req: CreateHostingRequest) => apiCreateHostingSubscription(req),
-        onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: hostingKey});
-            toast.success('Suscripción creada');
-            setShowCreateModal(false);
-        },
-        onError: () => toast.error('Error al crear suscripción'),
-    });
-
-    const statusMutation = useMutation({
-        mutationFn: ({id, status}: {id: string; status: string}) =>
-            apiUpdateHostingStatus(id, status),
-        onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: hostingKey});
-            toast.success('Status actualizado');
-        },
-        onError: () => toast.error('Error al actualizar status'),
-    });
-
-    /* [074A-65] Editar suscripción (plan, dominio) */
-    const updateMutation = useMutation({
-        mutationFn: ({id, req}: {id: string; req: UpdateHostingRequest}) =>
-            apiUpdateHostingSubscription(id, req),
-        onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: hostingKey});
-            toast.success('Suscripción actualizada');
-        },
-        onError: () => toast.error('Error al actualizar suscripción'),
-    });
-
-    /* [074A-65] Eliminar suscripción */
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) => apiDeleteHostingSubscription(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: hostingKey});
-            toast.success('Suscripción eliminada');
-        },
-        onError: () => toast.error('Error al eliminar suscripción'),
-    });
-
-    /* [084A-4] Cancelar suscripción (cliente o admin) */
-    const cancelMutation = useMutation({
-        mutationFn: (id: string) => apiRequestCancelHosting(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: hostingKey});
-            toast.success('Suscripción cancelada');
-        },
-        onError: () => toast.error('Error al cancelar suscripción'),
-    });
-
-    /* [084A-24] Checkout Stripe — redirige al cliente a Stripe para pagar */
-    const checkoutMutation = useMutation({
-        mutationFn: (id: string) => apiCreateHostingCheckout(id),
-        onSuccess: (checkoutUrl) => {
-            window.location.href = checkoutUrl;
-        },
-        onError: () => toast.error('Error al iniciar checkout'),
-    });
+    const onCreateSuccess = useCallback(() => setShowCreateModal(false), []);
+    const mutations = useHostingMutations(hostingKey, onCreateSuccess);
 
     return {
         subscriptions,
@@ -136,11 +70,6 @@ export function useSeccionHosting() {
         setShowCreateModal,
         selectedHostingId,
         setSelectedHostingId,
-        createMutation,
-        statusMutation,
-        updateMutation,
-        deleteMutation,
-        cancelMutation,
-        checkoutMutation,
+        ...mutations,
     };
 }
