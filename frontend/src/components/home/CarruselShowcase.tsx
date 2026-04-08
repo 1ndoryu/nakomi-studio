@@ -14,8 +14,9 @@ import {apiListPublicProjects} from '../../api/admin-projects';
 import {IMAGENES_SHOWCASE} from '../../hooks/useImagenes';
 
 export const CarruselShowcase: React.FC = () => {
-    /* [084A-11] Fetch proyectos publicados del API, fallback a datos estáticos */
-    const {data: apiProjects} = useQuery({
+    /* [084A-11] Fetch proyectos publicados del API, fallback a datos estáticos
+     * [084A-30] isPending evita flash: no mostrar fallback mientras la API resuelve */
+    const {data: apiProjects, isPending} = useQuery({
         queryKey: ['public-projects-showcase'],
         queryFn: apiListPublicProjects,
         staleTime: 5 * 60 * 1000,
@@ -23,10 +24,11 @@ export const CarruselShowcase: React.FC = () => {
     });
 
     const baseProyectos = useMemo(() => {
+        if (isPending) return [];
         if (!apiProjects || apiProjects.length === 0) return PROYECTOS_DATA;
         const mapped = mapAdminProjectsToProyectos(apiProjects);
         return mapped.length > 0 ? mapped : PROYECTOS_DATA;
-    }, [apiProjects]);
+    }, [apiProjects, isPending]);
 
     const proyectosConImagen = baseProyectos.map((proyecto, idx) => ({
         ...proyecto,

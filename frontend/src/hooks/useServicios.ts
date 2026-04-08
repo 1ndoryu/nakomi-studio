@@ -1,5 +1,7 @@
-/* [074A-21] Hook de servicios públicos — consume API con fallback a datos estáticos. */
-import {useState, useMemo, useEffect} from 'react';
+/* [074A-21] Hook de servicios públicos — consume API con fallback a datos estáticos.
+ * [084A-30] Migrado a useQuery + isPending para eliminar flash de contenido. */
+import {useState, useMemo} from 'react';
+import {useQuery} from '@tanstack/react-query';
 import {SERVICIOS_DATA} from '../data/servicios';
 import {Servicio} from '../types/servicios';
 import {apiListPublicServices, type PublicService} from '../api/admin-services';
@@ -29,19 +31,21 @@ interface UseServiciosProps {
 export const useServicios = ({initialCategory = 'todos', initialSearch = ''}: UseServiciosProps = {}) => {
     const [categoriaActiva, setCategoriaActiva] = useState(initialCategory);
     const [busqueda, setBusqueda] = useState(initialSearch);
-    const [servicios, setServicios] = useState<Servicio[]>(SERVICIOS_DATA);
 
-    useEffect(() => {
-        const controller = new AbortController();
-        apiListPublicServices()
-            .then(data => {
-                if (!controller.signal.aborted && data.length > 0) {
-                    setServicios(data.map(convertirServicio));
-                }
-            })
-            .catch(() => { /* mantiene fallback estático */ });
-        return () => controller.abort();
-    }, []);
+    /* [084A-30] useQuery elimina flash: no muestra fallback mientras API resuelve */
+    const {data: apiData, isPending} = useQuery({
+        queryKey: ['public-services'],
+        queryFn: apiListPublicServices,
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
+
+    const servicios = useMemo(() => {
+        if (isPending) return [];
+        if (!apiData || apiData.length === 0) return SERVICIOS_DATA;
+        const mapped = apiData.map(convertirServicio);
+        return mapped.length > 0 ? mapped : SERVICIOS_DATA;
+    }, [apiData, isPending]);
 
     /* Filtrado de servicios según categoría y búsqueda */
     const serviciosFiltrados = useMemo(() => {
@@ -62,6 +66,7 @@ export const useServicios = ({initialCategory = 'todos', initialSearch = ''}: Us
         setCategoriaActiva,
         busqueda,
         setBusqueda,
-        serviciosFiltrados
+        serviciosFiltrados,
+        isPending,
     };
 };

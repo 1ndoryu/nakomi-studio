@@ -15,8 +15,9 @@ import './SeccionShowcase.css';
 export const SeccionShowcase = (): JSX.Element => {
     const {t} = useTranslation();
 
-    /* [084A-11] Fetch proyectos publicados del API, fallback a datos estáticos */
-    const {data: apiProjects} = useQuery({
+    /* [084A-11] Fetch proyectos publicados del API, fallback a datos estáticos
+     * [084A-30] isPending evita flash: no mostrar fallback mientras la API resuelve */
+    const {data: apiProjects, isPending} = useQuery({
         queryKey: ['public-projects-showcase'],
         queryFn: apiListPublicProjects,
         staleTime: 5 * 60 * 1000,
@@ -24,10 +25,11 @@ export const SeccionShowcase = (): JSX.Element => {
     });
 
     const categorias = useMemo(() => {
+        if (isPending) return [];
         if (!apiProjects || apiProjects.length === 0) return CATEGORIAS_SHOWCASE;
         const proyectos = mapAdminProjectsToProyectos(apiProjects);
         return proyectos.length > 0 ? buildCategoriasShowcase(proyectos) : CATEGORIAS_SHOWCASE;
-    }, [apiProjects]);
+    }, [apiProjects, isPending]);
 
     return (
         <section className="seccionShowcase">
