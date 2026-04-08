@@ -97,17 +97,10 @@ export const SeccionHosting: React.FC = () => {
                     <p>Sin suscripciones de hosting</p>
                 </div>
             ) : (
-                <div className="hostingTabla">
-                    <div className="hostingTablaHeader">
-                        {isAdmin && <span>Cliente</span>}
-                        <span>Plan</span>
-                        <span>Dominio</span>
-                        <span>Status</span>
-                        <span>Precio</span>
-                        <span>Acciones</span>
-                    </div>
+                /* [074A-57] Rediseño: cards en vez de tabla grid, similar a proyectosLista */
+                <div className="hostingLista">
                     {subscriptions.map(sub => (
-                        <HostingRow
+                        <HostingCard
                             key={sub.id}
                             sub={sub}
                             isAdmin={isAdmin}
@@ -145,7 +138,8 @@ export const SeccionHosting: React.FC = () => {
 
 /*    SUB-COMPONENTES */
 
-function HostingRow({
+/* [074A-57] Card de hosting — layout similar a ordenCard de proyectosLista */
+function HostingCard({
     sub,
     isAdmin,
     onStatusChange,
@@ -168,40 +162,52 @@ function HostingRow({
         }));
 
     return (
-        <div className="hostingFila">
-            {isAdmin && (
-                <div className="hostingFilaCelda">
-                    <span className="hostingClientName">{sub.client_name}</span>
-                    <span className="hostingClientEmail">{sub.client_email}</span>
+        <div className="hostingCard">
+            <div className="hostingCardIcono">
+                <Server size={28} strokeWidth={1.4} />
+            </div>
+            <div className="hostingCardBody">
+                <div className="hostingCardHeader">
+                    <h3 className="hostingCardTitulo">
+                        {HOSTING_PLAN_LABELS[sub.plan] || sub.plan}
+                    </h3>
+                    <span className={`hostingStatus ${HOSTING_STATUS_CLASS[sub.status] || ''}`}>
+                        {HOSTING_STATUS_LABELS[sub.status] || sub.status}
+                    </span>
                 </div>
-            )}
-            <span>{HOSTING_PLAN_LABELS[sub.plan] || sub.plan}</span>
-            <span className="hostingDominio">{sub.domain || '—'}</span>
-            <span className={`hostingStatus ${HOSTING_STATUS_CLASS[sub.status] || ''}`}>
-                {HOSTING_STATUS_LABELS[sub.status] || sub.status}
-            </span>
-            <span>${(sub.monthly_price_cents / 100).toFixed(0)}/mes</span>
-            <div className="hostingAcciones">
-                <Button
-                    variante="outline"
-                    tamano="pequeno"
-                    className="hostingBtnAccion"
-                    type="button"
-                    onClick={onViewEvents}
-                    title="Ver historial"
-                >
-                    <History size={16} />
-                </Button>
-                {isAdmin && (
-                    <MenuContextual
-                        abierto={menuOpen}
-                        onToggle={() => setMenuOpen(prev => !prev)}
-                        onCerrar={() => setMenuOpen(false)}
-                        items={statusItems}
-                        ariaLabel="Cambiar status de suscripción"
-                        triggerClassName="hostingBtnAccion"
-                    />
+                {sub.domain && (
+                    <span className="hostingCardDominio">{sub.domain}</span>
                 )}
+                {isAdmin && (
+                    <span className="hostingCardCliente">
+                        {sub.client_name} · {sub.client_email}
+                    </span>
+                )}
+                <div className="hostingCardFooter">
+                    <span className="hostingCardPrecio">
+                        ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
+                    </span>
+                    <div className="hostingCardAcciones">
+                        <Button
+                            variante="texto"
+                            tamano="pequeno"
+                            type="button"
+                            onClick={onViewEvents}
+                            title="Ver historial"
+                        >
+                            <History size={16} />
+                        </Button>
+                        {isAdmin && (
+                            <MenuContextual
+                                abierto={menuOpen}
+                                onToggle={() => setMenuOpen(prev => !prev)}
+                                onCerrar={() => setMenuOpen(false)}
+                                items={statusItems}
+                                ariaLabel="Cambiar status de suscripción"
+                            />
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

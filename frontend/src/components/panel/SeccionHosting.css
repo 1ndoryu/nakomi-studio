@@ -40,66 +40,102 @@
     color: var(--overlay-medium);
 }
 
-/* ── Tabla ──────────────────────────────────── */
-.hostingTabla {
-    border: 1px solid var(--bg-accent);
-    border-radius: var(--radius-md);
+/* ── Cards (similar a proyectosLista) ─────── */
+/* [074A-57] Rediseño: de tabla grid a cards flex */
+.hostingLista {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.hostingCard {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-md);
+    padding: 0;
+    background: var(--brand-white);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+    transition: all var(--transicion-rapida);
     overflow: hidden;
 }
 
-.hostingTablaHeader {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1.5fr 1fr 0.8fr 1fr;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-dark);
-    font-size: var(--text-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--overlay-medium);
-    font-weight: 600;
+.hostingCard:hover {
+    border-color: var(--border-hover);
 }
 
-.hostingFila {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1.5fr 1fr 0.8fr 1fr;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
+.hostingCardIcono {
+    display: flex;
     align-items: center;
-    font-size: var(--text-sm);
-    border-top: 1px solid var(--bg-accent);
-    transition: background 0.1s;
+    justify-content: center;
+    width: 80px;
+    flex-shrink: 0;
+    background: var(--bg-dark);
+    color: var(--text-tertiary);
 }
 
-.hostingFila:hover {
-    background: var(--bg-card-subtle);
-}
-
-.hostingFilaCelda {
+.hostingCardBody {
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 0;
+    min-width: 0;
+    flex: 1;
 }
 
-.hostingClientName {
+.hostingCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.hostingCardTitulo {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--brand-black);
+    margin: 0;
+}
+
+.hostingCardDominio {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+.hostingCardCliente {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.hostingCardFooter {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid var(--bg-item-hover);
+}
+
+.hostingCardPrecio {
     font-weight: 600;
     color: var(--brand-black);
 }
 
-.hostingClientEmail {
-    font-size: var(--text-xs);
-    color: var(--overlay-medium);
+.hostingCardAcciones {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+    margin-left: auto;
 }
 
-.hostingDominio {
-    color: var(--overlay-dark);
-    font-size: var(--text-xs);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
+/* Status badges */
 .hostingStatus {
+    font-size: var(--text-xs);
     font-weight: 600;
+    flex-shrink: 0;
 }
 
 .hostingStatus--pending     { color: var(--color-warning); }
@@ -107,19 +143,6 @@
 .hostingStatus--active       { color: var(--color-success); }
 .hostingStatus--suspended    { color: var(--color-error); }
 .hostingStatus--cancelled    { color: var(--text-tertiary); }
-
-/* ── Acciones ──────────────────────────────── */
-.hostingAcciones {
-    display: flex;
-    gap: var(--spacing-xs);
-    align-items: center;
-}
-
-/* [064A-1] hostingBtnAccion: usa Button variante="outline" tamano="pequeno".
- * Solo ajuste mínimo de padding. */
-.hostingBtnAccion {
-    padding: 4px 6px;
-}
 
 .hostingMenuWrapper {
     position: relative;
