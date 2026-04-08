@@ -40,6 +40,30 @@
     color: var(--overlay-medium);
 }
 
+/* [074A-63] Tabs como en SeccionProyectos */
+.hostingTabs {
+    display: flex;
+    gap: var(--spacing-xs);
+    border-bottom: 1px solid var(--bg-item-active);
+    padding-bottom: 0;
+}
+
+.hostingTab {
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    transition: color var(--transicion-rapida), border-color var(--transicion-rapida);
+}
+
+.hostingTab--activa {
+    color: var(--brand-black);
+    border-bottom-color: var(--brand-black);
+}
+
 /* ── Cards (similar a proyectosLista) ─────── */
 /* [074A-57] Rediseño: de tabla grid a cards flex */
 .hostingLista {
@@ -96,6 +120,13 @@
     font-weight: 600;
     color: var(--brand-black);
     margin: 0;
+}
+
+/* [074A-63] Plan como subtitulo debajo del nombre */
+.hostingCardPlan {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-weight: 500;
 }
 
 .hostingCardDominio {
