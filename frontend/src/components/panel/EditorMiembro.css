@@ -1,26 +1,9 @@
-/* [074A-13] Estilos del editor de miembros del equipo. */
-
-.editorMiembroOverlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: var(--spacing-md);
-}
+/* [074A-13] Estilos del editor de miembros del equipo.
+ * [084A-8] Migrado a <Modal> base — overlay/contenedor eliminados, usa .editorMiembroModal como className. */
 
 .editorMiembroModal {
-    background: var(--bg-secondary);
-    border: 1px solid var(--white-10);
-    border-radius: var(--radius-lg);
     width: 100%;
     max-width: 560px;
-    max-height: 90vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
 }
 
 .editorMiembroContenido {
@@ -45,8 +28,8 @@
 
 .editorMiembroCampo input,
 .editorMiembroCampo textarea {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--white-10);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
     padding: var(--spacing-sm) var(--spacing-md);
@@ -58,7 +41,7 @@
 .editorMiembroCampo input:focus,
 .editorMiembroCampo textarea:focus {
     outline: none;
-    border-color: var(--white-20);
+    border-color: var(--brand-primary);
 }
 
 .editorMiembroFila {
@@ -72,8 +55,8 @@
 }
 
 .editorMiembroEstadoBtn {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--white-10);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-default);
     color: var(--text-tertiary);
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-sm);
@@ -87,37 +70,7 @@
     color: var(--text-primary);
 }
 
-.editorMiembroAcciones {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md) var(--spacing-lg);
-    border-top: 1px solid var(--white-10);
-}
-
-.editorMiembroBtnCancelar {
-    background: transparent;
-    border: 1px solid var(--white-10);
-    color: var(--text-tertiary);
-    padding: var(--spacing-sm) var(--spacing-lg);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-}
-
-.editorMiembroBtnGuardar {
-    background: var(--text-primary);
-    border: none;
-    color: var(--bg-primary);
-    padding: var(--spacing-sm) var(--spacing-lg);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.editorMiembroBtnGuardar:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+/* [084A-8] Botones de acción migrados a .modalAcciones + <Button> estándar */
 
 @media (max-width: 480px) {
     .editorMiembroFila {

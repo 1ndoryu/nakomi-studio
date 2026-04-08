@@ -113,12 +113,7 @@
     width: 100%;
 }
 
-.entregablesModalTitulo {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--brand-black);
-    margin: 0;
-}
+/* [084A-8] .entregablesModalTitulo reemplazado por .modalTitulo (Modal.css) */
 
 .entregablesModalDesc {
     font-size: var(--text-sm);

@@ -733,12 +733,7 @@
     gap: var(--spacing-md);
 }
 
-.ordenDetalleModalTitulo {
-    margin: 0;
-    font-family: var(--font-primary);
-    font-size: var(--text-xl);
-    color: var(--brand-black);
-}
+/* [084A-8] .ordenDetalleModalTitulo/.ordenDetalleModalAcciones reemplazados por .modalTitulo/.modalAcciones (Modal.css) */
 
 .ordenDetalleModalTexto {
     margin: 0;
@@ -747,12 +742,7 @@
     line-height: 1.5;
 }
 
-.ordenDetalleModalAcciones {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--spacing-sm);
-    flex-wrap: wrap;
-}
+/* [084A-8] Acciones ahora via .modalAcciones estándar */
 
 /* [064A-1] Cancelar confirmar: ahora usa variante="peligro" del Button. */
 

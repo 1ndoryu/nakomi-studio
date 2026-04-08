@@ -204,11 +204,11 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                 className="ordenDetalleModal"
             >
                 <div className="ordenDetalleModalContenido">
-                    <h3 className="ordenDetalleModalTitulo">Cancelar orden</h3>
+                    <h3 className="modalTitulo">Cancelar orden</h3>
                     <p className="ordenDetalleModalTexto">
                         Esta acción no se puede deshacer. La orden #{order.order_number} quedará cancelada.
                     </p>
-                    <div className="ordenDetalleModalAcciones">
+                    <div className="modalAcciones">
                         <Button variante="outline" tamano="pequeno" type="button"
                             onClick={() => setModalCancelarAbierto(false)} disabled={cancelando}>
                             Volver
@@ -227,11 +227,11 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                 className="ordenDetalleModal"
             >
                 <div className="ordenDetalleModalContenido">
-                    <h3 className="ordenDetalleModalTitulo">Reportar problema</h3>
+                    <h3 className="modalTitulo">Reportar problema</h3>
                     <p className="ordenDetalleModalTexto">
                         El equipo de soporte revisará tu caso y se comunicará contigo. Por ahora, contacta por chat.
                     </p>
-                    <div className="ordenDetalleModalAcciones">
+                    <div className="modalAcciones">
                         <Button variante="outline" tamano="pequeno" type="button"
                             onClick={() => setModalReportarAbierto(false)}>
                             Entendido

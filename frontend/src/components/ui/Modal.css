@@ -35,3 +35,24 @@
 .modalBaseContenedor.modalSinPadding {
     padding: 0;
 }
+
+/* [084A-8] Clases estandarizadas para titulos y acciones de modales.
+ * Todos los modales que necesiten titulo deben usar .modalTitulo (h3).
+ * Todos los que necesiten footer de acciones deben usar .modalAcciones.
+ * Esto centraliza la consistencia visual evitando clases custom por modal. */
+.modalTitulo {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--brand-black);
+    margin: 0;
+    font-family: var(--font-primary);
+}
+
+.modalAcciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-default);
+    margin-top: var(--spacing-md);
+}

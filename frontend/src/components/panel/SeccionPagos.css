@@ -207,12 +207,7 @@
     gap: var(--spacing-sm);
 }
 
-.pagoModalTitulo {
-    font-size: var(--text-lg);
-    color: var(--brand-black);
-    margin: 0;
-    font-weight: 600;
-}
+/* [084A-8] .pagoModalTitulo reemplazado por .modalTitulo (Modal.css) */
 
 .pagoModalDescripcion {
     font-size: var(--text-sm);

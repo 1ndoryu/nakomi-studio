@@ -181,17 +181,16 @@ export function SeccionUsuarios() {
 
             {/* Modal de confirmación */}
             <Modal abierto={!!confirmAction} onCerrar={() => setConfirmAction(null)} className="usuariosModal">
-                <h3 className="usuariosModalTitulo">Confirmar acción</h3>
+                <h3 className="modalTitulo">Confirmar acción</h3>
                 <p className="usuariosModalTexto">
                     {confirmAction?.type === 'role'
                         ? `¿Cambiar rol de ${confirmAction.email} a ${ROLE_LABELS[confirmAction.value] || confirmAction.value}?`
                         : `¿Cambiar status de ${confirmAction?.email} a ${STATUS_LABELS[confirmAction?.value ?? ''] || confirmAction?.value}?`
                     }
                 </p>
-                <div className="usuariosModalAcciones">
+                <div className="modalAcciones">
                     <Button
-                        className="usuariosModalCancelar"
-                        variante="outline"
+                        variante="secundario"
                         tamano="pequeno"
                         onClick={() => setConfirmAction(null)}
                         type="button"
@@ -199,7 +198,7 @@ export function SeccionUsuarios() {
                         Cancelar
                     </Button>
                     <Button
-                        className="usuariosModalConfirmar"
+                        variante="primario"
                         tamano="pequeno"
                         onClick={handleConfirm}
                         disabled={isChangingRole || isChangingStatus}

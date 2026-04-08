@@ -10,13 +10,7 @@
     overflow-y: auto;
 }
 
-.modalTestimonioTitulo {
-    font-family: var(--font-primary);
-    font-size: var(--text-2xl);
-    font-weight: 500;
-    color: var(--brand-black);
-    margin: 0 0 var(--spacing-xs);
-}
+/* [084A-8] .modalTestimonioTitulo reemplazado por .modalTitulo (Modal.css) */
 
 .modalTestimonioSubtitulo {
     font-family: var(--font-serif);

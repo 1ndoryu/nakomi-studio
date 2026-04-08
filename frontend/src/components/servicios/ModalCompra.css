@@ -12,11 +12,7 @@
     text-align: center;
 }
 
-/* [054A-22] Sin font-serif — usa font-primary del proyecto */
-.modalCompraTitulo {
-    font-size: var(--text-xl);
-    font-weight: 600;
-}
+/* [084A-8] .modalCompraTitulo reemplazado por .modalTitulo (Modal.css) */
 
 .modalCompraDescripcion {
     font-size: var(--text-sm);

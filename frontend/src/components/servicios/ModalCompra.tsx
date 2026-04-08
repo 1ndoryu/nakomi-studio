@@ -47,7 +47,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
             {/* [064A-46] Resumen: precio solo en botón, no en texto. */}
             {(paso === 'resumen' || paso === 'auth') && (
                 <div className="modalCompraResumen">
-                    <h2 className="modalCompraTitulo">{plan.nombre}</h2>
+                    <h2 className="modalTitulo">{plan.nombre}</h2>
                     <p className="modalCompraDescripcion">{plan.descripcion}</p>
                 </div>
             )}

@@ -114,7 +114,7 @@ export function SeccionPagos() {
             <Modal abierto={!!pagoDetalle} onCerrar={() => setPagoDetalle(null)}>
                 {pagoDetalle && (
                     <div className="pagoModalContenido">
-                        <h3 className="pagoModalTitulo">Detalle del pago</h3>
+                        <h3 className="modalTitulo">Detalle del pago</h3>
                         <div className="pagoDetalleGrid">
                             <div className="pagoDetalleFila">
                                 <span className="pagoDetalleLabel">Estado</span>
@@ -179,7 +179,7 @@ export function SeccionPagos() {
             {/* Modal de solicitud de reembolso */}
             <Modal abierto={!!refundOrderId} onCerrar={cerrarModal}>
                 <div className="pagoModalContenido">
-                    <h3 className="pagoModalTitulo">Solicitar reembolso</h3>
+                    <h3 className="modalTitulo">Solicitar reembolso</h3>
                     <p className="pagoModalDescripcion">
                         Describe el motivo de tu solicitud de reembolso. Un administrador la revisará.
                     </p>

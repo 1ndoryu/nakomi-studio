@@ -90,7 +90,7 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                     </div>
                 ) : (
                     <>
-                        <h2 className="modalTestimonioTitulo">Escribir un comentario</h2>
+                        <h2 className="modalTitulo">Escribir un comentario</h2>
                         <p className="modalTestimonioSubtitulo">Comparte tu experiencia trabajando con nosotros.</p>
 
                         <form className="modalTestimonioFormulario" onSubmit={handleSubmit}>

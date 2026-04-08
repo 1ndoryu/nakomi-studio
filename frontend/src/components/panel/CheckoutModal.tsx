@@ -70,7 +70,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
 
     return (
         <Modal abierto onCerrar={onClose} className="checkoutModal">
-            <h3 className="checkoutTitulo">
+            <h3 className="modalTitulo">
                 Pagar Orden #{props.orderNumber}
             </h3>
             <p className="checkoutMonto">
