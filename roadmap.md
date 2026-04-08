@@ -57,12 +57,14 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Cuando elijo un plan de hosting abre el chat en vez de abrir modalCompraContenido → ✅ 084A-20 completada
 - El historial de pago se ve muy mal, debería verse profesional, como una tabla o algo. → ✅ 084A-21 completada
 
-- Se requiere hacer una auditoría de principios solid a todo el front, todos los archivos para identificar inconsistencias, cosas que deberían ser componentes y no lo son, y cosas que no detecta glory sentinel. 
+- Se requiere hacer una auditoría de principios solid a todo el front, todos los archivos para identificar inconsistencias, cosas que deberían ser componentes y no lo son, y cosas que no detecta glory sentinel. → ✅ 084A-22 completada
 - Uncaught SyntaxError: The requested module '/src/components/panel/OrdenDetalle.tsx?t=1775654447341' does not provide an export named 'OrdenDetalle' (at SeccionProyectos.tsx:13:9) → ✅ 084A-23 — Error transitorio de Vite HMR, exportación es correcta (named export)
 - Cuando llegue un mensaje nuevo estando logeada como admin debería sonar un sonido, y generar una notificación. → ✅ 084A-26 completada 
 - Las notificaciones se ven mal, se hace un fondo negro al poner el cursor, en vez de bg-accent. Las notificaciones dberían marcarse como leida al abrirlas, el boton de leerlas es innecesario. → ✅ 084A-27 completada 
 - Los planes de los hosting no necesitan modos de pago "modalCompraModos" Lo que si necesita es elegir cuantos meses pagar y generar un descuesto por cada mes pago (maximo 33%) → ✅ 084A-28 completada
 - Cuando se esta logeado como admin, en todos los contenidos editables a poner el mouse debería mostrar un boton de editar que abra el modal de editar del cms, en la esquina derecha, deberia ser un boton de 3 puntos con varias opciones, editar, eliminar, archivar, etc. → ✅ 084A-29 completada
+
+- Algo pasa con los servicios y el contenido, primero carga el contenido que habiamos hecho al principio sin el cms y luego aparece el que gestionamos con el cms, aparece rapidamente.
 
 ## Hosting 
 
