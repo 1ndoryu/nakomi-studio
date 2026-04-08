@@ -10,6 +10,7 @@ import {
     apiCreateBlogPost,
     apiUpdateBlogPost,
     apiArchiveBlogPost,
+    apiDestroyBlogPost,
 } from '../api/admin-blog';
 
 export function useContenidoBlog() {
@@ -84,5 +85,22 @@ export function useContenidoBlog() {
         }
     }, []);
 
-    return {posts, cargando, error, guardando, crear, actualizar, archivar, recargar: cargar};
+    /* [084A-10] Eliminar permanentemente un blog post */
+    const eliminar = useCallback(async (id: string): Promise<boolean> => {
+        setGuardando(true);
+        setError(null);
+        try {
+            await apiDestroyBlogPost(id);
+            setPosts(prev => prev.filter(p => p.id !== id));
+            return true;
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Error al eliminar post';
+            setError(msg);
+            return false;
+        } finally {
+            setGuardando(false);
+        }
+    }, []);
+
+    return {posts, cargando, error, guardando, crear, actualizar, archivar, eliminar, recargar: cargar};
 }

@@ -64,6 +64,11 @@ export async function apiArchiveTeamMember(id: string): Promise<void> {
     await instance.delete(`/api/admin/team/${id}`);
 }
 
+/* [084A-10] Eliminación permanente de un miembro de equipo */
+export async function apiDestroyTeamMember(id: string): Promise<void> {
+    await instance.post(`/api/admin/team/${id}/destroy`);
+}
+
 export async function apiListPublicTeamMembers(): Promise<AdminTeamMember[]> {
     const { data } = await instance.get<AdminTeamMember[]>('/api/team');
     return data;

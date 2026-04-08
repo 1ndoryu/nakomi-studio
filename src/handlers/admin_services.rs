@@ -23,6 +23,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/admin/services", get(list_all).post(create))
         .route("/admin/services/:id", put(update).delete(archive))
+        .route("/admin/services/:id/destroy", axum::routing::post(destroy))
         .route("/admin/services/:id/plans", put(save_plans))
 }
 
@@ -270,4 +271,39 @@ async fn save_plans(
     }
 
     Ok(Json(responses))
+}
+
+/* [084A-10] Eliminación permanente de un servicio.
+ * Rechaza con 409 Conflict si existen órdenes que lo referencian. */
+#[utoipa::path(
+    post,
+    path = "/api/admin/services/{id}/destroy",
+    params(("id" = Uuid, Path, description = "ID del servicio")),
+    responses(
+        (status = 204, description = "Servicio eliminado permanentemente"),
+        (status = 404, description = "Servicio no encontrado"),
+        (status = 409, description = "No se puede eliminar: existen órdenes vinculadas")
+    ),
+    security(("bearer_auth" = []))
+)]
+async fn destroy(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    OrderRepository::find_service_by_id(&state.pool, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
+
+    if OrderRepository::service_has_orders(&state.pool, id).await? {
+        return Err(AppError::Conflict(
+            "No se puede eliminar: existen órdenes vinculadas a este servicio".into(),
+        ));
+    }
+
+    OrderRepository::hard_delete_service(&state.pool, id).await?;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
 }

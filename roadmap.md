@@ -41,69 +41,38 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Plan de hosting: `Agente/planes/plan-hosting-coolify-2026-04-04.md` (5 fases) — Fases 3-4 ✅, Fases 1-2-5 bloqueadas por infraestructura externa (VPS2, DNS, Google Drive OAuth)
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 
-### CMS Admin (plan: plan-cms-admin-2026-04-07.md)
+- En el cms en los botones de 3 puntos no salen opciones de eliminar el contenido, solo archivar, falta opciones directa para eliminar, cambiar status a publicar, etc.
+- elimina la especificacion de color y borde en .editorServicioStatusBtn--activo
+- En la lista de proyecto no se ve lo que hay en el cms se ve otra cosa.
+- En el panel al recergar debería permanecer en la misma tab incluyendo la tab interna, no ir siempre a la primera tab. → ✅ 084A-9 completada
+- No veo contenido de prueba para los reembolso, necesito ver como se ven los reembolsos.
 
-### SEO y mejoras (plan: plan-seo-completo-2026-04-04.md)
+- El boton de 3 puntos de las opciones de hostig no se entiende, claramente es un desastre tantas opciones en vez de ser mas claro "cambiar estado" y luego abrir un modal, en vez de tener los estados sueltos.
+- Nada de lo que esta en hostingCard tiene que estar en (--text-xs); subelo  a sm
+- .hostingCardIcono quita el fondo negro y usa bg accent y pon 140px de ancho. 
+- No hay consistencia visual entre todos los modales → ✅ 084A-8 completada
+- la nota en chatInfoSeccion chatInfoSeccionNotas no esta tomando el ancho completo. 
+- .hostingEventos no se que es pero quita eso, lo que sea que sea eso no tiene porque verse en un modal. 
+- En modalCompraContenido el precio debería actualizarse segun el tipo de pago que se hará hay que revisar profundamente esto para ver que funcione. 
+- Cuando elijo un plan de hosting abre el chat en vez de abrir modalCompraContenido
+- El historial de pago se ve muy mal, debería verse profesional, como una tabla o algo. 
 
-- ~~074A-14: SEO Fase 2 — Performance (lazy loading, image optimization, Core Web Vitals)~~ ✅ (074A-14: bundle splitting 6 chunks, lazy loading en 13 imágenes, preconnect Stripe)
-
-### Bugs / UX reportados por usuario
+- Se requiere hacer una auditoría de principios solid a todo el front, todos los archivos para identificar inconsistencias, cosas que deberían ser componentes y no lo son, y cosas que no detecta glory sentinel. 
 
 
-- ~~La pagina de disponibles para el usuario empleado se ve mal, hay que reahacerla desde cero, no la entiendo. Igual la pagina delegaciones.~~ ✅ (074A-58: rediseño completo — cards horizontales light con icon panel)
+## Hosting 
 
-- ~~El contenido de los servicios del CMS no matchea el front.~~ ✅ (084A-6: ServiceDetailResponse ampliado con content, gallery, meta_title, meta_description — la API pública ahora devuelve todos los campos editables del CMS)
+- Esta es la tarea mas complicada supongo y tiene que ver con los hosting
 
-- ~~No veo donde se modifican los planes de los servicios.~~ ✅ (074A-66: tab Planes en EditorServicio + PUT endpoint batch save)
+Viendo el usuario de prueba cliente, veo que no puedo gestionar los hosting, tal vz porque el plan de hosting esta bloqueado.
 
-- ~~Sigo sin ver hosting de prueba~~ ✅ (074A-23: fix API paths + fixtures re-inserted)
+He colocado en el env variables de contabo, necesito que las pruebes, lees la documentacion de contabo a ver si conecta, una vez lo intente y no funcionaba a pesar de que estoy copiando los datos correctos, en caso de que no funcione, tendremos que hacer todo manual usando las vps que ya tenemos, tenemos 2 vps, tienes que ser capaz de conectarte a ambas, la configuracion ya debería estar prehecha con coolify porque ya me conecto facil antes.
 
-- ~~En el dato de prueba el boton de entregar no sirve~~ ✅ (074A-54: deliver modal con notas + archivos opcionales)
+Sobre auth-drive tengo un problema, en mi pc salen ventanas de cmd a media noche, al menos parece que las copias de seguridad estan funcionando porque veo en mi google drive los archivos.
 
-- ~~Al cambiar al usuario de cliente no veo pedidos, ni hosting de prueba~~ ✅ (074A-23: orders/hosting TOML fixtures + hosting API fix)
+He agregado un mcp de stripe con el que creo que te puedes encargar de configurar lo necesario. 
 
-- ~~Ejecuta el plan Glory-RS Content Fixture System~~ ✅ (074A-22 + 074A-23: sistema completo con @lookup)
+Voy a necesitar testear como se ve el panel de hosting, claramente esta es una tarea titanica pero podemos empezar por algo sencillo, no agregaremos gestor de archivos ni nada, algo basico, que el cliente pueda ver la info de su hosting (supongo que simularemos la estadisticas o algo porque como un vps y los hosting estaran en despliegues de coolify no se como podemos hacer como hacen los hosting tradicioanles que claramente son hosting compartidos para mostrar estadistica de almacenamiento, uso cpu, y estas cosas si que sea el uso real de todos los despliegues y solo sea el despliegue del cliente), claramente me estoy dejando muchisimas cosas por fuera, tienes que intuir que me dejo por fuera para que esto sea un servicio de hosting profesional y completo.
 
-- ~~SIGO SIN VER DATOS DE PRUEBA EN EL USUARIO DE CLIENTE~~ ✅ (074A-54: client_name en orders + payment fixtures con 3 pagos de prueba)
+## 
 
-- ~~Falta hacer paginas individuales para cada usuario accesibles publicamente, similar a fiver. Iran sus reseñas dadas y recibidas.~~ ✅ (084A-7: perfiles públicos Fiverr-style con username, 4 endpoints API + frontend completo)
-
-- ~~entregablesModal esta agregando un padding innecesario.~~ ✅ (074A-55: padding doble removido)
-
-- ~~SIGO SIN VER NINGUN FUCKING DATO DE PRueBA EN EL USUARIO CLIEnte~~ ✅ (074A-55: query keys dinámicas — cache se invalida al cambiar rol)
-
-- ~~Tambien necesito delegaciones y ordenes para tomar de prueba para el usuario empleado.~~ ✅ (074A-56: 2o empleado, orden awaiting_assignment, 3 delegaciones)
-
-- ~~La tabla de hosting se ve mal, no es asi como debería de verse. Si debería de ser algo similar a proyectosLista.~~ ✅ (074A-57: rediseño cards flex)
-
-- ~~Sobre "(074A-54: client_name en orders + payment fixtures con 3 pagos de prueba)" MENTIRA SIGO SIN VER NADA.~~ ✅ (074A-59: find_first_by_role priorizaba usuario sin datos — ahora prioriza @test.com + fix galería crash + client_name en cards + usePagos role key)
-
-- ~~chunk-RPCDYKBN.js?v=57755138:14032 The above error occurred in the <SeccionGaleriaServicio> component:~~
-
-    ~~at SeccionGaleriaServicio (http://localhost:5173/src/components/servicios/SeccionGaleri~~ ✅ (074A-59: Rules of Hooks violation — useCarruselInfinito se llamaba después de return null condicional)
-
-- ~~el historial de pago se ve mal, creo que tiene que ser algo mas profesional, y a dar click abrir un modal con los detalles.~~ ✅ (074A-61: rediseño filas compactas + modal de detalles)
-
-- ~~Info del visitante sale en el chat de los clientes, eso solo debe estar disponible para el admin.~~ ✅ (074A-60: info visitante restringida a admin)
-
-- ~~Quita los colores de hostingStatus hostingStatus--suspended, no quiero colores.~~ ✅ (074A-62: colores eliminados, estado neutral)
-
-- ~~Los hosting deberían estar en tab como los proyectos.~~ ✅ (074A-63: tabs Activos/Inactivos + sub-componentes extraidos)
-
-- ~~hostingCardTitulo debería estar el nombre del hosting, en vez del nombre del plan.~~ ✅ (074A-63: titulo ahora muestra dominio o client_name, plan va como subtitulo)
-
-- ~~hostingTabs no se ve como proyectosTabs, es una inconsistencia visual.~~ ✅ (074A-64: variante="texto" + type="button" + hover rule)
-
-- ~~No veo que se pueda gestionar los hosting de prueba.~~ ✅ (074A-65: CRUD completo — edit modal + delete en menú contextual, backend PUT/DELETE admin-only)
-
-- ~~No me sale para gestionar los planes de los servicios en el cms.~~ ✅ (074A-66: tab Planes en EditorServicio)
-
-- ~~No veo que el cliente tenga capacidad de gestionar su hosting, hay que revisar lo que falta e implementar.~~ ✅ (084A-4: cliente ahora puede editar plan/dominio de sus suscripciones y solicitar cancelación — context menu visible para todos los roles)
-
-- ~~Veo muchos planes que no estan en la carpeta de completados, claramente hay revisarlos todos para ver cuales mover y si hay cosas pendientes completarlas todo.~~ ✅ (084A-5: revisados 8 planes activos — movidos 3 a completados: plan-pendientes-consolidado, plan-impersonacion (100% implementado), plan-cms-admin (Fases 1-4 completas). 5 planes se mantienen activos con trabajo pendiente genuino)
-
-- ~~El menu contextual de 3 punto de los hosting no se ve.~~ ✅ (084A-2: overflow:hidden→visible en hostingCard)
-
-- ~~La parte de planes se ve mal, los colores de las letras no se ven~~ ✅ (084A-1: colores corregidos de dark theme a light theme)
-
-- ~~En los planes las caracteristicas es ven asi [object Object]~~ ✅ (084A-3: parseo normalizado — extrae texto de {texto,incluido} y mantiene strings planos)

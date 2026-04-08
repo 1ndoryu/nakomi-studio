@@ -7,6 +7,7 @@ import {
     apiCreateProject,
     apiUpdateProject,
     apiArchiveProject,
+    apiDestroyProject,
     AdminProject,
     CreateProjectBody,
     UpdateProjectBody,
@@ -79,5 +80,22 @@ export function useContenidoProyectos() {
         }
     }, []);
 
-    return { proyectos, cargando, error, guardando, crear, actualizar, archivar, recargar: cargar };
+    /* [084A-10] Eliminar permanentemente un proyecto */
+    const eliminar = useCallback(async (id: string): Promise<boolean> => {
+        setGuardando(true);
+        setError(null);
+        try {
+            await apiDestroyProject(id);
+            setProyectos(prev => prev.filter(p => p.id !== id));
+            return true;
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Error al eliminar proyecto';
+            setError(msg);
+            return false;
+        } finally {
+            setGuardando(false);
+        }
+    }, []);
+
+    return { proyectos, cargando, error, guardando, crear, actualizar, archivar, eliminar, recargar: cargar };
 }

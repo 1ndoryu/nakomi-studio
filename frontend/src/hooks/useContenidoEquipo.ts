@@ -9,7 +9,8 @@ import {
     apiListAdminTeamMembers,
     apiCreateTeamMember,
     apiUpdateTeamMember,
-    apiArchiveTeamMember
+    apiArchiveTeamMember,
+    apiDestroyTeamMember,
 } from '../api/admin-team';
 
 export function useContenidoEquipo() {
@@ -67,5 +68,22 @@ export function useContenidoEquipo() {
         }
     }, [cargar]);
 
-    return {miembros, cargando, error, guardando, crear, actualizar, archivar, recargar: cargar};
+    /* [084A-10] Eliminar permanentemente un miembro del equipo */
+    const eliminar = useCallback(async (id: string): Promise<boolean> => {
+        setGuardando(true);
+        setError(null);
+        try {
+            await apiDestroyTeamMember(id);
+            setMiembros(prev => prev.filter(m => m.id !== id));
+            return true;
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Error al eliminar miembro';
+            setError(msg);
+            return false;
+        } finally {
+            setGuardando(false);
+        }
+    }, []);
+
+    return {miembros, cargando, error, guardando, crear, actualizar, archivar, eliminar, recargar: cargar};
 }

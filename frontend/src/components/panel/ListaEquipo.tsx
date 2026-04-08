@@ -2,7 +2,7 @@
  * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar. */
 
 import React, {useState} from 'react';
-import {Archive, ArchiveRestore, Trash2} from 'lucide-react';
+import {Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
 import {AdminTeamMember} from '../../api/admin-team';
 import {Badge} from '../ui/Badge';
 import {Button} from '../ui/Button';
@@ -17,9 +17,10 @@ interface ListaEquipoProps {
     onArchivar: (id: string) => void;
     onDesarchivar?: (id: string) => void;
     onEliminar?: (id: string) => void;
+    onPublicar?: (id: string) => void;
 }
 
-export const ListaEquipo: React.FC<ListaEquipoProps> = ({miembros, cargando, onEditar, onCrear, onArchivar, onDesarchivar, onEliminar}) => {
+export const ListaEquipo: React.FC<ListaEquipoProps> = ({miembros, cargando, onEditar, onCrear, onArchivar, onDesarchivar, onEliminar, onPublicar}) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
 
     if (cargando) return <p className="equipoListaCargando">Cargando miembros...</p>;
@@ -33,6 +34,10 @@ export const ListaEquipo: React.FC<ListaEquipoProps> = ({miembros, cargando, onE
             <div className="equipoListaGrid">
             {miembros.map(m => {
                 const items: MenuContextualItem[] = [];
+                /* [084A-10] Publicar: solo si no está ya publicado */
+                if (m.status !== 'published' && onPublicar) {
+                    items.push({id: 'publicar', label: 'Publicar', icon: <Globe size={14} />, onSelect: () => onPublicar(m.id)});
+                }
                 if (m.status !== 'archived') {
                     items.push({id: 'archivar', label: 'Archivar', icon: <Archive size={14} />, onSelect: () => onArchivar(m.id)});
                 }

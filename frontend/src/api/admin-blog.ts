@@ -75,6 +75,11 @@ export async function apiArchiveBlogPost(id: string): Promise<void> {
     await instance.delete(`/api/admin/blog/${id}`);
 }
 
+/* [084A-10] Eliminación permanente de un blog post */
+export async function apiDestroyBlogPost(id: string): Promise<void> {
+    await instance.post(`/api/admin/blog/${id}/destroy`);
+}
+
 /* Público: listar posts publicados con paginación */
 export async function apiListPublicBlog(page = 1, perPage = 10): Promise<PaginatedBlogPosts> {
     const {data} = await instance.get<PaginatedBlogPosts>('/api/blog', {

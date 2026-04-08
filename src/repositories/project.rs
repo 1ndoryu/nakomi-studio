@@ -204,4 +204,14 @@ impl ProjectRepository {
         .await?;
         Ok(())
     }
+
+    /* [084A-10] Hard delete: elimina permanentemente el proyecto */
+    pub async fn hard_delete(pool: &PgPool, id: Uuid) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM projects WHERE id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
 }

@@ -1,7 +1,7 @@
 /* [074A-12] Lista de proyectos en el CMS admin.
  * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar. */
 import React, {useState} from 'react';
-import { Plus, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trash2, Globe } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { MenuContextual, type MenuContextualItem } from '../ui/ContextMenu';
 import type { AdminProject } from '../../api/admin-projects';
@@ -15,6 +15,7 @@ interface ListaProyectosProps {
     onArchivar: (id: string) => void;
     onDesarchivar?: (id: string) => void;
     onEliminar?: (id: string) => void;
+    onPublicar?: (id: string) => void;
 }
 
 function BadgeStatus({ status }: { status: string }) {
@@ -35,6 +36,7 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
     onArchivar,
     onDesarchivar,
     onEliminar,
+    onPublicar,
 }) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
 
@@ -55,6 +57,10 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
             <div className="listaProyectosGrid">
                 {proyectos.map(proyecto => {
                     const items: MenuContextualItem[] = [];
+                    /* [084A-10] Publicar: solo si no está ya publicado */
+                    if (proyecto.status !== 'published' && onPublicar) {
+                        items.push({id: 'publicar', label: 'Publicar', icon: <Globe size={14} />, onSelect: () => onPublicar(proyecto.id)});
+                    }
                     if (proyecto.status !== 'archived') {
                         items.push({id: 'archivar', label: 'Archivar', icon: <Archive size={14} />, onSelect: () => onArchivar(proyecto.id)});
                     }

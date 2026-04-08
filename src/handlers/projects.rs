@@ -31,6 +31,7 @@ pub fn admin_routes() -> Router<AppState> {
             "/admin/projects/:id",
             axum::routing::put(update).delete(archive),
         )
+        .route("/admin/projects/:id/destroy", axum::routing::post(destroy))
 }
 
 /// Lista proyectos publicados (público)
@@ -258,5 +259,30 @@ pub async fn archive(
         .ok_or(AppError::NotFound("Project not found".into()))?;
 
     ProjectRepository::archive(&state.pool, id).await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/* [084A-10] Eliminación permanente de un proyecto */
+#[utoipa::path(
+    post,
+    path = "/api/admin/projects/{id}/destroy",
+    params(("id" = Uuid, Path, description = "ID del proyecto")),
+    responses(
+        (status = 204, description = "Proyecto eliminado permanentemente"),
+        (status = 404, description = "Proyecto no encontrado")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn destroy(
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<axum::http::StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let deleted = ProjectRepository::hard_delete(&state.pool, id).await?;
+    if !deleted {
+        return Err(AppError::NotFound("Project not found".into()));
+    }
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

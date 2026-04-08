@@ -35,6 +35,7 @@ pub fn admin_routes() -> Router<AppState> {
     Router::new()
         .route("/admin/blog", get(list_all).post(create))
         .route("/admin/blog/:id", axum::routing::put(update).delete(archive))
+        .route("/admin/blog/:id/destroy", axum::routing::post(destroy))
 }
 
 /// Lista posts publicados (público, paginado)
@@ -246,5 +247,30 @@ pub async fn archive(
         .ok_or(AppError::NotFound("Blog post not found".into()))?;
 
     BlogRepository::archive(&state.pool, id).await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/* [084A-10] Eliminación permanente de un blog post */
+#[utoipa::path(
+    post,
+    path = "/api/admin/blog/{id}/destroy",
+    params(("id" = Uuid, Path, description = "ID del post")),
+    responses(
+        (status = 204, description = "Post eliminado permanentemente"),
+        (status = 404, description = "Post no encontrado")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn destroy(
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<axum::http::StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let deleted = BlogRepository::hard_delete(&state.pool, id).await?;
+    if !deleted {
+        return Err(AppError::NotFound("Blog post not found".into()));
+    }
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

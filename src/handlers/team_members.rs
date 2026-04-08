@@ -31,6 +31,7 @@ pub fn admin_routes() -> Router<AppState> {
             "/admin/team/:id",
             axum::routing::put(update).delete(archive),
         )
+        .route("/admin/team/:id/destroy", axum::routing::post(destroy))
 }
 
 /// Lista miembros del equipo publicados (público)
@@ -176,5 +177,33 @@ pub async fn archive(
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(AppError::NotFound("Team member not found or already archived".into()))
+    }
+}
+
+/* [084A-10] Eliminación permanente de un miembro del equipo */
+#[utoipa::path(
+    post,
+    path = "/api/admin/team/{id}/destroy",
+    params(("id" = Uuid, Path, description = "ID del miembro")),
+    responses(
+        (status = 204, description = "Miembro eliminado permanentemente"),
+        (status = 404, description = "Miembro no encontrado")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn destroy(
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, AppError> {
+    if user.role != UserRole::Admin {
+        return Err(AppError::Forbidden("Solo admin puede eliminar miembros".into()));
+    }
+
+    let deleted = TeamMemberRepository::hard_delete(&state.pool, id).await?;
+    if deleted {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(AppError::NotFound("Team member not found".into()))
     }
 }

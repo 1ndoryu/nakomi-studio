@@ -9,6 +9,7 @@ import {
     apiCreateService,
     apiUpdateService,
     apiArchiveService,
+    apiDestroyService,
 } from '../api/admin-services';
 
 export function useContenidoServicios() {
@@ -83,5 +84,22 @@ export function useContenidoServicios() {
         }
     }, []);
 
-    return {servicios, cargando, error, guardando, crear, actualizar, archivar, recargar: cargar};
+    /* [084A-10] Eliminar permanentemente un servicio (409 si tiene órdenes) */
+    const eliminar = useCallback(async (id: string): Promise<boolean> => {
+        setGuardando(true);
+        setError(null);
+        try {
+            await apiDestroyService(id);
+            setServicios(prev => prev.filter(s => s.id !== id));
+            return true;
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Error al eliminar servicio';
+            setError(msg);
+            return false;
+        } finally {
+            setGuardando(false);
+        }
+    }, []);
+
+    return {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar, recargar: cargar};
 }

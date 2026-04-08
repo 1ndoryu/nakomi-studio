@@ -63,7 +63,7 @@ export const SeccionContenido: React.FC = () => {
     }, [subTab]);
 
     /* [074A-9] Estado del CMS servicios */
-    const {servicios, cargando, error, guardando, crear, actualizar, archivar} = useContenidoServicios();
+    const {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar: eliminarServicio} = useContenidoServicios();
     const [editorAbierto, setEditorAbierto] = useState(false);
     const [servicioEditando, setServicioEditando] = useState<AdminService | null>(null);
 
@@ -104,6 +104,16 @@ export const SeccionContenido: React.FC = () => {
         await actualizar(id, {status: 'draft'} as UpdateServiceBody);
     }, [actualizar]);
 
+    /* [084A-10] Publicar servicio */
+    const handlePublicarServicio = useCallback(async (id: string) => {
+        await actualizar(id, {status: 'published'} as UpdateServiceBody);
+    }, [actualizar]);
+
+    /* [084A-10] Eliminar servicio permanentemente */
+    const handleEliminarServicio = useCallback(async (id: string) => {
+        await eliminarServicio(id);
+    }, [eliminarServicio]);
+
     /* [074A-11] Estado del CMS blog */
     const {
         posts: blogPosts,
@@ -113,6 +123,7 @@ export const SeccionContenido: React.FC = () => {
         crear: blogCrear,
         actualizar: blogActualizar,
         archivar: blogArchivar,
+        eliminar: blogEliminar,
     } = useContenidoBlog();
     const [blogEditorAbierto, setBlogEditorAbierto] = useState(false);
     const [postEditando, setPostEditando] = useState<AdminBlogPost | null>(null);
@@ -145,6 +156,16 @@ export const SeccionContenido: React.FC = () => {
         await blogActualizar(id, {status: 'draft'} as UpdateBlogPostBody);
     }, [blogActualizar]);
 
+    /* [084A-10] Publicar blog post */
+    const handlePublicarPost = useCallback(async (id: string) => {
+        await blogActualizar(id, {status: 'published'} as UpdateBlogPostBody);
+    }, [blogActualizar]);
+
+    /* [084A-10] Eliminar blog post permanentemente */
+    const handleEliminarPost = useCallback(async (id: string) => {
+        await blogEliminar(id);
+    }, [blogEliminar]);
+
     /* [074A-12] Estado del CMS proyectos */
     const {
         proyectos: proyectosList,
@@ -154,6 +175,7 @@ export const SeccionContenido: React.FC = () => {
         crear: proyectosCrear,
         actualizar: proyectosActualizar,
         archivar: proyectosArchivar,
+        eliminar: proyectosEliminar,
     } = useContenidoProyectos();
     const [proyectoEditorAbierto, setProyectoEditorAbierto] = useState(false);
     const [proyectoEditando, setProyectoEditando] = useState<AdminProject | null>(null);
@@ -186,6 +208,16 @@ export const SeccionContenido: React.FC = () => {
         await proyectosActualizar(id, {status: 'draft'} as UpdateProjectBody);
     }, [proyectosActualizar]);
 
+    /* [084A-10] Publicar proyecto */
+    const handlePublicarProyecto = useCallback(async (id: string) => {
+        await proyectosActualizar(id, {status: 'published'} as UpdateProjectBody);
+    }, [proyectosActualizar]);
+
+    /* [084A-10] Eliminar proyecto permanentemente */
+    const handleEliminarProyecto = useCallback(async (id: string) => {
+        await proyectosEliminar(id);
+    }, [proyectosEliminar]);
+
     /* [074A-13] Estado del CMS equipo */
     const {
         miembros: equipoList,
@@ -195,6 +227,7 @@ export const SeccionContenido: React.FC = () => {
         crear: equipoCrear,
         actualizar: equipoActualizar,
         archivar: equipoArchivar,
+        eliminar: equipoEliminar,
     } = useContenidoEquipo();
     const [miembroEditorAbierto, setMiembroEditorAbierto] = useState(false);
     const [miembroEditando, setMiembroEditando] = useState<AdminTeamMember | null>(null);
@@ -225,6 +258,16 @@ export const SeccionContenido: React.FC = () => {
     const handleDesarchivarMiembro = useCallback(async (id: string) => {
         await equipoActualizar(id, {status: 'draft'} as UpdateTeamMemberBody);
     }, [equipoActualizar]);
+
+    /* [084A-10] Publicar miembro de equipo */
+    const handlePublicarMiembro = useCallback(async (id: string) => {
+        await equipoActualizar(id, {status: 'published'} as UpdateTeamMemberBody);
+    }, [equipoActualizar]);
+
+    /* [084A-10] Eliminar miembro permanentemente */
+    const handleEliminarMiembro = useCallback(async (id: string) => {
+        await equipoEliminar(id);
+    }, [equipoEliminar]);
 
     return (
         <div className="contenidoContenedor">
@@ -257,6 +300,8 @@ export const SeccionContenido: React.FC = () => {
                             onCrear={handleCrearServicio}
                             onArchivar={handleArchivarServicio}
                             onDesarchivar={handleDesarchivarServicio}
+                            onEliminar={handleEliminarServicio}
+                            onPublicar={handlePublicarServicio}
                         />
                         <EditorServicio
                             abierto={editorAbierto}
@@ -277,6 +322,8 @@ export const SeccionContenido: React.FC = () => {
                             onCrear={handleCrearPost}
                             onArchivar={handleArchivarPost}
                             onDesarchivar={handleDesarchivarPost}
+                            onEliminar={handleEliminarPost}
+                            onPublicar={handlePublicarPost}
                         />
                         <EditorBlog
                             abierto={blogEditorAbierto}
@@ -297,6 +344,8 @@ export const SeccionContenido: React.FC = () => {
                             onCrear={handleCrearProyecto}
                             onArchivar={handleArchivarProyecto}
                             onDesarchivar={handleDesarchivarProyecto}
+                            onEliminar={handleEliminarProyecto}
+                            onPublicar={handlePublicarProyecto}
                         />
                         <EditorProyecto
                             abierto={proyectoEditorAbierto}
@@ -317,6 +366,8 @@ export const SeccionContenido: React.FC = () => {
                             onCrear={handleCrearMiembro}
                             onArchivar={handleArchivarMiembro}
                             onDesarchivar={handleDesarchivarMiembro}
+                            onEliminar={handleEliminarMiembro}
+                            onPublicar={handlePublicarMiembro}
                         />
                         <EditorMiembro
                             abierto={miembroEditorAbierto}

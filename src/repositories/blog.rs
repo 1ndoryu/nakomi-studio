@@ -205,6 +205,15 @@ impl BlogRepository {
         Ok(())
     }
 
+    /* [084A-10] Hard delete: elimina permanentemente el blog post */
+    pub async fn hard_delete(pool: &PgPool, id: Uuid) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM blog_posts WHERE id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
     /// Obtener nombre del autor por user ID (usa `display_name` o email como fallback)
     pub async fn get_author_name(pool: &PgPool, author_id: Uuid) -> Result<Option<String>, sqlx::Error> {
         let row: Option<(Option<String>, String)> = sqlx::query_as(

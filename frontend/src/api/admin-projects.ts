@@ -87,6 +87,11 @@ export async function apiArchiveProject(id: string): Promise<void> {
     await instance.delete(`/api/admin/projects/${id}`);
 }
 
+/* [084A-10] Eliminación permanente de un proyecto */
+export async function apiDestroyProject(id: string): Promise<void> {
+    await instance.post(`/api/admin/projects/${id}/destroy`);
+}
+
 export async function apiListPublicProjects(): Promise<AdminProject[]> {
     const { data } = await instance.get<AdminProject[]>('/api/projects');
     return data;

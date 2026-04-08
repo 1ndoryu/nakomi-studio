@@ -96,6 +96,11 @@ export async function apiArchiveService(id: string): Promise<void> {
     await instance.delete(`/api/admin/services/${id}`);
 }
 
+/* [084A-10] Eliminación permanente de un servicio (409 si tiene órdenes) */
+export async function apiDestroyService(id: string): Promise<void> {
+    await instance.post(`/api/admin/services/${id}/destroy`);
+}
+
 /* [074A-66] Guardar (reemplazar) planes de un servicio */
 export interface SavePlanBody {
     slug: string;

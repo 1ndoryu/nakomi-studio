@@ -284,13 +284,34 @@ impl OrderRepository {
 
     /// Archiva un servicio (soft delete: `is_active`=false, status=archived)
     pub async fn archive_service(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"UPDATE services SET is_active = false, status = 'archived', updated_at = NOW() WHERE id = $1"#,
-            id,
+        sqlx::query(
+            "UPDATE services SET is_active = false, status = 'archived', updated_at = NOW() WHERE id = $1"
         )
+        .bind(id)
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    /* [084A-10] Hard delete: elimina permanentemente el servicio y sus planes (CASCADE).
+     * Previamente verificar que no existan órdenes referenciando este servicio. */
+    pub async fn hard_delete_service(pool: &PgPool, id: Uuid) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM services WHERE id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Verifica si existen órdenes que referencien un servicio
+    pub async fn service_has_orders(pool: &PgPool, service_id: Uuid) -> Result<bool, sqlx::Error> {
+        let row: (bool,) = sqlx::query_as(
+            "SELECT EXISTS(SELECT 1 FROM orders WHERE service_id = $1)"
+        )
+        .bind(service_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(row.0)
     }
 
     /* ============================================================

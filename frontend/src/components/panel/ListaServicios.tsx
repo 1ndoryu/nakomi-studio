@@ -2,7 +2,7 @@
  * Grid de cards con status, título, precio. Click para editar.
  * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar. */
 import React, {useState} from 'react';
-import {Plus, Archive, ArchiveRestore, Trash2} from 'lucide-react';
+import {Plus, Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
 import {Button} from '../ui/Button';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
 import type {AdminService} from '../../api/admin-services';
@@ -16,6 +16,7 @@ interface ListaServiciosProps {
     onArchivar: (id: string) => void;
     onDesarchivar?: (id: string) => void;
     onEliminar?: (id: string) => void;
+    onPublicar?: (id: string) => void;
 }
 
 /* Badge de status con color semántico */
@@ -37,6 +38,7 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
     onArchivar,
     onDesarchivar,
     onEliminar,
+    onPublicar,
 }) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
 
@@ -57,6 +59,10 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
             <div className="listaServiciosGrid">
                 {servicios.map(svc => {
                     const items: MenuContextualItem[] = [];
+                    /* [084A-10] Publicar: solo si no está ya publicado */
+                    if (svc.status !== 'published' && onPublicar) {
+                        items.push({id: 'publicar', label: 'Publicar', icon: <Globe size={14} />, onSelect: () => onPublicar(svc.id)});
+                    }
                     if (svc.status !== 'archived') {
                         items.push({id: 'archivar', label: 'Archivar', icon: <Archive size={14} />, onSelect: () => onArchivar(svc.id)});
                     }
