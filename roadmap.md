@@ -106,4 +106,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~La parte de planes se ve mal, los colores de las letras no se ven~~ ✅ (084A-1: colores corregidos de dark theme a light theme)
 
-- En los planes las caracteristicas es ven asi [object Object]
+- ~~En los planes las caracteristicas es ven asi [object Object]~~ ✅ (084A-3: parseo normalizado — extrae texto de {texto,incluido} y mantiene strings planos)
