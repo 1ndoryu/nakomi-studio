@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, client_notes, internal_notes,\n               created_at, updated_at\n             FROM orders WHERE status = 'awaiting_assignment'\n             AND auto_assign_deadline IS NOT NULL AND auto_assign_deadline < NOW()\n             ORDER BY auto_assign_deadline ASC",
+  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, client_notes, internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary\n             FROM orders WHERE status = 'awaiting_assignment' ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -139,6 +139,16 @@
         "ordinal": 21,
         "name": "updated_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 22,
+        "name": "ai_intermediary_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 23,
+        "name": "ai_summary",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -166,8 +176,10 @@
       true,
       true,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "f2a6bb3f8b14477f9fc73fcc307cae22b04586f9ae67463ec4fe91051263fe79"
+  "hash": "ba1cf1585d6351f45717aa19096807ee93c5b4eab684386d5a7d17dee8a1236e"
 }

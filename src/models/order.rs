@@ -128,6 +128,11 @@ pub struct Order {
     pub internal_notes: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    /* [P-2] IA intermediaria en chat de pedidos */
+    #[sqlx(default)]
+    pub ai_intermediary_enabled: Option<bool>,
+    #[sqlx(default)]
+    pub ai_summary: Option<String>,
 }
 
 #[derive(Debug, Clone, FromRow)]

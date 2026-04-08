@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT DISTINCT ON (session_id)\n               id, session_id, sender_type, sender_id, content, created_at\n             FROM chat_messages\n             WHERE session_id = ANY($1)\n             ORDER BY session_id, created_at DESC",
+  "query": "INSERT INTO chat_messages (session_id, sender_type, sender_id, content)\n             VALUES ($1, $2, $3, $4)\n             RETURNING id, session_id, sender_type, sender_id, content, created_at,\n                       message_type, metadata",
   "describe": {
     "columns": [
       {
@@ -32,11 +32,24 @@
         "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "message_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "metadata",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
       "Left": [
-        "UuidArray"
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Text"
       ]
     },
     "nullable": [
@@ -45,8 +58,10 @@
       false,
       true,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "b4832029b7cf1a509f46398c0e16fb70b00ca8dde16e9e097a2512884410b1f3"
+  "hash": "a10fdbba30a85b4060305a4338dd31d778ad762fb50421d7d765b19b3910b74e"
 }

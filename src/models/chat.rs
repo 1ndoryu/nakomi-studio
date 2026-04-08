@@ -32,6 +32,38 @@ pub struct ChatSession {
     pub visitor_user_agent: Option<String>,
 }
 
+/* [P-2] Perfil de visitante — memoria persistente entre sesiones.
+ * Vinculado por visitor_id (localStorage), opcionalmente a user_id (si se registra). */
+#[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
+pub struct VisitorProfile {
+    pub id: Uuid,
+    pub visitor_id: String,
+    pub email: Option<String>,
+    pub user_id: Option<Uuid>,
+    pub display_name: Option<String>,
+    pub context_summary: Option<String>,
+    pub preferences: Option<serde_json::Value>,
+    pub first_seen_at: DateTime<Utc>,
+    pub last_seen_at: DateTime<Utc>,
+    pub total_sessions: i32,
+    pub ip_addresses: Vec<String>,
+    pub device_fingerprints: Vec<String>,
+}
+
+/* [P-2] Adjunto de mensaje de chat (imágenes, archivos, audio).
+ * ai_description: generado por Vision (imágenes), Whisper (audio) o extracción (PDF). */
+#[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
+pub struct ChatAttachment {
+    pub id: Uuid,
+    pub message_id: Uuid,
+    pub file_name: String,
+    pub file_path: String,
+    pub mime_type: String,
+    pub file_size_bytes: i64,
+    pub ai_description: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
 pub struct ChatMessage {
     pub id: Uuid,
@@ -40,6 +72,13 @@ pub struct ChatMessage {
     pub sender_id: Option<String>,
     pub content: String,
     pub created_at: DateTime<Utc>,
+    /* [P-2] Mensajes ricos: tipo + metadatos estructurados.
+     * message_type: text|image|file|audio|invoice|service_card|order_card|action
+     * metadata: JSON con datos específicos según message_type. */
+    #[sqlx(default)]
+    pub message_type: Option<String>,
+    #[sqlx(default)]
+    pub metadata: Option<serde_json::Value>,
 }
 
 /* [064A-70] Respuesta enriquecida con datos del sender (avatar + nombre) */
@@ -53,6 +92,9 @@ pub struct ChatMessageResponse {
     pub created_at: DateTime<Utc>,
     pub sender_avatar_url: Option<String>,
     pub sender_display_name: Option<String>,
+    /* [P-2] Campos de mensajes ricos */
+    pub message_type: Option<String>,
+    pub metadata: Option<serde_json::Value>,
 }
 
 /* ============================================================
@@ -141,6 +183,11 @@ pub enum WsServerMessage {
         sender_id: Option<String>,
         content: String,
         created_at: DateTime<Utc>,
+        /* [P-2] Campos opcionales para mensajes ricos */
+        #[serde(skip_serializing_if = "Option::is_none")]
+        message_type: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        metadata: Option<serde_json::Value>,
     },
     #[serde(rename = "typing")]
     Typing {

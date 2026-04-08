@@ -98,6 +98,8 @@ async fn enrich_messages(
                 created_at: m.created_at,
                 sender_avatar_url: avatar,
                 sender_display_name: name,
+                message_type: m.message_type,
+                metadata: m.metadata,
             }
         })
         .collect()

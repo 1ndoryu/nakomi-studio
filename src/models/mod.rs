@@ -20,9 +20,9 @@ pub use blog::{
     UpdateBlogPostRequest,
 };
 pub use chat::{
-    ChatMessage, ChatMessageResponse, ChatSession, ChatSessionNote, ChatSessionResponse,
-    CreateChatSessionRequest, CreateSessionNoteRequest, SendMessageRequest,
-    UpdateVisitorNameRequest, WsClientMessage, WsServerMessage,
+    ChatAttachment, ChatMessage, ChatMessageResponse, ChatSession, ChatSessionNote,
+    ChatSessionResponse, CreateChatSessionRequest, CreateSessionNoteRequest, SendMessageRequest,
+    UpdateVisitorNameRequest, VisitorProfile, WsClientMessage, WsServerMessage,
 };
 pub use delegation::{
     CreateDelegationRequest, Delegation, DelegationResponse, DelegationStatus, EmployeeListItem,

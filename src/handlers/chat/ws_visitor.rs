@@ -90,6 +90,8 @@ async fn handle_visitor_ws(
                 sender_id: msg.sender_id,
                 content: msg.content,
                 created_at: msg.created_at,
+                message_type: msg.message_type,
+                metadata: msg.metadata,
             };
             if let Ok(json) = serde_json::to_string(&ws_msg) {
                 if sender.send(Message::Text(json)).await.is_err() {

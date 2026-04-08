@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE orders SET status = $2, updated_at = NOW() WHERE id = $1\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, client_notes, internal_notes,\n               created_at, updated_at",
+  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, client_notes, internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary\n             FROM orders WHERE assigned_employee_id = $1 ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -139,28 +139,21 @@
         "ordinal": 21,
         "name": "updated_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 22,
+        "name": "ai_intermediary_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 23,
+        "name": "ai_summary",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        {
-          "Custom": {
-            "name": "order_status",
-            "kind": {
-              "Enum": [
-                "pending_payment",
-                "payment_held",
-                "awaiting_assignment",
-                "in_progress",
-                "under_review",
-                "completed",
-                "cancelled",
-                "disputed"
-              ]
-            }
-          }
-        }
+        "Uuid"
       ]
     },
     "nullable": [
@@ -185,8 +178,10 @@
       true,
       true,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "cfad367fa7fcbd17b73d9fb8bb4daa7f367eca61d6db4b348b617c7982aa9a4d"
+  "hash": "4db8db5299efd7d09b24af37147a1ff92b4df9411cb271aa38620679d90de6e0"
 }

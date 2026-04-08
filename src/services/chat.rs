@@ -213,6 +213,8 @@ impl ChatHub {
             sender_id: msg.sender_id.clone(),
             content: msg.content.clone(),
             created_at: msg.created_at,
+            message_type: msg.message_type.clone(),
+            metadata: msg.metadata.clone(),
         };
         self.broadcast(session_id, ws_msg);
 

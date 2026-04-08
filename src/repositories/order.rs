@@ -333,7 +333,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             params.client_id,
             params.service_id,
             params.plan_id,
@@ -359,7 +359,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at
+               created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE id = $1"#,
             order_id,
         )
@@ -379,7 +379,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at
+               created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE client_id = $1 ORDER BY created_at DESC"#,
             client_id,
         )
@@ -399,7 +399,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at
+               created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE assigned_employee_id = $1 ORDER BY created_at DESC"#,
             employee_id,
         )
@@ -416,7 +416,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at
+               created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders ORDER BY created_at DESC"#,
         )
         .fetch_all(pool)
@@ -432,7 +432,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at
+               created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE status = 'awaiting_assignment' ORDER BY created_at ASC"#,
         )
         .fetch_all(pool)
@@ -453,7 +453,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
             status as OrderStatus,
         )
@@ -477,7 +477,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
             employee_id,
         )
@@ -644,7 +644,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
         )
         .fetch_one(pool)
@@ -667,7 +667,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
             phase_number,
         )
@@ -690,7 +690,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
         )
         .fetch_one(pool)
@@ -778,7 +778,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
         )
         .fetch_one(pool)
@@ -795,7 +795,7 @@ impl OrderRepository {
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, client_notes, internal_notes,
-               created_at, updated_at
+               created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE status = 'awaiting_assignment'
              AND auto_assign_deadline IS NOT NULL AND auto_assign_deadline < NOW()
              ORDER BY auto_assign_deadline ASC"#,

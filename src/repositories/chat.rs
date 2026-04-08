@@ -206,7 +206,8 @@ impl ChatRepository {
             ChatMessage,
             r#"INSERT INTO chat_messages (session_id, sender_type, sender_id, content)
              VALUES ($1, $2, $3, $4)
-             RETURNING id, session_id, sender_type, sender_id, content, created_at"#,
+             RETURNING id, session_id, sender_type, sender_id, content, created_at,
+                       message_type, metadata"#,
             session_id,
             sender_type,
             sender_id,
@@ -225,7 +226,8 @@ impl ChatRepository {
     ) -> Result<Vec<ChatMessage>, sqlx::Error> {
         sqlx::query_as!(
             ChatMessage,
-            r#"SELECT id, session_id, sender_type, sender_id, content, created_at
+            r#"SELECT id, session_id, sender_type, sender_id, content, created_at,
+                      message_type, metadata
              FROM chat_messages WHERE session_id = $1
              ORDER BY created_at ASC LIMIT $2 OFFSET $3"#,
             session_id,
@@ -244,7 +246,8 @@ impl ChatRepository {
         sqlx::query_as!(
             ChatMessage,
             r#"SELECT DISTINCT ON (session_id)
-               id, session_id, sender_type, sender_id, content, created_at
+               id, session_id, sender_type, sender_id, content, created_at,
+               message_type, metadata
              FROM chat_messages
              WHERE session_id = ANY($1)
              ORDER BY session_id, created_at DESC"#,

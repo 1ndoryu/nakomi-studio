@@ -60,7 +60,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos
 
 ### Prerequisitos
-- P-1: Refactorizar handlers/chat.rs (660 líneas → módulo con 5 archivos)
+- ~~P-1: Refactorizar handlers/chat.rs (660 líneas → módulo con 4 archivos)~~ ✅
 - P-2: Migración BD (visitor_profiles, chat_attachments, message_type/metadata, ai_intermediary)
 
 ### Fase I (por dificultad descendente)
@@ -122,6 +122,8 @@ Implica que la IA siempre genera un resumen dentro de los detalles de los pedido
 
 4. Hasta ahora hay muchas tareas, mucho contexto, el agente puede alucinar con tanta información, la organización del contento tiene que hacerse de manera precisa, muy probablmenente todo lo anterior dicho deben ser mcp resumidos que puedan brindar mas detalles, o tal vez lo mejor sea separar en agentes y crear subagentes, no lo se, estudiar y evaluar las tecnicas mas aficientes a aplicar, limitar el contexto a 64k tokens y que genere un resumen detallado cuando supere el limite en una conversacion. 
 
-5. No se si ya lo dije antes: 
+# La tarea final
+
+Tienes que comunicarte con el chatbot para probarlo y testearlo, eres un modelo superior claramente tienes que evaluarlo en todos los escenarios, auditarlo, evaluarlo, ir anotando fallos, posible mejoras e ir configurando para maximar el mejor resultado posible. La simulación tiene que ser lo mas parecida a un escenario real y el modelo no se tiene que dar cuenta que esta hablando con otra IA, solo tu. Lo mejor para esto es hacer un plan detallado de una lista de pruebas y cosas que verificar y ver si las pasa todas.
 
 

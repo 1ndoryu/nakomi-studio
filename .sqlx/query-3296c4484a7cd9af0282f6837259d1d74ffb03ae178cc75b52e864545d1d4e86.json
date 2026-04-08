@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO chat_messages (session_id, sender_type, sender_id, content)\n             VALUES ($1, $2, $3, $4)\n             RETURNING id, session_id, sender_type, sender_id, content, created_at",
+  "query": "SELECT id, session_id, sender_type, sender_id, content, created_at,\n                      message_type, metadata\n             FROM chat_messages WHERE session_id = $1\n             ORDER BY created_at ASC LIMIT $2 OFFSET $3",
   "describe": {
     "columns": [
       {
@@ -32,14 +32,23 @@
         "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "message_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "metadata",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Varchar",
-        "Varchar",
-        "Text"
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -48,8 +57,10 @@
       false,
       true,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "280cf9e7e9b06380c67406e0626322ad86ca0915598716488f329fda90020e52"
+  "hash": "3296c4484a7cd9af0282f6837259d1d74ffb03ae178cc75b52e864545d1d4e86"
 }
