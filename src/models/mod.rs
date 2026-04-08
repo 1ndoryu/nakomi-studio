@@ -69,7 +69,7 @@ pub use user::{
     UserResponse, UserRole,
 };
 pub use hosting::{
-    CreateHostingRequest, HostingEvent, HostingSubscription,
+    CreateHostingRequest, HostingEvent, HostingStatsResponse, HostingSubscription,
     HostingSubscriptionResponse, SelfSubscribeRequest, SelfSubscribeResponse,
     UpdateHostingRequest, UpdateHostingStatusRequest,
 };

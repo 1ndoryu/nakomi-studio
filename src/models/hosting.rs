@@ -126,3 +126,24 @@ pub struct SelfSubscribeResponse {
     pub subscription: HostingSubscriptionResponse,
     pub checkout_url: String,
 }
+
+/* [094A-8] Estadísticas reales de una suscripción de hosting.
+ * Uptime se calcula desde el historial de eventos (status_change).
+ * Storage/bandwidth son límites del plan; uso real requiere monitoreo futuro (Coolify/cAdvisor). */
+#[derive(Debug, Serialize, ToSchema)]
+pub struct HostingStatsResponse {
+    pub storage_limit_mb: i32,
+    /// null = monitoring no disponible aún
+    pub storage_used_mb: Option<i64>,
+    pub bandwidth_limit_gb: i32,
+    /// null = monitoring no disponible aún
+    pub bandwidth_used_gb: Option<i64>,
+    /// Calculado desde historial de eventos (tiempo en status "active")
+    pub uptime_percent: f64,
+    /// Timestamp desde que la suscripción está activa (null si nunca se activó)
+    pub active_since: Option<DateTime<Utc>>,
+    pub total_events: i64,
+    pub last_event_at: Option<DateTime<Utc>>,
+    /// true si hay agente de monitoreo configurado (`coolify_site_name` != null)
+    pub monitoring_available: bool,
+}

@@ -186,6 +186,24 @@ export const HOSTING_PLANS: HostingPlanInfo[] = [
 
 /* [084A-24] VPS stats — proxy a Contabo API (admin only) */
 
+/* [094A-8] Stats reales de una suscripción de hosting */
+export interface HostingStatsData {
+    storage_limit_mb: number;
+    storage_used_mb: number | null;
+    bandwidth_limit_gb: number;
+    bandwidth_used_gb: number | null;
+    uptime_percent: number;
+    active_since: string | null;
+    total_events: number;
+    last_event_at: string | null;
+    monitoring_available: boolean;
+}
+
+export async function apiGetHostingStats(id: string): Promise<HostingStatsData> {
+    const {data} = await axiosInstance.get<HostingStatsData>(`/api/hosting/subscriptions/${id}/stats`);
+    return data;
+}
+
 export interface VpsSummary {
     instance_id: number;
     name: string;

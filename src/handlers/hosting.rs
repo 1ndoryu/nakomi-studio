@@ -14,7 +14,7 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateHostingRequest, HostingEvent, HostingSubscriptionResponse,
+    CreateHostingRequest, HostingEvent, HostingStatsResponse, HostingSubscriptionResponse,
     SelfSubscribeRequest, SelfSubscribeResponse,
     UpdateHostingRequest, UpdateHostingStatusRequest, UserRole,
 };
@@ -569,6 +569,136 @@ pub async fn create_checkout(
 }
 
 /* ============================================================
+   HOSTING STATS — Estadísticas reales de una suscripción
+   [094A-8] Calcula uptime desde eventos, muestra límites reales del plan.
+   ============================================================ */
+
+/* Límite de ancho de banda por plan en GB */
+fn plan_bandwidth_gb(plan: &str) -> i32 {
+    match plan {
+        "pro" => 200,
+        "ecommerce" => 500,
+        _ => 50,
+    }
+}
+
+/* [094A-8] Calcula el porcentaje de uptime analizando transiciones de status en eventos.
+ * Recorre los eventos cronológicamente, contando el tiempo total en estado "active".
+ * Si la suscripción actualmente está activa, el período abierto se extiende hasta ahora. */
+#[allow(clippy::cast_precision_loss)] /* Duración en segundos cabe en f64 sin pérdida práctica */
+fn calculate_uptime(
+    created_at: chrono::DateTime<chrono::Utc>,
+    current_status: &str,
+    events: &[crate::models::HostingEvent],
+) -> (f64, Option<chrono::DateTime<chrono::Utc>>) {
+    let now = chrono::Utc::now();
+    let total_duration = (now - created_at).num_seconds().max(1) as f64;
+
+    /* Recorrer eventos cronológicamente para rastrear períodos activos */
+    let mut active_seconds: f64 = 0.0;
+    let mut last_active_start: Option<chrono::DateTime<chrono::Utc>> = None;
+    let mut first_active: Option<chrono::DateTime<chrono::Utc>> = None;
+
+    /* Eventos vienen DESC del repo, revertir para orden cronológico */
+    let mut sorted_events: Vec<&crate::models::HostingEvent> = events.iter().collect();
+    sorted_events.sort_by_key(|e| e.created_at);
+
+    for event in &sorted_events {
+        if event.event_type != "status_change" {
+            continue;
+        }
+        let new_status = event
+            .details
+            .as_ref()
+            .and_then(|d| d.get("new_status"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        match new_status {
+            "active" => {
+                last_active_start = Some(event.created_at);
+                if first_active.is_none() {
+                    first_active = Some(event.created_at);
+                }
+            }
+            _ => {
+                /* Transición fuera de active: cerrar el período activo abierto */
+                if let Some(start) = last_active_start.take() {
+                    active_seconds += (event.created_at - start).num_seconds().max(0) as f64;
+                }
+            }
+        }
+    }
+
+    /* Si actualmente está activo, cerrar el período abierto hasta ahora */
+    if current_status == "active" {
+        if let Some(start) = last_active_start {
+            active_seconds += (now - start).num_seconds().max(0) as f64;
+        } else if first_active.is_none() {
+            /* Nunca hubo un evento status_change a "active" explícito pero el status es active
+             * (puede pasar con suscripciones migradas). Asumir active desde creación. */
+            first_active = Some(created_at);
+            active_seconds = total_duration;
+        }
+    }
+
+    let uptime = if total_duration > 0.0 {
+        (active_seconds / total_duration * 100.0).min(100.0)
+    } else {
+        0.0
+    };
+
+    (uptime, first_active)
+}
+
+/// Estadísticas de uso de una suscripción de hosting
+#[utoipa::path(
+    get,
+    path = "/api/hosting/subscriptions/{id}/stats",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "Estadísticas de la suscripción", body = HostingStatsResponse),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "Suscripción no encontrada"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn get_hosting_stats(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<HostingStatsResponse>, AppError> {
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    /* Clientes solo ven stats de sus propias suscripciones */
+    if auth.effective_role == UserRole::Client && sub.user_id != Some(auth.user_id) {
+        return Err(AppError::Forbidden("Sin permisos".into()));
+    }
+
+    let events = HostingRepository::list_events(&state.pool, id, 1000).await?;
+    let (uptime_percent, active_since) = calculate_uptime(sub.created_at, &sub.status, &events);
+
+    let total_events = i64::try_from(events.len()).unwrap_or(i64::MAX);
+    let last_event_at = events.first().map(|e| e.created_at);
+    let monitoring_available = sub.coolify_site_name.is_some();
+
+    Ok(Json(HostingStatsResponse {
+        storage_limit_mb: sub.storage_limit_mb,
+        storage_used_mb: None,
+        bandwidth_limit_gb: plan_bandwidth_gb(&sub.plan),
+        bandwidth_used_gb: None,
+        uptime_percent,
+        active_since,
+        total_events,
+        last_event_at,
+        monitoring_available,
+    }))
+}
+
+/* ============================================================
    VPS STATS — Proxy a Contabo API (solo admin)
    [084A-24] Permite al panel admin ver estado real de las VPS
    ============================================================ */
@@ -663,6 +793,11 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/subscriptions/:id/events",
             get(list_events),
+        )
+        /* [094A-8] Stats reales de una suscripción */
+        .route(
+            "/hosting/subscriptions/:id/stats",
+            get(get_hosting_stats),
         )
         .route(
             "/hosting/subscriptions/:id/cancel",
