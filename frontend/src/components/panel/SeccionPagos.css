@@ -1,15 +1,10 @@
-/* [044A-38 Fase 3] Estilos del historial de pagos */
+/* [044A-38 Fase 3] Estilos del historial de pagos.
+ * [074A-61] Rediseño: lista compacta clickeable + modal de detalles. */
 
 .pagosContenedor {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
-}
-
-.pagosTitulo {
-    font-family: var(--font-primary);
-    font-size: var(--text-xl);
-    margin: 0;
 }
 
 .pagosOrdenesLista {
@@ -23,22 +18,21 @@
     align-items: center;
     gap: var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--border-default);
+    border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-md);
-    background: var(--bg-primary);
+    background: var(--brand-white);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transicion-rapida);
     text-align: left;
-    font-family: var(--font-primary);
 }
 
 .pagosOrdenBtn:hover {
-    border-color: var(--border-default);
+    border-color: var(--border-hover);
 }
 
 .pagosOrdenBtn--activo {
-    border-color: var(--border-default);
-    background: var(--bg-accent);
+    border-color: var(--brand-black);
+    background: var(--bg-item-active);
 }
 
 .pagosOrdenNumero {
@@ -50,6 +44,9 @@
 .pagosOrdenTitulo {
     flex: 1;
     font-size: var(--text-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .pagosOrdenPrecio {
@@ -60,72 +57,104 @@
 .pagosDatos {
     display: flex;
     flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* [074A-61] Fila compacta de pago — clickeable para abrir modal */
+.pagoFila {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--brand-white);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transicion-rapida);
+    text-align: left;
+}
+
+.pagoFila:hover {
+    border-color: var(--border-hover);
+}
+
+.pagoFilaIcono {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.pagoFilaEstado {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    min-width: 70px;
+}
+
+.pagoFilaDescripcion {
+    flex: 1;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pagoFilaFecha {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.pagoFilaMonto {
+    font-weight: 600;
+    font-size: var(--text-sm);
+    flex-shrink: 0;
+}
+
+/* Status colors — solo texto, sin pill */
+.pagoEstado--pendiente  { color: var(--color-warning); }
+.pagoEstado--retenido   { color: var(--color-info); }
+.pagoEstado--liberado   { color: var(--color-success); }
+.pagoEstado--reembolsado { color: var(--primary-500); }
+.pagoEstado--fallido    { color: var(--color-error); }
+
+/* [074A-61] Grid de detalles en el modal */
+.pagoDetalleGrid {
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-sm);
 }
 
-.pagoCard {
-    background: var(--bg-accent);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-md);
-}
-
-.pagoCardHeader {
+.pagoDetalleFila {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-xs);
+    align-items: baseline;
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px solid var(--bg-item-hover);
 }
 
-.pagoEstado {
+.pagoDetalleFila:last-child {
+    border-bottom: none;
+}
+
+.pagoDetalleLabel {
     font-size: var(--text-xs);
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: var(--radius-lg);
+    color: var(--text-tertiary);
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.pagoEstado--pendiente {
-    background: var(--color-warning-bg);
-    color: var(--color-warning-text);
-}
-
-.pagoEstado--retenido {
-    background: var(--color-info-bg);
-    color: var(--color-info-text);
-}
-
-.pagoEstado--liberado {
-    background: var(--color-success-bg);
-    color: var(--color-success-text);
-}
-
-.pagoEstado--reembolsado {
-    background: var(--color-purple-bg);
-    color: var(--color-purple-text);
-}
-
-.pagoEstado--fallido {
-    background: var(--color-error-bg);
-    color: var(--color-error-text);
-}
-
-.pagoMonto {
-    font-weight: 700;
-    font-size: var(--text-base);
-}
-
-.pagoDescripcion {
+.pagoDetalleValor {
     font-size: var(--text-sm);
-    color: var(--text-tertiary);
-    margin: 0;
+    font-weight: 500;
+    color: var(--brand-black);
 }
 
-.pagoFecha {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    margin: 0;
+.pagoDetalleMontoGrande {
+    font-size: var(--text-lg);
+    font-weight: 700;
 }
 
+/* Empty / error / spinner states */
 .pagosVacio {
     display: flex;
     justify-content: center;
@@ -150,84 +179,52 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    color: var(--color-error-text);
+    color: var(--color-error);
     font-size: var(--text-sm);
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }
 
 .pagosSpinner {
     animation: spin 1s linear infinite;
 }
 
-/* [044A-38 Fase 7] Botón de solicitar reembolso en pago card */
+/* Botón reembolso en el modal de detalle */
 .pagoBotonReembolso {
     display: flex;
     align-items: center;
     gap: 4px;
-    margin-top: var(--spacing-xs);
-    background: transparent;
-    color: var(--color-purple-text);
-    border: 1px solid var(--color-purple-text);
-    border-radius: var(--radius-sm);
-    padding: 4px 12px;
-    font-size: var(--text-xs);
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    margin-top: var(--spacing-sm);
+    align-self: flex-start;
 }
 
-.pagoBotonReembolso:hover {
-    background: var(--color-purple-text);
-    color: var(--brand-white);
-}
-
-/* [044A-38 Fase 7] Modal de solicitud de reembolso */
-.pagoModalOverlay {
-    position: fixed;
-    inset: 0;
-    background: var(--overlay-medium);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
+/* Modal contenido genérico (reembolso + detalle) */
 .pagoModalContenido {
-    background: var(--bg-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    width: 90%;
-    max-width: 480px;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
 }
 
 .pagoModalTitulo {
-    font-family: var(--font-serif);
     font-size: var(--text-lg);
     color: var(--brand-black);
     margin: 0;
+    font-weight: 600;
 }
 
 .pagoModalDescripcion {
     font-size: var(--text-sm);
-    color: var(--brand-black);
-    opacity: 0.7;
+    color: var(--text-tertiary);
     margin: 0;
 }
 
 .pagoModalTextarea {
     width: 100%;
-    font-family: var(--font-primary);
     font-size: var(--text-sm);
     padding: var(--spacing-sm);
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-md);
     resize: vertical;
     box-sizing: border-box;
@@ -237,6 +234,17 @@
     display: flex;
     gap: var(--spacing-sm);
     justify-content: flex-end;
+}
+
+@media (max-width: 767px) {
+    .pagoFila {
+        flex-wrap: wrap;
+    }
+
+    .pagoFilaDescripcion {
+        order: 5;
+        flex-basis: 100%;
+    }
 }
 
 .pagoBotonEnviarReembolso {

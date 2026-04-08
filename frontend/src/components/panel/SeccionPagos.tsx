@@ -1,17 +1,18 @@
 /* [044A-38 Fase 3] Sección de historial de pagos en el panel.
- * Muestra pagos por orden con estado, monto y descripción.
- * [044A-38 Fase 7] Botón "Solicitar reembolso" para pagos held/released. */
+ * [074A-61] Rediseño: lista compacta de pagos + modal de detalles al click.
+ * Botón "Solicitar reembolso" movido al modal de detalle. */
 
 import { useState } from 'react';
-import { Loader2, CreditCard, AlertCircle, RotateCcw } from 'lucide-react';
+import { Loader2, CreditCard, AlertCircle, RotateCcw, Receipt } from 'lucide-react';
 import { useOrdenes } from '../../hooks/useOrdenes';
 import { usePagos } from '../../hooks/usePagos';
 import { useRefundModal } from '../../hooks/useRefundModal';
 import {
     PAYMENT_STATUS_LABELS,
     PAYMENT_STATUS_CLASS,
+    type PaymentResponse,
 } from '../../api/payments';
-import { formatPrice } from '../../api/orders';
+import { PAYMENT_MODE_LABELS, formatPrice } from '../../api/orders';
 import { useAuthStore } from '../../stores/authStore';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
@@ -20,15 +21,16 @@ import './SeccionPagos.css';
 
 export function SeccionPagos() {
     const { ordenes, cargando, error } = useOrdenes();
-    const [ordenSeleccionada, setOrdenSeleccionada] = useState<string | null>(
-        null
-    );
+    const [ordenSeleccionada, setOrdenSeleccionada] = useState<string | null>(null);
     const { pagos, cargandoPagos, errorPagos } = usePagos(ordenSeleccionada);
     const {
         refundOrderId, refundRazon, refundEnCurso,
         setRefundRazon, abrirModal, cerrarModal, enviarSolicitud,
     } = useRefundModal();
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) || 'client';
+
+    /* [074A-61] Modal de detalle de pago */
+    const [pagoDetalle, setPagoDetalle] = useState<PaymentResponse | null>(null);
 
     if (cargando) {
         return (
@@ -49,30 +51,19 @@ export function SeccionPagos() {
 
     return (
         <div className="pagosContenedor">
-            <h2 className="pagosTitulo">Historial de Pagos</h2>
-
+            {/* Selector de orden */}
             <div className="pagosOrdenesLista">
                 {ordenes.map((o) => (
                     <Button
                         key={o.id}
                         variante="texto"
-                        className={`pagosOrdenBtn ${
-                            ordenSeleccionada === o.id
-                                ? 'pagosOrdenBtn--activo'
-                                : ''
-                        }`}
+                        className={`pagosOrdenBtn ${ordenSeleccionada === o.id ? 'pagosOrdenBtn--activo' : ''}`}
                         onClick={() => setOrdenSeleccionada(o.id)}
                         type="button"
                     >
-                        <span className="pagosOrdenNumero">
-                            #{o.order_number}
-                        </span>
-                        <span className="pagosOrdenTitulo">
-                            {o.service_title}
-                        </span>
-                        <span className="pagosOrdenPrecio">
-                            {formatPrice(o.final_price_cents, o.currency)}
-                        </span>
+                        <span className="pagosOrdenNumero">#{o.order_number}</span>
+                        <span className="pagosOrdenTitulo">{o.service_title}</span>
+                        <span className="pagosOrdenPrecio">{formatPrice(o.final_price_cents, o.currency)}</span>
                     </Button>
                 ))}
                 {ordenes.length === 0 && (
@@ -80,15 +71,12 @@ export function SeccionPagos() {
                 )}
             </div>
 
+            {/* Lista compacta de pagos */}
             {ordenSeleccionada && (
                 <div className="pagosDatos">
-                    {cargandoPagos && (
-                        <Loader2 className="pagosSpinner" size={24} />
-                    )}
+                    {cargandoPagos && <Loader2 className="pagosSpinner" size={24} />}
                     {errorPagos && (
-                        <p className="pagosError">
-                            <AlertCircle size={16} /> {errorPagos}
-                        </p>
+                        <p className="pagosError"><AlertCircle size={16} /> {errorPagos}</p>
                     )}
                     {!cargandoPagos && pagos.length === 0 && (
                         <div className="pagosVacioDetalle">
@@ -97,54 +85,98 @@ export function SeccionPagos() {
                         </div>
                     )}
                     {pagos.map((p) => (
-                        <div key={p.id} className="pagoCard">
-                            <div className="pagoCardHeader">
-                                <span
-                                    className={`pagoEstado ${
-                                        PAYMENT_STATUS_CLASS[p.status]
-                                    }`}
-                                >
-                                    {PAYMENT_STATUS_LABELS[p.status]}
-                                </span>
-                                <span className="pagoMonto">
-                                    {formatPrice(p.amount_cents, p.currency)}
-                                </span>
-                            </div>
-                            {p.description && (
-                                <p className="pagoDescripcion">
-                                    {p.description}
-                                </p>
-                            )}
-                            <p className="pagoFecha">
-                                {new Date(p.created_at).toLocaleDateString(
-                                    'es-ES',
-                                    {
-                                        day: 'numeric',
-                                        month: 'short',
-                                        year: 'numeric',
-                                    }
-                                )}
-                            </p>
-                            {/* [044A-38 Fase 7] Botón reembolso si el pago es reembolsable */}
-                            {effectiveRole === 'client' &&
-                                (p.status === 'held' || p.status === 'released') && (
-                                <Button
-                                    variante="texto"
-                                    tamano="pequeno"
-                                    className="pagoBotonReembolso"
-                                    type="button"
-                                    onClick={() => abrirModal(ordenSeleccionada!)}
-                                >
-                                    <RotateCcw size={14} />
-                                    Solicitar reembolso
-                                </Button>
-                            )}
-                        </div>
+                        <Button
+                            key={p.id}
+                            variante="texto"
+                            className="pagoFila"
+                            onClick={() => setPagoDetalle(p)}
+                            type="button"
+                        >
+                            <Receipt size={16} className="pagoFilaIcono" />
+                            <span className={`pagoFilaEstado ${PAYMENT_STATUS_CLASS[p.status]}`}>
+                                {PAYMENT_STATUS_LABELS[p.status]}
+                            </span>
+                            <span className="pagoFilaDescripcion">
+                                {p.description || (p.phase_number ? `Fase ${p.phase_number}` : 'Pago')}
+                            </span>
+                            <span className="pagoFilaFecha">
+                                {new Date(p.created_at).toLocaleDateString('es-ES', {day: 'numeric', month: 'short'})}
+                            </span>
+                            <span className="pagoFilaMonto">
+                                {formatPrice(p.amount_cents, p.currency)}
+                            </span>
+                        </Button>
                     ))}
                 </div>
             )}
 
-            {/* [044A-38 Fase 7] Modal de solicitud de reembolso */}
+            {/* [074A-61] Modal de detalle de pago */}
+            <Modal abierto={!!pagoDetalle} onCerrar={() => setPagoDetalle(null)}>
+                {pagoDetalle && (
+                    <div className="pagoModalContenido">
+                        <h3 className="pagoModalTitulo">Detalle del pago</h3>
+                        <div className="pagoDetalleGrid">
+                            <div className="pagoDetalleFila">
+                                <span className="pagoDetalleLabel">Estado</span>
+                                <span className={`pagoDetalleValor ${PAYMENT_STATUS_CLASS[pagoDetalle.status]}`}>
+                                    {PAYMENT_STATUS_LABELS[pagoDetalle.status]}
+                                </span>
+                            </div>
+                            <div className="pagoDetalleFila">
+                                <span className="pagoDetalleLabel">Monto</span>
+                                <span className="pagoDetalleValor pagoDetalleMontoGrande">
+                                    {formatPrice(pagoDetalle.amount_cents, pagoDetalle.currency)}
+                                </span>
+                            </div>
+                            <div className="pagoDetalleFila">
+                                <span className="pagoDetalleLabel">Modo de pago</span>
+                                <span className="pagoDetalleValor">
+                                    {PAYMENT_MODE_LABELS[pagoDetalle.payment_mode]}
+                                </span>
+                            </div>
+                            {pagoDetalle.phase_number != null && (
+                                <div className="pagoDetalleFila">
+                                    <span className="pagoDetalleLabel">Fase</span>
+                                    <span className="pagoDetalleValor">Fase {pagoDetalle.phase_number}</span>
+                                </div>
+                            )}
+                            {pagoDetalle.description && (
+                                <div className="pagoDetalleFila">
+                                    <span className="pagoDetalleLabel">Descripción</span>
+                                    <span className="pagoDetalleValor">{pagoDetalle.description}</span>
+                                </div>
+                            )}
+                            <div className="pagoDetalleFila">
+                                <span className="pagoDetalleLabel">Fecha</span>
+                                <span className="pagoDetalleValor">
+                                    {new Date(pagoDetalle.created_at).toLocaleDateString('es-ES', {
+                                        day: 'numeric', month: 'long', year: 'numeric',
+                                        hour: '2-digit', minute: '2-digit',
+                                    })}
+                                </span>
+                            </div>
+                        </div>
+                        {effectiveRole === 'client' &&
+                            (pagoDetalle.status === 'held' || pagoDetalle.status === 'released') && (
+                            <Button
+                                variante="outline"
+                                tamano="pequeno"
+                                className="pagoBotonReembolso"
+                                type="button"
+                                onClick={() => {
+                                    setPagoDetalle(null);
+                                    abrirModal(ordenSeleccionada!);
+                                }}
+                            >
+                                <RotateCcw size={14} />
+                                Solicitar reembolso
+                            </Button>
+                        )}
+                    </div>
+                )}
+            </Modal>
+
+            {/* Modal de solicitud de reembolso */}
             <Modal abierto={!!refundOrderId} onCerrar={cerrarModal}>
                 <div className="pagoModalContenido">
                     <h3 className="pagoModalTitulo">Solicitar reembolso</h3>
