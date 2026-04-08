@@ -68,7 +68,9 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
     const [sortOrder, setSortOrder] = useState(0);
     const [planes, setPlanes] = useState<PlanEditable[]>([]);
 
-    /* Convierte AdminServicePlan[] del servidor a PlanEditable[] editables */
+    /* [084A-3] Convierte AdminServicePlan[] del servidor a PlanEditable[] editables.
+     * features en BD puede ser [{texto,incluido}] (fixtures) o ["string"] (guardado desde editor).
+     * Siempre normalizamos a string[] extrayendo el campo texto si es objeto. */
     const parsePlans = useCallback((svc: AdminService): PlanEditable[] => {
         return svc.plans.map((p, i) => ({
             key: `${p.id}-${i}`,
@@ -76,7 +78,13 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
             name: p.name,
             priceCents: p.price_cents,
             description: p.description ?? '',
-            features: Array.isArray(p.features) ? (p.features as string[]) : [],
+            features: Array.isArray(p.features)
+                ? (p.features as unknown[]).map(f =>
+                    typeof f === 'object' && f !== null && 'texto' in f
+                        ? String((f as Record<string, unknown>).texto)
+                        : String(f)
+                )
+                : [],
             isHighlighted: p.is_highlighted,
             isCustom: p.is_custom,
             sortOrder: i,
