@@ -181,7 +181,12 @@ pub async fn send_message(
         if let Ok(Some(s)) =
             crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
         {
-            if s.ai_enabled && s.assigned_staff_id.is_none() {
+            /* [T-10] IA intermediaria: si sesión de orden con intermediary habilitado */
+            if let Some(order_id) = s.order_id {
+                spawn_intermediary_if_enabled(
+                    &state, session_id, order_id, auth.user_id, &req.content,
+                );
+            } else if s.ai_enabled && s.assigned_staff_id.is_none() {
                 let ai_resp = AiChatService::generate_response(
                     &state.pool,
                     &state.ai_config,
@@ -245,6 +250,60 @@ pub async fn send_message(
     }
 
     Ok((StatusCode::CREATED, Json(msg)))
+}
+
+/* [T-10] Lanza respuesta IA intermediaria en background si la orden lo tiene habilitado */
+fn spawn_intermediary_if_enabled(
+    state: &AppState,
+    session_id: Uuid,
+    order_id: Uuid,
+    user_id: Uuid,
+    content: &str,
+) {
+    let pool = state.pool.clone();
+    let ai_config = state.ai_config.clone();
+    let http_client = state.http_client.clone();
+    let hub = state.chat_hub.clone();
+    let content = content.to_string();
+    tokio::spawn(async move {
+        /* Verificar si la orden tiene intermediary habilitado */
+        let order = match crate::repositories::OrderRepository::find_order_by_id(&pool, order_id)
+            .await
+        {
+            Ok(Some(o)) if o.ai_intermediary_enabled.unwrap_or(false) => o,
+            _ => return,
+        };
+
+        /* Generar respuesta con prompt de intermediario */
+        let ai_resp = match AiChatService::generate_intermediary_response(
+            &pool, &ai_config, &http_client, session_id, &order, user_id, &content,
+        )
+        .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Error IA intermediaria orden #{}: {e}", order.order_number);
+                return;
+            }
+        };
+
+        /* Enviar respuesta como ai_intermediary */
+        let _ = hub
+            .send_message(session_id, "ai_intermediary", Some("ai"), &ai_resp.text)
+            .await;
+
+        /* [T-10c] Auto-resumen si >5 mensajes en la sesión */
+        if let Ok(msgs) =
+            crate::repositories::ChatRepository::list_messages(&pool, session_id, 100, 0).await
+        {
+            if msgs.len() > 5 {
+                AiChatService::maybe_update_order_summary(
+                    &pool, &ai_config, &http_client, order_id, &msgs,
+                )
+                .await;
+            }
+        }
+    });
 }
 
 /* [054A-9] Cerrar sesión de chat via REST (staff/admin) */

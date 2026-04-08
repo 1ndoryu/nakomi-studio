@@ -2,12 +2,13 @@
  * número, fecha inicio, precio, 3 puntos) + historial de fases con entregas y
  * revisiones. Clientes solicitan revisiones al recibir entrega.
  * Opciones: reportar, extensión de tiempo (empleado), cancelar. */
-import React, {useState} from 'react';
-import {CreditCard, XCircle, ArrowLeft, AlertTriangle, User, MessageCircle} from 'lucide-react';
+import React, {useState, useCallback} from 'react';
+import {CreditCard, XCircle, ArrowLeft, AlertTriangle, User, MessageCircle, Bot} from 'lucide-react';
 import {
     ORDER_STATUS_LABELS,
     PAYMENT_MODE_LABELS,
     formatPrice,
+    apiToggleAiIntermediary,
     type OrderResponse,
     type OrderPhaseResponse,
     type OrderStatus,
@@ -67,6 +68,23 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
      * [084A-2] Chat abierto por defecto. Se muestra debajo del historial. */
     const [chatAbierto, setChatAbierto] = useState(true);
 
+    /* [T-10] Toggle IA intermediaria: solo visible para admin/employee */
+    const [intermediaryEnabled, setIntermediaryEnabled] = useState(order.ai_intermediary_enabled);
+    const [togglingIntermediary, setTogglingIntermediary] = useState(false);
+
+    const handleToggleIntermediary = useCallback(async () => {
+        setTogglingIntermediary(true);
+        try {
+            const updated = await apiToggleAiIntermediary(order.id, !intermediaryEnabled);
+            setIntermediaryEnabled(updated.ai_intermediary_enabled);
+        } catch {
+            /* Rollback visual si falla */
+            setIntermediaryEnabled(prev => prev);
+        } finally {
+            setTogglingIntermediary(false);
+        }
+    }, [order.id, intermediaryEnabled]);
+
     const canCancel = CANCELABLE_STATUSES.includes(order.status);
     const needsPayment = order.status === 'pending_payment';
     /* [064A-60] Tanto phased como half_half usan pagos por fase individuales */
@@ -118,6 +136,21 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                         {ORDER_STATUS_LABELS[order.status]}
                     </span>
                     <div className="ordenInfoCardAcciones">
+                        {/* [T-10] Toggle IA intermediaria — solo admin/employee */}
+                        {!isClient && canChat && (
+                            <label className={`ordenToggleIntermediary ${togglingIntermediary ? 'ordenToggleIntermediary--disabled' : ''}`}>
+                                <Bot size={14} />
+                                <span className="ordenToggleLabel">IA</span>
+                                <input
+                                    type="checkbox"
+                                    checked={intermediaryEnabled}
+                                    onChange={handleToggleIntermediary}
+                                    disabled={togglingIntermediary}
+                                    className="ordenToggleInput"
+                                />
+                                <span className="ordenToggleSwitch" />
+                            </label>
+                        )}
                         {/* [064A-31] Botón de chat con freelancer */}
                         {canChat && (
                             <Button
@@ -191,6 +224,16 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                         <span className="ordenInfoValue">{PAYMENT_MODE_LABELS[order.payment_mode]}</span>
                     </div>
                 </div>
+
+                {/* [T-10] Resumen IA del pedido — solo visible para admin/employee */}
+                {!isClient && order.ai_summary && (
+                    <div className="ordenAiSummary">
+                        <span className="ordenAiSummaryLabel">
+                            <Bot size={14} /> Resumen IA
+                        </span>
+                        <p className="ordenAiSummaryText">{order.ai_summary}</p>
+                    </div>
+                )}
             </div>
 
             {/* [064A-31] Chat movido debajo del historial — ver 084A-2 */}

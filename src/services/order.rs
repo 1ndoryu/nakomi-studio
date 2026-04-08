@@ -189,6 +189,8 @@ impl OrderService {
             client_notes: order.client_notes,
             started_at: order.started_at,
             created_at: order.created_at,
+            ai_intermediary_enabled: order.ai_intermediary_enabled.unwrap_or(false),
+            ai_summary: order.ai_summary,
         })
     }
 
@@ -233,6 +235,8 @@ impl OrderService {
             client_notes: order.client_notes,
             started_at: order.started_at,
             created_at: order.created_at,
+            ai_intermediary_enabled: order.ai_intermediary_enabled.unwrap_or(false),
+            ai_summary: order.ai_summary.clone(),
         };
 
         let phase_responses: Vec<OrderPhaseResponse> =
@@ -288,6 +292,8 @@ impl OrderService {
                 client_notes: order.client_notes,
                 started_at: order.started_at,
                 created_at: order.created_at,
+                ai_intermediary_enabled: order.ai_intermediary_enabled.unwrap_or(false),
+                ai_summary: order.ai_summary,
             });
         }
 

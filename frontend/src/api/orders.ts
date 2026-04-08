@@ -48,6 +48,9 @@ export interface OrderResponse {
     client_notes: string | null;
     started_at: string | null;
     created_at: string;
+    /* [T-10] IA intermediaria */
+    ai_intermediary_enabled: boolean;
+    ai_summary: string | null;
 }
 
 export interface OrderPhaseResponse {
@@ -118,6 +121,18 @@ export async function apiRequestRevision(
 
 /* [044A-38 Fase 6] apiDeliverPhase eliminada: la entrega ahora es multipart
  * y vive en api/deliverables.ts (apiDeliverPhase con FormData). */
+
+/* [T-10] Toggle IA intermediaria para una orden */
+export async function apiToggleAiIntermediary(
+    orderId: string,
+    enabled: boolean,
+): Promise<OrderResponse> {
+    const {data} = await instance.put<OrderResponse>(
+        `/api/orders/${orderId}/ai-intermediary`,
+        {enabled},
+    );
+    return data;
+}
 
 /*    HELPERS — labels y colores para UI */
 

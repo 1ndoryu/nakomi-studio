@@ -804,4 +804,46 @@ impl OrderRepository {
         .await
     }
 
+    /* [T-10] Activa/desactiva IA intermediaria para una orden */
+    pub async fn toggle_ai_intermediary(
+        pool: &PgPool,
+        order_id: Uuid,
+        enabled: bool,
+    ) -> Result<Order, sqlx::Error> {
+        sqlx::query_as::<_, Order>(
+            "UPDATE orders SET ai_intermediary_enabled = $2, updated_at = NOW() \
+             WHERE id = $1 \
+             RETURNING id, order_number, client_id, service_id, plan_id, \
+             payment_mode, base_price_cents, discount_percent, final_price_cents, currency, \
+             status, assigned_employee_id, assigned_at, auto_assign_deadline, current_phase, \
+             started_at, completed_at, cancelled_at, client_notes, internal_notes, \
+             created_at, updated_at, ai_intermediary_enabled, ai_summary",
+        )
+        .bind(order_id)
+        .bind(enabled)
+        .fetch_one(pool)
+        .await
+    }
+
+    /* [T-10] Actualiza el resumen IA de una orden (reemplaza, no acumula) */
+    pub async fn update_ai_summary(
+        pool: &PgPool,
+        order_id: Uuid,
+        summary: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query_as::<_, Order>(
+            "UPDATE orders SET ai_summary = $2, updated_at = NOW() WHERE id = $1 \
+             RETURNING id, order_number, client_id, service_id, plan_id, \
+             payment_mode, base_price_cents, discount_percent, final_price_cents, currency, \
+             status, assigned_employee_id, assigned_at, auto_assign_deadline, current_phase, \
+             started_at, completed_at, cancelled_at, client_notes, internal_notes, \
+             created_at, updated_at, ai_intermediary_enabled, ai_summary",
+        )
+        .bind(order_id)
+        .bind(summary)
+        .fetch_one(pool)
+        .await?;
+        Ok(())
+    }
+
 }

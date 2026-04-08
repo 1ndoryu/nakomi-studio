@@ -87,6 +87,8 @@ impl AssignmentService {
             client_notes: assigned.client_notes,
             started_at: assigned.started_at,
             created_at: assigned.created_at,
+            ai_intermediary_enabled: assigned.ai_intermediary_enabled.unwrap_or(false),
+            ai_summary: assigned.ai_summary,
         })
     }
 
@@ -125,6 +127,8 @@ impl AssignmentService {
                 client_notes: order.client_notes,
                 started_at: order.started_at,
                 created_at: order.created_at,
+                ai_intermediary_enabled: order.ai_intermediary_enabled.unwrap_or(false),
+                ai_summary: order.ai_summary,
             });
         }
 

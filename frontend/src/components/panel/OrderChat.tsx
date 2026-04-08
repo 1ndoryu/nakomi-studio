@@ -66,11 +66,13 @@ export const OrderChat: React.FC<OrderChatProps> = ({orderId}) => {
                 )}
                 {mensajes.map(msg => {
                     const esPropio = msg.sender_id === userId;
+                    /* [T-10] Mensajes de IA intermediaria con estilo diferente */
+                    const esIntermediaria = msg.sender_type === 'ai_intermediary';
+                    const clsBurbuja = esIntermediaria
+                        ? 'orderChatBurbuja orderChatBurbuja--intermediaria'
+                        : `orderChatBurbuja ${esPropio ? 'orderChatBurbuja--propia' : 'orderChatBurbuja--otra'}`;
                     return (
-                        <div
-                            key={msg.id}
-                            className={`orderChatBurbuja ${esPropio ? 'orderChatBurbuja--propia' : 'orderChatBurbuja--otra'}`}
-                        >
+                        <div key={msg.id} className={clsBurbuja}>
                             {/* [074A-38] Solo mostrar avatar del otro usuario, no el propio */}
                             {!esPropio && (
                                 <img
@@ -80,6 +82,9 @@ export const OrderChat: React.FC<OrderChatProps> = ({orderId}) => {
                                 />
                             )}
                             <div className="orderChatBurbujaContenido">
+                                {esIntermediaria && (
+                                    <span className="orderChatLabelIntermed">Asistente</span>
+                                )}
                                 <div className="orderChatBurbujaTexto">{msg.content}</div>
                                 <span className="orderChatBurbujaHora">
                                 {new Date(msg.created_at).toLocaleTimeString('es-ES', {

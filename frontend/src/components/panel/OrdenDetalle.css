@@ -472,3 +472,92 @@
 /* [064A-1] Cancelar confirmar: ahora usa variante="peligro" del Button. */
 
 /* [064A-1] faseBtnPagar eliminado: ahora usa variante="exito" del Button. */
+
+/* [T-10] Toggle IA intermediaria */
+.ordenToggleIntermediary {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    font-family: var(--font-primary);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.ordenToggleIntermediary--disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.ordenToggleLabel {
+    font-weight: 500;
+}
+
+.ordenToggleInput {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ordenToggleSwitch {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    background: var(--border-default);
+    border-radius: var(--radius-full);
+    transition: background var(--transicion-rapida);
+    flex-shrink: 0;
+}
+
+.ordenToggleSwitch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: var(--brand-white);
+    border-radius: 50%;
+    transition: transform var(--transicion-rapida);
+}
+
+.ordenToggleInput:checked + .ordenToggleSwitch {
+    background: var(--brand-black);
+}
+
+.ordenToggleInput:checked + .ordenToggleSwitch::after {
+    transform: translateX(14px);
+}
+
+/* [T-10] Resumen IA del pedido */
+.ordenAiSummary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-md);
+    background: var(--bg-accent);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--text-muted);
+}
+
+.ordenAiSummaryLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-family: var(--font-primary);
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+}
+
+.ordenAiSummaryText {
+    margin: 0;
+    font-family: var(--font-primary);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    line-height: 1.5;
+}

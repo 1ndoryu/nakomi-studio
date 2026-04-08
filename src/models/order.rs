@@ -175,6 +175,12 @@ pub struct SwitchRoleRequest {
     pub role: UserRole,
 }
 
+/* [T-10] Request para activar/desactivar IA intermediaria en una orden */
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ToggleAiIntermediaryRequest {
+    pub enabled: bool,
+}
+
 /* ============================================================
    RESPONSES
    ============================================================ */
@@ -201,6 +207,9 @@ pub struct OrderResponse {
     pub client_notes: Option<String>,
     pub started_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    /* [T-10] Campos de IA intermediaria */
+    pub ai_intermediary_enabled: bool,
+    pub ai_summary: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]

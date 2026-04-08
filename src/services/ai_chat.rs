@@ -11,6 +11,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::repositories::{ChatRepository, HostingRepository, OrderRepository, UserRepository};
+use crate::models::{ChatMessage, Order};
 use crate::services::ai_tools::{self, RichMessage};
 
 /* [064A-29] Contador global para rotacion round-robin de API keys.
@@ -208,6 +209,99 @@ impl AiChatService {
             needs_escalation: needs_escalation || text_escalation,
             rich_messages,
         })
+    }
+
+    /* [T-10] Genera respuesta IA como intermediario de una orden.
+     * System prompt especial con contexto completo del pedido. */
+    pub async fn generate_intermediary_response(
+        pool: &PgPool,
+        config: &AiChatConfig,
+        _http_client: &reqwest::Client,
+        session_id: Uuid,
+        order: &Order,
+        user_id: Uuid,
+        _user_message: &str,
+    ) -> Result<AiResponse, String> {
+        if !config.is_configured() {
+            return Ok(AiResponse {
+                text: "El equipo responderá pronto.".to_string(),
+                needs_escalation: false,
+                rich_messages: Vec::new(),
+            });
+        }
+
+        let system_prompt = build_intermediary_prompt(pool, order, user_id).await;
+        let history = ChatRepository::list_messages(pool, session_id, 20, 0)
+            .await
+            .unwrap_or_default();
+
+        let mut messages = vec![serde_json::json!({"role": "system", "content": system_prompt})];
+        for msg in &history {
+            let role = match msg.sender_type.as_str() {
+                "ai" | "ai_intermediary" => "assistant",
+                _ => "user",
+            };
+            messages.push(serde_json::json!({"role": role, "content": msg.content}));
+        }
+
+        let resp = call_groq_api(config, &messages, None).await?;
+        let text = resp["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("Disculpa, no pude procesar tu mensaje. Un miembro del equipo te asistirá.");
+        let (clean_text, escalation) = parse_escalation(text);
+        Ok(AiResponse {
+            text: clean_text,
+            needs_escalation: escalation,
+            rich_messages: Vec::new(),
+        })
+    }
+
+    /* [T-10c] Genera resumen de la conversación de la orden si hay >5 msgs.
+     * Usa modelo ligero (8b), reemplaza ai_summary de la orden. */
+    pub async fn maybe_update_order_summary(
+        pool: &PgPool,
+        config: &AiChatConfig,
+        http_client: &reqwest::Client,
+        order_id: Uuid,
+        msgs: &[ChatMessage],
+    ) {
+        let Some(api_key) = config.next_key() else { return };
+
+        let mut conversation = String::new();
+        for m in msgs.iter().take(50) {
+            let _ = writeln!(conversation, "[{}]: {}", m.sender_type, m.content);
+        }
+
+        let prompt = format!(
+            "Resume esta conversación de soporte de pedido en máximo 200 palabras. \
+             Incluye: solicitudes del cliente, cambios pedidos, estado emocional, \
+             acciones pendientes.\n\nConversación:\n{conversation}"
+        );
+
+        let body = serde_json::json!({
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {"role": "system", "content": "Eres un asistente que genera resúmenes concisos de conversaciones de soporte."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.3,
+            "max_tokens": 400
+        });
+
+        let resp = http_client
+            .post(&config.api_url)
+            .header("Authorization", format!("Bearer {api_key}"))
+            .json(&body)
+            .send()
+            .await;
+
+        if let Ok(r) = resp {
+            if let Ok(json) = r.json::<Value>().await {
+                if let Some(summary) = json["choices"][0]["message"]["content"].as_str() {
+                    let _ = OrderRepository::update_ai_summary(pool, order_id, summary).await;
+                }
+            }
+        }
     }
 }
 
@@ -507,4 +601,80 @@ async fn append_registered_client_context(prompt: &mut String, pool: &PgPool, ui
             prompt.push_str("Puedes responder preguntas sobre el estado de su hosting.\n\n");
         }
     }
+}
+
+/* [T-10] Construye system prompt para IA intermediaria de una orden.
+ * Incluye contexto completo del pedido: servicio, plan, fases, notas, empleado asignado. */
+async fn build_intermediary_prompt(pool: &PgPool, order: &Order, user_id: Uuid) -> String {
+    let mut prompt = String::new();
+
+    /* Info del servicio y plan */
+    let (svc_title, _, plan_name) = OrderRepository::get_order_display_info(
+        pool, order.service_id, order.plan_id,
+    )
+    .await
+    .unwrap_or_else(|_| ("Servicio".to_string(), String::new(), "Plan".to_string()));
+
+    let employee_name = OrderRepository::get_employee_display_name(
+        pool, order.assigned_employee_id,
+    )
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_else(|| "No asignado".to_string());
+
+    let _ = write!(
+        prompt,
+        "Eres un intermediario de atención al cliente de Nakomi Studio para el pedido #{num}.\n\
+         Servicio: {svc_title} — Plan: {plan_name}\n\
+         Estado: {status:?} — Fase actual: {phase}\n\
+         Empleado asignado: {employee_name}\n",
+        num = order.order_number,
+        status = order.status,
+        phase = order.current_phase,
+    );
+
+    /* Notas del cliente e internas */
+    if let Some(notes) = &order.client_notes {
+        if !notes.is_empty() {
+            let _ = writeln!(prompt, "Notas del cliente: {notes}");
+        }
+    }
+    if let Some(notes) = &order.internal_notes {
+        if !notes.is_empty() {
+            let _ = writeln!(prompt, "Notas internas: {notes}");
+        }
+    }
+
+    /* Historial de fases */
+    if let Ok(phases) = OrderRepository::list_order_phases(pool, order.id).await {
+        if !phases.is_empty() {
+            prompt.push_str("Fases del pedido:\n");
+            for p in &phases {
+                let _ = writeln!(
+                    prompt,
+                    "  Fase {}: {} — {:?}",
+                    p.phase_number, p.title, p.status,
+                );
+            }
+        }
+    }
+
+    /* Info del cliente */
+    if let Ok(Some(user)) = UserRepository::find_by_id(pool, user_id).await {
+        let display = user.display_name.as_deref().unwrap_or(&user.username);
+        let _ = writeln!(prompt, "Cliente: {display} ({email})", email = user.email);
+    }
+
+    prompt.push_str(
+        "\nIMPORTANTE: Eres un intermediario. Tu rol es:\n\
+         1. Responder preguntas del cliente sobre el estado del pedido\n\
+         2. Recopilar solicitudes y cambios pedidos por el cliente\n\
+         3. Generar información útil para el equipo\n\
+         4. Escalar al empleado si requiere acción humana (usa [ESCALATE])\n\
+         No tomes decisiones sobre el trabajo — solo comunica y documenta.\n\
+         Responde de forma concisa, amable y profesional. Nunca menciones que eres IA.\n",
+    );
+
+    prompt
 }

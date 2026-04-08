@@ -11,7 +11,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateOrderRequest, OrderResponse, OrderStatus, SwitchRoleRequest, UserRole,
+    CreateOrderRequest, OrderResponse, OrderStatus, SwitchRoleRequest,
+    ToggleAiIntermediaryRequest, UserRole,
 };
 use crate::repositories::{OrderRepository, UserRepository};
 use crate::services::{AuthService, OrderService, PaymentService};
@@ -329,5 +330,66 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/orders/:order_id/phases/:phase_number/approve", put(approve_phase))
         .route("/orders/:order_id/phases/:phase_number/revision", put(request_revision))
+        .route("/orders/:order_id/ai-intermediary", put(toggle_ai_intermediary))
         .route("/auth/switch-role", post(switch_role))
+}
+
+/* [T-10] Toggle IA intermediaria por orden (solo admin/employee asignado) */
+#[utoipa::path(
+    put,
+    path = "/api/orders/{order_id}/ai-intermediary",
+    params(("order_id" = Uuid, Path, description = "ID de la orden")),
+    request_body = ToggleAiIntermediaryRequest,
+    responses(
+        (status = 200, description = "Toggle actualizado", body = OrderResponse),
+        (status = 401, description = "No autorizado"),
+        (status = 403, description = "Sin permisos"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "orders"
+)]
+pub async fn toggle_ai_intermediary(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(order_id): Path<Uuid>,
+    Json(req): Json<ToggleAiIntermediaryRequest>,
+) -> Result<Json<OrderResponse>, AppError> {
+    auth.require_role(&[UserRole::Admin, UserRole::Employee])?;
+    let order = OrderRepository::toggle_ai_intermediary(&state.pool, order_id, req.enabled).await?;
+
+    let (svc_title, svc_slug, plan_name) =
+        OrderRepository::get_order_display_info(&state.pool, order.service_id, order.plan_id)
+            .await?;
+    let phases = OrderRepository::list_order_phases(&state.pool, order.id).await?;
+    let employee_name =
+        OrderRepository::get_employee_display_name(&state.pool, order.assigned_employee_id)
+            .await?;
+
+    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+    let total_phases = phases.len() as i32;
+
+    Ok(Json(OrderResponse {
+        id: order.id,
+        order_number: order.order_number,
+        client_id: order.client_id,
+        client_name: None,
+        service_title: svc_title,
+        service_slug: svc_slug,
+        plan_name,
+        payment_mode: order.payment_mode,
+        base_price_cents: order.base_price_cents,
+        discount_percent: order.discount_percent,
+        final_price_cents: order.final_price_cents,
+        currency: order.currency,
+        status: order.status,
+        assigned_employee_id: order.assigned_employee_id,
+        assigned_employee_name: employee_name,
+        current_phase: order.current_phase,
+        total_phases,
+        client_notes: order.client_notes,
+        started_at: order.started_at,
+        created_at: order.created_at,
+        ai_intermediary_enabled: order.ai_intermediary_enabled.unwrap_or(false),
+        ai_summary: order.ai_summary,
+    }))
 }

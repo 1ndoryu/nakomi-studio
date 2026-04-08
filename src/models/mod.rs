@@ -37,6 +37,7 @@ pub use order::{
     AdminServiceResponse, CreateServiceRequest, UpdateServiceRequest,
     Order, OrderPhase, OrderStatus, PaymentMode, PhaseStatus, ServicePlan, ServiceRecord,
     ServicePlanPhase, CreateOrderRequest, OrderResponse, OrderPhaseResponse, SwitchRoleRequest,
+    ToggleAiIntermediaryRequest,
     ServiceDetailResponse, ServicePlanResponse, ServicePlanPhaseResponse,
     SaveServicePlansRequest, SavePlanItem, SavePhaseItem,
 };
