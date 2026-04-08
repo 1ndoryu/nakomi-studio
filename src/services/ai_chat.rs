@@ -67,17 +67,25 @@ impl AiChatConfig {
         }
 
         let model = std::env::var("AI_MODEL")
-            .unwrap_or_else(|_| "openai/gpt-oss-120b".to_string());
+            .unwrap_or_else(|_| "meta-llama/llama-4-maverick-17b-128e-instruct".to_string());
 
-        /* [084A-27] Whitelist de modelos Groq, ordenada por inteligencia descendente.
+        /* [084A-27][084A-30] Whitelist de modelos Groq, ordenada por inteligencia descendente.
          * Los modelos más capaces primero — el sistema los usa como cadena de fallback
          * cuando el modelo primario falla por rate limit (429).
-         * Actualizado 084A-30: eliminados deprecados (mixtral, llama-3.2-90b-vision, gemma2).
-         * Añadidos: openai/gpt-oss-120b (120B, el más capaz), llama-4-scout, qwen3-32b, gpt-oss-20b. */
+         *
+         * Orden de capacidad (de mayor a menor):
+         * 1. llama-4-maverick: 400B total (17B activo), 128 expertos MoE — el más capaz de Groq
+         * 2. gpt-oss-120b: 120B, producción estable con reasoning
+         * 3. qwen3-32b: 32B, reasoning nativo, excelente calidad
+         * 4. llama-4-scout: 17B activo, 16 expertos, preview rápido
+         * 5. llama-3.3-70b-versatile: 70B, producción confiable
+         * 6. gpt-oss-20b: 20B rápido, production
+         * 7. llama-3.1-8b-instant: 8B, último recurso */
         let allowed_models = [
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
             "openai/gpt-oss-120b",
-            "meta-llama/llama-4-scout-17b-16e-instruct",
             "qwen/qwen3-32b",
+            "meta-llama/llama-4-scout-17b-16e-instruct",
             "llama-3.3-70b-versatile",
             "openai/gpt-oss-20b",
             "llama-3.1-8b-instant",
@@ -86,7 +94,7 @@ impl AiChatConfig {
             model
         } else {
             tracing::warn!("Modelo AI no permitido: {model}, usando default");
-            "openai/gpt-oss-120b".to_string()
+            "meta-llama/llama-4-maverick-17b-128e-instruct".to_string()
         };
 
         let api_url = std::env::var("AI_API_URL").unwrap_or_else(|_| {
@@ -116,13 +124,13 @@ impl AiChatConfig {
 
     /* [084A-27] Cadena de modelos fallback ordenados por inteligencia.
      * Cuando el modelo primario falla por rate limit (429), se intenta el siguiente.
-     * El modelo primario (self.model) va primero, seguido por los demás en orden descendente.
-     * Lista actualizada 084A-30: eliminados deprecados, añadidos GPT-OSS-120B y Llama 4. */
+     * El modelo primario (self.model) va primero, seguido por los demás en orden descendente. */
     fn model_fallback_chain(&self) -> Vec<&str> {
         let all_models = [
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
             "openai/gpt-oss-120b",
-            "meta-llama/llama-4-scout-17b-16e-instruct",
             "qwen/qwen3-32b",
+            "meta-llama/llama-4-scout-17b-16e-instruct",
             "llama-3.3-70b-versatile",
             "openai/gpt-oss-20b",
             "llama-3.1-8b-instant",
