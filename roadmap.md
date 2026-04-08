@@ -82,4 +82,12 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
     ~~at SeccionGaleriaServicio (http://localhost:5173/src/components/servicios/SeccionGaleri~~ ✅ (074A-59: Rules of Hooks violation — useCarruselInfinito se llamaba después de return null condicional)
 
-- 
+- ~~el historial de pago se ve mal, creo que tiene que ser algo mas profesional, y a dar click abrir un modal con los detalles.~~ ✅ (074A-61: rediseño filas compactas + modal de detalles)
+
+- ~~Info del visitante sale en el chat de los clientes, eso solo debe estar disponible para el admin.~~ ✅ (074A-60: info visitante restringida a admin)
+
+- ~~Quita los colores de hostingStatus hostingStatus--suspended, no quiero colores.~~ ✅ (074A-62: colores eliminados, estado neutral)
+
+- Los hosting deberían estar en tab como los proyectos. 
+
+- hostingCardTitulo debería estar el nombre del hosting, no
