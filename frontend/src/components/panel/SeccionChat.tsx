@@ -1,11 +1,13 @@
 /* [044A-38 Fase 5] Sección "Mensajes" del panel.
  * Lista de conversaciones + chat activo + panel info visitante (064A-72).
- * Staff: ve todas las sesiones. Cliente: solo sus chats de órdenes. */
+ * Staff: ve todas las sesiones. Cliente: solo sus chats de órdenes.
+ * [074A-60] Info visitante solo visible para admin. */
 
 import React, {useState} from 'react';
 import {MessageCircle, Send, Bot, User, ChevronLeft, XCircle, Info} from 'lucide-react';
 import {SENDER_LABELS, SESSION_STATUS_LABELS, type ChatSession, type ChatMessage} from '../../api/chat';
 import {useSeccionChat} from '../../hooks/useSeccionChat';
+import {useAuthStore} from '../../stores/authStore';
 import {ChatInfoPanel} from './ChatInfoPanel';
 import {Button} from '../ui/Button';
 import {Textarea} from '../ui/Textarea';
@@ -35,6 +37,7 @@ export const SeccionChat: React.FC = () => {
 
     const [showInfo, setShowInfo] = useState(false);
     const activeSession = sessions.find(s => s.id === activeSessionId) ?? null;
+    const isAdmin = useAuthStore(s => s.user?.effectiveRole === 'admin');
 
     if (cargandoSesiones) {
         return (
@@ -88,17 +91,20 @@ export const SeccionChat: React.FC = () => {
                                     ? `Chat de orden #${activeSession.order_number ?? '...'}`
                                     : activeSession?.visitor_name || 'Chat general'}
                             </span>
-                            {/* [064A-72] Botón para abrir/cerrar panel de info */}
-                            <Button
-                                className="chatBtnInfo"
-                                onClick={() => setShowInfo(prev => !prev)}
-                                type="button"
-                                variante="texto"
-                                tamano="pequeno"
-                                title="Info del visitante"
-                            >
-                                <Info size={18} />
-                            </Button>
+                            {/* [064A-72] Botón para abrir/cerrar panel de info
+                             * [074A-60] Solo visible para admin — contiene IP, user-agent, notas */}
+                            {isAdmin && (
+                                <Button
+                                    className="chatBtnInfo"
+                                    onClick={() => setShowInfo(prev => !prev)}
+                                    type="button"
+                                    variante="texto"
+                                    tamano="pequeno"
+                                    title="Info del visitante"
+                                >
+                                    <Info size={18} />
+                                </Button>
+                            )}
                             {/* [064A-71] Botón para deseleccionar la conversación activa,
                              * sin cerrarla permanentemente. El cierre definitivo (close_session)
                              * requiere acción explícita desde un menú contextual futuro. */}
@@ -178,8 +184,9 @@ export const SeccionChat: React.FC = () => {
                 )}
             </div>
 
-            {/* [064A-72] Panel lateral de info del visitante */}
-            {showInfo && activeSession && (
+            {/* [064A-72] Panel lateral de info del visitante
+             * [074A-60] Solo admin puede ver info sensible (IP, user-agent, notas) */}
+            {isAdmin && showInfo && activeSession && (
                 <ChatInfoPanel
                     session={activeSession}
                     onClose={() => setShowInfo(false)}
