@@ -12,6 +12,7 @@ import {useSeccionHosting} from '../../hooks/useSeccionHosting';
 import {Modal} from '../ui/Modal';
 import {Button} from '../ui/Button';
 import {HostingCard, CreateHostingForm} from './HostingSubComponents';
+import {HostingDetalle} from './HostingDetalle';
 import {VpsPanel} from './VpsPanel';
 import './SeccionHosting.css';
 
@@ -27,6 +28,8 @@ export const SeccionHosting: React.FC = () => {
         listaActual,
         showCreateModal,
         setShowCreateModal,
+        selectedHostingId,
+        setSelectedHostingId,
         createMutation,
         statusMutation,
         updateMutation,
@@ -41,6 +44,17 @@ export const SeccionHosting: React.FC = () => {
                 <Server size={32} strokeWidth={1.2} />
                 <p>Cargando suscripciones...</p>
             </div>
+        );
+    }
+
+    /* [094A-2] Si hay un hosting seleccionado, mostrar la vista de detalle */
+    if (selectedHostingId) {
+        return (
+            <HostingDetalle
+                hostingId={selectedHostingId}
+                isAdmin={isAdmin}
+                onVolver={() => setSelectedHostingId(null)}
+            />
         );
     }
 
@@ -113,6 +127,7 @@ export const SeccionHosting: React.FC = () => {
                             key={sub.id}
                             sub={sub}
                             isAdmin={isAdmin}
+                            onSelect={() => setSelectedHostingId(sub.id)}
                             onStatusChange={(status) =>
                                 statusMutation.mutate({id: sub.id, status})
                             }

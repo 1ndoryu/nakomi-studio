@@ -1,5 +1,6 @@
 /* [074A-63] Hook de estado para SeccionHosting.
- * Extrae los 4 useState + queries + mutations para cumplir regla max 3 useState. */
+ * [094A-2] Ahora incluye selectedHostingId para navegación lista→detalle.
+ * 3 useState: showCreateModal, tabActiva, selectedHostingId. */
 
 import {useState, useMemo, useEffect} from 'react';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
@@ -23,6 +24,7 @@ export function useSeccionHosting() {
     const queryClient = useQueryClient();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos' | 'servidores'>('activos');
+    const [selectedHostingId, setSelectedHostingId] = useState<string | null>(null);
 
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
     const isAdmin = effectiveRole === 'admin';
@@ -132,6 +134,8 @@ export function useSeccionHosting() {
         listaActual,
         showCreateModal,
         setShowCreateModal,
+        selectedHostingId,
+        setSelectedHostingId,
         createMutation,
         statusMutation,
         updateMutation,

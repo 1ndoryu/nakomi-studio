@@ -1,0 +1,403 @@
+/* [094A-2] Estilos de la página de detalle individual de hosting.
+ * Layout tipo panel de hosting: header fijo, tabs, contenido scrollable. */
+
+.hostingDetalle {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+}
+
+/* ── Header ──────────────────────────────── */
+
+.hostingDetalleHeader {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.hostingDetalleBack {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    align-self: flex-start;
+    color: var(--text-muted);
+}
+
+.hostingDetalleBack:hover {
+    color: var(--brand-black);
+}
+
+.hostingDetalleHeaderInfo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.hostingDetalleTitulo {
+    margin: 0;
+    font-family: var(--font-primary);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--brand-black);
+}
+
+.hostingDetalleHeaderMeta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.hostingDetalleHeaderPlan {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+/* ── Loading ─────────────────────────────── */
+
+.hostingDetalleLoading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-3xl);
+    color: var(--overlay-medium);
+}
+
+/* ── Tabs internos ───────────────────────── */
+
+.hostingDetalleTabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--bg-item-active);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.hostingDetalleTab {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    white-space: nowrap;
+    transition: color var(--transicion-rapida), border-color var(--transicion-rapida);
+}
+
+.hostingDetalleTab:hover {
+    color: var(--brand-black);
+}
+
+.hostingDetalleTab--activa {
+    color: var(--brand-black);
+    border-bottom-color: var(--brand-black);
+}
+
+.hostingDetalleTabLabel {
+    display: inline;
+}
+
+/* ── Contenido ───────────────────────────── */
+
+.hostingDetalleContent {
+    min-height: 200px;
+}
+
+.hostingDetalleSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.hostingDetalleSectionTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin: 0;
+    font-family: var(--font-primary);
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--brand-black);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--bg-item-hover);
+}
+
+.hostingDetalleSubTitle {
+    margin: var(--spacing-sm) 0 0;
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--brand-black);
+}
+
+.hostingDetalleSectionDesc {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ── Info Grid (label: valor) ────────────── */
+
+.hostingDetalleInfoGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xs);
+}
+
+.hostingDetalleInfoRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    min-height: 36px;
+}
+
+.hostingDetalleInfoLabel {
+    color: var(--text-muted);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.hostingDetalleInfoValue {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--brand-black);
+    font-weight: 500;
+    text-align: right;
+}
+
+.hostingDetalleLink {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--brand-primary);
+    text-decoration: none;
+}
+
+.hostingDetalleLink:hover {
+    text-decoration: underline;
+}
+
+/* ── Copy Button ─────────────────────────── */
+
+.hostingDetalleCopyBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    font-size: var(--text-xs);
+    min-height: auto;
+}
+
+.hostingDetalleCopied {
+    color: var(--color-success);
+    font-size: var(--text-xs);
+    font-weight: 600;
+}
+
+/* ── Nameservers ─────────────────────────── */
+
+.hostingDetalleNameservers {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.hostingDetalleNameserver {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-md);
+}
+
+.hostingDetalleNameserver code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--brand-black);
+}
+
+/* ── Code Block (SSH command) ────────────── */
+
+.hostingDetalleCodeBlock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-dark, #1a1a2e);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+}
+
+.hostingDetalleCodeBlock code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--brand-white);
+}
+
+.hostingDetalleCodeBlock .hostingDetalleCopyBtn {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.hostingDetalleCodeBlock .hostingDetalleCopyBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--brand-white);
+}
+
+/* ── Plan Card (facturación) ─────────────── */
+
+.hostingDetallePlanCard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: var(--bg-card);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+}
+
+.hostingDetallePlanInfo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hostingDetallePlanNombre {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--brand-black);
+}
+
+.hostingDetallePlanPrecio {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--brand-primary);
+}
+
+.hostingDetallePlanFeatures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+/* ── Estados vacíos (acceso, recursos) ───── */
+
+.hostingDetalleAccesoInactivo,
+.hostingDetalleRecursosInactivo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-3xl);
+    color: var(--overlay-medium);
+    text-align: center;
+}
+
+.hostingDetalleRecursos {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.hostingDetalleRecursosNota {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
+.hostingDetalleNoDomain {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    padding: var(--spacing-md);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    text-align: center;
+    margin: 0;
+}
+
+.hostingDetalleSslNota {
+    font-size: var(--text-xs);
+    color: var(--color-success);
+    margin: 0;
+}
+
+/* ── Acciones rápidas ────────────────────── */
+
+.hostingDetalleAcciones {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    padding-top: var(--spacing-sm);
+}
+
+.hostingDetalleAccionLink {
+    text-decoration: none;
+}
+
+/* ── Responsive ──────────────────────────── */
+
+@media (max-width: 767px) {
+    .hostingDetalle {
+        padding: var(--spacing-sm);
+    }
+
+    .hostingDetalleTabs {
+        gap: 0;
+    }
+
+    .hostingDetalleTab {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--text-xs);
+    }
+
+    .hostingDetalleTabLabel {
+        display: none;
+    }
+
+    .hostingDetalleInfoRow {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    .hostingDetalleInfoValue {
+        text-align: left;
+    }
+
+    .hostingDetalleHeaderMeta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+
+    .hostingDetallePlanInfo {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+}
+
+@media (min-width: 768px) {
+    .hostingDetalleInfoGrid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

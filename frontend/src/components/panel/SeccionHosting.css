@@ -87,6 +87,8 @@
     transition: all var(--transicion-rapida);
     /* [084A-2] overflow: visible para que MenuContextual no se clipee */
     overflow: visible;
+    /* [094A-2] Card clickable para navegar a detalle */
+    cursor: pointer;
 }
 
 .hostingCard:hover {

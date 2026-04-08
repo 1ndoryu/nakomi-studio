@@ -34,6 +34,7 @@ export function HostingCard({
     onDelete,
     onCancel,
     onCheckout,
+    onSelect,
     checkoutLoading,
 }: {
     sub: HostingSubscription;
@@ -43,6 +44,7 @@ export function HostingCard({
     onDelete: () => void;
     onCancel: () => void;
     onCheckout: () => void;
+    onSelect: () => void;
     checkoutLoading?: boolean;
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -82,7 +84,7 @@ export function HostingCard({
 
     return (
         <>
-            <div className="hostingCard">
+            <div className="hostingCard" role="button" tabIndex={0} onClick={onSelect} onKeyDown={e => { if (e.key === 'Enter') onSelect(); }}>
                 <div className="hostingCardIcono">
                     <Server size={28} strokeWidth={1.4} />
                 </div>
@@ -122,7 +124,8 @@ export function HostingCard({
                         <span className="hostingCardPrecio">
                             ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
                         </span>
-                        <div className="hostingCardAcciones">
+                        {/* [094A-2] stopPropagation evita navegar al detalle al usar acciones */}
+                        <div className="hostingCardAcciones" onClick={e => e.stopPropagation()}>
                             {/* [084A-24] Botón de checkout Stripe para suscripciones pendientes */}
                             {sub.status === 'pending' && (
                                 <Button

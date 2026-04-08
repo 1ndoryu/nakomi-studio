@@ -42,25 +42,22 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 > 084A-24: Contabo API + Stripe checkout + VPS panel admin + resource stats → ✅ completada (3 commits)
 
-## Hosting 
+## Hosting (ESTO TIENE QUE ESTAR LISTO PRIMERO ANTES DE PASAR A OTRA COSA)
 
-- Esta es la tarea mas complicada supongo y tiene que ver con los hosting
+No. No parece que lo del hosting este listo, se requiere un nuevo plan. 
 
-Viendo el usuario de prueba cliente, veo que no puedo gestionar los hosting, tal vz porque el plan de hosting esta bloqueado.
+1. Estoy en la vista del cliente, veo hostingStats, no va ahí, debería tener una pagina accesible individual para cada hosting, debería haber las opciones tipica que trae un hosting, no se cuales son asi que necesitas investigar e intuir, no parece un hosting real, claramente esto no esta listo a nivel interfaz. ¿Donde estan las opciones para que los usuarios puedan contratar un nuevo hosting en el panel? ¿Donde estan las opciones para que los usuarios puedan comprar un nuevo dominio, y gestionar el dominio que a tienen? ¿Donde estan las opciones para que los usuarios puedan acceder al ssh de su hosting? ¿Donde estan las opciones para que los usuarios puedan hacer las cosas que se suelen hacer en un hosting? ¿Ya hay para contactar soporte, pedir aumento de plan? ¿Ya esta el vps preparada para mostrar datos reales de uso, almacenamiento? ¿Ya esta coolify preparado para gestionar hosting en vps? ¿Ya hay test para verificar que todo funcione? ¿Ya hay un plan para todo esto y de las cosas que me estoy olvidando para que todo funcione como un hosting profesional?
 
-He colocado en el env variables de contabo, necesito que las pruebes, lees la documentacion de contabo a ver si conecta, una vez lo intente y no funcionaba a pesar de que estoy copiando los datos correctos, en caso de que no funcione, tendremos que hacer todo manual usando las vps que ya tenemos, tenemos 2 vps, tienes que ser capaz de conectarte a ambas, la configuracion ya debería estar prehecha con coolify porque ya me conecto facil antes.
-
-Sobre auth-drive tengo un problema, en mi pc salen ventanas de cmd a media noche, al menos parece que las copias de seguridad estan funcionando porque veo en mi google drive los archivos.
-
-He agregado un mcp de stripe con el que creo que te puedes encargar de configurar lo necesario. 
-
-Voy a necesitar testear como se ve el panel de hosting, claramente esta es una tarea titanica pero podemos empezar por algo sencillo, no agregaremos gestor de archivos ni nada, algo basico, que el cliente pueda ver la info de su hosting (supongo que simularemos la estadisticas o algo porque como un vps y los hosting estaran en despliegues de coolify no se como podemos hacer como hacen los hosting tradicioanles que claramente son hosting compartidos para mostrar estadistica de almacenamiento, uso cpu, y estas cosas si que sea el uso real de todos los despliegues y solo sea el despliegue del cliente), claramente me estoy dejando muchisimas cosas por fuera, tienes que intuir que me dejo por fuera para que esto sea un servicio de hosting profesional y completo.
 
 ## Notas adicionales sobre el plan de hosting
 
 - Algo que me falto aclarar que para ahorrar costos, comprar vps de contabo solo se puede hacer en caso que tengamos una vps que ya no soporta mas despliegues, tenemos que controlar la ram y uso cpu, esto implica otro plan de optimización para revisar los despliegues actuales. La api de contabo debe documentarse bien, es para los dominios, dns, etc, todo lo que pueda ser necesario para crear un servicio de hosting 100% funcional y completo. Lo mas importante, la acciones de compra de cualquier cosa de contabo requiere confirmación directa del usuario, mejor, no autorizar la IA ni ningun proceso automatico para hacer compras, aún no, hasta que todo este revisado y asegurado de que va a funcionar.
 
 - Esto sería la tarea final de hosting y tambien es una tarea gigante, se necesita revisiones de seguridad profunda, asegurarse que no hayan hackeos, caidas del vps completo debido a malas acciones de los usuarios, etc, revisar todo detadallamente y hacer un plan detallado de preveción y auditoría de seguridad.
+
+## Otra nota sobre hosting
+
+- Se necesita una planificación de las siguientes fases pendientes, administrar archivos, controlar dns, etc cosas avanzadas para que todo termine siendo un servicio de hosting completo.
 
 ## Chatbot
 
@@ -78,15 +75,21 @@ Nota: usa este proyecto para la memoria del chatbot, servirá la organizar los c
 
 3. Capacidades de generar un pedido, solicitar pagos supongo que generando una factura, el contexto tiene que estar optimizado, tiene que leer contenido real de los servicios que esta puestos en el cms, tiene tener acceso a los proyectos en caso de que el cliente pida trabajos de ejemplo, la forma en la que envia toda esta informacion tiene que ser un mensaje especial, no texto plano, en el panel tiene que ser visible cada mensaje especial, cuando genera una factura, cuando comparte un servicio o proyecto, esos mensajes tienen que contener botones de accion, el chat bot tiene que ser capaz de detectar esa acción y procesarla. No se de que me estoy olvidando. 
 
-4. Hay que asegurarse de que el chatbot pueda guardar informacion del usuario en base a su ip, dispositivo, cuenta y generar contexto del usuario para cuando vuelva, tiene que poder crearle una cuenta con su correo, al acceder el usuario con su correo se le pedira una constraseña. Que no se necesite cuenta para realizar pedidos, comprar servicios, para esto lo vital sería capturar el correo del cliente para que después en el panel de login cree una contraseña. Esto requiere seguridad adicional y que el sistema de correo funcione, en caso de que el cliente quiera logearse y no haya puesto una contraseña porque vuelva después debería poder registrarse con el correo que uso para comprar y luego al registrarse tendrá su pedido. 
+4. Hay que asegurarse de que el chatbot pueda guardar informacion del usuario en base a su ip, dispositivo, cuenta y generar contexto del usuario para cuando vuelva, tiene que poder crearle una cuenta con su correo, al acceder el usuario con su correo se le pedira una constraseña. Que no se necesite cuenta para realizar pedidos, comprar servicios, para esto lo vital sería capturar el correo del cliente para que después en el panel de login cree una contraseña. Esto requiere seguridad adicional y que el sistema de correo funcione, en caso de que el cliente quiera logearse y no haya puesto una contraseña porque vuelva después debería poder registrarse con el correo que uso para comprar y luego al registrarse tendrá su pedido. O sea, al principio mostrar input para el nombre, luego el coreo, y asi, si que nada de esto bloquee lo mas importante "conseguir que el usuario compre un serivicio"
 
 5. El chatbot tiene que identificar al usuario ya logeado (si es posible de usuarios sin registrarse), los contextos de las conversaciones pasadas tienen que resumirse en la info del usuario para que el chatbot tenga contexto. Para los admin se necesitan contextos distinto pues lo admin y empleados claro que no son clientes, el chatbot tiene que organizar eficientemente todo para que los admin puedan consultar la informacion que necesitan e igual con los empleados. 
 
 6. El mismo chat en todas las ventanas, pestañas y dispositivos para el mismo usuario, nada de una sesion por cada ventana o dispositivo. 
 
-Fase II
+7. Consideraciones, se que antes habia indicado que los usuarios humanos pueden intervenir en las conversaciones, si, deberían pero hay que hacer como probablemente nunca pase, el chatbot tiene que ser capaz de identificar situcaciones en la que necesita intervención humana, y en ese caso, enviar un mensaje o una notifcacion a lo que sea al admin en tiempo real para que intervenga en la conversación, esto no se en que casos pueda suceder pero supondré que alguna vez va a suceder que se necesite asistencia humana real.
 
-Con l
+8. Por ultimo, evitar la molestia de decirle al usuario que esta hablando con una IA, es innecesario y puede reducir la confianza. 
+
+Fase II - Atención de clientes ya considados o registrados
+
+1. El flujo de atención de clientes que ya esta registrados, esto implica muchas cosas, porque hay que ser cuidadadosos, suponiendo que la funcionalidad de memoria funciona y distingue por usuarios, entonces la IA debería poder ver si el cliente tiene servicios activos, pedidos, hosting, etc, debería ser capaz de atender reportes, siempre y cuando considerando que habrán cosas que necesiten asistencia humana. 
+
+2. Las conversaciones en los pedidos entre cliente y quien atiende el pedido la IA no responde, esos son chat directos, pero, 
 
 
 
