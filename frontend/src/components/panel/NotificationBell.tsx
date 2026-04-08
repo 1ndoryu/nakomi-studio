@@ -5,7 +5,8 @@ import { useCallback, useState } from 'react';
 import { Bell } from 'lucide-react';
 
 import { NOTIF_TYPES, type NotificationType } from '../../api/notifications';
-import { useNotifications, useNotificationWs } from '../../hooks/useNotifications';
+import { useNotifications } from '../../hooks/useNotifications';
+import { useNotificationWs } from '../../hooks/useNotificationWs';
 import { MenuContextual } from '../ui/ContextMenu';
 import './NotificationBell.css';
 

@@ -1,20 +1,13 @@
-/* [044A-38 Fase 5] Hook de chat: gestión de sesiones, mensajes y WebSocket.
- * useChat para chat REST (sesiones, mensajes, envío).
- * useChatWs para conexión WebSocket en tiempo real. */
+/* [044A-38 Fase 5] Hook de chat REST: sesiones, mensajes, envío.
+ * [084A-22] WebSocket extraído a useChatWs.ts (SRP). */
 
-import {useState, useEffect, useCallback, useRef} from 'react';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {
     apiListChatSessions,
     apiGetMessages,
     apiCreateChatSession,
     apiSendMessage,
-    buildStaffWsUrl,
-    type ChatMessage,
-    type ChatSession,
-    type WsServerMessage,
 } from '../api/chat';
-import {useAuthStore} from '../stores/authStore';
 
 /*    HOOK: Sesiones y mensajes REST */
 
@@ -58,156 +51,5 @@ export function useChat(sessionId?: string, limit = 100) {
         crearSesion,
         enviarMensaje,
         enviando,
-    };
-}
-
-/*    HOOK: WebSocket en tiempo real (staff panel) */
-
-/* [054A-4] Typing indicator: mapa session_id → info del que escribe */
-export interface TypingInfo {
-    sender: string;
-    content: string;
-}
-
-export function useChatWs() {
-    const token = useAuthStore(s => s.token);
-    const [connected, setConnected] = useState(false);
-    const [sessions, setSessions] = useState<ChatSession[]>([]);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [typingMap, setTypingMap] = useState<Record<string, TypingInfo>>({});
-    const wsRef = useRef<WebSocket | null>(null);
-    const typingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-    const connect = useCallback(() => {
-        if (!token || wsRef.current) return;
-        const url = buildStaffWsUrl(token);
-        const ws = new WebSocket(url);
-        wsRef.current = ws;
-
-        ws.onopen = () => setConnected(true);
-        ws.onclose = () => {
-            setConnected(false);
-            wsRef.current = null;
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const msg: WsServerMessage = JSON.parse(event.data);
-
-                switch (msg.type) {
-                    case 'init':
-                        if (msg.sessions) setSessions(msg.sessions);
-                        break;
-                    case 'message':
-                        if (msg.id && msg.session_id && msg.content) {
-                            setMessages(prev => [
-                                ...prev,
-                                {
-                                    id: msg.id!,
-                                    session_id: msg.session_id!,
-                                    sender_type: msg.sender || 'unknown',
-                                    sender_id: msg.sender_id ?? null,
-                                    content: msg.content!,
-                                    created_at: msg.created_at || new Date().toISOString(),
-                                    sender_avatar_url: null,
-                                    sender_display_name: null,
-                                },
-                            ]);
-                        }
-                        break;
-                    case 'session_new':
-                        if (msg.session) {
-                            setSessions(prev => [msg.session!, ...prev]);
-                        }
-                        break;
-                    case 'session_closed':
-                        if (msg.session_id) {
-                            setSessions(prev =>
-                                prev.filter(s => s.id !== msg.session_id),
-                            );
-                        }
-                        break;
-                    case 'status':
-                        if (msg.session_id && msg.value) {
-                            setSessions(prev =>
-                                prev.map(s =>
-                                    s.id === msg.session_id
-                                        ? {...s, status: msg.value!}
-                                        : s,
-                                ),
-                            );
-                        }
-                        break;
-                    /* [054A-4] Typing preview: muestra indicador 3s, auto-limpia */
-                    case 'typing':
-                        if (msg.session_id && msg.sender) {
-                            const sid = msg.session_id;
-                            setTypingMap(prev => ({
-                                ...prev,
-                                [sid]: {sender: msg.sender!, content: msg.content || ''},
-                            }));
-                            if (typingTimersRef.current[sid]) {
-                                clearTimeout(typingTimersRef.current[sid]);
-                            }
-                            typingTimersRef.current[sid] = setTimeout(() => {
-                                setTypingMap(prev => {
-                                    const next = {...prev};
-                                    delete next[sid];
-                                    return next;
-                                });
-                                delete typingTimersRef.current[sid];
-                            }, 3000);
-                        }
-                        break;
-                }
-            } catch {
-                /* Mensaje no JSON, ignorar */
-            }
-        };
-    }, [token]);
-
-    const disconnect = useCallback(() => {
-        if (wsRef.current) {
-            wsRef.current.close();
-            wsRef.current = null;
-        }
-        /* [054A-4] Limpiar timers de typing al desconectar */
-        for (const timer of Object.values(typingTimersRef.current)) {
-            clearTimeout(timer);
-        }
-        typingTimersRef.current = {};
-        setTypingMap({});
-    }, []);
-
-    const sendWsMessage = useCallback((data: Record<string, unknown>) => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify(data));
-        }
-    }, []);
-
-    const joinSession = useCallback(
-        (sessionId: string) => sendWsMessage({type: 'join', session_id: sessionId}),
-        [sendWsMessage],
-    );
-
-    const toggleAi = useCallback(
-        (sessionId: string, enabled: boolean) =>
-            sendWsMessage({type: 'toggle_ai', session_id: sessionId, enabled}),
-        [sendWsMessage],
-    );
-
-    /* Limpiar al desmontar */
-    useEffect(() => () => disconnect(), [disconnect]);
-
-    return {
-        connected,
-        sessions,
-        messages,
-        typingMap,
-        connect,
-        disconnect,
-        joinSession,
-        toggleAi,
-        sendWsMessage,
     };
 }

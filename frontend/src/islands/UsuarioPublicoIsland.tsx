@@ -9,6 +9,7 @@ import {usePublicProfile} from '../hooks/usePublicProfile';
 import type {ReviewTab} from '../hooks/usePublicProfile';
 import type {PublicReviewItem, RatingDistribution} from '../api/publicUsers';
 import './UsuarioPublicoIsland.css';
+import './PerfilReviews.css';
 
 function Estrellas({rating}: {rating: number}) {
     return (

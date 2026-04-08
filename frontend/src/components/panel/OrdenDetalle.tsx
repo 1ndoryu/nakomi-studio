@@ -20,7 +20,7 @@ import {Modal} from '../ui/Modal';
 import CheckoutModal from './CheckoutModal';
 import {OrderChat} from './OrderChat';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
-import './SeccionProyectos.css';
+import './OrdenDetalle.css';
 
 const CANCELABLE_STATUSES: OrderStatus[] = ['pending_payment', 'payment_held', 'awaiting_assignment'];
 

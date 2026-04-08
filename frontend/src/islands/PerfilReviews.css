@@ -1,0 +1,225 @@
+/* [084A-22] Estilos de tabs, cards de review y paginacion del perfil publico.
+ * Extraido de UsuarioPublicoIsland.css para SRP. */
+
+/* Tabs de reviews */
+.perfilReviewTabs {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.perfilReviewTab {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: var(--text-base);
+    transition: all var(--transicion-rapida);
+}
+
+.perfilReviewTab:hover {
+    color: var(--text-primary);
+}
+
+.perfilReviewTabActivo {
+    color: var(--text-primary);
+    border-bottom-color: var(--brand-primary);
+    font-weight: 600;
+}
+
+/* Sección de reviews */
+.perfilPublicoReviewsSeccion {
+    padding: var(--spacing-2xl) 0 var(--spacing-3xl);
+}
+
+.perfilReviewsLista {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+/* Card de review individual */
+.perfilCardReview {
+    padding: var(--spacing-lg);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+}
+
+.perfilCardReviewHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-sm);
+}
+
+.perfilCardReviewAutor {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.perfilCardReviewAvatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    object-fit: cover;
+}
+
+.perfilCardReviewAvatarPlaceholder {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: var(--bg-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-base);
+}
+
+.perfilCardReviewNombre {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-base);
+}
+
+.perfilCardReviewServicio {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+.perfilCardReviewMeta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-2xs);
+}
+
+.perfilCardReviewFecha {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.perfilCardReviewTexto {
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.perfilCardReviewRespuesta {
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-left: 3px solid var(--border-default);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.perfilCardReviewRespuesta p {
+    margin: var(--spacing-2xs) 0 0;
+}
+
+.perfilCardReviewRespuestaLabel {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Paginación */
+.perfilPaginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.perfilPaginacion button {
+    background: none;
+    border: 1px solid var(--border-default);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background var(--transicion-rapida);
+}
+
+.perfilPaginacion button:hover:not(:disabled) {
+    background: var(--bg-item-hover);
+}
+
+.perfilPaginacion button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.perfilSinReviews {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: var(--spacing-2xl);
+    font-size: var(--text-base);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 767px) {
+    .perfilPublicoHeader {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .perfilPublicoNombre {
+        font-size: var(--text-2xl);
+    }
+
+    .perfilPublicoEspecialidades {
+        justify-content: center;
+    }
+
+    .perfilPublicoStats {
+        justify-content: center;
+    }
+
+    .perfilPublicoBio {
+        max-width: 100%;
+    }
+
+    .perfilPublicoSocial {
+        justify-content: center;
+    }
+
+    .perfilResumenRatings {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .perfilRatingBarras {
+        width: 100%;
+    }
+
+    .perfilCardReviewHeader {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .perfilCardReviewMeta {
+        align-items: flex-start;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    .perfilPublicoAvatar,
+    .perfilPublicoAvatarPlaceholder {
+        width: 100px;
+        height: 100px;
+    }
+}

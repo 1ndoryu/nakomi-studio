@@ -12,6 +12,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { MenuContextual, type MenuContextualItem } from '../ui/ContextMenu';
 import './SeccionUsuarios.css';
+import './UsuariosAcciones.css';
 
 export function SeccionUsuarios() {
     const {

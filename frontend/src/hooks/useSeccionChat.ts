@@ -6,7 +6,8 @@ import {useCallback, useEffect, useRef, useState, type KeyboardEvent} from 'reac
 import {useQueryClient} from '@tanstack/react-query';
 
 import {apiCloseSession} from '../api/chat';
-import {useChat, useChatWs} from './useChat';
+import {useChat} from './useChat';
+import {useChatWs} from './useChatWs';
 import {toast} from '../stores/toastStore';
 
 export function useSeccionChat() {

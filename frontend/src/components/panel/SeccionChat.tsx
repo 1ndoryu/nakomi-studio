@@ -13,6 +13,7 @@ import {Button} from '../ui/Button';
 import {Textarea} from '../ui/Textarea';
 import {DEFAULT_PROFILE_AVATAR} from '../../hooks/useCurrentProfile';
 import './SeccionChat.css';
+import './ChatBurbujas.css';
 
 export const SeccionChat: React.FC = () => {
     const {
