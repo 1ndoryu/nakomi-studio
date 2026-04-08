@@ -1,6 +1,5 @@
 /* [044A-38 Fase 4] Sección "Delegaciones" del panel (empleado/admin).
- * Lista delegaciones entrantes/salientes. Acciones: crear, aceptar, rechazar.
- * Usa useDelegaciones hook. */
+ * [074A-58] Rediseño: cards horizontales matching disponibleCard/hostingCard pattern. */
 import React, {useState, useCallback} from 'react';
 import {ArrowRightLeft, HelpCircle, Check, X} from 'lucide-react';
 import {useDelegaciones} from '../../hooks/useAsignaciones';
@@ -82,56 +81,61 @@ function DelegacionCard({
 
     return (
         <div className="delegCard">
-            <div className="delegCardHeader">
-                <div className="delegCardInfo">
-                    <div className="delegCardTipo">
-                        {esDelegacion
-                            ? <><ArrowRightLeft size={14} /> Delegación</>
-                            : <><HelpCircle size={14} /> Solicitud de ayuda</>
-                        }
-                    </div>
+            <div className="delegCardIcono">
+                {esDelegacion
+                    ? <ArrowRightLeft size={28} strokeWidth={1.4} />
+                    : <HelpCircle size={28} strokeWidth={1.4} />
+                }
+            </div>
+            <div className="delegCardBody">
+                <span className="delegCardTipo">
+                    {esDelegacion ? 'Delegación' : 'Solicitud de ayuda'}
+                </span>
+                <div className="delegCardHeader">
                     <h3 className="delegCardTitulo">
                         #{delegacion.order_number} — {delegacion.service_title}
                     </h3>
+                    <span className={`delegCardBadge ${DELEGATION_STATUS_CLASS[delegacion.status]}`}>
+                        {DELEGATION_STATUS_LABELS[delegacion.status]}
+                    </span>
                 </div>
-                <span className={`delegCardBadge ${DELEGATION_STATUS_CLASS[delegacion.status]}`}>
-                    {DELEGATION_STATUS_LABELS[delegacion.status]}
-                </span>
-            </div>
-
-            <p className="delegCardRazon">{delegacion.reason}</p>
-
-            <div className="delegCardMeta">
-                <span>{esPropia ? 'Enviada por ti' : 'De otro empleado'}</span>
-                <span>{new Date(delegacion.created_at).toLocaleDateString('es')}</span>
-                {delegacion.resolved_at && (
-                    <span>Resuelta: {new Date(delegacion.resolved_at).toLocaleDateString('es')}</span>
+                {delegacion.reason && (
+                    <p className="delegCardRazon">{delegacion.reason}</p>
                 )}
-            </div>
-
-            {puedeResponder && (
-                <div className="delegCardAcciones">
-                    <Button
-                        className="delegBtnAceptar"
-                        onClick={() => onResponder(delegacion.id, true)}
-                        disabled={respondiendo}
-                        type="button"
-                    >
-                        <Check size={14} />
-                        {esDelegacion ? 'Tomar orden' : 'Aceptar ayuda'}
-                    </Button>
-                    <Button
-                        variante="outline"
-                        className="delegBtnRechazar"
-                        onClick={() => onResponder(delegacion.id, false)}
-                        disabled={respondiendo}
-                        type="button"
-                    >
-                        <X size={14} />
-                        Rechazar
-                    </Button>
+                <div className="delegCardFooter">
+                    <span>{esPropia ? 'Enviada por ti' : 'De otro empleado'}</span>
+                    <span>{new Date(delegacion.created_at).toLocaleDateString('es')}</span>
+                    {delegacion.resolved_at && (
+                        <span>Resuelta: {new Date(delegacion.resolved_at).toLocaleDateString('es')}</span>
+                    )}
+                    {puedeResponder && (
+                        <div className="delegCardAcciones">
+                            <Button
+                                variante="primario"
+                                tamano="pequeno"
+                                className="delegBtnAceptar"
+                                onClick={() => onResponder(delegacion.id, true)}
+                                disabled={respondiendo}
+                                type="button"
+                            >
+                                <Check size={14} />
+                                {esDelegacion ? 'Tomar orden' : 'Aceptar'}
+                            </Button>
+                            <Button
+                                variante="outline"
+                                tamano="pequeno"
+                                className="delegBtnRechazar"
+                                onClick={() => onResponder(delegacion.id, false)}
+                                disabled={respondiendo}
+                                type="button"
+                            >
+                                <X size={14} />
+                                Rechazar
+                            </Button>
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }

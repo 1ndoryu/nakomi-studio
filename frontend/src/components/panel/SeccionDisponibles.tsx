@@ -1,10 +1,9 @@
 /* [044A-38 Fase 4] Sección "Disponibles" del panel (empleado/admin).
- * Muestra órdenes sin asignar con botón "Tomar" para que el empleado se auto-asigne.
- * Usa useDisponibles hook con React Query + invalidación de cache. */
+ * [074A-58] Rediseño: cards horizontales matching ordenCard/hostingCard pattern. */
 import React, {useCallback, useState} from 'react';
-import {FolderOpen, UserPlus} from 'lucide-react';
+import {FolderOpen, UserPlus, Package} from 'lucide-react';
 import {useDisponibles} from '../../hooks/useAsignaciones';
-import {ORDER_STATUS_LABELS, PAYMENT_MODE_LABELS, formatPrice} from '../../api/orders';
+import {PAYMENT_MODE_LABELS, formatPrice} from '../../api/orders';
 import type {OrderResponse} from '../../api/orders';
 import {Button} from '../ui/Button';
 import './SeccionDisponibles.css';
@@ -18,8 +17,7 @@ export const SeccionDisponibles: React.FC = () => {
             setError(null);
             await tomarOrden(orderId);
         } catch (err: unknown) {
-            const msg = extraerError(err);
-            setError(msg);
+            setError(extraerError(err));
         }
     }, [tomarOrden]);
 
@@ -70,37 +68,39 @@ function OrdenDisponibleCard({
 }) {
     return (
         <div className="disponibleCard">
-            <div className="disponibleCardHeader">
-                <div className="disponibleCardInfo">
-                    <span className="disponibleCardNumero">#{orden.order_number}</span>
-                    <h3 className="disponibleCardTitulo">{orden.service_title}</h3>
-                    <span className="disponibleCardPlan">{orden.plan_name}</span>
+            <div className="disponibleCardIcono">
+                <Package size={28} strokeWidth={1.4} />
+            </div>
+            <div className="disponibleCardBody">
+                <div className="disponibleCardHeader">
+                    <h3 className="disponibleCardTitulo">
+                        #{orden.order_number} — {orden.service_title}
+                    </h3>
+                    <span className="disponibleCardBadge">Disponible</span>
                 </div>
-                <span className="disponibleCardBadge">
-                    {ORDER_STATUS_LABELS[orden.status]}
-                </span>
+                <span className="disponibleCardPlan">{orden.plan_name}</span>
+                {orden.client_notes && (
+                    <p className="disponibleCardNotas">{orden.client_notes}</p>
+                )}
+                <div className="disponibleCardFooter">
+                    <span className="disponibleCardPrecio">
+                        {formatPrice(orden.final_price_cents, orden.currency)}
+                    </span>
+                    <span>{PAYMENT_MODE_LABELS[orden.payment_mode]}</span>
+                    <span>{orden.total_phases} fases</span>
+                    <Button
+                        variante="primario"
+                        tamano="pequeno"
+                        className="disponibleBtnTomar"
+                        onClick={() => onTomar(orden.id)}
+                        disabled={tomando}
+                        type="button"
+                    >
+                        <UserPlus size={14} />
+                        {tomando ? 'Asignando...' : 'Tomar'}
+                    </Button>
+                </div>
             </div>
-
-            <div className="disponibleCardDetalles">
-                <span>{formatPrice(orden.final_price_cents, orden.currency)}</span>
-                <span>{PAYMENT_MODE_LABELS[orden.payment_mode]}</span>
-                <span>{orden.total_phases} fases</span>
-                <span>{new Date(orden.created_at).toLocaleDateString('es')}</span>
-            </div>
-
-            {orden.client_notes && (
-                <p className="disponibleCardNotas">{orden.client_notes}</p>
-            )}
-
-            <Button
-                className="disponibleBtnTomar"
-                onClick={() => onTomar(orden.id)}
-                disabled={tomando}
-                type="button"
-            >
-                <UserPlus size={16} />
-                {tomando ? 'Asignando...' : 'Tomar orden'}
-            </Button>
         </div>
     );
 }
