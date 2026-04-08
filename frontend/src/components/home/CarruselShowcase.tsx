@@ -35,15 +35,17 @@ export const CarruselShowcase: React.FC = () => {
         imagen: proyecto.imagen || (IMAGENES_SHOWCASE.length > 0 ? IMAGENES_SHOWCASE[idx % IMAGENES_SHOWCASE.length] : ''),
     }));
 
-    if (proyectosConImagen.length === 0) return null;
-
     const itemsTotales = [...proyectosConImagen, ...proyectosConImagen];
 
+    /* [084A-25] Hook SIEMPRE antes de early return — Rules of Hooks.
+     * Se llama con totalItems=0 cuando hay 0 proyectos, pero nunca se omite. */
     const {indiceActual, conTransicion, dragOffset, handlers} = useCarruselInfinito({
         totalItems: proyectosConImagen.length,
         tiempoEspera: 8000,
         tiempoTransicion: 800
     });
+
+    if (proyectosConImagen.length === 0) return null;
 
     return (
         <div className="carruselContenedorPrincipal">

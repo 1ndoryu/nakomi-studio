@@ -121,6 +121,7 @@ export const ChatWidget: React.FC = () => {
 /* Sub-componentes (SRP) */
 
 /* [T-5] Renderiza contenido rico de mensajes: imágenes inline, audio player, enlace PDF.
+ * [084A-26] Agregados: invoice (botón pagar), service_card (tarjeta servicio), order_card.
  * Si message_type es null/text, renderiza texto plano como antes. */
 function renderMessageContent(msg: {
     content: string;
@@ -168,6 +169,88 @@ function renderMessageContent(msg: {
                     {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
                 </div>
             );
+        /* [084A-26] Invoice: tarjeta con monto, descripción y botón de pago */
+        case 'invoice': {
+            const payUrl = (msg.metadata?.payment_url as string) || '';
+            const amountCents = (msg.metadata?.amount_cents as number) || 0;
+            const currency = (msg.metadata?.currency as string) || 'usd';
+            const description = (msg.metadata?.description as string) || '';
+            const status = (msg.metadata?.status as string) || '';
+            const amountFormatted = (amountCents / 100).toFixed(2);
+            const isPaid = status === 'paid';
+
+            return (
+                <div className="chatWidgetMsgRich chatWidgetInvoiceCard">
+                    <div className="chatWidgetInvoiceHeader">
+                        <span className="chatWidgetInvoiceIcon">🧾</span>
+                        <span className="chatWidgetInvoiceTitle">Factura</span>
+                        {isPaid && <span className="chatWidgetInvoicePaid">Pagada</span>}
+                    </div>
+                    <p className="chatWidgetInvoiceAmount">
+                        ${amountFormatted} {currency.toUpperCase()}
+                    </p>
+                    {description && (
+                        <p className="chatWidgetInvoiceDesc">{description}</p>
+                    )}
+                    {payUrl && !isPaid && (
+                        <a
+                            href={payUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="chatWidgetInvoicePayBtn"
+                        >
+                            Pagar ahora
+                        </a>
+                    )}
+                    {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
+                </div>
+            );
+        }
+        /* [084A-26] Service card: tarjeta de servicio con precio y botón */
+        case 'service_card': {
+            const title = (msg.metadata?.title as string) || '';
+            const description = (msg.metadata?.description as string) || '';
+            const basePriceCents = (msg.metadata?.base_price_cents as number) || 0;
+            const priceFormatted = (basePriceCents / 100).toFixed(2);
+
+            return (
+                <div className="chatWidgetMsgRich chatWidgetServiceCard">
+                    <div className="chatWidgetServiceHeader">
+                        <span className="chatWidgetServiceIcon">🎨</span>
+                        <span className="chatWidgetServiceTitle">{title}</span>
+                    </div>
+                    {description && (
+                        <p className="chatWidgetServiceDesc">{description}</p>
+                    )}
+                    <p className="chatWidgetServicePrice">
+                        Desde ${priceFormatted} USD
+                    </p>
+                    {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
+                </div>
+            );
+        }
+        /* [084A-26] Order card: tarjeta de pedido con estado */
+        case 'order_card': {
+            const orderNumber = (msg.metadata?.order_number as string) || '';
+            const serviceTitle = (msg.metadata?.service_title as string) || '';
+            const orderStatus = (msg.metadata?.status as string) || '';
+
+            return (
+                <div className="chatWidgetMsgRich chatWidgetOrderCard">
+                    <div className="chatWidgetOrderHeader">
+                        <span className="chatWidgetOrderIcon">📦</span>
+                        <span className="chatWidgetOrderTitle">Pedido #{orderNumber}</span>
+                    </div>
+                    {serviceTitle && (
+                        <p className="chatWidgetOrderService">{serviceTitle}</p>
+                    )}
+                    {orderStatus && (
+                        <p className="chatWidgetOrderStatus">Estado: {orderStatus}</p>
+                    )}
+                    {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
+                </div>
+            );
+        }
         default:
             return <>{msg.content}</>;
     }

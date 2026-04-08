@@ -54,13 +54,14 @@ impl AiChatConfig {
         let model = std::env::var("AI_MODEL")
             .unwrap_or_else(|_| "llama-3.3-70b-versatile".to_string());
 
-        /* [064A-73] Whitelist de modelos permitidos. Si el env var tiene un modelo
-         * no reconocido, fallback al default. Previene inyección de modelo arbitrario. */
+        /* [084A-27] Whitelist de modelos Groq, ordenada por inteligencia descendente.
+         * Los modelos más capaces primero — el sistema los usa como cadena de fallback
+         * cuando el modelo primario falla por rate limit (429). */
         let allowed_models = [
             "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
             "llama-3.2-90b-vision-preview",
             "mixtral-8x7b-32768",
+            "llama-3.1-8b-instant",
             "gemma2-9b-it",
         ];
         let model = if allowed_models.contains(&model.as_str()) {
@@ -93,6 +94,25 @@ impl AiChatConfig {
         }
         let idx = KEY_COUNTER.fetch_add(1, Ordering::Relaxed) % self.api_keys.len();
         Some(&self.api_keys[idx])
+    }
+
+    /* [084A-27] Cadena de modelos fallback ordenados por inteligencia.
+     * Cuando el modelo primario falla por rate limit (429), se intenta el siguiente.
+     * El modelo primario (self.model) va primero, seguido por los demás. */
+    fn model_fallback_chain(&self) -> Vec<&str> {
+        let all_models = [
+            "llama-3.3-70b-versatile",
+            "llama-3.2-90b-vision-preview",
+            "mixtral-8x7b-32768",
+            "llama-3.1-8b-instant",
+        ];
+        let mut chain: Vec<&str> = vec![self.model.as_str()];
+        for m in &all_models {
+            if *m != self.model.as_str() {
+                chain.push(m);
+            }
+        }
+        chain
     }
 }
 
@@ -305,61 +325,82 @@ impl AiChatService {
     }
 }
 
-/* Llamar a Groq API con retry por keys. Retorna el JSON completo de la respuesta. */
+/* [084A-27] Llamar a Groq API con retry por keys Y fallback de modelo.
+ * Primero intenta todas las keys con el modelo primario.
+ * Si todas fallan por rate limit (429), pasa al siguiente modelo en la cadena.
+ * Esto maximiza el uso de los modelos más inteligentes antes de degradar. */
 async fn call_groq_api(
     config: &AiChatConfig,
     messages: &[Value],
     tools: Option<&Value>,
 ) -> Result<Value, String> {
-    let mut body = serde_json::json!({
-        "model": config.model,
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 800,
-        "top_p": 0.9
-    });
-
-    if let Some(t) = tools {
-        body["tools"] = t.clone();
-    }
-
+    let fallback_chain = config.model_fallback_chain();
     let client = reqwest::Client::new();
     let num_keys = config.api_keys.len();
     let mut last_error = String::new();
 
-    for attempt in 0..num_keys {
-        let Some(api_key) = config.next_key() else { break };
-        let key_hint = &api_key[..api_key.len().min(8)];
+    for model in &fallback_chain {
+        let mut body = serde_json::json!({
+            "model": model,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 800,
+            "top_p": 0.9
+        });
+        if let Some(t) = tools {
+            body["tools"] = t.clone();
+        }
 
-        let resp = client
-            .post(&config.api_url)
-            .header("Authorization", format!("Bearer {api_key}"))
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await;
+        let mut all_rate_limited = true;
 
-        match resp {
-            Err(e) => {
-                tracing::error!("AI key {key_hint}... intento {}/{num_keys}: error red: {e}", attempt + 1);
-                last_error = format!("Error de red: {e}");
-            }
-            Ok(response) => {
-                if !response.status().is_success() {
-                    let status = response.status();
-                    let text = response.text().await.unwrap_or_default();
-                    tracing::error!("AI key {key_hint}... intento {}/{num_keys}: HTTP {status}: {text}", attempt + 1);
-                    last_error = format!("HTTP {status}");
-                    continue;
+        for attempt in 0..num_keys {
+            let Some(api_key) = config.next_key() else { break };
+            let key_hint = &api_key[..api_key.len().min(8)];
+
+            let resp = client
+                .post(&config.api_url)
+                .header("Authorization", format!("Bearer {api_key}"))
+                .header("Content-Type", "application/json")
+                .json(&body)
+                .send()
+                .await;
+
+            match resp {
+                Err(e) => {
+                    tracing::error!("AI [{model}] key {key_hint}... intento {}/{num_keys}: error red: {e}", attempt + 1);
+                    last_error = format!("Error de red: {e}");
+                    all_rate_limited = false;
                 }
-                let json: Value = response.json().await
-                    .map_err(|e| format!("AI parse error: {e}"))?;
-                return Ok(json);
+                Ok(response) => {
+                    let status = response.status();
+                    if status.is_success() {
+                        let json: Value = response.json().await
+                            .map_err(|e| format!("AI parse error: {e}"))?;
+                        if model != &fallback_chain[0] {
+                            tracing::info!("AI fallback exitoso: usando modelo {model}");
+                        }
+                        return Ok(json);
+                    }
+                    let text = response.text().await.unwrap_or_default();
+                    tracing::error!("AI [{model}] key {key_hint}... intento {}/{num_keys}: HTTP {status}: {text}", attempt + 1);
+                    last_error = format!("HTTP {status}");
+
+                    /* Solo hacer fallback de modelo si TODAS las keys dan 429 */
+                    if status.as_u16() != 429 {
+                        all_rate_limited = false;
+                    }
+                }
             }
         }
+
+        /* Si no todas fueron rate limit, no tiene sentido probar otro modelo */
+        if !all_rate_limited {
+            break;
+        }
+        tracing::warn!("AI modelo {model}: todas las keys con rate limit (429), probando siguiente modelo");
     }
 
-    Err(format!("AI: todas las keys fallaron ({num_keys} intentos). Último error: {last_error}"))
+    Err(format!("AI: todos los modelos y keys fallaron. Último error: {last_error}"))
 }
 
 /* [T-2] Ejecutar tool calls y recopilar rich messages.
