@@ -64,7 +64,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Los planes de los hosting no necesitan modos de pago "modalCompraModos" Lo que si necesita es elegir cuantos meses pagar y generar un descuesto por cada mes pago (maximo 33%) → ✅ 084A-28 completada
 - Cuando se esta logeado como admin, en todos los contenidos editables a poner el mouse debería mostrar un boton de editar que abra el modal de editar del cms, en la esquina derecha, deberia ser un boton de 3 puntos con varias opciones, editar, eliminar, archivar, etc. → ✅ 084A-29 completada
 
-- Algo pasa con los servicios y el contenido, primero carga el contenido que habiamos hecho al principio sin el cms y luego aparece el que gestionamos con el cms, aparece rapidamente.
+- Algo pasa con los servicios y el contenido, primero carga el contenido que habiamos hecho al principio sin el cms y luego aparece el que gestionamos con el cms, aparece rapidamente. → ✅ 084A-30 completada
 
 ## Hosting 
 
@@ -80,5 +80,7 @@ He agregado un mcp de stripe con el que creo que te puedes encargar de configura
 
 Voy a necesitar testear como se ve el panel de hosting, claramente esta es una tarea titanica pero podemos empezar por algo sencillo, no agregaremos gestor de archivos ni nada, algo basico, que el cliente pueda ver la info de su hosting (supongo que simularemos la estadisticas o algo porque como un vps y los hosting estaran en despliegues de coolify no se como podemos hacer como hacen los hosting tradicioanles que claramente son hosting compartidos para mostrar estadistica de almacenamiento, uso cpu, y estas cosas si que sea el uso real de todos los despliegues y solo sea el despliegue del cliente), claramente me estoy dejando muchisimas cosas por fuera, tienes que intuir que me dejo por fuera para que esto sea un servicio de hosting profesional y completo.
 
-## 
+## Chatbot
+
+El chat bot parece funcionar, pero necesitamos ocntrolarlo mejor, en el panel, necesitamos controlar 
 
