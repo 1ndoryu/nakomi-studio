@@ -1,5 +1,6 @@
 /* [074A-66] Estilos para el editor de planes de servicio.
- * Sigue el patrón dark del editor: bg-primary, white-10 borders. */
+ * [084A-1] Fix: modal tiene fondo claro (--bg-primary), no oscuro.
+ * Usa --text-primary para texto, --border-default para bordes. */
 
 .tabPlanes {
     display: flex;
@@ -15,13 +16,13 @@
 }
 
 .tabPlanCard {
-    border: 1px solid var(--white-10);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     overflow: hidden;
 }
 
 .tabPlanCard--abierto {
-    border-color: var(--brand-white);
+    border-color: var(--text-primary);
 }
 
 .tabPlanCardHeader {
@@ -34,7 +35,7 @@
 }
 
 .tabPlanCardHeader:hover {
-    background: var(--white-10);
+    background: var(--bg-item-hover);
 }
 
 .tabPlanCardInfo {
@@ -45,14 +46,14 @@
 }
 
 .tabPlanStar {
-    color: var(--brand-white);
+    color: var(--text-primary);
     flex-shrink: 0;
 }
 
 .tabPlanCardNombre {
     font-size: 14px;
     font-weight: 500;
-    color: var(--brand-white);
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -73,7 +74,7 @@
 
 .tabPlanCardBody {
     padding: 14px;
-    border-top: 1px solid var(--white-10);
+    border-top: 1px solid var(--border-default);
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -120,7 +121,7 @@
 .tabPlanSeccionTitulo {
     font-size: 12px;
     font-weight: 600;
-    color: var(--brand-white);
+    color: var(--text-primary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -148,7 +149,7 @@
 }
 
 .tabPlanBtnEliminar:hover {
-    color: var(--brand-white);
+    color: var(--text-primary);
 }
 
 .tabPlanBtnAgregar {
@@ -156,7 +157,7 @@
     align-items: center;
     gap: 4px;
     background: none;
-    border: 1px dashed var(--white-10);
+    border: 1px dashed var(--border-default);
     color: var(--text-tertiary);
     font-size: 12px;
     padding: 6px 10px;
@@ -167,12 +168,12 @@
 }
 
 .tabPlanBtnAgregar:hover {
-    color: var(--brand-white);
-    border-color: var(--brand-white);
+    color: var(--text-primary);
+    border-color: var(--text-primary);
 }
 
 .tabPlanFase {
-    border: 1px solid var(--white-10);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-sm);
     padding: 10px;
     display: flex;
@@ -189,7 +190,7 @@
 .tabPlanFaseNum {
     font-size: 12px;
     font-weight: 600;
-    color: var(--brand-white);
+    color: var(--text-primary);
 }
 
 .tabPlanesBtnNuevo {
