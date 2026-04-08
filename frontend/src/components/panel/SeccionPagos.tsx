@@ -1,9 +1,10 @@
 /* [044A-38 Fase 3] Sección de historial de pagos en el panel.
  * [074A-61] Rediseño: lista compacta de pagos + modal de detalles al click.
+ * [084A-21] Rediseño como tabla profesional con columnas alineadas, totales y diseño limpio.
  * Botón "Solicitar reembolso" movido al modal de detalle. */
 
-import { useState } from 'react';
-import { Loader2, CreditCard, AlertCircle, RotateCcw, Receipt } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Loader2, CreditCard, AlertCircle, RotateCcw } from 'lucide-react';
 import { useOrdenes } from '../../hooks/useOrdenes';
 import { usePagos } from '../../hooks/usePagos';
 import { useRefundModal } from '../../hooks/useRefundModal';
@@ -29,8 +30,23 @@ export function SeccionPagos() {
     } = useRefundModal();
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) || 'client';
 
-    /* [074A-61] Modal de detalle de pago */
     const [pagoDetalle, setPagoDetalle] = useState<PaymentResponse | null>(null);
+
+    /* [084A-21] Totales calculados para el resumen */
+    const totales = useMemo(() => {
+        if (!pagos.length) return null;
+        const pagado = pagos
+            .filter(p => p.status === 'released' || p.status === 'held')
+            .reduce((sum, p) => sum + p.amount_cents, 0);
+        const reembolsado = pagos
+            .filter(p => p.status === 'refunded')
+            .reduce((sum, p) => sum + p.amount_cents, 0);
+        const pendiente = pagos
+            .filter(p => p.status === 'pending')
+            .reduce((sum, p) => sum + p.amount_cents, 0);
+        const currency = pagos[0]?.currency || 'USD';
+        return { pagado, reembolsado, pendiente, currency };
+    }, [pagos]);
 
     if (cargando) {
         return (
@@ -71,7 +87,7 @@ export function SeccionPagos() {
                 )}
             </div>
 
-            {/* Lista compacta de pagos */}
+            {/* [084A-21] Tabla profesional de pagos */}
             {ordenSeleccionada && (
                 <div className="pagosDatos">
                     {cargandoPagos && <Loader2 className="pagosSpinner" size={24} />}
@@ -84,33 +100,86 @@ export function SeccionPagos() {
                             <p>No hay pagos registrados para esta orden</p>
                         </div>
                     )}
-                    {pagos.map((p) => (
-                        <Button
-                            key={p.id}
-                            variante="texto"
-                            className="pagoFila"
-                            onClick={() => setPagoDetalle(p)}
-                            type="button"
-                        >
-                            <Receipt size={16} className="pagoFilaIcono" />
-                            <span className={`pagoFilaEstado ${PAYMENT_STATUS_CLASS[p.status]}`}>
-                                {PAYMENT_STATUS_LABELS[p.status]}
-                            </span>
-                            <span className="pagoFilaDescripcion">
-                                {p.description || (p.phase_number ? `Fase ${p.phase_number}` : 'Pago')}
-                            </span>
-                            <span className="pagoFilaFecha">
-                                {new Date(p.created_at).toLocaleDateString('es-ES', {day: 'numeric', month: 'short'})}
-                            </span>
-                            <span className="pagoFilaMonto">
-                                {formatPrice(p.amount_cents, p.currency)}
-                            </span>
-                        </Button>
-                    ))}
+                    {!cargandoPagos && pagos.length > 0 && (
+                        <>
+                            <div className="pagosTablaWrapper">
+                                <table className="pagosTabla">
+                                    <thead>
+                                        <tr>
+                                            <th className="pagosTablaHead">Estado</th>
+                                            <th className="pagosTablaHead">Descripción</th>
+                                            <th className="pagosTablaHead">Modo</th>
+                                            <th className="pagosTablaHead pagosTablaHeadDerecha">Fecha</th>
+                                            <th className="pagosTablaHead pagosTablaHeadDerecha">Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pagos.map((p) => (
+                                            <tr
+                                                key={p.id}
+                                                className="pagosTablaFila"
+                                                onClick={() => setPagoDetalle(p)}
+                                            >
+                                                <td className="pagosTablaCelda">
+                                                    <span className={`pagoEstadoBadge ${PAYMENT_STATUS_CLASS[p.status]}`}>
+                                                        {PAYMENT_STATUS_LABELS[p.status]}
+                                                    </span>
+                                                </td>
+                                                <td className="pagosTablaCelda pagosTablaCeldaDescripcion">
+                                                    {p.description || (p.phase_number ? `Fase ${p.phase_number}` : 'Pago')}
+                                                </td>
+                                                <td className="pagosTablaCelda pagosTablaCeldaModo">
+                                                    {PAYMENT_MODE_LABELS[p.payment_mode]}
+                                                </td>
+                                                <td className="pagosTablaCelda pagosTablaCeldaDerecha">
+                                                    {new Date(p.created_at).toLocaleDateString('es-ES', {
+                                                        day: 'numeric', month: 'short', year: '2-digit',
+                                                    })}
+                                                </td>
+                                                <td className="pagosTablaCelda pagosTablaCeldaDerecha pagosTablaCeldaMonto">
+                                                    {formatPrice(p.amount_cents, p.currency)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* [084A-21] Resumen de totales */}
+                            {totales && (
+                                <div className="pagosTotales">
+                                    {totales.pagado > 0 && (
+                                        <div className="pagosTotalItem">
+                                            <span className="pagosTotalLabel">Pagado</span>
+                                            <span className="pagosTotalValor pagosTotalPagado">
+                                                {formatPrice(totales.pagado, totales.currency)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {totales.pendiente > 0 && (
+                                        <div className="pagosTotalItem">
+                                            <span className="pagosTotalLabel">Pendiente</span>
+                                            <span className="pagosTotalValor pagosTotalPendiente">
+                                                {formatPrice(totales.pendiente, totales.currency)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {totales.reembolsado > 0 && (
+                                        <div className="pagosTotalItem">
+                                            <span className="pagosTotalLabel">Reembolsado</span>
+                                            <span className="pagosTotalValor pagosTotalReembolsado">
+                                                {formatPrice(totales.reembolsado, totales.currency)}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             )}
 
-            {/* [074A-61] Modal de detalle de pago */}
+            {/* Modal de detalle de pago */}
             <Modal abierto={!!pagoDetalle} onCerrar={() => setPagoDetalle(null)}>
                 {pagoDetalle && (
                     <div className="pagoModalContenido">
