@@ -1,4 +1,5 @@
 mod ai_chat;
+pub(crate) mod ai_tools;
 mod assignment;
 mod audit;
 mod auth;
@@ -17,7 +18,7 @@ pub use assignment::AssignmentService;
 pub use audit::AuditService;
 pub use auth::AuthService;
 pub use chat::ChatHub;
-pub use chat_timing::{ChatTimingService, RateCheckResult, TimingEvent};
+pub use chat_timing::{ChatTimingService, RateCheckResult, TimingEvent, TimingSessionDeps};
 pub use contabo::{ContaboConfig, ContaboService};
 pub use hosting_stripe::{CheckoutParams, HostingStripeConfig, HostingStripeService};
 pub use note::NoteService;

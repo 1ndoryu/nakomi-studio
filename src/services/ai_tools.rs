@@ -1,0 +1,439 @@
+/* [T-2] Herramientas de IA para el chatbot (tool use / function calling).
+ * Define las tools que la IA puede invocar y ejecuta las llamadas.
+ * Groq soporta tool use compatible con OpenAI en llama-3.3-70b-versatile.
+ * Cada tool retorna un resultado JSON que se reenvía a la IA + opcionalmente
+ * un mensaje rico para el WS del visitante. */
+
+use serde_json::{json, Value};
+use sqlx::PgPool;
+
+use crate::repositories::OrderRepository;
+
+/* Resultado de ejecutar una tool: JSON para la IA y opcionalmente un
+ * mensaje rico para mostrar en el chat del visitante. */
+pub struct ToolExecResult {
+    pub tool_result_json: String,
+    pub rich_message: Option<RichMessage>,
+}
+
+/* Mensaje rico que se envía al WS como message_type + metadata.
+ * content es el texto visible; message_type indica el render; metadata tiene datos extra. */
+pub struct RichMessage {
+    pub content: String,
+    pub message_type: String,
+    pub metadata: Value,
+}
+
+/* [T-2] Definiciones de tools en formato OpenAI/Groq.
+ * Se incluyen en el body de la API junto con los mensajes. */
+pub fn tool_definitions() -> Value {
+    json!([
+        {
+            "type": "function",
+            "function": {
+                "name": "show_service",
+                "description": "Muestra una tarjeta de servicio al cliente con precio y descripción. Úsalo cuando el cliente pregunte por un servicio específico o quieras recomendar uno.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "service_slug": {
+                            "type": "string",
+                            "description": "Slug del servicio: diseno-de-sitios-web, desarrollo-apps, agentes-ia, branding"
+                        }
+                    },
+                    "required": ["service_slug"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_services",
+                "description": "Lista todos los servicios disponibles con precios. Úsalo cuando el cliente pida ver todos los servicios o no sepa qué necesita.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "create_invoice",
+                "description": "Genera una factura de Stripe con link de pago para el cliente. Solo úsalo cuando el cliente confirme que quiere pagar y tenga claro el servicio/monto.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "amount_cents": {
+                            "type": "integer",
+                            "description": "Monto en centavos USD (ej: 10000 = $100.00)"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "Descripción del concepto de la factura"
+                        },
+                        "client_email": {
+                            "type": "string",
+                            "description": "Email del cliente para la factura de Stripe"
+                        }
+                    },
+                    "required": ["amount_cents", "description", "client_email"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "request_human_assistance",
+                "description": "Solicita intervención humana. Úsalo cuando no puedas resolver la solicitud, el cliente esté frustrado, pida hablar con una persona, o el tema sea legal/contractual.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "reason": {
+                            "type": "string",
+                            "description": "Motivo breve de la escalación"
+                        }
+                    },
+                    "required": ["reason"]
+                }
+            }
+        }
+    ])
+}
+
+/* Ejecutar una tool call retornada por la IA.
+ * Despacha al handler correcto según el nombre de la función. */
+pub async fn execute_tool(
+    pool: &PgPool,
+    http_client: &reqwest::Client,
+    stripe_key: Option<&str>,
+    tool_name: &str,
+    arguments: &Value,
+) -> ToolExecResult {
+    match tool_name {
+        "show_service" => exec_show_service(pool, arguments).await,
+        "list_services" => exec_list_services(pool).await,
+        "create_invoice" => exec_create_invoice(http_client, stripe_key, arguments).await,
+        "request_human_assistance" => exec_request_human(arguments),
+        _ => ToolExecResult {
+            tool_result_json: json!({"error": "Tool desconocida"}).to_string(),
+            rich_message: None,
+        },
+    }
+}
+
+/* show_service: busca servicio por slug y devuelve service_card */
+async fn exec_show_service(pool: &PgPool, args: &Value) -> ToolExecResult {
+    let slug = args["service_slug"].as_str().unwrap_or("");
+
+    let service = match OrderRepository::find_service_by_slug(pool, slug).await {
+        Ok(Some(s)) => s,
+        Ok(None) => {
+            return ToolExecResult {
+                tool_result_json: json!({"error": "Servicio no encontrado", "slug": slug}).to_string(),
+                rich_message: None,
+            };
+        }
+        Err(e) => {
+            tracing::error!("Error buscando servicio {slug}: {e}");
+            return ToolExecResult {
+                tool_result_json: json!({"error": "Error interno"}).to_string(),
+                rich_message: None,
+            };
+        }
+    };
+
+    let price_usd = f64::from(service.base_price_cents) / 100.0;
+    let result = json!({
+        "slug": service.slug,
+        "title": service.title,
+        "description": service.description,
+        "base_price_usd": price_usd,
+    });
+
+    let metadata = json!({
+        "service_slug": service.slug,
+        "title": service.title,
+        "description": service.description,
+        "base_price_cents": service.base_price_cents,
+    });
+
+    ToolExecResult {
+        tool_result_json: result.to_string(),
+        rich_message: Some(RichMessage {
+            content: format!("{} — desde ${price_usd:.2} USD", service.title),
+            message_type: "service_card".to_string(),
+            metadata,
+        }),
+    }
+}
+
+/* list_services: muestra todos los servicios disponibles */
+async fn exec_list_services(pool: &PgPool) -> ToolExecResult {
+    let services = match OrderRepository::list_services(pool).await {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::error!("Error listando servicios: {e}");
+            return ToolExecResult {
+                tool_result_json: json!({"error": "Error interno"}).to_string(),
+                rich_message: None,
+            };
+        }
+    };
+
+    let items: Vec<Value> = services
+        .iter()
+        .map(|s| {
+            json!({
+                "slug": s.slug,
+                "title": s.title,
+                "description": s.description,
+                "base_price_usd": f64::from(s.base_price_cents) / 100.0,
+            })
+        })
+        .collect();
+
+    ToolExecResult {
+        tool_result_json: json!({"services": items}).to_string(),
+        rich_message: None,
+    }
+}
+
+/* create_invoice: crea factura en Stripe con link de pago.
+ * Flujo: create customer → create invoice → add line item → finalize → get URL.
+ * El resultado es un mensaje de tipo "invoice" con el link de pago. */
+async fn exec_create_invoice(
+    http_client: &reqwest::Client,
+    stripe_key: Option<&str>,
+    args: &Value,
+) -> ToolExecResult {
+    let Some(stripe_key) = stripe_key else {
+        return ToolExecResult {
+            tool_result_json: json!({"error": "Stripe no configurado"}).to_string(),
+            rich_message: None,
+        };
+    };
+
+    let amount_cents = args["amount_cents"].as_i64().unwrap_or(0);
+    let description = args["description"].as_str().unwrap_or("Servicio Nakomi Studio");
+    let client_email = args["client_email"].as_str().unwrap_or("");
+
+    if amount_cents <= 0 || client_email.is_empty() {
+        return ToolExecResult {
+            tool_result_json: json!({"error": "Monto y email son requeridos"}).to_string(),
+            rich_message: None,
+        };
+    }
+
+    /* Paso 1: crear/buscar customer por email */
+    let customer_id = match find_or_create_stripe_customer(http_client, stripe_key, client_email).await {
+        Ok(id) => id,
+        Err(e) => {
+            tracing::error!("Stripe create customer error: {e}");
+            return ToolExecResult {
+                tool_result_json: json!({"error": "Error creando cliente en Stripe"}).to_string(),
+                rich_message: None,
+            };
+        }
+    };
+
+    /* Paso 2: crear invoice */
+    let invoice = match create_stripe_invoice(
+        http_client,
+        stripe_key,
+        &customer_id,
+        description,
+        amount_cents,
+    )
+    .await
+    {
+        Ok(inv) => inv,
+        Err(e) => {
+            tracing::error!("Stripe create invoice error: {e}");
+            return ToolExecResult {
+                tool_result_json: json!({"error": "Error creando factura"}).to_string(),
+                rich_message: None,
+            };
+        }
+    };
+
+    #[allow(clippy::cast_precision_loss)]
+    let price_usd = amount_cents as f64 / 100.0;
+    let metadata = json!({
+        "stripe_invoice_id": invoice.id,
+        "amount_cents": amount_cents,
+        "currency": "usd",
+        "status": invoice.status,
+        "payment_url": invoice.hosted_invoice_url,
+        "description": description,
+    });
+
+    ToolExecResult {
+        tool_result_json: json!({
+            "invoice_id": invoice.id,
+            "amount_usd": price_usd,
+            "payment_url": invoice.hosted_invoice_url,
+            "status": invoice.status,
+        })
+        .to_string(),
+        rich_message: Some(RichMessage {
+            content: format!("Factura por ${price_usd:.2} USD — {description}"),
+            message_type: "invoice".to_string(),
+            metadata,
+        }),
+    }
+}
+
+/* request_human_assistance: marca escalación. El resultado es para la IA,
+ * la lógica de notificación real la maneja chat_timing/escalation. */
+fn exec_request_human(args: &Value) -> ToolExecResult {
+    let reason = args["reason"].as_str().unwrap_or("Sin motivo especificado");
+    ToolExecResult {
+        tool_result_json: json!({
+            "status": "escalated",
+            "reason": reason,
+            "message": "Se ha notificado al equipo. Un especialista se conectará pronto."
+        })
+        .to_string(),
+        rich_message: None,
+    }
+}
+
+/* ============================================================
+   STRIPE HELPERS (invoice flow)
+   ============================================================ */
+
+#[derive(Debug, serde::Deserialize)]
+struct StripeCustomerSearch {
+    data: Vec<StripeCustomer>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct StripeCustomer {
+    id: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct StripeInvoice {
+    id: String,
+    status: Option<String>,
+    hosted_invoice_url: Option<String>,
+}
+
+/* Busca customer por email en Stripe. Si no existe, lo crea. */
+async fn find_or_create_stripe_customer(
+    client: &reqwest::Client,
+    key: &str,
+    email: &str,
+) -> Result<String, String> {
+    /* Buscar por email */
+    let search_resp = client
+        .get("https://api.stripe.com/v1/customers/search")
+        .header("Authorization", format!("Bearer {key}"))
+        .query(&[("query", &format!("email:'{email}'"))])
+        .send()
+        .await
+        .map_err(|e| format!("Stripe search error: {e}"))?;
+
+    if search_resp.status().is_success() {
+        let body: StripeCustomerSearch = search_resp
+            .json()
+            .await
+            .map_err(|e| format!("Parse error: {e}"))?;
+        if let Some(cust) = body.data.first() {
+            return Ok(cust.id.clone());
+        }
+    }
+
+    /* Crear nuevo customer */
+    let create_resp = client
+        .post("https://api.stripe.com/v1/customers")
+        .header("Authorization", format!("Bearer {key}"))
+        .form(&[("email", email)])
+        .send()
+        .await
+        .map_err(|e| format!("Stripe create error: {e}"))?;
+
+    if !create_resp.status().is_success() {
+        let text = create_resp.text().await.unwrap_or_default();
+        return Err(format!("Stripe create customer failed: {text}"));
+    }
+
+    let cust: StripeCustomer = create_resp
+        .json()
+        .await
+        .map_err(|e| format!("Parse error: {e}"))?;
+    Ok(cust.id)
+}
+
+/* Crea invoice en Stripe: invoice + line item + finalize.
+ * Retorna invoice con hosted_invoice_url (link de pago). */
+async fn create_stripe_invoice(
+    client: &reqwest::Client,
+    key: &str,
+    customer_id: &str,
+    description: &str,
+    amount_cents: i64,
+) -> Result<StripeInvoice, String> {
+    /* Crear invoice draft */
+    let inv_resp = client
+        .post("https://api.stripe.com/v1/invoices")
+        .header("Authorization", format!("Bearer {key}"))
+        .form(&[
+            ("customer", customer_id),
+            ("collection_method", "send_invoice"),
+            ("days_until_due", "7"),
+            ("auto_advance", "true"),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("Create invoice error: {e}"))?;
+
+    if !inv_resp.status().is_success() {
+        let text = inv_resp.text().await.unwrap_or_default();
+        return Err(format!("Create invoice failed: {text}"));
+    }
+
+    let draft: StripeInvoice = inv_resp
+        .json()
+        .await
+        .map_err(|e| format!("Parse invoice error: {e}"))?;
+
+    /* Agregar line item */
+    let _item_resp = client
+        .post("https://api.stripe.com/v1/invoiceitems")
+        .header("Authorization", format!("Bearer {key}"))
+        .form(&[
+            ("customer", customer_id),
+            ("invoice", draft.id.as_str()),
+            ("amount", &amount_cents.to_string()),
+            ("currency", "usd"),
+            ("description", description),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("Create line item error: {e}"))?;
+
+    /* Finalizar invoice (genera hosted_invoice_url) */
+    let final_resp = client
+        .post(format!(
+            "https://api.stripe.com/v1/invoices/{}/finalize",
+            draft.id
+        ))
+        .header("Authorization", format!("Bearer {key}"))
+        .send()
+        .await
+        .map_err(|e| format!("Finalize invoice error: {e}"))?;
+
+    if !final_resp.status().is_success() {
+        let text = final_resp.text().await.unwrap_or_default();
+        return Err(format!("Finalize invoice failed: {text}"));
+    }
+
+    let finalized: StripeInvoice = final_resp
+        .json()
+        .await
+        .map_err(|e| format!("Parse finalized error: {e}"))?;
+
+    Ok(finalized)
+}

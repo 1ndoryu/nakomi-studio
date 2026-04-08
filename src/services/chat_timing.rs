@@ -27,6 +27,16 @@ use crate::models::{CreateNotification, NOTIF_ESCALATION_NEEDED};
 use crate::repositories::UserRepository;
 use crate::services::{AiChatConfig, AiChatService, AiResponse, ChatHub, NotificationHub};
 
+/* Dependencias agrupadas para evitar exceso de argumentos en register_session */
+pub struct TimingSessionDeps {
+    pub pool: PgPool,
+    pub ai_config: AiChatConfig,
+    pub hub: ChatHub,
+    pub notification_hub: NotificationHub,
+    pub http_client: reqwest::Client,
+    pub stripe_key: Option<String>,
+}
+
 /* Constantes de timing configurables */
 const WAIT_TIMEOUT: Duration = Duration::from_secs(4);
 const LISTEN_TIMEOUT: Duration = Duration::from_secs(8);
@@ -158,10 +168,7 @@ impl ChatTimingService {
         &self,
         session_id: Uuid,
         visitor_name: Option<String>,
-        pool: PgPool,
-        ai_config: AiChatConfig,
-        hub: ChatHub,
-        notification_hub: NotificationHub,
+        deps: TimingSessionDeps,
     ) -> mpsc::Sender<TimingEvent> {
         let (tx, rx) = mpsc::channel::<TimingEvent>(64);
         self.sessions.insert(session_id, tx.clone());
@@ -170,10 +177,12 @@ impl ChatTimingService {
             session_id,
             visitor_name,
             rx,
-            pool,
-            ai_config,
-            hub,
-            notification_hub,
+            deps.pool,
+            deps.ai_config,
+            deps.hub,
+            deps.notification_hub,
+            deps.http_client,
+            deps.stripe_key,
         ));
 
         tx
@@ -210,6 +219,8 @@ async fn session_timing_loop(
     ai_config: AiChatConfig,
     hub: ChatHub,
     notification_hub: NotificationHub,
+    http_client: reqwest::Client,
+    stripe_key: Option<String>,
 ) {
     let mut buffer: Vec<String> = Vec::new();
     let mut is_typing = false;
@@ -257,6 +268,8 @@ async fn session_timing_loop(
             &ai_config,
             &hub,
             &notification_hub,
+            &http_client,
+            stripe_key.as_deref(),
         )
         .await;
     }
@@ -326,6 +339,7 @@ fn drain_pending(
 
 /* Genera respuesta IA con el buffer combinado.
  * Verifica sesión activa, clasifica relevancia, genera respuesta y escala si necesario.
+ * [T-2] Envía rich_messages (service_cards, invoices) como mensajes separados.
  * Retorna el nuevo valor de irrelevant_count. */
 #[allow(clippy::too_many_arguments)]
 async fn generate_ai_response(
@@ -337,6 +351,8 @@ async fn generate_ai_response(
     ai_config: &AiChatConfig,
     hub: &ChatHub,
     notification_hub: &NotificationHub,
+    http_client: &reqwest::Client,
+    stripe_key: Option<&str>,
 ) -> u32 {
     /* Verificar que la sesión sigue con IA activa */
     let session_ok = match crate::repositories::ChatRepository::find_session_by_id(
@@ -372,12 +388,25 @@ async fn generate_ai_response(
     /* Relevante: reset streak y generar respuesta principal */
     irrelevant_count = 0;
 
-    let ai_resp = AiChatService::generate_response(pool, ai_config, session_id, combined)
-        .await
-        .unwrap_or_else(|e| AiResponse {
-            text: format!("Error IA: {e}"),
-            needs_escalation: true,
-        });
+    let ai_resp = AiChatService::generate_response(
+        pool, ai_config, http_client, stripe_key, session_id, combined,
+    )
+    .await
+    .unwrap_or_else(|e| AiResponse {
+        text: format!("Error IA: {e}"),
+        needs_escalation: true,
+        rich_messages: Vec::new(),
+    });
+
+    /* [T-2] Enviar rich messages (service_cards, invoices) antes del texto */
+    for rm in &ai_resp.rich_messages {
+        let _ = hub
+            .send_rich_message(
+                session_id, "ai", Some("ai"),
+                &rm.content, &rm.message_type, &rm.metadata,
+            )
+            .await;
+    }
 
     let _ = hub
         .send_message(session_id, "ai", Some("ai"), &ai_resp.text)

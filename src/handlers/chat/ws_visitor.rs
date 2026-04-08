@@ -106,10 +106,14 @@ async fn handle_visitor_ws(
     let timing_tx = state.chat_timing.register_session(
         session_id,
         session.visitor_name.clone(),
-        state.pool.clone(),
-        state.ai_config.clone(),
-        state.chat_hub.clone(),
-        state.notification_hub.clone(),
+        crate::services::TimingSessionDeps {
+            pool: state.pool.clone(),
+            ai_config: state.ai_config.clone(),
+            hub: state.chat_hub.clone(),
+            notification_hub: state.notification_hub.clone(),
+            http_client: state.http_client.clone(),
+            stripe_key: state.stripe_secret_key.clone(),
+        },
     );
 
     /* Procesar mensajes del visitante */
@@ -218,6 +222,19 @@ async fn process_visitor_messages(
                 let _ = timing_tx.send(TimingEvent::Disconnect).await;
                 let _ = state.chat_hub.close_session(session_id).await;
                 return;
+            }
+            /* [T-2] Acciones desde botones de mensajes ricos.
+             * El frontend envía action_type + payload que se re-inyectan
+             * como mensaje de texto para que la IA lo procese en contexto. */
+            WsClientMessage::Action { action_type, payload } => {
+                let action_text = format!(
+                    "[Acción: {action_type}] {}",
+                    payload.as_str().unwrap_or(&payload.to_string())
+                );
+                let _ = state.chat_hub
+                    .send_message(session_id, "client", Some(visitor_id), &action_text)
+                    .await;
+                let _ = timing_tx.send(TimingEvent::Message(action_text)).await;
             }
             _ => {} /* join/toggle_ai son solo para staff */
         }

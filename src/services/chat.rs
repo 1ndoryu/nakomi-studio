@@ -221,6 +221,43 @@ impl ChatHub {
         Ok(msg)
     }
 
+    /* [T-2] Enviar mensaje rico (service_card, invoice, etc.) con tipo y metadata.
+     * Persiste en BD con message_type + metadata y hace broadcast al WS. */
+    pub async fn send_rich_message(
+        &self,
+        session_id: Uuid,
+        sender_type: &str,
+        sender_id: Option<&str>,
+        content: &str,
+        message_type: &str,
+        metadata: &serde_json::Value,
+    ) -> Result<ChatMessage, AppError> {
+        let msg = ChatRepository::save_rich_message(
+            &self.pool,
+            session_id,
+            sender_type,
+            sender_id,
+            content,
+            message_type,
+            metadata,
+        )
+        .await?;
+
+        let ws_msg = WsServerMessage::Message {
+            id: msg.id,
+            session_id: msg.session_id,
+            sender: msg.sender_type.clone(),
+            sender_id: msg.sender_id.clone(),
+            content: msg.content.clone(),
+            created_at: msg.created_at,
+            message_type: msg.message_type.clone(),
+            metadata: msg.metadata.clone(),
+        };
+        self.broadcast(session_id, ws_msg);
+
+        Ok(msg)
+    }
+
     /// Broadcast de typing sin persistir (alta frecuencia)
     pub fn send_typing(&self, session_id: Uuid, sender: &str, content: &str) {
         self.broadcast(

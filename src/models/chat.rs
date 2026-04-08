@@ -169,6 +169,12 @@ pub enum WsClientMessage {
     Close,
     #[serde(rename = "toggle_ai")]
     ToggleAi { session_id: Uuid, enabled: bool },
+    /* [T-2] Acción desde botones de mensajes ricos (service_card, invoice, etc.) */
+    #[serde(rename = "action")]
+    Action {
+        action_type: String,
+        payload: serde_json::Value,
+    },
 }
 
 /// Mensaje saliente del servidor WebSocket

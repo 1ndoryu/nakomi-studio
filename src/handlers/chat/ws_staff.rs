@@ -124,6 +124,8 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
             WsClientMessage::Close => {
                 break;
             }
+            /* [T-2] Action no aplica a staff — ignorar */
+            WsClientMessage::Action { .. } => {}
         }
     }
 

@@ -64,7 +64,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~P-2: Migración BD (visitor_profiles, chat_attachments, message_type/metadata, ai_intermediary)~~ ✅
 
 ### Fase I (por dificultad descendente)
-- T-1: Anti-spam + timing inteligente (rate limit WS, clasificador relevancia, máquina de estados para pausas)
+- ~~T-1: Anti-spam + timing inteligente (rate limit WS, clasificador relevancia, máquina de estados para pausas)~~ ✅
 - T-2: Generación pedidos + facturas (tool use Groq, mensajes ricos, Stripe invoices, botones acción)
 - T-3: Memoria usuario + contexto (visitor_profiles, captura email, resúmenes, contexto por rol)
 - T-4: Sync cross-device/tab (BroadcastChannel, multi-conexión WS, sesión única por identidad)
@@ -125,5 +125,9 @@ Implica que la IA siempre genera un resumen dentro de los detalles de los pedido
 # La tarea final
 
 Tienes que comunicarte con el chatbot para probarlo y testearlo, eres un modelo superior claramente tienes que evaluarlo en todos los escenarios, auditarlo, evaluarlo, ir anotando fallos, posible mejoras e ir configurando para maximar el mejor resultado posible. La simulación tiene que ser lo mas parecida a un escenario real y el modelo no se tiene que dar cuenta que esta hablando con otra IA, solo tu. Lo mejor para esto es hacer un plan detallado de una lista de pruebas y cosas que verificar y ver si las pasa todas.
+
+Segunda tarea final: revisar que realmente se este usando la rotacion de api en cada solicitud para evitar rate limits, que se esten usando principalmente los modelos mas inteligentes, y que pase a un segundo modelo mas inteligente de groq y luego a un tercero y asi sucesivamente si falla por rate limits. 
+
+
 
 

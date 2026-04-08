@@ -184,6 +184,8 @@ pub async fn send_message(
                 let ai_resp = AiChatService::generate_response(
                     &state.pool,
                     &state.ai_config,
+                    &state.http_client,
+                    state.stripe_secret_key.as_deref(),
                     session_id,
                     &req.content,
                 )
@@ -191,7 +193,18 @@ pub async fn send_message(
                 .unwrap_or_else(|e| crate::services::AiResponse {
                     text: format!("Error IA: {e}"),
                     needs_escalation: true,
+                    rich_messages: Vec::new(),
                 });
+
+                /* [T-2] Enviar rich messages antes del texto */
+                for rm in &ai_resp.rich_messages {
+                    let _ = state.chat_hub
+                        .send_rich_message(
+                            session_id, "ai", Some("ai"),
+                            &rm.content, &rm.message_type, &rm.metadata,
+                        )
+                        .await;
+                }
 
                 let _ = state
                     .chat_hub

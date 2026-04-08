@@ -217,6 +217,41 @@ impl ChatRepository {
         .await
     }
 
+    /* [T-2] Guardar mensaje rico con tipo y metadatos estructurados.
+     * Usado para service_cards, invoices, order_cards, etc. generados por tool use. */
+    pub async fn save_rich_message(
+        pool: &PgPool,
+        session_id: Uuid,
+        sender_type: &str,
+        sender_id: Option<&str>,
+        content: &str,
+        message_type: &str,
+        metadata: &serde_json::Value,
+    ) -> Result<ChatMessage, sqlx::Error> {
+        let _ = sqlx::query!(
+            r#"UPDATE chat_sessions SET updated_at = NOW() WHERE id = $1"#,
+            session_id,
+        )
+        .execute(pool)
+        .await;
+
+        sqlx::query_as!(
+            ChatMessage,
+            r#"INSERT INTO chat_messages (session_id, sender_type, sender_id, content, message_type, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id, session_id, sender_type, sender_id, content, created_at,
+                       message_type, metadata"#,
+            session_id,
+            sender_type,
+            sender_id,
+            content,
+            message_type,
+            metadata,
+        )
+        .fetch_one(pool)
+        .await
+    }
+
     /// Historial de mensajes de una sesión (paginado)
     pub async fn list_messages(
         pool: &PgPool,

@@ -6,10 +6,12 @@
 use std::fmt::Write;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::repositories::{ChatRepository, OrderRepository};
+use crate::services::ai_tools::{self, RichMessage};
 
 /* [064A-29] Contador global para rotacion round-robin de API keys.
  * Cada llamada a generate_response incrementa y usa mod num_keys. */
@@ -95,20 +97,24 @@ impl AiChatConfig {
 
 pub struct AiChatService;
 
-/* [T-6] Respuesta de IA con señal de escalación.
- * needs_escalation = true si la IA detecta que necesita intervención humana. */
+/* [T-6] Respuesta de IA con señal de escalación y mensajes ricos (T-2).
+ * `needs_escalation` = true si la IA detecta que necesita intervención humana.
+ * `rich_messages` contiene service_cards, invoices, etc. generados por tool calls. */
 pub struct AiResponse {
     pub text: String,
     pub needs_escalation: bool,
+    pub rich_messages: Vec<RichMessage>,
 }
 
 impl AiChatService {
-    /// Genera respuesta de IA para un mensaje en una sesión.
-    /// Usa Groq API (OpenAI-compatible) con rotación de keys y retry automático.
-    /// Si la IA detecta que necesita escalación humana, retorna `needs_escalation` = true.
+    /// Genera respuesta de IA con soporte para tool use (function calling).
+    /// Loop: envía mensajes → si la IA llama tools → ejecuta → reenvía resultados → repite.
+    /// Máximo 3 iteraciones de tool calls para prevenir loops infinitos.
     pub async fn generate_response(
         pool: &PgPool,
         config: &AiChatConfig,
+        http_client: &reqwest::Client,
+        stripe_key: Option<&str>,
         session_id: Uuid,
         user_message: &str,
     ) -> Result<AiResponse, String> {
@@ -119,118 +125,185 @@ impl AiChatService {
                        Mientras tanto, ¿en qué puedo orientarte?"
                     .to_string(),
                 needs_escalation: true,
+                rich_messages: Vec::new(),
             });
         }
 
         let system_prompt = build_system_prompt(pool, session_id).await;
-
         let history = ChatRepository::list_messages(pool, session_id, 20, 0)
             .await
             .unwrap_or_default();
 
-        let mut messages = vec![serde_json::json!({
-            "role": "system",
-            "content": system_prompt
-        })];
-
+        let mut messages = vec![serde_json::json!({"role": "system", "content": system_prompt})];
         for msg in &history {
-            let role = if msg.sender_type == "ai" {
-                "assistant"
-            } else {
-                "user"
-            };
-            messages.push(serde_json::json!({
-                "role": role,
-                "content": msg.content
-            }));
+            let role = if msg.sender_type == "ai" { "assistant" } else { "user" };
+            messages.push(serde_json::json!({"role": role, "content": msg.content}));
         }
+        messages.push(serde_json::json!({"role": "user", "content": user_message}));
 
-        messages.push(serde_json::json!({
-            "role": "user",
-            "content": user_message
-        }));
+        let tools = ai_tools::tool_definitions();
+        let mut rich_messages: Vec<RichMessage> = Vec::new();
+        let mut needs_escalation = false;
 
-        let body = serde_json::json!({
-            "model": config.model,
-            "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 800,
-            "top_p": 0.9
-        });
+        /* [T-2] Tool call loop: máximo 3 iteraciones */
+        for iteration in 0..3 {
+            let resp = call_groq_api(config, &messages, Some(&tools)).await?;
 
-        /* [064A-69] Retry con todas las keys disponibles antes de caer al fallback.
-         * Si key N falla con error HTTP, intenta key N+1, N+2, etc. */
-        let client = reqwest::Client::new();
-        let num_keys = config.api_keys.len();
-        let mut last_error = String::new();
+            let choice = &resp["choices"][0];
+            let tool_calls = &choice["message"]["tool_calls"];
 
-        for attempt in 0..num_keys {
-            let Some(api_key) = config.next_key() else {
-                break;
-            };
+            if tool_calls.is_array() && !tool_calls.as_array().unwrap().is_empty() {
+                /* La IA quiere llamar tools — ejecutarlas */
+                messages.push(choice["message"].clone());
+                let tool_results = process_tool_calls(
+                    pool, http_client, stripe_key, tool_calls, &mut rich_messages,
+                ).await;
 
-            let key_hint = &api_key[..api_key.len().min(8)];
-
-            let resp = client
-                .post(&config.api_url)
-                .header("Authorization", format!("Bearer {api_key}"))
-                .header("Content-Type", "application/json")
-                .json(&body)
-                .send()
-                .await;
-
-            match resp {
-                Err(e) => {
-                    tracing::error!("AI key {key_hint}... intento {}/{num_keys}: error red: {e}", attempt + 1);
-                    last_error = format!("Error de red: {e}");
+                if tool_results.iter().any(|r| r.contains("\"status\":\"escalated\"")) {
+                    needs_escalation = true;
                 }
-                Ok(response) => {
-                    if !response.status().is_success() {
-                        let status = response.status();
-                        let text = response.text().await.unwrap_or_default();
-                        tracing::error!("AI key {key_hint}... intento {}/{num_keys}: HTTP {status}: {text}", attempt + 1);
-                        last_error = format!("HTTP {status}");
-                        continue;
-                    }
 
-                    let json: serde_json::Value = match response.json().await {
-                        Ok(j) => j,
-                        Err(e) => {
-                            tracing::error!("AI: error parseando JSON: {e}");
-                            last_error = format!("Parse error: {e}");
-                            continue;
-                        }
-                    };
-
-                    let text = json["choices"][0]["message"]["content"]
-                        .as_str()
-                        .unwrap_or("");
-
-                    if text.is_empty() {
-                        tracing::warn!("AI: respuesta vacía de la API, reintentando");
-                        last_error = "Respuesta vacía".to_string();
-                        continue;
-                    }
-
-                    /* [T-6] Detectar tag [ESCALATE] en respuesta de IA.
-                     * Si la IA incluye [ESCALATE], strip del texto visible y señalar escalación. */
-                    let (clean_text, needs_escalation) = parse_escalation(text);
-                    return Ok(AiResponse {
-                        text: clean_text,
-                        needs_escalation,
-                    });
+                for (tool_call_id, result) in tool_results_with_ids(tool_calls, &tool_results) {
+                    messages.push(serde_json::json!({
+                        "role": "tool",
+                        "tool_call_id": tool_call_id,
+                        "content": result
+                    }));
                 }
+
+                tracing::debug!("AI tool call iteration {}, {} tools executed", iteration + 1, tool_results.len());
+                continue;
             }
+
+            /* Respuesta de texto final (sin tool calls) */
+            let text = choice["message"]["content"].as_str().unwrap_or("");
+            if text.is_empty() {
+                return Err("AI: respuesta vacía después de tool calls".to_string());
+            }
+
+            let (clean_text, text_escalation) = parse_escalation(text);
+            return Ok(AiResponse {
+                text: clean_text,
+                needs_escalation: needs_escalation || text_escalation,
+                rich_messages,
+            });
         }
 
-        tracing::error!("AI: todas las keys fallaron ({num_keys} intentos). Último error: {last_error}");
+        /* Si agotamos iteraciones de tools, generar sin tools */
+        let resp = call_groq_api(config, &messages, None).await?;
+        let text = resp["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("Disculpa, hubo un problema procesando tu solicitud.");
+        let (clean_text, text_escalation) = parse_escalation(text);
         Ok(AiResponse {
-            text: "Disculpa, estamos teniendo problemas técnicos momentáneos. \
-                   Un miembro del equipo te atenderá en breve."
-                .to_string(),
-            needs_escalation: true,
+            text: clean_text,
+            needs_escalation: needs_escalation || text_escalation,
+            rich_messages,
         })
     }
+}
+
+/* Llamar a Groq API con retry por keys. Retorna el JSON completo de la respuesta. */
+async fn call_groq_api(
+    config: &AiChatConfig,
+    messages: &[Value],
+    tools: Option<&Value>,
+) -> Result<Value, String> {
+    let mut body = serde_json::json!({
+        "model": config.model,
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 800,
+        "top_p": 0.9
+    });
+
+    if let Some(t) = tools {
+        body["tools"] = t.clone();
+    }
+
+    let client = reqwest::Client::new();
+    let num_keys = config.api_keys.len();
+    let mut last_error = String::new();
+
+    for attempt in 0..num_keys {
+        let Some(api_key) = config.next_key() else { break };
+        let key_hint = &api_key[..api_key.len().min(8)];
+
+        let resp = client
+            .post(&config.api_url)
+            .header("Authorization", format!("Bearer {api_key}"))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await;
+
+        match resp {
+            Err(e) => {
+                tracing::error!("AI key {key_hint}... intento {}/{num_keys}: error red: {e}", attempt + 1);
+                last_error = format!("Error de red: {e}");
+            }
+            Ok(response) => {
+                if !response.status().is_success() {
+                    let status = response.status();
+                    let text = response.text().await.unwrap_or_default();
+                    tracing::error!("AI key {key_hint}... intento {}/{num_keys}: HTTP {status}: {text}", attempt + 1);
+                    last_error = format!("HTTP {status}");
+                    continue;
+                }
+                let json: Value = response.json().await
+                    .map_err(|e| format!("AI parse error: {e}"))?;
+                return Ok(json);
+            }
+        }
+    }
+
+    Err(format!("AI: todas las keys fallaron ({num_keys} intentos). Último error: {last_error}"))
+}
+
+/* [T-2] Ejecutar tool calls y recopilar rich messages.
+ * Retorna Vec<String> con los resultados JSON de cada tool. */
+async fn process_tool_calls(
+    pool: &PgPool,
+    http_client: &reqwest::Client,
+    stripe_key: Option<&str>,
+    tool_calls: &Value,
+    rich_messages: &mut Vec<RichMessage>,
+) -> Vec<String> {
+    let Some(calls) = tool_calls.as_array() else {
+        return Vec::new();
+    };
+
+    let mut results = Vec::with_capacity(calls.len());
+    for call in calls {
+        let name = call["function"]["name"].as_str().unwrap_or("");
+        let args_str = call["function"]["arguments"].as_str().unwrap_or("{}");
+        let args: Value = serde_json::from_str(args_str).unwrap_or_default();
+
+        let result = ai_tools::execute_tool(pool, http_client, stripe_key, name, &args).await;
+        if let Some(rm) = result.rich_message {
+            rich_messages.push(rm);
+        }
+        results.push(result.tool_result_json);
+    }
+    results
+}
+
+/* Emparejar IDs de tool_calls con sus resultados */
+fn tool_results_with_ids<'a>(
+    tool_calls: &'a Value,
+    results: &'a [String],
+) -> Vec<(&'a str, &'a str)> {
+    let Some(calls) = tool_calls.as_array() else {
+        return Vec::new();
+    };
+    calls
+        .iter()
+        .zip(results.iter())
+        .map(|(call, result)| {
+            let id = call["id"].as_str().unwrap_or("");
+            (id, result.as_str())
+        })
+        .collect()
 }
 
 /* [T-6] Detecta y elimina el tag [ESCALATE] de la respuesta de la IA.
@@ -249,7 +322,7 @@ fn parse_escalation(raw: &str) -> (String, bool) {
 async fn build_system_prompt(pool: &PgPool, session_id: Uuid) -> String {
     let mut prompt = String::from(
         /* [T-7] El agente NO debe revelar que es IA. Se presenta como miembro del equipo.
-         * Esto aumenta la confianza del visitante y evita sesgos contra chatbots. */
+         * [T-2] Incluye instrucciones de tool use para mostrar servicios y crear facturas. */
         "Eres un miembro del equipo de Nakomi Studio, una agencia de desarrollo web y diseño. \
          Tu nombre es Nakomi. Responde de forma concisa, amable y profesional en el mismo \
          idioma que el usuario. Nunca menciones que eres una inteligencia artificial, chatbot, \
@@ -257,14 +330,19 @@ async fn build_system_prompt(pool: &PgPool, session_id: Uuid) -> String {
          responde que eres parte del equipo de atención de Nakomi Studio. \
          Si la pregunta requiere atención especializada (presupuesto específico, problema \
          técnico complejo, reunión), indica que derivarás al especialista del equipo.\n\n\
-         REGLA DE ESCALACIÓN: Si detectas alguna de estas situaciones, inicia tu respuesta \
+         HERRAMIENTAS DISPONIBLES:\n\
+         - show_service: Muestra una tarjeta visual de servicio al cliente. Úsala cuando menciones un servicio específico.\n\
+         - list_services: Lista todos los servicios. Úsala cuando el cliente pida ver opciones.\n\
+         - create_invoice: Genera factura con link de pago. SOLO cuando el cliente confirme que quiere pagar y tengas su email.\n\
+         - request_human_assistance: Escala a un humano. Úsala en los casos de la REGLA DE ESCALACIÓN.\n\
+         Usa las herramientas de forma natural en la conversación. No menciones las herramientas directamente al cliente.\n\n\
+         REGLA DE ESCALACIÓN: Si detectas alguna de estas situaciones, usa request_human_assistance O inicia tu respuesta \
          con el tag exacto [ESCALATE] (el tag se eliminará antes de mostrarse al usuario):\n\
          - El cliente pide hablar con un humano\n\
          - El cliente está frustrado o insatisfecho después de varias respuestas\n\
          - El tema es legal, contractual, o sobre disputas de pago\n\
          - No puedes resolver la solicitud con la información disponible\n\
-         - El cliente reporta un problema técnico urgente que requiere intervención manual\n\
-         Ejemplo: '[ESCALATE] Entiendo tu situación, voy a conectarte con un especialista...'\n\n"
+         - El cliente reporta un problema técnico urgente que requiere intervención manual\n\n"
     );
 
     /* Agregar contexto de servicios */
