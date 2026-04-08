@@ -92,6 +92,8 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~hostingCardTitulo debería estar el nombre del hosting, en vez del nombre del plan.~~ ✅ (074A-63: titulo ahora muestra dominio o client_name, plan va como subtitulo)
 
-- hostingTabs no se ve como proyectosTabs, es una inconsistencia visual. 
+- ~~hostingTabs no se ve como proyectosTabs, es una inconsistencia visual.~~ ✅ (074A-64: variante="texto" + type="button" + hover rule)
 
-- No veo que se pueda gestionar los hosting de prueba. 
+- ~~No veo que se pueda gestionar los hosting de prueba.~~ ✅ (074A-65: CRUD completo — edit modal + delete en menú contextual, backend PUT/DELETE admin-only)
+
+- No me sale para gestionar los planes de los servicios en el cms. 
