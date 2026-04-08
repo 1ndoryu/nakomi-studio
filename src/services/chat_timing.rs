@@ -165,6 +165,8 @@ impl ChatTimingService {
 
     /// Registra una sesión en el timing service. Devuelve el sender para
     /// enviar eventos desde el handler WS. Spawna la tarea de timing.
+    /// [T-4] Si la sesión ya está registrada (otra pestaña/dispositivo), retorna
+    /// el tx existente sin crear nueva tarea de timing.
     #[must_use]
     pub fn register_session(
         &self,
@@ -172,6 +174,11 @@ impl ChatTimingService {
         visitor_name: Option<String>,
         deps: TimingSessionDeps,
     ) -> mpsc::Sender<TimingEvent> {
+        /* [T-4] Reutilizar timing loop existente si otra conexión ya registró la sesión */
+        if let Some(existing) = self.sessions.get(&session_id) {
+            return existing.clone();
+        }
+
         let (tx, rx) = mpsc::channel::<TimingEvent>(64);
         self.sessions.insert(session_id, tx.clone());
 

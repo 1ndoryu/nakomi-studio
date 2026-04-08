@@ -131,8 +131,9 @@ async fn handle_visitor_ws(
         },
     );
 
-    /* Procesar mensajes del visitante */
-    process_visitor_messages(
+    /* Procesar mensajes del visitante. Retorna true si el cierre fue explícito
+     * (usuario cerró chat o rate limit forzó cierre). */
+    let explicit_close = process_visitor_messages(
         &mut receiver,
         &state,
         session_id,
@@ -141,8 +142,14 @@ async fn handle_visitor_ws(
     )
     .await;
 
-    /* Cleanup */
-    state.chat_timing.unregister_session(session_id);
+    /* [T-4] Cleanup multi-conexión: solo cerrar sesión si soy la última conexión
+     * o si el usuario cerró explícitamente. */
+    let remaining = state.chat_hub.unsubscribe(session_id);
+    if explicit_close || remaining == 0 {
+        let _ = timing_tx.send(TimingEvent::Disconnect).await;
+        state.chat_timing.unregister_session(session_id);
+        let _ = state.chat_hub.close_session(session_id).await;
+    }
     send_task.abort();
 }
 
@@ -176,15 +183,16 @@ async fn send_history(
     Ok(())
 }
 
-/* Loop principal de procesamiento de mensajes del visitante.
- * Aplica rate limiting, persiste mensajes y envía eventos al timing service. */
+/* [T-4] Loop principal de procesamiento de mensajes del visitante.
+ * Aplica rate limiting, persiste mensajes y envía eventos al timing service.
+ * Retorna true si el cierre fue explícito (usuario o rate limit), false si el stream terminó. */
 async fn process_visitor_messages(
     receiver: &mut futures::stream::SplitStream<WebSocket>,
     state: &AppState,
     session_id: uuid::Uuid,
     visitor_id: &str,
     timing_tx: &tokio::sync::mpsc::Sender<TimingEvent>,
-) {
+) -> bool {
     while let Some(Ok(msg)) = receiver.next().await {
         let Message::Text(text) = msg else {
             continue;
@@ -209,8 +217,8 @@ async fn process_visitor_messages(
                         if let Some(w) = rate_msg {
                             let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
                         }
-                        let _ = state.chat_hub.close_session(session_id).await;
-                        return;
+                        /* [T-4] Rate limit forzó cierre — cierre explícito para todas las conexiones */
+                        return true;
                     }
                     RateCheckResult::Warning => {
                         if let Some(w) = rate_msg {
@@ -234,9 +242,9 @@ async fn process_visitor_messages(
                 }
             }
             WsClientMessage::Close => {
+                /* [T-4] Cierre explícito del usuario — cierra para todas las conexiones */
                 let _ = timing_tx.send(TimingEvent::Disconnect).await;
-                let _ = state.chat_hub.close_session(session_id).await;
-                return;
+                return true;
             }
             /* [T-2] Acciones desde botones de mensajes ricos.
              * El frontend envía action_type + payload que se re-inyectan
@@ -254,6 +262,8 @@ async fn process_visitor_messages(
             _ => {} /* join/toggle_ai son solo para staff */
         }
     }
+    /* [T-4] Stream terminó sin cierre explícito (pestaña cerrada, red caída) */
+    false
 }
 
 /* ============================================================

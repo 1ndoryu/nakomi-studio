@@ -5,6 +5,7 @@
  * (visitante/cliente + staff). Los mensajes se persisten en BD y se broadcastean. */
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use dashmap::DashMap;
 use sqlx::PgPool;
@@ -24,6 +25,7 @@ pub type SessionSender = broadcast::Sender<WsServerMessage>;
 
 /// Hub central de chat: estado en memoria de sesiones activas + broadcasters.
 /// [064A-68] Canal global de staff para notificar nuevas sesiones en tiempo real.
+/// [T-4] `connection_counts`: refcount por sesión para multi-conexión (tabs/dispositivos).
 #[derive(Clone)]
 pub struct ChatHub {
     pool: PgPool,
@@ -31,6 +33,8 @@ pub struct ChatHub {
     channels: Arc<DashMap<Uuid, SessionSender>>,
     /* Canal global: todos los staff conectados reciben session_new aquí */
     staff_channel: SessionSender,
+    /* [T-4] Contador de conexiones WS activas por sesión (tabs/dispositivos) */
+    connection_counts: Arc<DashMap<Uuid, AtomicUsize>>,
 }
 
 impl ChatHub {
@@ -41,6 +45,7 @@ impl ChatHub {
             pool,
             channels: Arc::new(DashMap::new()),
             staff_channel: staff_tx,
+            connection_counts: Arc::new(DashMap::new()),
         }
     }
 
@@ -53,10 +58,30 @@ impl ChatHub {
             .clone()
     }
 
-    /// Suscribirse al canal de una sesión (para recibir mensajes)
+    /// Suscribirse al canal de una sesión (para recibir mensajes).
+    /// [T-4] Incrementa contador de conexiones activas para refcount multi-tab.
     #[must_use]
     pub fn subscribe(&self, session_id: Uuid) -> broadcast::Receiver<WsServerMessage> {
+        self.connection_counts
+            .entry(session_id)
+            .or_insert_with(|| AtomicUsize::new(0))
+            .fetch_add(1, Ordering::Relaxed);
         self.get_or_create_channel(session_id).subscribe()
+    }
+
+    /// [T-4] Decrementar refcount de conexiones WS. Retorna cuántas quedan.
+    /// Solo cerrar sesión si retorna 0 (última conexión).
+    #[must_use]
+    pub fn unsubscribe(&self, session_id: Uuid) -> usize {
+        if let Some(counter) = self.connection_counts.get(&session_id) {
+            let prev = counter.fetch_sub(1, Ordering::Relaxed);
+            if prev <= 1 {
+                self.connection_counts.remove(&session_id);
+                return 0;
+            }
+            return prev - 1;
+        }
+        0
     }
 
     /// Eliminar canal cuando la sesión se cierra
@@ -305,11 +330,12 @@ impl ChatHub {
         Ok(session)
     }
 
-    /// Cerrar sesión
+    /// Cerrar sesión. [T-4] También limpia el refcount de conexiones.
     pub async fn close_session(&self, session_id: Uuid) -> Result<(), AppError> {
         ChatRepository::close_session(&self.pool, session_id).await?;
         self.broadcast(session_id, WsServerMessage::SessionClosed { session_id });
         self.remove_channel(session_id);
+        self.connection_counts.remove(&session_id);
         Ok(())
     }
 
