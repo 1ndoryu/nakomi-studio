@@ -86,7 +86,7 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
                         >
                             {post.featured_image && (
                                 <div className="listaBlogImagen">
-                                    <img src={post.featured_image} alt={post.title} />
+                                    <img src={post.featured_image} alt={post.title} loading="lazy" />
                                 </div>
                             )}
                             <div className="listaBlogInfo">

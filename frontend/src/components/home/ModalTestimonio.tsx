@@ -98,7 +98,7 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                             <div className="testimonioFotoWrapper">
                                 <label htmlFor="testimonioFoto" className="testimonioFotoLabel">
                                     {previewFoto ? (
-                                        <img src={previewFoto} alt="Preview" className="testimonioFotoPreview" />
+                                        <img src={previewFoto} alt="Preview" className="testimonioFotoPreview" loading="lazy" />
                                     ) : (
                                         <div className="testimonioFotoPlaceholder">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

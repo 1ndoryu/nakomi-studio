@@ -49,7 +49,7 @@ export const SeccionTestimonios: React.FC = () => {
                             <article key={`${item.id}-${index}`} className="testimonioCard">
                                 <p className="testimonioTexto">{item.texto}</p>
                                 <div className="testimonioAutor">
-                                    {item.avatar && <img src={item.avatar} alt={item.autor} className="autorAvatar" />}
+                                    {item.avatar && <img src={item.avatar} alt={item.autor} className="autorAvatar" loading="lazy" />}
                                     <div className="autorInfo">
                                         <span className="autorNombre">{item.autor}</span>
                                         <span className="autorCargo">{item.cargo}</span>

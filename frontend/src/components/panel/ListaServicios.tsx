@@ -78,7 +78,7 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
                         >
                             {svc.image_url && (
                                 <div className="listaServiciosImagen">
-                                    <img src={svc.image_url} alt={svc.title} />
+                                    <img src={svc.image_url} alt={svc.title} loading="lazy" />
                                 </div>
                             )}
                             <div className="listaServiciosInfo">

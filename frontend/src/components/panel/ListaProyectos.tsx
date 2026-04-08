@@ -76,7 +76,7 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
                         >
                             {proyecto.featured_image && (
                                 <div className="listaProyectosImagen">
-                                    <img src={proyecto.featured_image} alt={proyecto.title} />
+                                    <img src={proyecto.featured_image} alt={proyecto.title} loading="lazy" />
                                 </div>
                             )}
                             <div className="listaProyectosInfo">

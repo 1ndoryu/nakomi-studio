@@ -89,7 +89,7 @@ export const UploadImage: React.FC<UploadImageProps> = ({
             >
                 {valor ? (
                     <div className="uploadImagenPreview">
-                        <img src={valor} alt="Preview" />
+                        <img src={valor} alt="Preview" loading="lazy" />
                         <Button
                             variante="texto"
                             tamano="pequeno"

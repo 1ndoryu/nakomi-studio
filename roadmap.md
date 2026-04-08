@@ -45,7 +45,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ### SEO y mejoras (plan: plan-seo-completo-2026-04-04.md)
 
-- 074A-14: SEO Fase 2 — Performance (lazy loading, image optimization, Core Web Vitals)
+- ~~074A-14: SEO Fase 2 — Performance (lazy loading, image optimization, Core Web Vitals)~~ ✅ (074A-14: bundle splitting 6 chunks, lazy loading en 13 imágenes, preconnect Stripe)
 
 ### Bugs / UX reportados por usuario
 

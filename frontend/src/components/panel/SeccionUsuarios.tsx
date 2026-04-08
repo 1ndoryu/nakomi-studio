@@ -252,7 +252,7 @@ function UserRow({ user, onChangeRole, onChangeStatus }: {
             <td className="usuariosCeldaUsuario">
                 <div className="usuariosAvatar">
                     {user.avatar_url
-                        ? <img src={user.avatar_url} alt="" className="usuariosAvatarImg" />
+                        ? <img src={user.avatar_url} alt="" className="usuariosAvatarImg" loading="lazy" />
                         : <span className="usuariosAvatarPlaceholder">
                             {(user.display_name || user.email)[0].toUpperCase()}
                           </span>

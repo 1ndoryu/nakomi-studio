@@ -81,7 +81,7 @@ export const ChatWidget: React.FC = () => {
                 aria-label="Abrir chat"
                 type="button"
             >
-                <img src={AVATAR_SRC} alt="" className="chatWidgetBubbleAvatar" />
+                <img src={AVATAR_SRC} alt="" className="chatWidgetBubbleAvatar" loading="lazy" />
                 <span className="chatWidgetBubbleTexto">Chat</span>
             </Button>
 
@@ -167,7 +167,7 @@ function ChatWidgetMessages({
                         )}
                         {isAi ? (
                             <div className="chatWidgetAiRow">
-                                <img src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" />
+                                <img src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
                                 {bubble}
                             </div>
                         ) : (
@@ -186,7 +186,7 @@ function ChatWidgetMessages({
                     )}
                     {typing.sender === 'ai' ? (
                         <div className="chatWidgetAiRow">
-                            <img src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" />
+                            <img src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
                             <div className="chatWidgetMsgBubble chatWidgetMsgBubbleOther chatWidgetTyping">
                                 <span className="chatWidgetTypingDots">
                                     <span />

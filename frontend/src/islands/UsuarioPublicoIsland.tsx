@@ -60,7 +60,7 @@ function CardReview({review}: {review: PublicReviewItem}) {
             <div className="perfilCardReviewHeader">
                 <div className="perfilCardReviewAutor">
                     {review.author_avatar ? (
-                        <img src={review.author_avatar} alt="" className="perfilCardReviewAvatar" />
+                        <img src={review.author_avatar} alt="" className="perfilCardReviewAvatar" loading="lazy" />
                     ) : (
                         <div className="perfilCardReviewAvatarPlaceholder">
                             {(review.author_name || '?')[0].toUpperCase()}
@@ -175,7 +175,7 @@ export function UsuarioPublicoIsland() {
                     <div className="perfilPublicoHeader">
                         <div className="perfilPublicoAvatarZona">
                             {profile.avatar_url ? (
-                                <img src={profile.avatar_url} alt={nombre} className="perfilPublicoAvatar" />
+                                <img src={profile.avatar_url} alt={nombre} className="perfilPublicoAvatar" loading="lazy" />
                             ) : (
                                 <div className="perfilPublicoAvatarPlaceholder">
                                     {nombre[0].toUpperCase()}
