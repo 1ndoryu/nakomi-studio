@@ -72,7 +72,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~SIGO SIN VER NINGUN FUCKING DATO DE PRueBA EN EL USUARIO CLIEnte~~ ✅ (074A-55: query keys dinámicas — cache se invalida al cambiar rol)
 
-- Tambien necesito delegaciones y ordenes para tomar de prueba para el usuario empleado.
+- ~~Tambien necesito delegaciones y ordenes para tomar de prueba para el usuario empleado.~~ ✅ (074A-56: 2o empleado, orden awaiting_assignment, 3 delegaciones)
 
-- La tabla de hosting se ve mal, no es asi como debería de verse. Si debería de ser algo similar a proyectosLista.
+- ~~La tabla de hosting se ve mal, no es asi como debería de verse. Si debería de ser algo similar a proyectosLista.~~ ✅ (074A-57: rediseño cards flex)
 
