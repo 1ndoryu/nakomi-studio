@@ -74,7 +74,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ### Fase II
 - ~~T-9: Clientes registrados (detección JWT, contexto de servicios/pedidos/hosting, reportes)~~ ✅
-- T-10: IA intermediaria pedidos (toggle por orden, contexto completo, resúmenes automáticos)
+- ~~T-10: IA intermediaria pedidos (toggle por orden, contexto completo, resúmenes automáticos)~~ ✅
 
 
 
