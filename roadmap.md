@@ -40,31 +40,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Plan de chat: `Agente/planes/plan-live-chat-2026-04-04.md` (5 fases) — ✅ completado (streaming IA = mejora futura)
 > Plan de hosting: `Agente/planes/plan-hosting-coolify-2026-04-04.md` (5 fases) — Fases 3-4 ✅, Fases 1-2-5 bloqueadas por infraestructura externa (VPS2, DNS, Google Drive OAuth)
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
-
-- En el cms en los botones de 3 puntos no salen opciones de eliminar el contenido, solo archivar, falta opciones directa para eliminar, cambiar status a publicar, etc. → ✅ 084A-10 completada
-- elimina la especificacion de color y borde en .editorServicioStatusBtn--activo → ✅ 084A-17 completada
-- En la lista de proyecto no se ve lo que hay en el cms se ve otra cosa. → ✅ 084A-11 completada
-- En el panel al recergar debería permanecer en la misma tab incluyendo la tab interna, no ir siempre a la primera tab. → ✅ 084A-9 completada
-- No veo contenido de prueba para los reembolso, necesito ver como se ven los reembolsos. → ✅ 084A-14 completada (fixture TOML + seed cleanup)
-
-- El boton de 3 puntos de las opciones de hostig no se entiende, claramente es un desastre tantas opciones en vez de ser mas claro "cambiar estado" y luego abrir un modal, en vez de tener los estados sueltos. → ✅ 084A-13 completada
-- Nada de lo que esta en hostingCard tiene que estar en (--text-xs); subelo  a sm → ✅ 084A-18 completada
-- .hostingCardIcono quita el fondo negro y usa bg accent y pon 140px de ancho. → ✅ 084A-19 completada 
-- No hay consistencia visual entre todos los modales → ✅ 084A-8 completada
-- la nota en chatInfoSeccion chatInfoSeccionNotas no esta tomando el ancho completo. → ✅ 084A-15 completada
-- .hostingEventos no se que es pero quita eso, lo que sea que sea eso no tiene porque verse en un modal. → ✅ 084A-16 completada 
-- En modalCompraContenido el precio debería actualizarse segun el tipo de pago que se hará hay que revisar profundamente esto para ver que funcione.  → ✅ 084A-12 completada
-- Cuando elijo un plan de hosting abre el chat en vez de abrir modalCompraContenido → ✅ 084A-20 completada
-- El historial de pago se ve muy mal, debería verse profesional, como una tabla o algo. → ✅ 084A-21 completada
-
-- Se requiere hacer una auditoría de principios solid a todo el front, todos los archivos para identificar inconsistencias, cosas que deberían ser componentes y no lo son, y cosas que no detecta glory sentinel. → ✅ 084A-22 completada
-- Uncaught SyntaxError: The requested module '/src/components/panel/OrdenDetalle.tsx?t=1775654447341' does not provide an export named 'OrdenDetalle' (at SeccionProyectos.tsx:13:9) → ✅ 084A-23 — Error transitorio de Vite HMR, exportación es correcta (named export)
-- Cuando llegue un mensaje nuevo estando logeada como admin debería sonar un sonido, y generar una notificación. → ✅ 084A-26 completada 
-- Las notificaciones se ven mal, se hace un fondo negro al poner el cursor, en vez de bg-accent. Las notificaciones dberían marcarse como leida al abrirlas, el boton de leerlas es innecesario. → ✅ 084A-27 completada 
-- Los planes de los hosting no necesitan modos de pago "modalCompraModos" Lo que si necesita es elegir cuantos meses pagar y generar un descuesto por cada mes pago (maximo 33%) → ✅ 084A-28 completada
-- Cuando se esta logeado como admin, en todos los contenidos editables a poner el mouse debería mostrar un boton de editar que abra el modal de editar del cms, en la esquina derecha, deberia ser un boton de 3 puntos con varias opciones, editar, eliminar, archivar, etc. → ✅ 084A-29 completada
-
-- Algo pasa con los servicios y el contenido, primero carga el contenido que habiamos hecho al principio sin el cms y luego aparece el que gestionamos con el cms, aparece rapidamente. → ✅ 084A-30 completada
+> 084A-24: Contabo API + Stripe checkout + VPS panel admin + resource stats → ✅ completada (3 commits)
 
 ## Hosting 
 
@@ -80,7 +56,38 @@ He agregado un mcp de stripe con el que creo que te puedes encargar de configura
 
 Voy a necesitar testear como se ve el panel de hosting, claramente esta es una tarea titanica pero podemos empezar por algo sencillo, no agregaremos gestor de archivos ni nada, algo basico, que el cliente pueda ver la info de su hosting (supongo que simularemos la estadisticas o algo porque como un vps y los hosting estaran en despliegues de coolify no se como podemos hacer como hacen los hosting tradicioanles que claramente son hosting compartidos para mostrar estadistica de almacenamiento, uso cpu, y estas cosas si que sea el uso real de todos los despliegues y solo sea el despliegue del cliente), claramente me estoy dejando muchisimas cosas por fuera, tienes que intuir que me dejo por fuera para que esto sea un servicio de hosting profesional y completo.
 
+## Notas adicionales sobre el plan de hosting
+
+- Algo que me falto aclarar que para ahorrar costos, comprar vps de contabo solo se puede hacer en caso que tengamos una vps que ya no soporta mas despliegues, tenemos que controlar la ram y uso cpu, esto implica otro plan de optimización para revisar los despliegues actuales. La api de contabo debe documentarse bien, es para los dominios, dns, etc, todo lo que pueda ser necesario para crear un servicio de hosting 100% funcional y completo. Lo mas importante, la acciones de compra de cualquier cosa de contabo requiere confirmación directa del usuario, mejor, no autorizar la IA ni ningun proceso automatico para hacer compras, aún no, hasta que todo este revisado y asegurado de que va a funcionar.
+
+- Esto sería la tarea final de hosting y tambien es una tarea gigante, se necesita revisiones de seguridad profunda, asegurarse que no hayan hackeos, caidas del vps completo debido a malas acciones de los usuarios, etc, revisar todo detadallamente y hacer un plan detallado de preveción y auditoría de seguridad.
+
 ## Chatbot
 
-El chat bot parece funcionar, pero necesitamos ocntrolarlo mejor, en el panel, necesitamos controlar 
+- El chat bot parece funcionar, pero necesitamos controlarlo mejor, en el panel, necesitamos controlar todas las acciones que puede hacer, darles la capacidad de crear facturas, esta es otra tarea grande, se necesita buena planificación y todo debe ser controlable con una interfaz minimalista y moderna en el panel. Probablemente me olvide de muchas cosas, asi que ayudame a intuir que falta.
+
+A continuación, todas estas tareas tienen que poder testearse y comprobarse empiricamente, es decir, tener test o alguna forma de validarse como cumplidas.
+
+Fase I - La atención en el front, clientes que entran a la pagina, resumen todo lo necesario para captar clientes.
+
+Nota: usa este proyecto para la memoria del chatbot, servirá la organizar los contextos eficientemente, en realidad no se si es util o no https://github.com/milla-jovovich/mempalace
+
+1. Hace falta que los clientes puedan enviar imagenes, y archivos, hay que revisar como groq gestiona los archivos para que los agentes puedan leer pdf, documentos, audios, etc, todo tiene que ser manejable. 
+
+2. Hace falta sistema antispam, antiabuso, que se detecte cuando un tema del que habla del usuario no tiene que ver con el tema (usando otro modelo mas pequeño que revise si el mensaje del cliente es digno de procesarse al modelo mas grande), evitar que el cliente mande muchos mensajes en poco tiempo, agregar un tiempo de espera de 3-10 segundos y detenerse mientras el cliente escribe, agregar una inteligencia para detectarse si debe esperar que el cliente escriba o no, pues, este sistema, tiene que emular lo que haría un humano, a veces un cliente manda un mensaje tipo, "tengo un proyecto que es sobre..." y escribe varios mensajes explicando, en esos casos es importante las pausas para que el cliente escriba, no caer tampoco en un vacío donde el modelo no responde proque se quedo esperando que el cliente respondiera.  Esta inteligencia evitara que se genere una respuesta instanea a cada mensaje que el usuario escriba.
+
+3. Capacidades de generar un pedido, solicitar pagos supongo que generando una factura, el contexto tiene que estar optimizado, tiene que leer contenido real de los servicios que esta puestos en el cms, tiene tener acceso a los proyectos en caso de que el cliente pida trabajos de ejemplo, la forma en la que envia toda esta informacion tiene que ser un mensaje especial, no texto plano, en el panel tiene que ser visible cada mensaje especial, cuando genera una factura, cuando comparte un servicio o proyecto, esos mensajes tienen que contener botones de accion, el chat bot tiene que ser capaz de detectar esa acción y procesarla. No se de que me estoy olvidando. 
+
+4. Hay que asegurarse de que el chatbot pueda guardar informacion del usuario en base a su ip, dispositivo, cuenta y generar contexto del usuario para cuando vuelva, tiene que poder crearle una cuenta con su correo, al acceder el usuario con su correo se le pedira una constraseña. Que no se necesite cuenta para realizar pedidos, comprar servicios, para esto lo vital sería capturar el correo del cliente para que después en el panel de login cree una contraseña. Esto requiere seguridad adicional y que el sistema de correo funcione, en caso de que el cliente quiera logearse y no haya puesto una contraseña porque vuelva después debería poder registrarse con el correo que uso para comprar y luego al registrarse tendrá su pedido. 
+
+5. El chatbot tiene que identificar al usuario ya logeado (si es posible de usuarios sin registrarse), los contextos de las conversaciones pasadas tienen que resumirse en la info del usuario para que el chatbot tenga contexto. Para los admin se necesitan contextos distinto pues lo admin y empleados claro que no son clientes, el chatbot tiene que organizar eficientemente todo para que los admin puedan consultar la informacion que necesitan e igual con los empleados. 
+
+6. El mismo chat en todas las ventanas, pestañas y dispositivos para el mismo usuario, nada de una sesion por cada ventana o dispositivo. 
+
+Fase II
+
+Con l
+
+
+
 
