@@ -42,9 +42,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 > 084A-24: Contabo API + Stripe checkout + VPS panel admin + resource stats → ✅ completada (3 commits)
 
-## Hosting — ✅ Plan v2 completado (094A-1 a 094A-10)
+## Hosting — ✅ Plan v2 completado (094A-1 a 094A-11)
 
-> Plan v2: `Agente/planes/plan-hosting-v2-2026-04-09.md` — ✅ 10 tareas completadas
+> Plan v2: `Agente/planes/plan-hosting-v2-2026-04-09.md` — ✅ 10 tareas + UI polish
 > Auditoría de seguridad: `Agente/documentacion/hosting/auditoria-seguridad-hosting-2026-04-09.md`
 > Completadas: `Agente/completados/tareas-2026-04-09.md`
 >
@@ -52,34 +52,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > SSH/PuTTY, upgrade/downgrade, soporte, stats reales uptime, auditoría seguridad (6 fixes), 21 tests unitarios.
 
 ### Fases futuras de hosting (no bloqueantes)
-
-- Administración de archivos (File Manager via Coolify)
-- Control DNS avanzado (API Contabo DNS)
-- Backups automáticos (Google Drive OAuth — bloqueado por infraestructura)
-- Multi-VPS: serverIp dinámico desde backend (cuando haya VPS2)
-- Monitoreo real de storage/bandwidth (cAdvisor/Coolify metrics)
-- Paginación en `list_subscriptions` (cuando haya >100 suscripciones)
-- TTL en `stripe_processed_events` (cleanup job)
-
-## Otra nota sobre el hosting
-
-- El modal de Elige tu plan de hosting se ve mal, los planes tiene que ser mas compactos y simples.
-
-- Las secciones en los de detalles de hosting deberían tener este diseño. 
-
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    padding: var(--spacing-lg);
-    background: white;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-default);
-
-la parte de dominio ssl se ve mal se siente ocmo que le faltara estilos, el texto de los eventos no se ve es negro y el fondo es negro.
-
-- La tarjeta de hosting en la lista de hosting aparece "cargando estadisticas" a pesar de que las estadisticas fueron removidas.
-
-- Hay inconsistencia visual en los botoenes de volver, todos los botones de volver deberían ser como .ordenDetalleVolver
 
 ## Chatbot
 
