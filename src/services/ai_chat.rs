@@ -67,14 +67,13 @@ impl AiChatConfig {
         }
 
         let model = std::env::var("AI_MODEL")
-            .unwrap_or_else(|_| "openai/gpt-oss-120b".to_string());
+            .unwrap_or_else(|_| "meta-llama/llama-4-maverick-17b-128e-instruct".to_string());
 
-        /* [084A-27] Whitelist de modelos Groq, ordenada por inteligencia descendente.
-         * Los modelos más capaces primero — el sistema los usa como cadena de fallback
-         * cuando el modelo primario falla por rate limit (429).
-         * Actualizado 084A-30: eliminados deprecados (mixtral, llama-3.2-90b-vision, gemma2).
-         * Añadidos: openai/gpt-oss-120b (120B, el más capaz), llama-4-scout, qwen3-32b, gpt-oss-20b. */
+        /* [084A-34] Whitelist de modelos Groq, ordenada por inteligencia descendente.
+         * Maverick (400B MoE, 128 expertos) es el más capaz, seguido de GPT-OSS-120B.
+         * El sistema usa esta lista como cadena de fallback por rate limit (429). */
         let allowed_models = [
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
             "openai/gpt-oss-120b",
             "meta-llama/llama-4-scout-17b-16e-instruct",
             "qwen/qwen3-32b",
@@ -86,7 +85,7 @@ impl AiChatConfig {
             model
         } else {
             tracing::warn!("Modelo AI no permitido: {model}, usando default");
-            "openai/gpt-oss-120b".to_string()
+            "meta-llama/llama-4-maverick-17b-128e-instruct".to_string()
         };
 
         let api_url = std::env::var("AI_API_URL").unwrap_or_else(|_| {
@@ -114,12 +113,12 @@ impl AiChatConfig {
         Some(&self.api_keys[idx])
     }
 
-    /* [084A-27] Cadena de modelos fallback ordenados por inteligencia.
-     * Cuando el modelo primario falla por rate limit (429), se intenta el siguiente.
-     * El modelo primario (self.model) va primero, seguido por los demás en orden descendente.
-     * Lista actualizada 084A-30: eliminados deprecados, añadidos GPT-OSS-120B y Llama 4. */
+    /* [084A-34] Cadena de modelos fallback ordenados por inteligencia.
+     * Maverick (400B MoE) primero, luego GPT-OSS-120B, Scout, Qwen3, etc.
+     * El modelo primario (self.model) va primero, seguido por los demás en orden descendente. */
     fn model_fallback_chain(&self) -> Vec<&str> {
         let all_models = [
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
             "openai/gpt-oss-120b",
             "meta-llama/llama-4-scout-17b-16e-instruct",
             "qwen/qwen3-32b",
@@ -395,8 +394,11 @@ async fn call_groq_api(
                     if status.is_success() {
                         let json: Value = response.json().await
                             .map_err(|e| format!("AI parse error: {e}"))?;
-                        if model != &fallback_chain[0] {
-                            tracing::info!("AI fallback exitoso: usando modelo {model}");
+                        /* [084A-34] Log de modelo y key usados en cada request exitoso */
+                        if model == &fallback_chain[0] {
+                            tracing::info!("AI OK: modelo={model}, key={key_hint}..., intento={}", attempt + 1);
+                        } else {
+                            tracing::info!("AI fallback exitoso: modelo={model}, key={key_hint}..., intento={}", attempt + 1);
                         }
                         return Ok(json);
                     }
@@ -489,9 +491,9 @@ fn estimate_tokens(text: &str) -> usize {
     text.len() / 4 + 1
 }
 
-/* [084A-29] Construye el array de mensajes para la API con truncamiento inteligente.
- * Si el historial excede el presupuesto de tokens (~16k), los mensajes más antiguos
- * se comprimen como resumen inline, priorizando siempre el contexto reciente. */
+/* [084A-32] Construye el array de mensajes para la API con truncamiento inteligente.
+ * Budget de 64k tokens (Groq soporta 131k). Mensajes antiguos se comprimen como resumen
+ * inline priorizando siempre el contexto reciente. */
 fn build_context_messages(
     system_prompt: &str,
     history: &[ChatMessage],
@@ -500,7 +502,7 @@ fn build_context_messages(
     let mut messages = vec![serde_json::json!({"role": "system", "content": system_prompt})];
     let system_tokens = estimate_tokens(system_prompt);
     let user_tokens = estimate_tokens(user_message);
-    let token_budget = 16_000_usize.saturating_sub(system_tokens + user_tokens + 1000);
+    let token_budget = 64_000_usize.saturating_sub(system_tokens + user_tokens + 2000);
 
     let mut history_tokens = 0usize;
     let mut fit_from = 0usize;
@@ -519,8 +521,10 @@ fn build_context_messages(
             .map(|m| format!("{}: {}", m.sender_type, m.content))
             .collect();
         let truncated = older.join("\n");
-        let summary_text = if truncated.len() > 3000 {
-            truncated[..3000].to_string()
+        /* [084A-32] Resumen más generoso: 8k chars, priorizando los msgs más recientes del lote truncado */
+        let summary_text = if truncated.len() > 8000 {
+            let tail = &truncated[truncated.len().saturating_sub(7500)..];
+            format!("[...{} mensajes omitidos...]\n{tail}", fit_from.saturating_sub(5))
         } else {
             truncated
         };
@@ -554,37 +558,47 @@ async fn build_system_prompt(
     page_context: Option<&str>,
 ) -> String {
     let mut prompt = String::from(
-        /* [T-7] El agente NO debe revelar que es IA. Se presenta como miembro del equipo.
-         * [T-2] Incluye instrucciones de tool use para mostrar servicios y crear facturas.
-         * [T-3] Herramientas de captura de email e info del cliente. */
+        /* [084A-31] System prompt reescrito con anti-simulación y flujo de factura explícito.
+         * REGLA CRÍTICA: el modelo DEBE usar tool calls para acciones, NUNCA simular con texto.
+         * [T-7] No revelar que es IA. [T-2] Tool use: servicios, facturas. [T-3] Captura email. */
         "Eres un miembro del equipo de Nakomi Studio, una agencia de desarrollo web y diseño. \
          Tu nombre es Nakomi. Responde de forma concisa, amable y profesional en el mismo \
          idioma que el usuario. Nunca menciones que eres una inteligencia artificial, chatbot, \
          bot, modelo de lenguaje o asistente virtual. Si te preguntan directamente si eres IA, \
-         responde que eres parte del equipo de atención de Nakomi Studio. \
-         Si la pregunta requiere atención especializada (presupuesto específico, problema \
-         técnico complejo, reunión), indica que derivarás al especialista del equipo.\n\n\
+         responde que eres parte del equipo de atención de Nakomi Studio.\n\n\
+         REGLA CRÍTICA — PROHIBIDO SIMULAR ACCIONES:\n\
+         Tienes herramientas reales que ejecutan acciones. NUNCA escribas texto que simule lo que \
+         una herramienta haría. Por ejemplo:\n\
+         - PROHIBIDO: escribir texto con formato de factura (montos, descripciones, links ficticios)\n\
+         - PROHIBIDO: escribir 'aquí tienes tu factura:' seguido de texto que parece factura\n\
+         - PROHIBIDO: inventar links de pago o URLs\n\
+         - CORRECTO: llamar a create_invoice con los parámetros reales\n\
+         Si necesitas hacer algo y tienes una herramienta para ello, SIEMPRE usa la herramienta.\n\n\
          HERRAMIENTAS DISPONIBLES:\n\
-         - show_service: Muestra una tarjeta visual de servicio al cliente. Úsala cuando menciones un servicio específico.\n\
-         - list_services: Lista todos los servicios. Úsala cuando el cliente pida ver opciones.\n\
-         - create_invoice: Genera factura con link de pago. SOLO cuando el cliente confirme que quiere pagar y tengas su email.\n\
+         - show_service: Muestra tarjeta visual de servicio. Úsala SIEMPRE que menciones un servicio específico.\n\
+         - list_services: Lista todos los servicios. Úsala SIEMPRE que el cliente pida ver opciones.\n\
+         - create_invoice: Genera factura REAL con link de pago Stripe. Úsala SIEMPRE que el cliente \
+           confirme que quiere pagar. REQUIERE email del cliente.\n\
          - request_human_assistance: Escala a un humano. Úsala en los casos de la REGLA DE ESCALACIÓN.\n\
-         - capture_email: Guarda el email del cliente. Úsala cuando el cliente comparta su correo de forma natural.\n\
-         - save_client_info: Guarda info relevante del cliente (industria, presupuesto, intereses). Úsala cuando \
-           el cliente mencione datos útiles sobre su negocio o proyecto.\n\
-         Usa las herramientas de forma natural en la conversación. No menciones las herramientas directamente al cliente.\n\n\
+         - capture_email: Guarda el email del cliente. Úsala SIEMPRE que el cliente comparta su correo.\n\
+         - save_client_info: Guarda info relevante del cliente. Úsala cuando el cliente mencione datos \
+           útiles sobre su negocio o proyecto.\n\n\
+         FLUJO DE FACTURA (obligatorio):\n\
+         1. Si el cliente quiere pagar y NO tienes su email → usa capture_email primero, luego create_invoice.\n\
+         2. Si ya tienes su email → usa create_invoice directamente con amount_cents, currency, description, email.\n\
+         3. NUNCA escribas texto que parezca una factura. La herramienta genera una tarjeta visual real con botón de pago.\n\n\
          CAPTURA DE EMAIL: No pidas el email de forma forzada. Después de 2-3 intercambios productivos, puedes \
-         preguntar de forma natural: '¿Me compartes tu correo para enviarte la información?' Si el cliente lo da, \
+         preguntar: '¿Me compartes tu correo para enviarte la información?' Si el cliente lo da, \
          usa capture_email inmediatamente. Si no quiere, no insistas.\n\n\
          CAPTURA DE INFO: Cuando el cliente mencione su industria, presupuesto, tipo de proyecto o necesidades \
-         específicas, usa save_client_info para guardar esos datos. Esto ayuda a personalizar futuras conversaciones.\n\n\
-         REGLA DE ESCALACIÓN: Si detectas alguna de estas situaciones, usa request_human_assistance O inicia tu respuesta \
-         con el tag exacto [ESCALATE] (el tag se eliminará antes de mostrarse al usuario):\n\
+         específicas, usa save_client_info para guardar esos datos.\n\n\
+         REGLA DE ESCALACIÓN: Si detectas alguna de estas situaciones, usa request_human_assistance O inicia tu \
+         respuesta con [ESCALATE]:\n\
          - El cliente pide hablar con un humano\n\
          - El cliente está frustrado o insatisfecho después de varias respuestas\n\
          - El tema es legal, contractual, o sobre disputas de pago\n\
          - No puedes resolver la solicitud con la información disponible\n\
-         - El cliente reporta un problema técnico urgente que requiere intervención manual\n\n"
+         - El cliente reporta un problema técnico urgente\n\n"
     );
 
     /* [T-3] Agregar contexto del visitante si tiene perfil previo */

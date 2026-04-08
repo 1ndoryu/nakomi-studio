@@ -86,5 +86,12 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Pendientes
 
-(sin tareas pendientes)
+- 084A-31: System prompt: prohibir simulación de herramientas — forzar tool calls reales para facturas/servicios. Verificar flujo Stripe end-to-end.
+- 084A-32: Subir context budget a 64k tokens + generar resumen automático cuando la conversación supere el límite
+- 084A-33: Plan de pruebas end-to-end del chatbot (test empírico de todos los flujos)
+- 084A-34: Verificar empíricamente rotación de API keys + fallback de modelos
+- 084A-35: Deploy a nakomi.studio (subir cambios al VPS)
 
+
+- llama-4-maverick-17b-128e-instruct esta deprecated!! se debe usar el gpt 
+- hay que agregar un segundo modelo, gemma 4, tiene que documentarte bien para agregar este modelo. Hay una GOOGLE_GEMINI_API
