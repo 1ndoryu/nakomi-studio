@@ -31,6 +31,8 @@ pub struct VisitorWsParams {
     pub visitor_name: Option<String>,
     /* [T-9] Token JWT opcional para clientes autenticados */
     pub token: Option<String>,
+    /* [084A-28] Contexto de origen: "hosting:{uuid}", "service:{slug}", etc. */
+    pub context: Option<String>,
 }
 
 #[derive(Deserialize)]

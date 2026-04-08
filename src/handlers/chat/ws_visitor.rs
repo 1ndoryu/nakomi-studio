@@ -145,6 +145,7 @@ async fn handle_visitor_ws(
             stripe_key: state.stripe_secret_key.clone(),
             visitor_id: params.visitor_id.clone(),
             user_id,
+            context: params.context.clone(),
         },
     );
 

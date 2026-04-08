@@ -39,6 +39,8 @@ pub struct TimingSessionDeps {
     pub visitor_id: String,
     /* [T-9] user_id del cliente autenticado (None para visitantes anónimos) */
     pub user_id: Option<uuid::Uuid>,
+    /* [084A-28] Contexto de origen: "hosting:{uuid}", "service:{slug}", etc. */
+    pub context: Option<String>,
 }
 
 /* Constantes de timing configurables */
@@ -196,6 +198,7 @@ impl ChatTimingService {
             deps.stripe_key,
             deps.visitor_id,
             deps.user_id,
+            deps.context,
         ));
 
         tx
@@ -236,6 +239,7 @@ async fn session_timing_loop(
     stripe_key: Option<String>,
     visitor_id: String,
     user_id: Option<Uuid>,
+    page_ctx: Option<String>,
 ) {
     let mut buffer: Vec<String> = Vec::new();
     let mut is_typing = false;
@@ -279,6 +283,7 @@ async fn session_timing_loop(
             visitor_name.as_deref(),
             &visitor_id,
             user_id,
+            page_ctx.as_deref(),
             &combined,
             irrelevant_count,
             &pool,
@@ -373,6 +378,7 @@ async fn generate_ai_response(
     visitor_name: Option<&str>,
     visitor_id: &str,
     user_id: Option<Uuid>,
+    page_ctx: Option<&str>,
     combined: &str,
     mut irrelevant_count: u32,
     pool: &PgPool,
@@ -418,7 +424,10 @@ async fn generate_ai_response(
 
     let ai_resp = AiChatService::generate_response(
         pool, ai_config, http_client, stripe_key,
-        crate::services::AiSessionContext { session_id, visitor_id: Some(visitor_id), user_id },
+        crate::services::AiSessionContext {
+            session_id, visitor_id: Some(visitor_id), user_id,
+            context: page_ctx,
+        },
         combined,
     )
     .await

@@ -16,6 +16,7 @@ import {
     HOSTING_STATUS_CLASS,
 } from '../../api/hosting';
 import {Button} from '../ui/Button';
+import {useChatStore} from '../../stores/chatStore';
 import {
     TabGeneral, TabRecursos, TabDominio,
     TabAcceso, TabEventos,
@@ -135,13 +136,15 @@ export function HostingDetalle({
                         <span className="hostingDetalleHeaderPlan">
                             {HOSTING_PLAN_LABELS[sub.plan] || sub.plan} · ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
                         </span>
-                        {/* [094A-7] Contactar soporte: navega al chat del panel con contexto */}
+                        {/* [094A-7] Contactar soporte: abre el chat con contexto del hosting
+                         * [084A-28] Pasa hosting:{id} como contexto para que la IA sepa de qué hosting se trata */}
                         <Button
                             type="button"
                             variante="outline"
                             tamano="pequeno"
                             className="hostingDetalleSoporte"
                             onClick={() => {
+                                useChatStore.getState().abrir(`hosting:${sub.id}`);
                                 window.dispatchEvent(new CustomEvent('panel-cambiar-tab', {detail: 'mensajes'}));
                             }}
                         >

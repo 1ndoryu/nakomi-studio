@@ -32,7 +32,7 @@ export const SeccionContacto: React.FC<SeccionContactoProps> = ({compacto = fals
                 </div>
 
                 <div className="contactoBotones">
-                    <Button variante="primario" onClick={abrirChat}>
+                    <Button variante="primario" onClick={() => abrirChat()}>
                         {t('contact.btn_contact')}
                     </Button>
                     <Button variante="outline" onClick={() => navegar('/servicios/')}>

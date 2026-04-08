@@ -20,6 +20,7 @@ export const ChatWidget: React.FC = () => {
     const abierto = useChatStore(s => s.abierto);
     const abrir = useChatStore(s => s.abrir);
     const cerrar = useChatStore(s => s.cerrar);
+    const storeContext = useChatStore(s => s.context);
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -40,11 +41,12 @@ export const ChatWidget: React.FC = () => {
     if (location.pathname.startsWith('/panel')) return null;
 
     /* [064A-52] Al abrir, conectar directamente sin pedir nombre.
-     * El agente IA pedirá el nombre al usuario si lo necesita. */
+     * El agente IA pedirá el nombre al usuario si lo necesita.
+     * [084A-28] Pasa el contexto del store al WS (hosting, servicio, etc.) */
     const handleOpen = () => {
         abrir();
         if (!connected && !connecting) {
-            connect();
+            connect(undefined, storeContext);
         }
     };
 

@@ -112,14 +112,14 @@ export function useChatWidget() {
         }
     }, [sessionId]);
 
-    const connect = useCallback((visitorName?: string) => {
+    const connect = useCallback((visitorName?: string, context?: string | null) => {
         if (wsRef.current) return;
         setConnecting(true);
 
         const visitorId = getOrCreateVisitorId();
         /* [T-9] Enviar JWT si el usuario está autenticado */
         const authToken = useAuthStore.getState().token;
-        const url = buildVisitorWsUrl(visitorId, visitorName, authToken);
+        const url = buildVisitorWsUrl(visitorId, visitorName, authToken, context);
         const ws = new WebSocket(url);
         wsRef.current = ws;
 

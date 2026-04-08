@@ -196,6 +196,7 @@ pub async fn send_message(
                         session_id,
                         visitor_id: s.visitor_id.as_deref(),
                         user_id: None,
+                        context: None,
                     },
                     &req.content,
                 )
@@ -578,6 +579,7 @@ fn spawn_file_ai_processing(
                             session_id,
                             visitor_id: s.visitor_id.as_deref(),
                             user_id: None,
+                            context: None,
                         },
                         &user_msg,
                     ).await {

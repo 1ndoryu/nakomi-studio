@@ -128,11 +128,13 @@ pub struct AiResponse {
 }
 
 /* [T-9] Contexto de la sesión de chat para generate_response.
- * Agrupa parámetros relacionados para no exceder 7 argumentos. */
+ * Agrupa parámetros relacionados para no exceder 7 argumentos.
+ * [084A-28] Campo context para soporte contextual (hosting, servicio, etc.) */
 pub struct AiSessionContext<'a> {
     pub session_id: Uuid,
     pub visitor_id: Option<&'a str>,
     pub user_id: Option<Uuid>,
+    pub context: Option<&'a str>,
 }
 
 impl AiChatService {
@@ -158,7 +160,7 @@ impl AiChatService {
             });
         }
 
-        let system_prompt = build_system_prompt(pool, ctx.session_id, ctx.visitor_id, ctx.user_id).await;
+        let system_prompt = build_system_prompt(pool, ctx.session_id, ctx.visitor_id, ctx.user_id, ctx.context).await;
         let history = ChatRepository::list_messages(pool, ctx.session_id, 20, 0)
             .await
             .unwrap_or_default();
@@ -527,6 +529,8 @@ async fn build_system_prompt(
     visitor_id: Option<&str>,
     /* [T-9] user_id para clientes autenticados — agrega contexto de pedidos/hosting */
     user_id: Option<Uuid>,
+    /* [084A-28] Contexto de origen para soporte contextual */
+    page_context: Option<&str>,
 ) -> String {
     let mut prompt = String::from(
         /* [T-7] El agente NO debe revelar que es IA. Se presenta como miembro del equipo.
@@ -615,6 +619,12 @@ async fn build_system_prompt(
         append_registered_client_context(&mut prompt, pool, uid).await;
     }
 
+    /* [084A-28] Contexto de origen: el usuario abrió el chat desde un botón de soporte
+     * de un servicio o hosting específico. El formato es "tipo:identificador". */
+    if let Some(ctx) = page_context {
+        append_page_context(&mut prompt, pool, ctx).await;
+    }
+
     prompt
 }
 
@@ -698,6 +708,60 @@ async fn append_registered_client_context(prompt: &mut String, pool: &PgPool, ui
             }
             prompt.push_str("Puedes responder preguntas sobre el estado de su hosting.\n\n");
         }
+    }
+}
+
+/* [084A-28] Helper: agrega contexto de la página de origen al system prompt.
+ * Formato del context: "hosting:{uuid}" o "service:{slug}".
+ * Permite a la IA entender de dónde viene el usuario y ofrecer soporte dirigido. */
+async fn append_page_context(prompt: &mut String, pool: &PgPool, ctx: &str) {
+    let parts: Vec<&str> = ctx.splitn(2, ':').collect();
+    if parts.len() != 2 {
+        return;
+    }
+    match parts[0] {
+        "hosting" => {
+            if let Ok(uid) = Uuid::parse_str(parts[1]) {
+                if let Ok(Some(h)) = HostingRepository::find_by_id(pool, uid).await {
+                    let domain = h.domain.as_deref().unwrap_or("sin dominio");
+                    prompt.push_str("CONTEXTO DE ORIGEN: El usuario abrió el chat desde \
+                                     el botón de soporte de su hosting.\n");
+                    let _ = writeln!(
+                        prompt,
+                        "- Plan: {} — Dominio: {domain} — Estado: {}",
+                        h.plan, h.status,
+                    );
+                    prompt.push_str("Saluda al usuario mencionando su hosting y pregunta \
+                                     en qué puedes ayudarle con él.\n\n");
+                }
+            }
+        }
+        "service" => {
+            if let Ok(Some(svc)) = OrderRepository::find_service_by_slug(pool, parts[1]).await {
+                prompt.push_str("CONTEXTO DE ORIGEN: El usuario abrió el chat desde \
+                                 la página del servicio.\n");
+                let _ = writeln!(
+                    prompt,
+                    "- Servicio: {} — Desde ${:.2} USD",
+                    svc.title,
+                    f64::from(svc.base_price_cents) / 100.0,
+                );
+                if let Some(desc) = &svc.description {
+                    let _ = writeln!(prompt, "- Descripción: {desc}");
+                }
+                prompt.push_str("Saluda al usuario mencionando el servicio que estaba \
+                                 viendo y ofrece información sobre él.\n\n");
+            }
+        }
+        "page" => {
+            let _ = writeln!(
+                prompt,
+                "CONTEXTO DE ORIGEN: El usuario abrió el chat desde la página de {page}.\n\
+                 Saluda al usuario y ofrece información relevante sobre {page}.\n",
+                page = parts[1],
+            );
+        }
+        _ => {}
     }
 }
 

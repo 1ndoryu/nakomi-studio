@@ -99,7 +99,8 @@ export const ServicioIndividualIsland = ({titulo, descripcion, precio_desde, slu
             <SeccionHeroServicio titulo={tituloFinal} descripcion={descripcionFinal} imagen={imagenFinal} />
             <SeccionGaleriaServicio />
             <SeccionPlanesServicio slug={servicioId} onSeleccionarPlan={handleSeleccionarPlan} />
-            <SeccionCta descripcion={[t('service_detail.cta_1'), t('service_detail.cta_2')]} textoBotonPrimario={precioMinimo ? `${t('service_detail.cta_hire')} ${precioMinimo}` : t('service_detail.cta_hire')} linkBotonPrimario={ctaLink} onBotonPrimarioClick={logueado ? undefined : abrirChat} textoBotonSecundario={t('service_detail.cta_contact')} onBotonSecundarioClick={abrirChat} />
+            {/* [084A-28] Pasar contexto de servicio al abrir chat para soporte contextual */}
+            <SeccionCta descripcion={[t('service_detail.cta_1'), t('service_detail.cta_2')]} textoBotonPrimario={precioMinimo ? `${t('service_detail.cta_hire')} ${precioMinimo}` : t('service_detail.cta_hire')} linkBotonPrimario={ctaLink} onBotonPrimarioClick={logueado ? undefined : () => abrirChat(`service:${slug || servicioId}`)} textoBotonSecundario={t('service_detail.cta_contact')} onBotonSecundarioClick={() => abrirChat(`service:${slug || servicioId}`)} />
             <SeccionSkillsServicio skills={skillsApi || SKILLS_POR_DEFECTO} />
             <SeccionServiciosRelacionados servicioActualId={servicioId} />
             <SeccionContacto />

@@ -133,7 +133,7 @@ export const Header: React.FC = () => {
                             {t('nav.login')}
                         </Button>
                     )}
-                    <Button variante="primario" tamano="pequeno" className="botonHeader" onClick={abrirChat}>
+                    <Button variante="primario" tamano="pequeno" className="botonHeader" onClick={() => abrirChat()}>
                         {textoCta}
                         <ChevronRight size={14} strokeWidth={3} aria-hidden="true" />
                     </Button>

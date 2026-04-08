@@ -66,7 +66,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
                         }}>
                             {t('hosting_page.view_plans', 'Ver Planes')}
                         </Button>
-                        <Button variante="outline" onClick={abrirChat}>
+                        <Button variante="outline" onClick={() => abrirChat('page:hosting')}>
                             {t('plans.chat_with_us', 'Conversar')}
                         </Button>
                     </div>
@@ -138,7 +138,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
                                     >
                                         {t(`content.plans.${plan.id}.cta`, plan.ctaTexto)}
                                     </Button>
-                                    <Button variante="texto" className="tarjetaPlanConversar" onClick={abrirChat}>
+                                    <Button variante="texto" className="tarjetaPlanConversar" onClick={() => abrirChat('page:hosting')}>
                                         {t('plans.chat_with_us', 'Conversar')}
                                     </Button>
                                 </div>
