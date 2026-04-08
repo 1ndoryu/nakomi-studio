@@ -163,11 +163,7 @@ impl AiChatService {
             .await
             .unwrap_or_default();
 
-        let mut messages = vec![serde_json::json!({"role": "system", "content": system_prompt})];
-        for msg in &history {
-            let role = if msg.sender_type == "ai" { "assistant" } else { "user" };
-            messages.push(serde_json::json!({"role": role, "content": msg.content}));
-        }
+        let mut messages = build_context_messages(&system_prompt, &history, user_message);
         messages.push(serde_json::json!({"role": "user", "content": user_message}));
 
         let tools = ai_tools::tool_definitions();
@@ -461,6 +457,67 @@ fn parse_escalation(raw: &str) -> (String, bool) {
     } else {
         (trimmed.to_string(), false)
     }
+}
+
+/* [084A-29] Estimación rápida de tokens para un texto.
+ * Heurística: ~4 caracteres por token para LLaMA/GPT (mezcla inglés/español).
+ * No reemplaza un tokenizer real pero es suficiente para decisiones de truncamiento. */
+fn estimate_tokens(text: &str) -> usize {
+    text.len() / 4 + 1
+}
+
+/* [084A-29] Construye el array de mensajes para la API con truncamiento inteligente.
+ * Si el historial excede el presupuesto de tokens (~16k), los mensajes más antiguos
+ * se comprimen como resumen inline, priorizando siempre el contexto reciente. */
+fn build_context_messages(
+    system_prompt: &str,
+    history: &[ChatMessage],
+    user_message: &str,
+) -> Vec<Value> {
+    let mut messages = vec![serde_json::json!({"role": "system", "content": system_prompt})];
+    let system_tokens = estimate_tokens(system_prompt);
+    let user_tokens = estimate_tokens(user_message);
+    let token_budget = 16_000_usize.saturating_sub(system_tokens + user_tokens + 1000);
+
+    let mut history_tokens = 0usize;
+    let mut fit_from = 0usize;
+    for (i, msg) in history.iter().enumerate().rev() {
+        let t = estimate_tokens(&msg.content);
+        if history_tokens + t > token_budget {
+            fit_from = i + 1;
+            break;
+        }
+        history_tokens += t;
+    }
+
+    if fit_from > 0 {
+        let older: Vec<String> = history[..fit_from]
+            .iter()
+            .map(|m| format!("{}: {}", m.sender_type, m.content))
+            .collect();
+        let truncated = older.join("\n");
+        let summary_text = if truncated.len() > 3000 {
+            truncated[..3000].to_string()
+        } else {
+            truncated
+        };
+        messages.push(serde_json::json!({
+            "role": "system",
+            "content": format!(
+                "[Resumen de {} mensajes anteriores de esta conversación]:\n{}",
+                fit_from, summary_text
+            )
+        }));
+        tracing::debug!("AI context: {fit_from} msgs truncados, {} recientes",
+            history.len() - fit_from);
+    }
+
+    for msg in &history[fit_from..] {
+        let role = if msg.sender_type == "ai" { "assistant" } else { "user" };
+        messages.push(serde_json::json!({"role": role, "content": msg.content}));
+    }
+    messages.push(serde_json::json!({"role": "user", "content": user_message}));
+    messages
 }
 
 /// Construye system prompt dinámico según contexto de la sesión, visitante y usuario autenticado
