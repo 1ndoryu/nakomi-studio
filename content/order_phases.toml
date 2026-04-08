@@ -187,3 +187,79 @@ status = "locked"
 max_revisions = 2
 revisions_used = 0
 estimated_days = 7
+
+# ── Orden 5: Landing Page ($90) - awaiting_assignment, sin fases activas ──
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000015"
+order_id = "@orders:a0000001-0001-4000-8000-000000000005"
+phase_number = 1
+title = "Diseño del Layout"
+description = "Wireframe y diseño visual de la landing"
+price_cents = 3000
+status = "locked"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 5
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000016"
+order_id = "@orders:a0000001-0001-4000-8000-000000000005"
+phase_number = 2
+title = "Desarrollo y Responsive"
+description = "Maquetación HTML/CSS responsive"
+price_cents = 4000
+status = "locked"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 5
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000017"
+order_id = "@orders:a0000001-0001-4000-8000-000000000005"
+phase_number = 3
+title = "QA y Lanzamiento"
+description = "Pruebas y deploy en producción"
+price_cents = 2000
+status = "locked"
+max_revisions = 1
+revisions_used = 0
+estimated_days = 3
+
+# ── Orden 6: Bot de Ventas IA ($60) - in_progress, fase 1 activa ──
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000018"
+order_id = "@orders:a0000001-0001-4000-8000-000000000006"
+phase_number = 1
+title = "Definición de Flujos"
+description = "Mapeo de conversaciones y casos de uso"
+price_cents = 2000
+status = "in_progress"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 4
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000019"
+order_id = "@orders:a0000001-0001-4000-8000-000000000006"
+phase_number = 2
+title = "Implementación del Bot"
+description = "Desarrollo del chatbot con NLP"
+price_cents = 2500
+status = "locked"
+max_revisions = 2
+revisions_used = 0
+estimated_days = 7
+
+[[records]]
+id = "b0000001-0001-4000-8000-000000000020"
+order_id = "@orders:a0000001-0001-4000-8000-000000000006"
+phase_number = 3
+title = "Integración CRM y Deploy"
+description = "Conexión con CRM y puesta en producción"
+price_cents = 1500
+status = "locked"
+max_revisions = 1
+revisions_used = 0
+estimated_days = 5

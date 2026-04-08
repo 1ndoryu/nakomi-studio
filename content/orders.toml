@@ -78,3 +78,34 @@ status = "under_review"
 assigned_employee_id = "@users:empleado@test.com"
 current_phase = 3
 client_notes = "Rebranding completo de la empresa"
+
+# Orden 5: Diseño Landing Page - half_half - awaiting_assignment, sin asignar (disponible para tomar)
+[[records]]
+id = "a0000001-0001-4000-8000-000000000005"
+client_id = "@users:cliente@test.com"
+service_id = "@services:diseno-de-sitios-web"
+plan_id = "@lookup:service_plans:slug=basico&service_id=@services:diseno-de-sitios-web"
+payment_mode = "half_half"
+base_price_cents = 10000
+discount_percent = 10
+final_price_cents = 9000
+currency = "USD"
+status = "awaiting_assignment"
+current_phase = 0
+client_notes = "Landing page para producto nuevo — urgente"
+
+# Orden 6: Agentes IA Pro - phased - in_progress, asignada a empleado2
+[[records]]
+id = "a0000001-0001-4000-8000-000000000006"
+client_id = "@users:cliente@test.com"
+service_id = "@services:agentes-ia"
+plan_id = "@lookup:service_plans:slug=basico&service_id=@services:agentes-ia"
+payment_mode = "phased"
+base_price_cents = 6000
+discount_percent = 0
+final_price_cents = 6000
+currency = "USD"
+status = "in_progress"
+assigned_employee_id = "@users:empleado2@test.com"
+current_phase = 1
+client_notes = "Bot de ventas con integración CRM"

@@ -1,0 +1,49 @@
+# Delegaciones de prueba entre empleados.
+# Muestra distintos estados y tipos (delegate, help_request).
+
+[meta]
+table = "order_delegations"
+id_field = "id"
+depends_on = ["users", "orders"]
+
+[meta.casts]
+id = "uuid"
+order_id = "uuid"
+from_employee_id = "uuid"
+to_employee_id = "uuid"
+status = "delegation_status"
+created_at = "timestamptz"
+resolved_at = "timestamptz"
+
+# Delegación 1: Empleado delega Order 4 (Branding) a Diseñador Jr — aceptada
+[[records]]
+id = "d0000001-0001-4000-8000-000000000001"
+order_id = "@orders:a0000001-0001-4000-8000-000000000004"
+from_employee_id = "@lookup:users:email=empleado@test.com"
+to_employee_id = "@lookup:users:email=empleado2@test.com"
+reason = "Necesito apoyo con la identidad visual, el Jr tiene buen ojo para branding"
+delegation_type = "delegate"
+status = "accepted"
+created_at = "2026-04-01T10:00:00Z"
+resolved_at = "2026-04-01T14:30:00Z"
+
+# Delegación 2: Empleado pide ayuda en Order 1 (Diseño Web) — pendiente
+[[records]]
+id = "d0000001-0001-4000-8000-000000000002"
+order_id = "@orders:a0000001-0001-4000-8000-000000000001"
+from_employee_id = "@lookup:users:email=empleado@test.com"
+reason = "Necesito ayuda con responsive para mobile, es un diseño complejo"
+delegation_type = "help_request"
+status = "requested"
+created_at = "2026-04-05T16:00:00Z"
+
+# Delegación 3: Diseñador Jr delega Order 6 (Bot IA) a Empleado — pendiente
+[[records]]
+id = "d0000001-0001-4000-8000-000000000003"
+order_id = "@orders:a0000001-0001-4000-8000-000000000006"
+from_employee_id = "@lookup:users:email=empleado2@test.com"
+to_employee_id = "@lookup:users:email=empleado@test.com"
+reason = "No tengo experiencia con IA, prefiero que lo lleve alguien con más experiencia"
+delegation_type = "delegate"
+status = "requested"
+created_at = "2026-04-06T09:00:00Z"

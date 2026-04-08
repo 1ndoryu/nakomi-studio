@@ -26,3 +26,9 @@ email = "empleado@test.com"
 password_hash = "plain:empleado"
 role = "employee"
 display_name = "Empleado"
+
+[[records]]
+email = "empleado2@test.com"
+password_hash = "plain:empleado2"
+role = "employee"
+display_name = "Diseñador Jr"
