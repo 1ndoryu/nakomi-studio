@@ -30,6 +30,10 @@ pub enum AppError {
 
     #[error("Error de validación: {0}")]
     Validation(String),
+
+    /* [084A-24] Servicio externo no disponible (ej: Contabo API no configurada) */
+    #[error("Servicio no disponible: {0}")]
+    ServiceUnavailable(String),
 }
 
 /// Estructura de respuesta de error expuesta en la API
@@ -72,6 +76,11 @@ impl IntoResponse for AppError {
             Self::Validation(msg) => (
                 StatusCode::UNPROCESSABLE_ENTITY,
                 "validation_error",
+                msg.clone(),
+            ),
+            Self::ServiceUnavailable(msg) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "service_unavailable",
                 msg.clone(),
             ),
         };

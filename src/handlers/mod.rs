@@ -242,6 +242,12 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
     let notification_hub = crate::services::NotificationHub::new(pool.clone());
     let ai_config = crate::services::AiChatConfig::from_env();
 
+    /* [084A-24] Contabo VPS: servicio opcional, solo se activa si las 4 credenciales existen */
+    let contabo_service = crate::services::ContaboConfig::from_env().map(|cfg| {
+        tracing::info!("Contabo API configurado para {}", cfg.api_user);
+        crate::services::ContaboService::new(cfg, reqwest::Client::new())
+    });
+
     let state = AppState {
         pool,
         jwt_secret: config.jwt_secret,
@@ -251,6 +257,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         chat_hub,
         ai_config,
         notification_hub,
+        contabo_service,
     };
 
     /* [064A-73] CORS: restringir orígenes en producción. Si GLORY_ALLOWED_ORIGINS vacío, allow all (dev). */

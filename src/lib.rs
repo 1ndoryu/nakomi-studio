@@ -14,7 +14,7 @@ pub mod services;
 
 use sqlx::PgPool;
 
-use crate::services::{AiChatConfig, ChatHub, NotificationHub};
+use crate::services::{AiChatConfig, ChatHub, ContaboService, NotificationHub};
 
 /// Estado compartido de la aplicación — accesible desde handlers y middleware
 #[derive(Clone)]
@@ -27,4 +27,5 @@ pub struct AppState {
     pub chat_hub: ChatHub,
     pub ai_config: AiChatConfig,
     pub notification_hub: NotificationHub,
+    pub contabo_service: Option<ContaboService>,
 }

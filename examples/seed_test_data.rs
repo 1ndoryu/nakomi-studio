@@ -39,9 +39,9 @@ async fn main() {
 
     /* chat_sessions tiene FK a orders sin CASCADE. chat_messages tiene CASCADE desde sessions.
      * orders.chat_session_id también referencia chat_sessions, así que lo anulamos primero. */
-    sqlx::query(&format!(
+    sqlx::query(
         "UPDATE orders SET chat_session_id = NULL WHERE client_id = $1"
-    ))
+    )
     .bind(client_id)
     .execute(&pool)
     .await
@@ -436,6 +436,7 @@ fn determine_phase_status(payment_mode: &str, order_status: &str, phase_idx: usi
 }
 
 /* [074A-11] Inserta un blog post de prueba con tags como JSONB */
+#[allow(clippy::too_many_arguments)]
 async fn seed_blog_post(
     pool: &PgPool,
     author_id: Uuid,

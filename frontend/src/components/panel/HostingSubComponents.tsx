@@ -98,6 +98,17 @@ export function HostingCard({
                             {sub.client_name} · {sub.client_email}
                         </span>
                     )}
+                    {/* [084A-24] Info de recursos del plan para el cliente */}
+                    <div className="hostingCardRecursos">
+                        <span className="hostingCardRecurso">
+                            Almacenamiento: {(sub.storage_limit_mb / 1024).toFixed(0)} GB
+                        </span>
+                        {sub.domain && (
+                            <span className="hostingCardRecurso">
+                                Dominio: {sub.domain}
+                            </span>
+                        )}
+                    </div>
                     <div className="hostingCardFooter">
                         <span className="hostingCardPrecio">
                             ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
@@ -222,9 +233,9 @@ export function CreateHostingForm({
                 value={form.plan}
                 onChange={e => setForm(prev => ({...prev, plan: e.target.value}))}
             >
-                <option value="basico">Básico ($15/mes)</option>
-                <option value="pro">Profesional ($35/mes)</option>
-                <option value="ecommerce">E-commerce ($60/mes)</option>
+                <option value="basico">Básico ($5/mes)</option>
+                <option value="pro">Profesional ($10/mes)</option>
+                <option value="ecommerce">E-commerce ($15/mes)</option>
                 <option value="custom">Custom (cotización)</option>
             </Select>
             <Input

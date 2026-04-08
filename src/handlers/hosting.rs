@@ -387,6 +387,82 @@ pub async fn request_cancel(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/* ============================================================
+   VPS STATS — Proxy a Contabo API (solo admin)
+   [084A-24] Permite al panel admin ver estado real de las VPS
+   ============================================================ */
+
+/// Listar instancias VPS (admin only — proxy Contabo API)
+#[utoipa::path(
+    get,
+    path = "/api/hosting/vps",
+    responses(
+        (status = 200, description = "Lista de VPS"),
+        (status = 403, description = "Sin permisos"),
+        (status = 503, description = "Contabo no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn list_vps(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<serde_json::Value>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let service = state
+        .contabo_service
+        .as_ref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Contabo API no configurada".into()))?;
+
+    let instances = service
+        .list_instances()
+        .await
+        .map_err(|e| AppError::Internal(e.clone()))?;
+
+    Ok(Json(serde_json::json!({ "data": instances })))
+}
+
+/// Obtener instancia VPS por ID (admin only)
+#[utoipa::path(
+    get,
+    path = "/api/hosting/vps/{instance_id}",
+    params(("instance_id" = i64, Path, description = "ID de instancia Contabo")),
+    responses(
+        (status = 200, description = "Detalles de la VPS"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "Instancia no encontrada"),
+        (status = 503, description = "Contabo no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn get_vps(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(instance_id): Path<i64>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let service = state
+        .contabo_service
+        .as_ref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Contabo API no configurada".into()))?;
+
+    let instance = service
+        .get_instance(instance_id)
+        .await
+        .map_err(|e| {
+            if e.contains("not found") {
+                AppError::NotFound(format!("VPS {instance_id} no encontrada"))
+            } else {
+                AppError::Internal(e)
+            }
+        })?;
+
+    Ok(Json(serde_json::json!({ "data": instance })))
+}
+
 pub fn hosting_routes() -> Router<AppState> {
     Router::new()
         .route(
@@ -411,4 +487,7 @@ pub fn hosting_routes() -> Router<AppState> {
             "/hosting/subscriptions/:id/cancel",
             axum::routing::post(request_cancel),
         )
+        /* [084A-24] VPS stats: proxy a Contabo API */
+        .route("/hosting/vps", get(list_vps))
+        .route("/hosting/vps/:instance_id", get(get_vps))
 }

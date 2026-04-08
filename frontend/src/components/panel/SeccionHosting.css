@@ -146,6 +146,21 @@
     font-style: italic;
 }
 
+/* [084A-24] Recursos del plan visible para cliente */
+.hostingCardRecursos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.hostingCardRecurso {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 /* [084A-18] Footer también subido a --text-sm */
 .hostingCardFooter {
     display: flex;

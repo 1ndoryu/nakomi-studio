@@ -3,7 +3,8 @@
  * [064A-32] Ahora role-aware: admin ve todo + crear/cambiar status, cliente solo ve sus suscripciones.
  * [054A-17] Corregidos: <button>→<Button>, inline styles→CSS classes, overlay→MenuContextual.
  * [074A-63] Tabs Activos/Inactivos como en SeccionProyectos. Titulo de card = dominio o nombre del hosting.
- *           Logica de estado extraida a useSeccionHosting. Sub-componentes en HostingSubComponents. */
+ *           Logica de estado extraida a useSeccionHosting. Sub-componentes en HostingSubComponents.
+ * [084A-24] Tab "Servidores" para admin: muestra VPS reales de Contabo. */
 
 import React from 'react';
 import {Server, Plus} from 'lucide-react';
@@ -11,6 +12,7 @@ import {useSeccionHosting} from '../../hooks/useSeccionHosting';
 import {Modal} from '../ui/Modal';
 import {Button} from '../ui/Button';
 import {HostingCard, CreateHostingForm} from './HostingSubComponents';
+import {VpsPanel} from './VpsPanel';
 import './SeccionHosting.css';
 
 export const SeccionHosting: React.FC = () => {
@@ -77,9 +79,23 @@ export const SeccionHosting: React.FC = () => {
                 >
                     Inactivos ({inactivos.length})
                 </Button>
+                {/* [084A-24] Tab de servidores solo para admin */}
+                {isAdmin && (
+                    <Button
+                        type="button"
+                        variante="texto"
+                        className={`hostingTab ${tabActiva === 'servidores' ? 'hostingTab--activa' : ''}`}
+                        onClick={() => setTabActiva('servidores')}
+                    >
+                        Servidores
+                    </Button>
+                )}
             </div>
 
-            {subscriptions.length === 0 ? (
+            {/* [084A-24] Contenido condicional por tab */}
+            {tabActiva === 'servidores' && isAdmin ? (
+                <VpsPanel />
+            ) : subscriptions.length === 0 ? (
                 <div className="hostingVacio">
                     <Server size={48} strokeWidth={1.2} />
                     <p>Sin suscripciones de hosting</p>

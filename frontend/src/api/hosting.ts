@@ -125,3 +125,26 @@ export const HOSTING_STATUS_CLASS: Record<string, string> = {
     suspended: 'hostingStatus--suspended',
     cancelled: 'hostingStatus--cancelled',
 };
+
+/* [084A-24] VPS stats — proxy a Contabo API (admin only) */
+
+export interface VpsSummary {
+    instance_id: number;
+    name: string;
+    ip: string;
+    status: string;
+    region: string;
+    cpu_cores: number;
+    ram_mb: number;
+    disk_mb: number;
+}
+
+export async function apiListVps(): Promise<VpsSummary[]> {
+    const { data } = await axiosInstance.get<{ data: VpsSummary[] }>('/api/hosting/vps');
+    return data.data;
+}
+
+export async function apiGetVps(instanceId: number): Promise<VpsSummary> {
+    const { data } = await axiosInstance.get<{ data: VpsSummary }>(`/api/hosting/vps/${instanceId}`);
+    return data.data;
+}

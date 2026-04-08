@@ -21,7 +21,7 @@ const ACTIVE_STATUSES = new Set(['pending', 'provisioning', 'active']);
 export function useSeccionHosting() {
     const queryClient = useQueryClient();
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos'>('activos');
+    const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos' | 'servidores'>('activos');
 
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
     const isAdmin = effectiveRole === 'admin';
