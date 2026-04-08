@@ -43,7 +43,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - En el cms en los botones de 3 puntos no salen opciones de eliminar el contenido, solo archivar, falta opciones directa para eliminar, cambiar status a publicar, etc. → ✅ 084A-10 completada
 - elimina la especificacion de color y borde en .editorServicioStatusBtn--activo → ✅ 084A-17 completada
-- En la lista de proyecto no se ve lo que hay en el cms se ve otra cosa.
+- En la lista de proyecto no se ve lo que hay en el cms se ve otra cosa. → ✅ 084A-11 completada
 - En el panel al recergar debería permanecer en la misma tab incluyendo la tab interna, no ir siempre a la primera tab. → ✅ 084A-9 completada
 - No veo contenido de prueba para los reembolso, necesito ver como se ven los reembolsos.
 

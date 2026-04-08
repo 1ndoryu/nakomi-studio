@@ -2,22 +2,33 @@
 /*
  * Componente: CarruselShowcase
  * Carrusel infinito de proyectos con desplazamiento automatico y soporte drag.
- * Datos desde backend (PROYECTOS_DATA) con imagenes reales, titulo y categorias.
- */
-import React from 'react';
+ * [084A-11] Ahora consume API pública, fallback a datos estáticos. */
+import React, {useMemo} from 'react';
+import {useQuery} from '@tanstack/react-query';
 import {Badge} from '../ui/Badge';
 import {spaClick} from '../../navegacionSPA';
 import './CarruselShowcase.css';
 import {useCarruselInfinito} from '../../hooks/useCarruselInfinito';
-import {PROYECTOS_DATA} from '../../data/showcase';
+import {PROYECTOS_DATA, mapAdminProjectsToProyectos} from '../../data/showcase';
+import {apiListPublicProjects} from '../../api/admin-projects';
 import {IMAGENES_SHOWCASE} from '../../hooks/useImagenes';
 
 export const CarruselShowcase: React.FC = () => {
-    /*
-     * Usar imagenes de proyectos del backend si tienen imagen,
-     * sino fallback a IMAGENES_SHOWCASE del import.meta.glob.
-     */
-    const proyectosConImagen = PROYECTOS_DATA.map((proyecto, idx) => ({
+    /* [084A-11] Fetch proyectos publicados del API, fallback a datos estáticos */
+    const {data: apiProjects} = useQuery({
+        queryKey: ['public-projects-showcase'],
+        queryFn: apiListPublicProjects,
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
+
+    const baseProyectos = useMemo(() => {
+        if (!apiProjects || apiProjects.length === 0) return PROYECTOS_DATA;
+        const mapped = mapAdminProjectsToProyectos(apiProjects);
+        return mapped.length > 0 ? mapped : PROYECTOS_DATA;
+    }, [apiProjects]);
+
+    const proyectosConImagen = baseProyectos.map((proyecto, idx) => ({
         ...proyecto,
         imagen: proyecto.imagen || (IMAGENES_SHOWCASE.length > 0 ? IMAGENES_SHOWCASE[idx % IMAGENES_SHOWCASE.length] : ''),
     }));

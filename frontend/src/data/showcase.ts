@@ -1,8 +1,9 @@
 /*
  * Datos de showcase/proyectos centralizados.
  * [044A-3] Proyectos reales reemplazando placeholders.
- */
+ * [084A-11] Ahora exporta buildCategoriasShowcase para reconstruir con datos de API. */
 import {Proyecto, CategoriaShowcase} from '../types/contenido';
+import type {AdminProject} from '../api/admin-projects';
 
 const PROYECTOS_FALLBACK: Proyecto[] = [
     {
@@ -100,17 +101,41 @@ const PROYECTOS_FALLBACK: Proyecto[] = [
 /* [044A-1] Sin GLORY_CONTEXT, datos directos */
 export const PROYECTOS_DATA: Proyecto[] = PROYECTOS_FALLBACK;
 
+/* [084A-11] Convierte AdminProject (API) → Proyecto (frontend).
+ * Filtra solo proyectos publicados con imagen. */
+export function mapAdminProjectsToProyectos(projects: AdminProject[]): Proyecto[] {
+    return projects
+        .filter(p => p.status === 'published' && p.featured_image)
+        .map(p => ({
+            id: p.id,
+            titulo: p.title.toUpperCase(),
+            cliente: p.client || '',
+            categorias: p.categories,
+            imagen: p.featured_image!,
+            descripcion: p.description,
+            link: `/proyectos/${p.slug}`,
+            skills: p.skills.map((s, i) => ({id: i + 1, titulo: s.titulo, descripcion: s.descripcion})),
+            galeria: p.gallery,
+            tecnologias: p.technologies,
+            enlaces: p.links.map(l => ({
+                tipo: l.tipo as 'github' | 'web' | 'npm' | 'demo',
+                url: l.url,
+                etiqueta: l.etiqueta,
+            })),
+        }));
+}
+
 /*
  * Agrupar proyectos en categorías para la sección showcase del home.
- * Se dividen en 2 grupos. Los proyectos NO se repiten entre categorías:
- * una vez asignado a un grupo, se excluye del siguiente.
+ * [084A-11] Ahora recibe datos opcionales para usar API cuando esté disponible.
  */
-const buildCategoriasShowcase = (): CategoriaShowcase[] => {
+export const buildCategoriasShowcase = (datos?: Proyecto[]): CategoriaShowcase[] => {
+    const fuente = datos && datos.length > 0 ? datos : PROYECTOS_DATA;
     const usados = new Set<string | number>();
 
     const filtrarSinRepetir = (filtro: (cats: string[]) => boolean, max: number): Proyecto[] => {
         const resultado: Proyecto[] = [];
-        for (const p of PROYECTOS_DATA) {
+        for (const p of fuente) {
             if (usados.has(p.id)) continue;
             const cats = Array.isArray(p.categorias) ? p.categorias : [p.categorias];
             if (filtro(cats)) {

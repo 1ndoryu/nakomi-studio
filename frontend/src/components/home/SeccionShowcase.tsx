@@ -1,24 +1,40 @@
 /**
  * Componente: SeccionShowcase
  * Muestra proyectos destacados organizados por categoría.
- * Datos centralizados en data/showcase.ts (DRY).
- */
+ * [084A-11] Ahora consume API pública de proyectos, con fallback a datos estáticos. */
+import {useMemo} from 'react';
+import {useQuery} from '@tanstack/react-query';
 import {useTranslation} from 'react-i18next';
 import {spaClick} from '../../navegacionSPA';
 import {SeccionHeader} from '../ui/SeccionHeader';
 import {Badge} from '../ui/Badge';
-import {CATEGORIAS_SHOWCASE} from '../../data/showcase';
+import {CATEGORIAS_SHOWCASE, buildCategoriasShowcase, mapAdminProjectsToProyectos} from '../../data/showcase';
+import {apiListPublicProjects} from '../../api/admin-projects';
 import './SeccionShowcase.css';
 
 export const SeccionShowcase = (): JSX.Element => {
     const {t} = useTranslation();
+
+    /* [084A-11] Fetch proyectos publicados del API, fallback a datos estáticos */
+    const {data: apiProjects} = useQuery({
+        queryKey: ['public-projects-showcase'],
+        queryFn: apiListPublicProjects,
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
+
+    const categorias = useMemo(() => {
+        if (!apiProjects || apiProjects.length === 0) return CATEGORIAS_SHOWCASE;
+        const proyectos = mapAdminProjectsToProyectos(apiProjects);
+        return proyectos.length > 0 ? buildCategoriasShowcase(proyectos) : CATEGORIAS_SHOWCASE;
+    }, [apiProjects]);
 
     return (
         <section className="seccionShowcase">
             <div className="showcaseContenedor">
                 <SeccionHeader titulo={t('sections.selected_work')} />
 
-                {CATEGORIAS_SHOWCASE.map((categoria) => (
+                {categorias.map((categoria) => (
                     <div className="showcaseFila" key={categoria.titulo}>
                         <div className="showcaseCategoria">
                             <h2 className="showcaseTituloCategoria">{categoria.titulo}</h2>
