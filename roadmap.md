@@ -54,7 +54,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - El contenido de los servicios del CMS no matchea el front. (Nota: 074A-21 conectó servicios públicos a API. Si persiste en blog/proyectos especificar cuál)
 
-- No veo donde se modifican los planes de los servicios.
+- ~~No veo donde se modifican los planes de los servicios.~~ ✅ (074A-66: tab Planes en EditorServicio + PUT endpoint batch save)
 
 - ~~Sigo sin ver hosting de prueba~~ ✅ (074A-23: fix API paths + fixtures re-inserted)
 
@@ -96,4 +96,12 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~No veo que se pueda gestionar los hosting de prueba.~~ ✅ (074A-65: CRUD completo — edit modal + delete en menú contextual, backend PUT/DELETE admin-only)
 
-- No me sale para gestionar los planes de los servicios en el cms. 
+- ~~No me sale para gestionar los planes de los servicios en el cms.~~ ✅ (074A-66: tab Planes en EditorServicio)
+
+- No veo que el cliente tenga capacidad de gestionar su hosting, hay que revisar lo que falta e implementar.
+
+- Veo muchos planes que no estan en la carpeta de completados, claramente hay revisarlos todos para ver cuales mover y si hay cosas pendientes completarlas todo.
+
+- El menu contextual de 3 punto de los hosting no se ve.
+
+- La parte de planes se ve mal, los colores de las letras no se ven
