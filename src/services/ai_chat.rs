@@ -67,23 +67,26 @@ impl AiChatConfig {
         }
 
         let model = std::env::var("AI_MODEL")
-            .unwrap_or_else(|_| "llama-3.3-70b-versatile".to_string());
+            .unwrap_or_else(|_| "openai/gpt-oss-120b".to_string());
 
         /* [084A-27] Whitelist de modelos Groq, ordenada por inteligencia descendente.
          * Los modelos más capaces primero — el sistema los usa como cadena de fallback
-         * cuando el modelo primario falla por rate limit (429). */
+         * cuando el modelo primario falla por rate limit (429).
+         * Actualizado 084A-30: eliminados deprecados (mixtral, llama-3.2-90b-vision, gemma2).
+         * Añadidos: openai/gpt-oss-120b (120B, el más capaz), llama-4-scout, qwen3-32b, gpt-oss-20b. */
         let allowed_models = [
+            "openai/gpt-oss-120b",
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "qwen/qwen3-32b",
             "llama-3.3-70b-versatile",
-            "llama-3.2-90b-vision-preview",
-            "mixtral-8x7b-32768",
+            "openai/gpt-oss-20b",
             "llama-3.1-8b-instant",
-            "gemma2-9b-it",
         ];
         let model = if allowed_models.contains(&model.as_str()) {
             model
         } else {
             tracing::warn!("Modelo AI no permitido: {model}, usando default");
-            "llama-3.3-70b-versatile".to_string()
+            "openai/gpt-oss-120b".to_string()
         };
 
         let api_url = std::env::var("AI_API_URL").unwrap_or_else(|_| {
@@ -113,12 +116,15 @@ impl AiChatConfig {
 
     /* [084A-27] Cadena de modelos fallback ordenados por inteligencia.
      * Cuando el modelo primario falla por rate limit (429), se intenta el siguiente.
-     * El modelo primario (self.model) va primero, seguido por los demás. */
+     * El modelo primario (self.model) va primero, seguido por los demás en orden descendente.
+     * Lista actualizada 084A-30: eliminados deprecados, añadidos GPT-OSS-120B y Llama 4. */
     fn model_fallback_chain(&self) -> Vec<&str> {
         let all_models = [
+            "openai/gpt-oss-120b",
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "qwen/qwen3-32b",
             "llama-3.3-70b-versatile",
-            "llama-3.2-90b-vision-preview",
-            "mixtral-8x7b-32768",
+            "openai/gpt-oss-20b",
             "llama-3.1-8b-instant",
         ];
         let mut chain: Vec<&str> = vec![self.model.as_str()];
