@@ -61,7 +61,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Pendientes nuevas (por prioridad)
 
-- 104A-3: Sync env vars a producción + asegurar andoryyu@gmail.com como admin
 - 104A-4: Fix todos los warnings del sentinel-report (187 warnings, 38 archivos)
 - 104A-5: Sistema de optimización de imágenes (replicar Jetpack Photon CDN)
 - 104A-6: Fix chatContenedor se estira cuando el chat se alarga (debe tener altura máxima)
@@ -70,4 +69,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - Cosas como .disponibleCardIcono y son delegCardIcono tambien tiene fondo negro y literalmente son clases innecesarias para algo que es lo mismo, claramente hay un problema de fondo, este problema se repite una y otra vez, no se alguna regla en el protocolo de desarrollo, alguna regla en sentinel para que dejes de cometer el error de no centralizar componentes.
 
-- 
+- .proyectosContenedor tiene un padding a los lados innecesario
