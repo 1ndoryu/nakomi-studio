@@ -555,8 +555,17 @@ async fn process_tool_calls(
     let mut results = Vec::with_capacity(calls.len());
     for call in calls {
         let name = call["function"]["name"].as_str().unwrap_or("");
-        let args_str = call["function"]["arguments"].as_str().unwrap_or("{}");
-        let args: Value = serde_json::from_str(args_str).unwrap_or_default();
+        /* [084A-52] Parsing defensivo: Gemini puede retornar arguments como
+         * objeto JSON directo en vez de string JSON (OpenAI spec = string).
+         * Si es string → parse; si es objeto → usar directo; si es otro → vacío. */
+        let args: Value = if let Some(s) = call["function"]["arguments"].as_str() {
+            serde_json::from_str(s).unwrap_or_default()
+        } else if call["function"]["arguments"].is_object() {
+            call["function"]["arguments"].clone()
+        } else {
+            Value::Object(serde_json::Map::new())
+        };
+        tracing::debug!("AI tool call: {name}({args})");
 
         let result = ai_tools::execute_tool(pool, http_client, stripe_key, visitor_id, name, &args).await;
         if let Some(rm) = result.rich_message {

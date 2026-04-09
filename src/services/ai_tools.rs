@@ -153,13 +153,33 @@ async fn exec_create_invoice(
         };
     };
 
-    let amount_cents = args["amount_cents"].as_i64().unwrap_or(0);
+    /* [084A-52] Parsing robusto: algunos modelos envían amount_cents como float
+     * (ej: 10000.0 en vez de 10000). Intentar i64, luego f64→i64. */
+    #[allow(clippy::cast_possible_truncation)]
+    let amount_cents = args["amount_cents"]
+        .as_i64()
+        .or_else(|| args["amount_cents"].as_f64().map(|f| f as i64))
+        .unwrap_or(0);
     let description = args["description"].as_str().unwrap_or("Servicio Nakomi Studio");
     let client_email = args["client_email"].as_str().unwrap_or("");
 
     if amount_cents <= 0 || client_email.is_empty() {
+        /* [084A-52] Log detallado para diagnosticar qué parámetro falta.
+         * Causa común: Gemini retorna arguments como objeto en vez de string,
+         * y el parsing ignoraba ese caso (ya corregido en ai_chat.rs). */
+        tracing::error!(
+            "create_invoice args inválidos: amount_cents={amount_cents}, \
+             email_empty={}, args_raw={args}",
+            client_email.is_empty()
+        );
         return ToolExecResult {
-            tool_result_json: json!({"error": "Monto y email son requeridos"}).to_string(),
+            tool_result_json: json!({
+                "error": "Monto y email son requeridos",
+                "detail": format!(
+                    "amount_cents={amount_cents}, client_email={}",
+                    if client_email.is_empty() { "(vacío)" } else { "(presente)" }
+                )
+            }).to_string(),
             rich_message: None,
         };
     }
