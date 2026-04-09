@@ -83,9 +83,10 @@ export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
                                     <span className="hostingDetallePlanPrecio">
                                         ${(plan.priceCents / 100).toFixed(0)}/mes
                                     </span>
-                                    <div className="hostingDetallePlanFeatures">
-                                        {plan.features.map(f => <span key={f}>{f}</span>)}
-                                    </div>
+                                    {/* [084A-45] Beneficios como lista */}
+                                    <ul className="hostingDetallePlanFeaturesList">
+                                        {plan.features.map(f => <li key={f}>{f}</li>)}
+                                    </ul>
                                     <Button
                                         type="button"
                                         variante={isUpgrade ? 'primario' : 'secundario'}

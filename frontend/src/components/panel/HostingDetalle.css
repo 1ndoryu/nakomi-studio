@@ -339,15 +339,28 @@
     gap: var(--spacing-md);
 }
 
+/* [084A-45] Rediseño minimalista: más gap para separar botón */
 .hostingDetallePlanOption {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-md);
     padding: var(--spacing-md);
     background: var(--bg-card-subtle);
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-lg);
     transition: border-color var(--transicion-rapida);
+}
+
+/* [084A-45] Beneficios como lista con bullet points */
+.hostingDetallePlanFeaturesList {
+    margin: 0;
+    padding-left: var(--spacing-md);
+    list-style: disc;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .hostingDetallePlanOption:hover {
@@ -360,22 +373,21 @@
     align-items: center;
 }
 
+/* [084A-45] Badges sin color de fondo (minimalista), botón más separado */
 .hostingDetallePlanBadge {
-    font-size: 0.7rem;
+    font-size: var(--text-xs);
     font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 8px;
+    padding: 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    color: var(--text-tertiary);
 }
 
 .hostingDetallePlanBadge--upgrade {
-    background: color-mix(in srgb, var(--color-success) 15%, transparent);
     color: var(--color-success);
 }
 
 .hostingDetallePlanBadge--downgrade {
-    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
     color: var(--color-warning);
 }
 

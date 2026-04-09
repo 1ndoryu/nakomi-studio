@@ -291,9 +291,8 @@
     cursor: not-allowed;
 }
 
-/* ── Eventos ──────────────────────────────── */
+/* [084A-45] Eventos: quitado padding innecesario */
 .hostingEventos {
-    padding: var(--spacing-md);
     min-width: 340px;
 }
 
