@@ -68,7 +68,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~084A-42: Sistema antibots en chat — rate limit por IP + max conexiones WS por IP + cap longitud mensajes~~ ✅
 - ~~084A-43: chatAreaMensajes — ajustar altura a la pantalla con min-height:0 en cadena flex~~ ✅
 - ~~084A-44: pagosOrdenesLista — rediseñado como tabla profesional con headers, filas clickeables y responsive~~ ✅
-- 084A-45: hostingDetallePlanOption — diseño minimalista (badges sin color, botón separado, beneficios como lista) + hostingEventos quitar padding innecesario.
+- ~~084A-45: hostingDetallePlanOption — minimalista (badges sin color, botón separado, beneficios como lista) + hostingEventos sin padding~~ ✅
 - ~~084A-46: Renombrar agente de chat a "Claudia" + reducir delay de respuesta en 3 segundos~~ ✅
 - ~~084A-47: Desactivar sistema de relevancia del chatbot (falsos positivos bloquean mensajes legítimos)~~ ✅
 - ~~084A-48: Reducir contexto máximo de 64k a 32k tokens + verificar que compresión/resumen funcione al llegar al límite~~ ✅
@@ -108,3 +108,31 @@ Interesante. ¿Hay algo relacionado con nuestros servicios en lo que pueda ayuda
 - Reduce el contexto maximo a 64k a 32k, creo que es mas eficiente asi, verifica que cuando llegue al contexto maximo de una conversacion comprimirla o resumirla funcione.
 
 - Ya que el sistema de relevancia esta desactivado hay que mejorar la ia principal para que no continue con temas que no tiene nada que ver con el proposito (sin basarse unicamente el ultimo mensaje), no hacerlo tran drastico, que intente regresar el usuario al punto y si no lo hace dejar de contestar. (Yo voy a testear esto, espero que /reset me permita volver a hablar si el chatbot decide dejar de hablarme)
+
+- Mira esta conversacion
+
+Hola que tal
+
+¡Hola! Muy bien, gracias. ¿En qué puedo ayudarte hoy?
+Quiero contratar el servicio de diseño web, tengo un presupuesto de 100$
+
+🎨
+Diseño de Sitios Web
+Diseño web profesional adaptado a las necesidades del negocio
+
+Desde $100.00 USD
+
+Diseño de Sitios Web — desde $100.00 USD
+
+
+¡Perfecto! Aquí tienes la información de nuestro servicio de **Diseño de Sitios Web**:
+
+- **Precio base:** $100 USD
+- **Descripción:** Diseño web profesional adaptado a las necesidades de tu negocio.
+
+¿Te gustaría avanzar y generar la factura para iniciar el proyecto? Si es así, ¿podrías compartir tu correo electrónico para enviarte el enlace de pago?
+andoryyu@gmail.com
+
+Ha ocurrido un error al generar la factura. Voy a transferir tu solicitud a un miembro de nuestro equipo para que pueda asistirte de inmediato. Gracias por tu paciencia.
+
+El error es que usa ** como si fuera un md
