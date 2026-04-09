@@ -14,6 +14,7 @@ import {CATEGORIAS_PROYECTOS} from '../data/navegacion';
 import {BarraFiltros} from '../components/servicios/BarraFiltros';
 import {Badge} from '../components/ui/Badge';
 import {AdminOverlay} from '../components/ui/AdminOverlay';
+import OptimizedImage from '../components/ui/OptimizedImage';
 import {obtenerImagenShowcase} from '../hooks/useImagenes';
 import {Proyecto} from '../types/contenido';
 import {apiListPublicProjects, AdminProject} from '../api/admin-projects';
@@ -34,7 +35,7 @@ const TarjetaProyecto: React.FC<{proyecto: Proyecto; indice: number}> = ({proyec
         <AdminOverlay contentType="project" itemId={proyecto.adminId || String(proyecto.id)}>
             <a href={proyecto.link || '#'} className="tarjetaProyecto" onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
                 <div className="tarjetaProyectoImagen">
-                    <img src={imagenSrc} alt={proyecto.titulo} loading="lazy" />
+                    <OptimizedImage src={imagenSrc} alt={proyecto.titulo} sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" />
                 </div>
                 <div className="tarjetaProyectoInfo">
                     <h3 className="tarjetaProyectoTitulo">{proyecto.titulo}</h3>

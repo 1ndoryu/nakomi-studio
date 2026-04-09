@@ -3,6 +3,7 @@ import {useTranslation} from 'react-i18next';
 import {ArrowRight} from 'lucide-react';
 import {Badge} from './Badge';
 import {AdminOverlay} from './AdminOverlay';
+import OptimizedImage from './OptimizedImage';
 import {Servicio} from '../../types/servicios';
 import {spaClick} from '../../navegacionSPA';
 import './ServiceCard.css';
@@ -23,7 +24,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({servicio, variant = 'si
             <AdminOverlay contentType="service" itemId={servicio.adminId || servicio.id}>
                 <a href={servicio.link} className="serviceCard detailed" onClick={e => spaClick(e, servicio.link)}>
                     <div className="cardImageWrapper">
-                        <img src={servicio.imagen} alt={titulo} className="cardImage" loading="lazy" />
+                        <OptimizedImage src={servicio.imagen} alt={titulo} className="cardImage" sizes="(max-width: 768px) 100vw, 50vw" />
                         <div className="cardOverlay" />
                     </div>
                     <div className="cardContent">
@@ -47,7 +48,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({servicio, variant = 'si
         <AdminOverlay contentType="service" itemId={servicio.adminId || servicio.id}>
             <a href={servicio.link} className="serviceCard simple" onClick={e => spaClick(e, servicio.link)}>
                 <div className="simpleImageWrapper">
-                    <img src={servicio.imagen} alt={titulo} className="simpleImage" loading="lazy" />
+                    <OptimizedImage src={servicio.imagen} alt={titulo} className="simpleImage" sizes="(max-width: 768px) 100vw, 33vw" />
                 </div>
                 <div className="simpleContent">
                     <h3 className="simpleTitle">{titulo}</h3>

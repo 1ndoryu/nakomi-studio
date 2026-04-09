@@ -21,6 +21,7 @@ import {SeccionContacto} from '../components/home/SeccionContacto';
 import {PROYECTOS_DATA} from '../data/showcase';
 import {Proyecto} from '../types/contenido';
 import {SeccionHeader} from '../components/ui/SeccionHeader';
+import OptimizedImage from '../components/ui/OptimizedImage';
 import {apiGetProjectBySlug, apiListPublicProjects, AdminProject} from '../api/admin-projects';
 
 interface ProyectoIndividualIslandProps {
@@ -43,7 +44,7 @@ const ICONOS_ENLACE: Record<string, typeof GitBranch> = {
 /* Tarjeta de proyecto relacionado */
 const TarjetaRelacionado: React.FC<{proyecto: Proyecto}> = ({proyecto}) => (
     <a href={proyecto.link || '#'} className="proyectoRelacionadoCard" onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
-        <div className="proyectoRelacionadoImagen">{proyecto.imagen && <img src={proyecto.imagen} alt={proyecto.titulo} loading="lazy" />}</div>
+        <div className="proyectoRelacionadoImagen">{proyecto.imagen && <OptimizedImage src={proyecto.imagen} alt={proyecto.titulo} sizes="(max-width: 768px) 100vw, 33vw" />}</div>
         <div className="proyectoRelacionadoInfo">
             <h4 className="proyectoRelacionadoTitulo">{proyecto.titulo}</h4>
             <span className="proyectoRelacionadoCliente">{proyecto.cliente}</span>

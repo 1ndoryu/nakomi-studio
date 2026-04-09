@@ -11,6 +11,7 @@ import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
 import {SeccionHeader} from '../components/ui/SeccionHeader';
 import {AdminOverlay} from '../components/ui/AdminOverlay';
+import OptimizedImage from '../components/ui/OptimizedImage';
 import {SeccionContacto} from '../components/home/SeccionContacto';
 import {MIEMBROS_DATA} from '../data/miembros';
 import {Miembro} from '../types/contenido';
@@ -28,7 +29,7 @@ const TarjetaMiembro: React.FC<{miembro: Miembro}> = ({miembro}) => {
     <AdminOverlay contentType="team" itemId={miembro.adminId || miembro.id}>
         <article className="tarjetaMiembro">
             <div className="miembroAvatar">
-                <img src={miembro.avatar} alt={miembro.nombre} loading="lazy" />
+                <OptimizedImage src={miembro.avatar} alt={miembro.nombre} sizes="150px" />
             </div>
             <div className="miembroInfo">
                 <h3 className="miembroNombre">{miembro.nombre}</h3>

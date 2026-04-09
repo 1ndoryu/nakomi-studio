@@ -13,6 +13,7 @@ import {SeccionContacto} from '../components/home/SeccionContacto';
 import {POSTS_BLOG} from '../data/blog';
 import {obtenerImagenBlog} from '../hooks/useImagenes';
 import {useBlogSingle} from '../hooks/useBlogSingle';
+import OptimizedImage from '../components/ui/OptimizedImage';
 import './BlogSingleIsland.css';
 
 interface BlogSingleIslandProps {
@@ -108,7 +109,7 @@ export const BlogSingleIsland = ({
                             }).slice(0, 2).map(post => (
                                 <a key={post.id} href={post.link} className="blogSingleRelacionadoCard" onClick={e => { if (post.link) spaClick(e, post.link); }}>
                                     <div className="blogSingleRelacionadoImagen">
-                                        <img src={post.imagen || obtenerImagenBlog(post.id)} alt={post.titulo} loading="lazy" />
+                                        <OptimizedImage src={post.imagen || obtenerImagenBlog(post.id)} alt={post.titulo} sizes="(max-width: 768px) 100vw, 50vw" />
                                     </div>
                                     <div className="blogSingleRelacionadoInfo">
                                         <span className="blogSingleRelacionadoCategoria">{post.categoria}</span>

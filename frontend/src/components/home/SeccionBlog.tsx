@@ -10,6 +10,7 @@ import {SeccionHeader} from '../ui/SeccionHeader';
 import {obtenerImagenBlog} from '../../hooks/useImagenes';
 import {POSTS_BLOG} from '../../data/blog';
 import {navegar} from '../../navegacionSPA';
+import OptimizedImage from '../ui/OptimizedImage';
 import './SeccionBlog.css';
 
 export const SeccionBlog: React.FC = () => {
@@ -24,7 +25,7 @@ export const SeccionBlog: React.FC = () => {
                     {/* [044A-35] Card minimalista: imagen + overlay con categoría y título */}
                     {POSTS_BLOG.slice(0, 3).map(post => (
                         <a key={post.id} href={post.link || '#'} onClick={(e) => { e.preventDefault(); if (post.link) navegar(post.link); }} className="blogCard">
-                            <img src={post.imagen || obtenerImagenBlog(post.id)} alt={post.titulo} className="blogImagen" loading="lazy" />
+                            <OptimizedImage src={post.imagen || obtenerImagenBlog(post.id)} alt={post.titulo} className="blogImagen" sizes="(max-width: 768px) 100vw, 33vw" />
                             <div className="blogOverlay">
                                 <span className="blogCategoria">{post.categoria}</span>
                                 <h3 className="blogTitulo">{post.titulo}</h3>

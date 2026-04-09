@@ -7,6 +7,7 @@ mod chat;
 mod chat_timing;
 pub mod contabo;
 mod hosting_stripe;
+pub mod image_processing;
 mod note;
 mod notification;
 mod order;

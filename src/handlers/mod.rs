@@ -11,6 +11,7 @@ mod dashboard;
 mod deliverables;
 mod health;
 mod hosting;
+mod image_proxy;
 mod profile;
 mod notes;
 mod notifications;
@@ -127,6 +128,7 @@ impl utoipa::Modify for SecurityAddon {
         blog::archive,
         blog::destroy,
         uploads::upload_image,
+        image_proxy::image_proxy,
         projects::list_published,
         projects::get_by_slug,
         projects::list_all,
@@ -396,6 +398,7 @@ fn api_routes() -> Router<AppState> {
         .merge(admin_seed::seed_routes())
         .merge(hosting::hosting_routes())
         .merge(uploads::routes())
+        .merge(image_proxy::routes())
         .layer(GovernorLayer {
             config: std::sync::Arc::new(api_governor),
         })

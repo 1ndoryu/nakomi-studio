@@ -10,6 +10,7 @@ import {useCarruselInfinito} from '../../hooks/useCarruselInfinito';
 import {SeccionHeader} from '../ui/SeccionHeader';
 import {TESTIMONIOS} from '../../data/testimonios';
 import {ModalTestimonio} from './ModalTestimonio';
+import OptimizedImage from '../ui/OptimizedImage';
 import {Button} from '../ui/Button';
 
 export const SeccionTestimonios: React.FC = () => {
@@ -49,7 +50,7 @@ export const SeccionTestimonios: React.FC = () => {
                             <article key={`${item.id}-${index}`} className="testimonioCard">
                                 <p className="testimonioTexto">{item.texto}</p>
                                 <div className="testimonioAutor">
-                                    {item.avatar && <img src={item.avatar} alt={item.autor} className="autorAvatar" loading="lazy" />}
+                                    {item.avatar && <OptimizedImage src={item.avatar} alt={item.autor} className="autorAvatar" sizes="48px" />}
                                     <div className="autorInfo">
                                         <span className="autorNombre">{item.autor}</span>
                                         <span className="autorCargo">{item.cargo}</span>

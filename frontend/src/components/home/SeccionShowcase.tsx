@@ -10,6 +10,7 @@ import {SeccionHeader} from '../ui/SeccionHeader';
 import {Badge} from '../ui/Badge';
 import {CATEGORIAS_SHOWCASE, buildCategoriasShowcase, mapAdminProjectsToProyectos} from '../../data/showcase';
 import {apiListPublicProjects} from '../../api/admin-projects';
+import OptimizedImage from '../ui/OptimizedImage';
 import './SeccionShowcase.css';
 
 export const SeccionShowcase = (): JSX.Element => {
@@ -46,7 +47,7 @@ export const SeccionShowcase = (): JSX.Element => {
                             {categoria.proyectos.map(proyecto => (
                                 <a key={proyecto.id} href={proyecto.link || '#'} className="proyectoCard" onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
                                     <div className="proyectoImagenWrapper">
-                                        <img src={proyecto.imagen} alt={proyecto.titulo} className="proyectoImagen" loading="lazy" />
+                                        <OptimizedImage src={proyecto.imagen} alt={proyecto.titulo} className="proyectoImagen" sizes="(max-width: 768px) 100vw, 50vw" />
                                     </div>
                                     <div className="proyectoInfo">
                                         <h3 className="proyectoTitulo">

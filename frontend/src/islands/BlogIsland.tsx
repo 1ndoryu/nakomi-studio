@@ -15,6 +15,7 @@ import {obtenerImagenBlog} from '../hooks/useImagenes';
 import {navegar} from '../navegacionSPA';
 import {Button} from '../components/ui/Button';
 import {AdminOverlay} from '../components/ui/AdminOverlay';
+import OptimizedImage from '../components/ui/OptimizedImage';
 import {apiListPublicBlog} from '../api/admin-blog';
 import type {AdminBlogPost} from '../api/admin-blog';
 
@@ -33,7 +34,7 @@ const TarjetaArticulo: React.FC<{post: PostBlog; destacado?: boolean}> = ({post,
     return (
         <AdminOverlay contentType="blog" itemId={post.adminId || String(post.id)}>
             <a href={post.link || '#'} onClick={(e) => { e.preventDefault(); if (post.link) navegar(post.link); }} className={`tarjetaArticulo ${destacado ? 'tarjetaArticuloDestacado' : ''}`}>
-                <img src={imagenFinal} alt={post.titulo} className="articuloImagen" loading="lazy" />
+                <OptimizedImage src={imagenFinal} alt={post.titulo} className="articuloImagen" sizes="(max-width: 768px) 100vw, 50vw" />
                 <div className="articuloOverlay">
                     <span className="articuloCategoria">{post.categoria}</span>
                     <h3 className="articuloTitulo">{post.titulo}</h3>

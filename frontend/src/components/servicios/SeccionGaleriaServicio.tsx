@@ -6,6 +6,7 @@
 import React from 'react';
 import {useCarruselInfinito} from '../../hooks/useCarruselInfinito';
 import {useImagenes} from '../../hooks/useImagenes';
+import OptimizedImage from '../ui/OptimizedImage';
 import './SeccionGaleriaServicio.css';
 
 interface SeccionGaleriaServicioProps {
@@ -46,7 +47,7 @@ export const SeccionGaleriaServicio: React.FC<SeccionGaleriaServicioProps> = ({i
                     {itemsTotales.map((src, index) => (
                         <div key={`img-${index}`} className="galeriaItem">
                             <div className="galeriaImagenWrapper">
-                                <img src={src} alt={`Galeria servicio ${index + 1}`} className="galeriaImagen" draggable={false} loading="lazy" />
+                                <OptimizedImage src={src} alt={`Galeria servicio ${index + 1}`} className="galeriaImagen" draggable={false} sizes="(max-width: 768px) 80vw, 40vw" />
                             </div>
                         </div>
                     ))}
