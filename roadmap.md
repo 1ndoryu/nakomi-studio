@@ -61,4 +61,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Pendientes nuevas (por prioridad)
 
-- 104A-5: Sistema de optimización de imágenes (replicar Jetpack Photon CDN)
+(sin tareas pendientes)
