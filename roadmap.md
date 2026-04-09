@@ -61,10 +61,13 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Pendientes nuevas (por prioridad)
 
-(sin tareas pendientes)
+- 104A-3: Sync env vars a producción + asegurar andoryyu@gmail.com como admin
+- 104A-4: Fix todos los warnings del sentinel-report (187 warnings, 38 archivos)
+- 104A-5: Sistema de optimización de imágenes (replicar Jetpack Photon CDN)
+- 104A-6: Fix chatContenedor se estira cuando el chat se alarga (debe tener altura máxima)
+- 104A-7: Fix .reembolsoCard fondo negro con letras negras + centralizar clases duplicadas (.disponibleCardIcono / .delegCardIcono)
+- 104A-8: Deploy a producción con todos los fixes
 
-## Notas del usuario 
+## Notas del usuario
 
-(todas las notas han sido abordadas — ver Agente/completados/tareas-2026-04-08.md y tareas-2026-04-09.md)
-
-. arregla todos los errores de sentinel-report, todas los warnings y cosas.
+(abordadas: CORS producción → 104A-1 ✅, fonts 404 → 104A-2 ✅, sentinel → 104A-4, env vars → 104A-3, imágenes → 104A-5, chatContenedor → 104A-6, reembolsoCard/clases duplicadas → 104A-7)
