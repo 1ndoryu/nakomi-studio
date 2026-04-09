@@ -93,5 +93,76 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - 084A-35: Deploy a nakomi.studio — **BLOQUEADO**: No existe Dockerfile ni docker-compose.yml. Requiere crear infraestructura Docker (Dockerfile multistage Rust + docker-compose con PostgreSQL) antes de poder desplegar. El código está pushed al repo y verificado con tests. Pendiente de preparación de infraestructura.
 
 
-- llama-4-maverick-17b-128e-instruct esta deprecated!! se debe usar el gpt 
-- hay que agregar un segundo modelo, gemma 4, tiene que documentarte bien para agregar este modelo. Hay una GOOGLE_GEMINI_API
+- ~~084A-36: Eliminar maverick deprecated, usar gpt-oss-120b como primario~~ ✅
+- ~~084A-37: Agregar Google Gemini como segundo proveedor AI (GOOGLE_GEMINI_API)~~ ✅
+
+## Pendientes nuevas (por prioridad)
+
+- 084A-38: Factura duplicada texto plano — la IA genera factura (rich message) pero TAMBIÉN escribe texto con el link de Stripe. La factura sale como "Pagada" sin botón de pago. Además la factura en Stripe muestra $0.00 MXN. Investigar y corregir: (1) eliminar texto plano duplicado cuando hay rich message, (2) status correcto en la card, (3) monto correcto en Stripe.
+- 084A-39: Deploy al servidor — Revisar Coolify por deploys anteriores. El usuario dice que ya se hizo un despliegue antes. Investigar.
+- 084A-40: Comando /reset en chat — borrar todo el contexto de la conversación y usuario para empezar de cero al testear.
+- 084A-41: Ampliar modelos Gemini — investigar gemini-3-flash, gemini-3.1, etc. y agregarlos al fallback chain.
+
+## Notas del usuario (raw)
+
+- ¿Como que no hay? Si antes se hizo un despliegue!!! Revisa bien coolify!!!
+
+- ¿Porque es genera una factura pagada? No tiene sentido, estoy probando el chat. Ni siquiera sale un boton para pagar o algo directamente sale paga. 
+
+Yo: Necesito que generes otra factura, estoy testeando el chatbot, por favor.
+
+🧾
+Factura
+Pagada
+$100.00 USD
+
+Servicio de prueba para el cliente
+
+Factura por $100.00 USD — Servicio de prueba para el cliente
+
+
+Aquí tienes una factura de prueba por $100.00 USD. Si necesitas algo más, no dudes en preguntar.
+
+"aparece sobre un chatWidgetMsgRich chatWidgetInvoiceCard" 
+
+Lo volvi a intentar y
+
+Diseño web.
+
+🧾
+Factura
+Pagada
+$100.00 USD
+
+Diseño de sitio web
+
+Factura por $100.00 USD — Diseño de sitio web
+
+
+¡Genial! Acabo de generar una factura para el servicio de diseño web. El monto es de $100.00 USD. Para pagar, por favor haz clic en el siguiente enlace: https://invoice.stripe.com/i/acct_1M9uLoCdHJpmDkrr/live_YWNjdF8xTTl1TG9DZEhKcG1Ea3JyLF9VSWhNOUp4RHh3ME5LMkMxRnZab0plbWI2TGM3V0FLLDE2NjIzMzQxNQ0200bxIVTZ9L?s=ap
+
+¿Necesitas algo más?
+
+-- 
+
+Me manda esto en texto plano
+
+¡Genial! Acabo de generar una factura para el servicio de diseño web. El monto es de $100.00 USD. Para pagar, por favor haz clic en el siguiente enlace: https://invoice.stripe.com/i/acct_1M9uLoCdHJpmDkrr/live_YWNjdF8xTTl1TG9DZEhKcG1Ea3JyLF9VSWhNOUp4RHh3ME5LMkMxRnZab0plbWI2TGM3V0FLLDE2NjIzMzQxNQ0200bxIVTZ9L?s=ap
+
+cuando voy al enlace dice 
+
+0,00 MXN
+
+Ver datos de la factura
+Número de factura	XAZ4W5GW-0003
+Fecha de pago	8 de abril de 2026
+
+Descargar factura
+
+Descargar recibo
+
+--
+
+- Agrega un comando para reiniciar el chat, asi puedo testear mejor, lo que hare este comando es borrar todo el contexto de la conversacion y usuario para empezar de cero el comando sería " /reset ", 
+
+- gemini-2.5-flash no es el unico modelo, hay mas, hay gemini flash 3.0 y 3.5 creo o 3.1, investiga bien
