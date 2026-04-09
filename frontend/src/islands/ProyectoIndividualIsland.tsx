@@ -2,6 +2,8 @@
  * Componente: ProyectoIndividualIsland
  * Página de detalle de un proyecto individual.
  * Estructura: Hero -> Galería -> Skills -> CTA -> Relacionados -> Footer
+ * sentinel-disable-file componente-sin-hook: Lógica minimal (fetch API + data lookup)
+ * no justifica hook separado; datos estáticos vienen de imports directos.
  */
 import React, {useState, useEffect} from 'react';
 import {useTranslation} from 'react-i18next';

@@ -1,8 +1,8 @@
 /* [074A-11] Editor de blog post CMS — Modal con tabs: Contenido | Media | SEO.
  * Reutiliza componentes existentes: Modal, Input, SlugInput, UploadImage, RichTextEditor, Textarea.
  * Lógica de formulario extraída a useEditorBlog para cumplir max 3 useState.
- * sentinel-disable-file button-nativo: Tabs del editor y status toggles usan <button> nativo
- * porque botonBase interfiere con estilos del tab (mismo patrón EditorServicio). */
+ * sentinel-disable-file html-nativo-en-vez-de-componente: Tabs del editor y status toggles usan
+ * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón EditorServicio). */
 import React, {useState, useCallback} from 'react';
 import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';

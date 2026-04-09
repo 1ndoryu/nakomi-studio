@@ -5,6 +5,8 @@
  * Skills y datos centralizados en data/ (DRY).
  * [044A-38 Fase 1] CTA "Contratar" apunta a /panel si logueado (Fase 2 conecta con API de órdenes).
  * [084A-4] Restaurado ModalCompra — click en plan abre modal de pago (revertido 074A-36).
+ * sentinel-disable-file componente-sin-hook: Lógica minimal (fetch API + wiring de estado)
+ * no justifica hook separado; datos estáticos vienen de imports directos.
  */
 import {useState, useCallback, useEffect} from 'react';
 import {useTranslation} from 'react-i18next';

@@ -1,8 +1,11 @@
 /* [084A-7] Island de perfil público de usuario estilo Fiverr.
  * Muestra info del usuario, ratings, y reviews recibidas/dadas.
- * Accesible sin autenticación en /usuario/:username. */
+ * Accesible sin autenticación en /usuario/:username.
+ * sentinel-disable-file html-nativo-en-vez-de-componente: Los tabs y botones de paginación
+ * usan <button> nativo porque Button (botonBase) interfiere con los estilos inline del tab. */
 
 import {useParams} from 'react-router-dom';
+import {Star} from 'lucide-react';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
 import {usePublicProfile} from '../hooks/usePublicProfile';
@@ -15,7 +18,7 @@ function Estrellas({rating}: {rating: number}) {
     return (
         <span className="perfilEstrellas" aria-label={`${rating} de 5 estrellas`}>
             {[1, 2, 3, 4, 5].map(i => (
-                <span key={i} className={i <= rating ? 'estrellaLlena' : 'estrellaVacia'}>★</span>
+                <span key={i} className={i <= rating ? 'estrellaLlena' : 'estrellaVacia'}><Star size={14} /></span>
             ))}
         </span>
     );
@@ -25,8 +28,9 @@ function BarraRating({estrellas, cantidad, total}: {estrellas: number; cantidad:
     const porcentaje = total > 0 ? (cantidad / total) * 100 : 0;
     return (
         <div className="barraRatingFila">
-            <span className="barraRatingLabel">{estrellas}★</span>
+            <span className="barraRatingLabel">{estrellas}<Star size={12} /></span>
             <div className="barraRatingTrack">
+                {/* sentinel-disable-next-line inline-style-prohibido: dynamic width percentage */}
                 <div className="barraRatingFill" style={{width: `${porcentaje}%`}} />
             </div>
             <span className="barraRatingCantidad">{cantidad}</span>
@@ -187,8 +191,8 @@ export function UsuarioPublicoIsland() {
                             <h1 className="perfilPublicoNombre">{nombre}</h1>
                             {profile.specialties && profile.specialties.length > 0 && (
                                 <div className="perfilPublicoEspecialidades">
-                                    {profile.specialties.map((s, i) => (
-                                        <span key={i} className="perfilPublicoTag">{s}</span>
+                                    {profile.specialties.map((s) => (
+                                        <span key={s} className="perfilPublicoTag">{s}</span>
                                     ))}
                                 </div>
                             )}

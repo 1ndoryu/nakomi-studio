@@ -2,9 +2,9 @@
  * Componente reutilizable: recibe contenido HTML inicial y notifica cambios.
  * Extensiones: StarterKit (bold, italic, heading, lists, etc), Image, Link, Placeholder.
  * Toolbar minimalista con las acciones más comunes.
- * sentinel-disable-file button-nativo: Los botones del toolbar usan <button> nativo
- * porque el componente <Button> añade clases (botonBase) que interfieren con los estilos
- * del toolbar. Mismo patrón que 074A-47 (headerPanelSubmenu). */
+ * sentinel-disable-file html-nativo-en-vez-de-componente: Los botones/inputs del toolbar usan
+ * elementos nativos porque el componente <Button> añade clases (botonBase) que interfieren
+ * con los estilos del toolbar. Mismo patrón que 074A-47 (headerPanelSubmenu). */
 import React, {useCallback} from 'react';
 import {useEditor, EditorContent} from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';

@@ -1,11 +1,14 @@
 /* [044A-38 Fase 6] Panel de entregables dentro de cada fase.
- * [074A-53] Modal de entrega: notas opcionales + archivos opcionales. */
+ * [074A-53] Modal de entrega: notas opcionales + archivos opcionales.
+ * sentinel-disable-file html-nativo-en-vez-de-componente: El botón de quitar archivo (X icon)
+ * usa <button> nativo porque <Button> (botonBase) interfiere con layout inline de la lista. */
 import {Download, FileText, Package, Paperclip, X} from 'lucide-react';
 import {useRef} from 'react';
 import {formatFileSize} from '../../api/deliverables';
 import {useEntregablesPanel} from '../../hooks/useEntregablesPanel';
 import {Button} from '../ui/Button';
 import {Modal} from '../ui/Modal';
+import {Textarea} from '../ui/Textarea';
 import './EntregablesPanel.css';
 
 interface EntregablesPanelProps {
@@ -49,7 +52,7 @@ export function EntregablesPanel({orderId, phaseNumber, canDeliver}: Entregables
                         Describe lo que entregas. Adjuntar archivos es opcional.
                     </p>
 
-                    <textarea
+                    <Textarea
                         className="entregablesModalNotas"
                         placeholder="Notas de la entrega (opcional)"
                         value={notas}

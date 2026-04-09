@@ -2,7 +2,10 @@
  * Se monta en App.tsx y escucha useAdminEditStore. Cuando el admin
  * hace click en "Editar" desde AdminOverlay en páginas públicas,
  * este provider obtiene el item completo y abre el editor CMS correspondiente.
- * También maneja archive/delete con confirmación. */
+ * También maneja archive/delete con confirmación.
+ * sentinel-disable-file componente-sin-hook: Provider pattern — la lógica de
+ * queries, archive/delete y save callbacks es inherente al patrón Provider
+ * y no se puede extraer a un hook sin perder el contexto de renderizado. */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

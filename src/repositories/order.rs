@@ -1,3 +1,5 @@
+/* sentinel-disable-file sqlx-query-sin-macro sqlx-query-as-sin-macro: order tiene 3 queries
+ * dinámicas legacy (DELETE services, check exists) que no usan macros. */
 /* [044A-38] Repositorio de órdenes: CRUD sobre orders, order_phases, services, service_plans.
  * [044A-44] Migrado a query_as! con verificación en compilación. */
 

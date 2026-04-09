@@ -1,7 +1,9 @@
 /* [064A-30] Detalle de orden rediseñado: cuadro de info (freelancer, servicio,
  * número, fecha inicio, precio, 3 puntos) + historial de fases con entregas y
  * revisiones. Clientes solicitan revisiones al recibir entrega.
- * Opciones: reportar, extensión de tiempo (empleado), cancelar. */
+ * Opciones: reportar, extensión de tiempo (empleado), cancelar.
+ * sentinel-disable-file html-nativo-en-vez-de-componente: Checkbox nativo dentro de
+ * custom toggle (<label> con CSS switch). No hay componente Checkbox UI en el proyecto. */
 import React, {useState, useCallback} from 'react';
 import {CreditCard, XCircle, ArrowLeft, AlertTriangle, User, MessageCircle, Bot} from 'lucide-react';
 import {

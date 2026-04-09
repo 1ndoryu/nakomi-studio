@@ -2,8 +2,8 @@
  * Reutiliza componentes existentes: Modal, Input, SlugInput, UploadImage, RichTextEditor, Textarea.
  * Lógica de formulario extraída a useEditorServicio para cumplir max 3 useState.
  * [074A-66] Tab Planes agregada para editar planes de pricing inline.
- * sentinel-disable-file button-nativo: Tabs del editor y status toggles usan <button> nativo
- * porque botonBase interfiere con estilos del tab (mismo patrón 074A-47). */
+ * sentinel-disable-file html-nativo-en-vez-de-componente: Tabs del editor y status toggles usan
+ * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón 074A-47). */
 import React, {useState, useCallback} from 'react';
 import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';

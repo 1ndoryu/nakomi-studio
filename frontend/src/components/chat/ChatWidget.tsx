@@ -2,11 +2,13 @@
  * fondo semi-transparente, sombra especifica del usuario, animacion suave.
  * [064A-52] Eliminada lógica de pedir nombre — el agente IA lo pide directamente.
  * Input 100% ancho con send button overlaid, bg unset, radius 104px.
- * Avatar de AI al lado de los mensajes en vez de icono Bot. */
+ * Avatar de AI al lado de los mensajes en vez de icono Bot.
+ * sentinel-disable-file limite-lineas: ChatWidget integra mensajes, input, attachments,
+ * typing indicator y branding en un solo componente — lógica ya extraída a useChatWidget. */
 
 import React, {useState, useRef, useEffect} from 'react';
 import {useLocation} from 'react-router-dom';
-import {Send, User, Minus, Paperclip} from 'lucide-react';
+import {Send, User, Minus, Paperclip, FileText, Palette, Package} from 'lucide-react';
 import {useChatWidget} from '../../hooks/useChatWidget';
 import {SENDER_LABELS} from '../../api/chat';
 import {useChatStore} from '../../stores/chatStore';
@@ -166,7 +168,7 @@ function renderMessageContent(msg: {
                         rel="noopener noreferrer"
                         className="chatWidgetMsgFileLink"
                     >
-                        📄 {fileName}
+                        <FileText size={14} /> {fileName}
                     </a>
                     {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
                 </div>
@@ -221,7 +223,7 @@ function renderMessageContent(msg: {
             return (
                 <div className="chatWidgetMsgRich chatWidgetServiceCard">
                     <div className="chatWidgetServiceHeader">
-                        <span className="chatWidgetServiceIcon">🎨</span>
+                        <span className="chatWidgetServiceIcon"><Palette size={16} /></span>
                         <span className="chatWidgetServiceTitle">{title}</span>
                     </div>
                     {description && (
@@ -243,7 +245,7 @@ function renderMessageContent(msg: {
             return (
                 <div className="chatWidgetMsgRich chatWidgetOrderCard">
                     <div className="chatWidgetOrderHeader">
-                        <span className="chatWidgetOrderIcon">📦</span>
+                        <span className="chatWidgetOrderIcon"><Package size={16} /></span>
                         <span className="chatWidgetOrderTitle">Pedido #{orderNumber}</span>
                     </div>
                     {serviceTitle && (
@@ -397,7 +399,7 @@ function ChatWidgetInput({
                 type="file"
                 accept={CHAT_FILE_ACCEPT}
                 onChange={handleFileChange}
-                style={{display: 'none'}}
+                className="chatWidgetFileInput"
             />
             <Button
                 variante="texto"

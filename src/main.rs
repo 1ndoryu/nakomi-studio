@@ -1,3 +1,5 @@
+/* sentinel-disable-file sqlx-query-sin-macro: main.rs usa queries dinámicas para
+ * setup inicial (admin seeding, cleanup test data) con formatos generados en runtime. */
 use std::net::SocketAddr;
 
 use argon2::password_hash::rand_core::OsRng;

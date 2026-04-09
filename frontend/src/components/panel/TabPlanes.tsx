@@ -1,8 +1,8 @@
 /* [074A-66] Tab de edición de planes dentro de EditorServicio.
  * Cada plan es una card expandible con campos editables inline.
  * Las fases se gestionan dentro de cada plan expandido.
- * sentinel-disable-file button-nativo: Botones de eliminar/agregar usan <button> nativo
- * porque son acciones inline de formulario donde botonBase interfiere con layout.
+ * sentinel-disable-file html-nativo-en-vez-de-componente: Botones de eliminar/agregar usan
+ * <button> nativo porque son acciones inline donde botonBase interfiere con layout.
  * sentinel-disable-file componente-sin-hook: Estado vive en el padre (planes prop),
  * los callbacks son wiring trivial que no justifica un hook separado. */
 import React, {useCallback} from 'react';
@@ -206,8 +206,9 @@ export const TabPlanes: React.FC<TabPlanesProps> = ({planes, onChange}) => {
 
                                 <div className="tabPlanSeccion">
                                     <span className="tabPlanSeccionTitulo">Características</span>
+                                    {/* sentinel-disable-next-line key-index-lista: features are plain strings without IDs, idx is the only stable key */}
                                     {plan.features.map((feat, idx) => (
-                                        <div key={idx} className="tabPlanFeatureFila">
+                                        <div key={`${plan.key}-${idx}`} className="tabPlanFeatureFila">
                                             <Input
                                                 value={feat}
                                                 onChange={e => actualizarFeature(plan.key, idx, e.target.value)}

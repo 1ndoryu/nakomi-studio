@@ -1,8 +1,8 @@
 /* [074A-12] Editor de proyecto CMS — Modal con tabs: General | Media | Tech | SEO.
  * Más campos que EditorBlog: cliente, categorías, tecnologías, enlaces, skills.
  * Lógica de formulario extraída a useEditorProyecto.
- * sentinel-disable-file button-nativo: Tabs del editor y status toggles usan <button> nativo
- * porque botonBase interfiere con estilos del tab (mismo patrón EditorBlog). */
+ * sentinel-disable-file html-nativo-en-vez-de-componente: Tabs del editor y status toggles usan
+ * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón EditorBlog). */
 import React, { useState, useCallback } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';

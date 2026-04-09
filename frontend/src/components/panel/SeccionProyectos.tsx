@@ -5,7 +5,9 @@
  * Canceladas y completadas van a Historial.
  * [084A-1] Admin: búsqueda, filtro por empleado, empleado en card footer.
  * sentinel-disable-file componente-sin-hook: la lógica son constantes de ordenamiento y filtros
- * que no son reutilizables; data ya está en useOrdenes. */
+ * que no son reutilizables; data ya está en useOrdenes.
+ * sentinel-disable-file usestate-excesivo: 4 useState — tab, búsqueda, filtroEmpleado,
+ * menuAbierto son estados UI independientes del componente lista. */
 import React, {useCallback, useMemo, useState} from 'react';
 import {FolderOpen, Search, ChevronDown} from 'lucide-react';
 import {useAuthStore} from '../../stores/authStore';

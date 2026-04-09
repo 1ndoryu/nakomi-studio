@@ -512,3 +512,8 @@
         bottom: var(--spacing-md);
     }
 }
+
+/* [104A-4] Input oculto para file picker (antes era inline style display:none) */
+.chatWidgetFileInput {
+    display: none;
+}
