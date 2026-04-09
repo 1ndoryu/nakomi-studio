@@ -33,12 +33,18 @@ fn sanitize_for_prompt(input: &str, max_len: usize) -> String {
  * Cada llamada a generate_response incrementa y usa mod num_keys. */
 static KEY_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// Configuración del servicio de IA (Groq con rotación de keys)
+/// Configuración del servicio de IA con soporte multi-proveedor.
+/// Groq como primario (rotación de keys), Gemini como fallback.
+/// Ambas APIs son OpenAI-compatibles (mismo formato de request).
 #[derive(Clone)]
 pub struct AiChatConfig {
     pub api_keys: Vec<String>,
     pub model: String,
     pub api_url: String,
+    /* [084A-37] Google Gemini como proveedor secundario OpenAI-compatible.
+     * Se usa como fallback cuando Groq agota todos los modelos×keys. */
+    pub(crate) gemini_key: Option<String>,
+    pub(crate) gemini_url: String,
 }
 
 impl AiChatConfig {
@@ -67,13 +73,12 @@ impl AiChatConfig {
         }
 
         let model = std::env::var("AI_MODEL")
-            .unwrap_or_else(|_| "meta-llama/llama-4-maverick-17b-128e-instruct".to_string());
+            .unwrap_or_else(|_| "openai/gpt-oss-120b".to_string());
 
-        /* [084A-34] Whitelist de modelos Groq, ordenada por inteligencia descendente.
-         * Maverick (400B MoE, 128 expertos) es el más capaz, seguido de GPT-OSS-120B.
+        /* [084A-36] Whitelist de modelos Groq, ordenada por inteligencia descendente.
+         * GPT-OSS-120B como primario. Maverick eliminado (deprecated en Groq).
          * El sistema usa esta lista como cadena de fallback por rate limit (429). */
         let allowed_models = [
-            "meta-llama/llama-4-maverick-17b-128e-instruct",
             "openai/gpt-oss-120b",
             "meta-llama/llama-4-scout-17b-16e-instruct",
             "qwen/qwen3-32b",
@@ -85,23 +90,36 @@ impl AiChatConfig {
             model
         } else {
             tracing::warn!("Modelo AI no permitido: {model}, usando default");
-            "meta-llama/llama-4-maverick-17b-128e-instruct".to_string()
+            "openai/gpt-oss-120b".to_string()
         };
 
         let api_url = std::env::var("AI_API_URL").unwrap_or_else(|_| {
             "https://api.groq.com/openai/v1/chat/completions".to_string()
         });
 
+        /* [084A-37] Google Gemini como proveedor secundario.
+         * La API de Gemini es OpenAI-compatible: mismo formato de request,
+         * diferente base_url y api_key. Se usa como fallback cuando Groq falla. */
+        let gemini_key = std::env::var("GOOGLE_GEMINI_API").ok().filter(|k| !k.is_empty());
+        let gemini_url = std::env::var("GEMINI_API_URL").unwrap_or_else(|_| {
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions".to_string()
+        });
+        if gemini_key.is_some() {
+            tracing::info!("AI: Gemini configurado como proveedor secundario");
+        }
+
         Self {
             api_keys: keys,
             model,
             api_url,
+            gemini_key,
+            gemini_url,
         }
     }
 
     #[must_use]
     pub fn is_configured(&self) -> bool {
-        !self.api_keys.is_empty()
+        !self.api_keys.is_empty() || self.gemini_key.is_some()
     }
 
     /* [064A-29] Selecciona la siguiente API key en rotacion round-robin */
@@ -113,12 +131,11 @@ impl AiChatConfig {
         Some(&self.api_keys[idx])
     }
 
-    /* [084A-34] Cadena de modelos fallback ordenados por inteligencia.
-     * Maverick (400B MoE) primero, luego GPT-OSS-120B, Scout, Qwen3, etc.
+    /* [084A-36] Cadena de modelos fallback Groq ordenados por inteligencia.
+     * GPT-OSS-120B como primario. Maverick eliminado (deprecated en Groq abril 2026).
      * El modelo primario (self.model) va primero, seguido por los demás en orden descendente. */
     fn model_fallback_chain(&self) -> Vec<&str> {
         let all_models = [
-            "meta-llama/llama-4-maverick-17b-128e-instruct",
             "openai/gpt-oss-120b",
             "meta-llama/llama-4-scout-17b-16e-instruct",
             "qwen/qwen3-32b",
@@ -343,32 +360,52 @@ impl AiChatService {
     }
 }
 
-/* [084A-27] Llamar a Groq API con retry por keys Y fallback de modelo.
- * Primero intenta todas las keys con el modelo primario.
- * Si todas fallan por rate limit (429), pasa al siguiente modelo en la cadena.
- * Esto maximiza el uso de los modelos más inteligentes antes de degradar. */
+/* [084A-27+084A-37] Llamar a API AI con retry multi-proveedor.
+ * Flujo: Groq (modelos × keys) → Gemini (modelos × 1 key).
+ * Dentro de cada proveedor: intenta todas las keys por modelo.
+ * Si todas fallan por rate limit (429), pasa al siguiente modelo.
+ * Cuando Groq se agota, intenta Gemini como fallback. */
 async fn call_groq_api(
     config: &AiChatConfig,
     messages: &[Value],
     tools: Option<&Value>,
 ) -> Result<Value, String> {
-    let fallback_chain = config.model_fallback_chain();
     let client = reqwest::Client::new();
+    let mut last_error = String::new();
+
+    /* Fase 1: Groq — rotación de modelos × keys */
+    if !config.api_keys.is_empty() {
+        match try_groq_provider(config, &client, messages, tools).await {
+            Ok(json) => return Ok(json),
+            Err(e) => last_error = e,
+        }
+    }
+
+    /* [084A-37] Fase 2: Gemini — proveedor secundario OpenAI-compatible */
+    if config.gemini_key.is_some() {
+        match try_gemini_provider(config, &client, messages, tools).await {
+            Ok(json) => return Ok(json),
+            Err(e) => last_error = e,
+        }
+    }
+
+    Err(format!("AI: todos los proveedores fallaron. Último error: {last_error}"))
+}
+
+/* Intenta Groq con rotación de modelos (fallback_chain) × keys (round-robin).
+ * Solo avanza al siguiente modelo si TODAS las keys devuelven 429. */
+async fn try_groq_provider(
+    config: &AiChatConfig,
+    client: &reqwest::Client,
+    messages: &[Value],
+    tools: Option<&Value>,
+) -> Result<Value, String> {
+    let fallback_chain = config.model_fallback_chain();
     let num_keys = config.api_keys.len();
     let mut last_error = String::new();
 
     for model in &fallback_chain {
-        let mut body = serde_json::json!({
-            "model": model,
-            "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 800,
-            "top_p": 0.9
-        });
-        if let Some(t) = tools {
-            body["tools"] = t.clone();
-        }
-
+        let body = build_chat_body(model, messages, tools);
         let mut all_rate_limited = true;
 
         for attempt in 0..num_keys {
@@ -385,8 +422,8 @@ async fn call_groq_api(
 
             match resp {
                 Err(e) => {
-                    tracing::error!("AI [{model}] key {key_hint}... intento {}/{num_keys}: error red: {e}", attempt + 1);
-                    last_error = format!("Error de red: {e}");
+                    tracing::error!("AI Groq [{model}] key {key_hint}... intento {}/{num_keys}: error red: {e}", attempt + 1);
+                    last_error = format!("Groq error de red: {e}");
                     all_rate_limited = false;
                 }
                 Ok(response) => {
@@ -394,19 +431,17 @@ async fn call_groq_api(
                     if status.is_success() {
                         let json: Value = response.json().await
                             .map_err(|e| format!("AI parse error: {e}"))?;
-                        /* [084A-34] Log de modelo y key usados en cada request exitoso */
                         if model == &fallback_chain[0] {
-                            tracing::info!("AI OK: modelo={model}, key={key_hint}..., intento={}", attempt + 1);
+                            tracing::info!("AI OK: proveedor=Groq, modelo={model}, key={key_hint}..., intento={}", attempt + 1);
                         } else {
-                            tracing::info!("AI fallback exitoso: modelo={model}, key={key_hint}..., intento={}", attempt + 1);
+                            tracing::info!("AI fallback Groq: modelo={model}, key={key_hint}..., intento={}", attempt + 1);
                         }
                         return Ok(json);
                     }
                     let text = response.text().await.unwrap_or_default();
-                    tracing::error!("AI [{model}] key {key_hint}... intento {}/{num_keys}: HTTP {status}: {text}", attempt + 1);
-                    last_error = format!("HTTP {status}");
+                    tracing::error!("AI Groq [{model}] key {key_hint}... intento {}/{num_keys}: HTTP {status}: {text}", attempt + 1);
+                    last_error = format!("Groq HTTP {status}");
 
-                    /* Solo hacer fallback de modelo si TODAS las keys dan 429 */
                     if status.as_u16() != 429 {
                         all_rate_limited = false;
                     }
@@ -414,14 +449,80 @@ async fn call_groq_api(
             }
         }
 
-        /* Si no todas fueron rate limit, no tiene sentido probar otro modelo */
         if !all_rate_limited {
             break;
         }
-        tracing::warn!("AI modelo {model}: todas las keys con rate limit (429), probando siguiente modelo");
+        tracing::warn!("AI Groq modelo {model}: todas las keys con rate limit (429), probando siguiente modelo");
     }
 
-    Err(format!("AI: todos los modelos y keys fallaron. Último error: {last_error}"))
+    Err(last_error)
+}
+
+/* [084A-37] Intenta Google Gemini como proveedor secundario OpenAI-compatible.
+ * Modelos ordenados: flash (rápido/barato) → pro (más capaz).
+ * Avanza al siguiente modelo solo si el actual devuelve 429. */
+async fn try_gemini_provider(
+    config: &AiChatConfig,
+    client: &reqwest::Client,
+    messages: &[Value],
+    tools: Option<&Value>,
+) -> Result<Value, String> {
+    let gemini_key = config.gemini_key.as_deref().ok_or("Gemini no configurado")?;
+    let gemini_models = ["gemini-2.5-flash", "gemini-2.5-pro"];
+    let key_hint = &gemini_key[..gemini_key.len().min(8)];
+    let mut last_error = String::new();
+
+    for model in &gemini_models {
+        let body = build_chat_body(model, messages, tools);
+
+        let resp = client
+            .post(&config.gemini_url)
+            .header("Authorization", format!("Bearer {gemini_key}"))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await;
+
+        match resp {
+            Err(e) => {
+                tracing::error!("AI Gemini [{model}] key {key_hint}...: error red: {e}");
+                last_error = format!("Gemini error de red: {e}");
+            }
+            Ok(response) => {
+                let status = response.status();
+                if status.is_success() {
+                    let json: Value = response.json().await
+                        .map_err(|e| format!("AI parse error: {e}"))?;
+                    tracing::info!("AI fallback Gemini: modelo={model}, key={key_hint}...");
+                    return Ok(json);
+                }
+                let text = response.text().await.unwrap_or_default();
+                tracing::error!("AI Gemini [{model}] key {key_hint}...: HTTP {status}: {text}");
+                last_error = format!("Gemini HTTP {status}");
+
+                if status.as_u16() != 429 {
+                    break;
+                }
+            }
+        }
+    }
+
+    Err(last_error)
+}
+
+/* Construye el body JSON para una llamada OpenAI-compatible (Groq o Gemini). */
+fn build_chat_body(model: &str, messages: &[Value], tools: Option<&Value>) -> Value {
+    let mut body = serde_json::json!({
+        "model": model,
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 800,
+        "top_p": 0.9
+    });
+    if let Some(t) = tools {
+        body["tools"] = t.clone();
+    }
+    body
 }
 
 /* [T-2] Ejecutar tool calls y recopilar rich messages.
@@ -964,43 +1065,45 @@ mod tests {
         assert_eq!(msgs[3]["role"], "user");
     }
 
+    /* [084A-37] Helper para crear config de test sin repetir campos Gemini */
+    fn test_config(keys: Vec<String>, model: &str) -> AiChatConfig {
+        AiChatConfig {
+            api_keys: keys,
+            model: model.to_string(),
+            api_url: "https://api.groq.com".into(),
+            gemini_key: None,
+            gemini_url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions".into(),
+        }
+    }
+
     #[test]
     fn model_fallback_chain_primary_first() {
-        let config = AiChatConfig {
-            api_keys: vec!["key1".into()],
-            model: "qwen/qwen3-32b".into(),
-            api_url: "https://api.groq.com".into(),
-        };
+        let config = test_config(vec!["key1".into()], "qwen/qwen3-32b");
         let chain = config.model_fallback_chain();
         assert_eq!(chain[0], "qwen/qwen3-32b");
-        assert!(chain.contains(&"meta-llama/llama-4-maverick-17b-128e-instruct"));
+        assert!(chain.contains(&"openai/gpt-oss-120b"));
+        /* [084A-36] Maverick ya no debe estar en la cadena */
+        assert!(!chain.iter().any(|m| m.contains("maverick")));
         let unique: std::collections::HashSet<&&str> = chain.iter().collect();
         assert_eq!(unique.len(), chain.len());
     }
 
+    /* [084A-36] Test actualizado: GPT-OSS-120B es ahora el modelo primario por defecto */
     #[test]
-    fn model_fallback_chain_default_maverick() {
-        let config = AiChatConfig {
-            api_keys: vec!["key1".into()],
-            model: "meta-llama/llama-4-maverick-17b-128e-instruct".into(),
-            api_url: "https://api.groq.com".into(),
-        };
+    fn model_fallback_chain_default_gpt_oss() {
+        let config = test_config(vec!["key1".into()], "openai/gpt-oss-120b");
         let chain = config.model_fallback_chain();
-        assert_eq!(chain[0], "meta-llama/llama-4-maverick-17b-128e-instruct");
+        assert_eq!(chain[0], "openai/gpt-oss-120b");
         assert_eq!(
-            chain.iter().filter(|m| **m == "meta-llama/llama-4-maverick-17b-128e-instruct").count(),
+            chain.iter().filter(|m| **m == "openai/gpt-oss-120b").count(),
             1,
         );
-        assert_eq!(chain.len(), 7);
+        assert_eq!(chain.len(), 6);
     }
 
     #[test]
     fn round_robin_key_rotation() {
-        let config = AiChatConfig {
-            api_keys: vec!["key_a".into(), "key_b".into(), "key_c".into()],
-            model: "test".into(),
-            api_url: "test".into(),
-        };
+        let config = test_config(vec!["key_a".into(), "key_b".into(), "key_c".into()], "test");
         let k1 = config.next_key().unwrap().to_string();
         let k2 = config.next_key().unwrap().to_string();
         let k3 = config.next_key().unwrap().to_string();
@@ -1013,11 +1116,29 @@ mod tests {
 
     #[test]
     fn next_key_empty_returns_none() {
-        let config = AiChatConfig {
-            api_keys: vec![],
-            model: "test".into(),
-            api_url: "test".into(),
-        };
+        let config = test_config(vec![], "test");
         assert!(config.next_key().is_none());
+    }
+
+    /* [084A-37] Tests para configuración multi-proveedor Gemini */
+    #[test]
+    fn is_configured_with_only_gemini() {
+        let mut config = test_config(vec![], "test");
+        assert!(!config.is_configured());
+        config.gemini_key = Some("gemini-key-123".into());
+        assert!(config.is_configured());
+    }
+
+    #[test]
+    fn is_configured_with_groq_and_gemini() {
+        let mut config = test_config(vec!["groq-key".into()], "openai/gpt-oss-120b");
+        config.gemini_key = Some("gemini-key".into());
+        assert!(config.is_configured());
+    }
+
+    #[test]
+    fn gemini_url_default() {
+        let config = test_config(vec![], "test");
+        assert!(config.gemini_url.contains("generativelanguage.googleapis.com"));
     }
 }
