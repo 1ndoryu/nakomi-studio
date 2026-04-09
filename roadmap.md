@@ -98,7 +98,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Pendientes nuevas (por prioridad)
 
-- 084A-38: Factura duplicada texto plano — la IA genera factura (rich message) pero TAMBIÉN escribe texto con el link de Stripe. La factura sale como "Pagada" sin botón de pago. Además la factura en Stripe muestra $0.00 MXN. Investigar y corregir: (1) eliminar texto plano duplicado cuando hay rich message, (2) status correcto en la card, (3) monto correcto en Stripe.
+- ~~084A-38: Factura duplicada texto plano — 3 bugs corregidos~~ ✅
 - 084A-39: Deploy al servidor — Revisar Coolify por deploys anteriores. El usuario dice que ya se hizo un despliegue antes. Investigar.
 - 084A-40: Comando /reset en chat — borrar todo el contexto de la conversación y usuario para empezar de cero al testear.
 - 084A-41: Ampliar modelos Gemini — investigar gemini-3-flash, gemini-3.1, etc. y agregarlos al fallback chain.
