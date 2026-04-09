@@ -307,11 +307,13 @@ async fn exec_create_invoice(
     });
 
     ToolExecResult {
+        /* [084A-38] No incluir payment_url en tool_result_json — la IA lo repite en texto plano.
+         * El link de pago solo va en la RichMessage metadata (la card lo muestra con botón). */
         tool_result_json: json!({
             "invoice_id": invoice.id,
             "amount_usd": price_usd,
-            "payment_url": invoice.hosted_invoice_url,
             "status": invoice.status,
+            "message": "Factura creada exitosamente. El cliente verá una tarjeta visual con botón de pago. NO repitas el link de pago en tu respuesta."
         })
         .to_string(),
         rich_message: Some(RichMessage {
@@ -437,8 +439,9 @@ async fn create_stripe_invoice(
         .await
         .map_err(|e| format!("Parse invoice error: {e}"))?;
 
-    /* Agregar line item */
-    let _item_resp = client
+    /* [084A-38] Agregar line item — VALIDAR respuesta. Sin line item, el invoice
+     * se finaliza con $0.00 y Stripe lo marca como "paid" inmediatamente. */
+    let item_resp = client
         .post("https://api.stripe.com/v1/invoiceitems")
         .header("Authorization", format!("Bearer {key}"))
         .form(&[
@@ -451,6 +454,11 @@ async fn create_stripe_invoice(
         .send()
         .await
         .map_err(|e| format!("Create line item error: {e}"))?;
+
+    if !item_resp.status().is_success() {
+        let text = item_resp.text().await.unwrap_or_default();
+        return Err(format!("Line item creation failed: {text}"));
+    }
 
     /* Finalizar invoice (genera hosted_invoice_url) */
     let final_resp = client

@@ -171,7 +171,9 @@ function renderMessageContent(msg: {
                     {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
                 </div>
             );
-        /* [084A-26] Invoice: tarjeta con monto, descripción y botón de pago */
+        /* [084A-26+084A-38] Invoice: tarjeta con monto, descripción y botón de pago.
+         * Status: "open" = pendiente de pago (mostrar botón), "paid" = pagada.
+         * Stripe solo marca "paid" cuando el cliente paga — nunca al crear. */
         case 'invoice': {
             const payUrl = (msg.metadata?.payment_url as string) || '';
             const amountCents = (msg.metadata?.amount_cents as number) || 0;
@@ -180,6 +182,7 @@ function renderMessageContent(msg: {
             const status = (msg.metadata?.status as string) || '';
             const amountFormatted = (amountCents / 100).toFixed(2);
             const isPaid = status === 'paid';
+            const isOpen = status === 'open' || status === '' || status === 'draft';
 
             return (
                 <div className="chatWidgetMsgRich chatWidgetInvoiceCard">
@@ -187,6 +190,7 @@ function renderMessageContent(msg: {
                         <span className="chatWidgetInvoiceIcon">🧾</span>
                         <span className="chatWidgetInvoiceTitle">Factura</span>
                         {isPaid && <span className="chatWidgetInvoicePaid">Pagada</span>}
+                        {isOpen && <span className="chatWidgetInvoicePending">Pendiente</span>}
                     </div>
                     <p className="chatWidgetInvoiceAmount">
                         ${amountFormatted} {currency.toUpperCase()}

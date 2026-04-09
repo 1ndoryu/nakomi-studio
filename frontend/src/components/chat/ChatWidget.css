@@ -393,6 +393,17 @@
     border-radius: var(--radius-full);
 }
 
+/* [084A-38] Badge "Pendiente" para facturas aún no pagadas */
+.chatWidgetInvoicePending {
+    font-size: var(--text-2xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-warning-text, #9a6700);
+    background: var(--color-warning-bg-soft, #fff8c5);
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+}
+
 .chatWidgetInvoiceAmount {
     margin: var(--spacing-xs) 0 0;
     font-size: var(--text-lg);
