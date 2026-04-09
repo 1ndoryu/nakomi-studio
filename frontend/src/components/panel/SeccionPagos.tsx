@@ -67,23 +67,33 @@ export function SeccionPagos() {
 
     return (
         <div className="pagosContenedor">
-            {/* Selector de orden */}
-            <div className="pagosOrdenesLista">
-                {ordenes.map((o) => (
-                    <Button
-                        key={o.id}
-                        variante="texto"
-                        className={`pagosOrdenBtn ${ordenSeleccionada === o.id ? 'pagosOrdenBtn--activo' : ''}`}
-                        onClick={() => setOrdenSeleccionada(o.id)}
-                        type="button"
-                    >
-                        <span className="pagosOrdenNumero">#{o.order_number}</span>
-                        <span className="pagosOrdenTitulo">{o.service_title}</span>
-                        <span className="pagosOrdenPrecio">{formatPrice(o.final_price_cents, o.currency)}</span>
-                    </Button>
-                ))}
-                {ordenes.length === 0 && (
+            {/* [084A-44] Selector de orden como tabla profesional */}
+            <div className="pagosOrdenesWrapper">
+                {ordenes.length === 0 ? (
                     <p className="pagosVacioTexto">No tienes órdenes</p>
+                ) : (
+                    <table className="pagosOrdenesTabla">
+                        <thead>
+                            <tr>
+                                <th className="pagosOrdenesHead">Orden</th>
+                                <th className="pagosOrdenesHead">Servicio</th>
+                                <th className="pagosOrdenesHead pagosOrdenesHeadDerecha">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ordenes.map((o) => (
+                                <tr
+                                    key={o.id}
+                                    className={`pagosOrdenesFila ${ordenSeleccionada === o.id ? 'pagosOrdenesFila--activa' : ''}`}
+                                    onClick={() => setOrdenSeleccionada(o.id)}
+                                >
+                                    <td className="pagosOrdenesCelda pagosOrdenesNumero">#{o.order_number}</td>
+                                    <td className="pagosOrdenesCelda pagosOrdenesTitulo">{o.service_title}</td>
+                                    <td className="pagosOrdenesCelda pagosOrdenesCeldaDerecha">{formatPrice(o.final_price_cents, o.currency)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 )}
             </div>
 

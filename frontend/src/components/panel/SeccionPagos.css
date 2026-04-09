@@ -1,6 +1,7 @@
 /* [044A-38 Fase 3] Estilos del historial de pagos.
  * [074A-61] Rediseño: lista compacta clickeable + modal de detalles.
- * [084A-21] Rediseño como tabla profesional con headers, totales y responsive. */
+ * [084A-21] Rediseño como tabla profesional con headers, totales y responsive.
+ * [084A-44] Selector de órdenes rediseñado como tabla profesional. */
 
 .pagosContenedor {
     display: flex;
@@ -8,51 +9,75 @@
     gap: var(--spacing-lg);
 }
 
-.pagosOrdenesLista {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-}
-
-.pagosOrdenBtn {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-sm) var(--spacing-md);
+/* [084A-44] Tabla de órdenes (reemplaza pagosOrdenesLista) */
+.pagosOrdenesWrapper {
+    overflow-x: auto;
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-md);
-    background: var(--brand-white);
-    cursor: pointer;
-    transition: all var(--transicion-rapida);
+}
+
+.pagosOrdenesTabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.pagosOrdenesHead {
     text-align: left;
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--bg-item-active);
+    background: var(--bg-accent);
+    white-space: nowrap;
 }
 
-.pagosOrdenBtn:hover {
-    border-color: var(--border-hover);
+.pagosOrdenesHeadDerecha {
+    text-align: right;
 }
 
-.pagosOrdenBtn--activo {
-    border-color: var(--brand-black);
+.pagosOrdenesFila {
+    cursor: pointer;
+    transition: background var(--transicion-rapida);
+}
+
+.pagosOrdenesFila:hover {
+    background: var(--bg-accent);
+}
+
+.pagosOrdenesFila--activa {
     background: var(--bg-item-active);
 }
 
-.pagosOrdenNumero {
+.pagosOrdenesFila:not(:last-child) .pagosOrdenesCelda {
+    border-bottom: 1px solid var(--bg-item-active);
+}
+
+.pagosOrdenesCelda {
+    padding: var(--spacing-sm) var(--spacing-md);
+    vertical-align: middle;
+}
+
+.pagosOrdenesNumero {
     font-weight: 700;
-    font-size: var(--text-sm);
+    white-space: nowrap;
     min-width: 50px;
 }
 
-.pagosOrdenTitulo {
-    flex: 1;
-    font-size: var(--text-sm);
+.pagosOrdenesTitulo {
+    max-width: 250px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.pagosOrdenPrecio {
+.pagosOrdenesCeldaDerecha {
+    text-align: right;
     font-weight: 600;
-    font-size: var(--text-sm);
+    white-space: nowrap;
 }
 
 .pagosDatos {
@@ -318,8 +343,19 @@
     justify-content: flex-end;
 }
 
-/* [084A-21] Responsive: tabla scrollable en mobile, totales apilados */
+/* [084A-44] Responsive: tablas scrollable en mobile, totales apilados */
 @media (max-width: 767px) {
+    .pagosOrdenesWrapper {
+        margin: 0 calc(-1 * var(--spacing-md));
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .pagosOrdenesTitulo {
+        max-width: 120px;
+    }
+
     .pagosTablaWrapper {
         margin: 0 calc(-1 * var(--spacing-md));
         border-radius: 0;
