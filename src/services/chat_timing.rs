@@ -554,11 +554,13 @@ async fn check_relevance(
     let relevance_model = std::env::var("AI_RELEVANCE_MODEL")
         .unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
 
-    /* Desactivable con AI_RELEVANCE_ENABLED=false */
+    /* [084A-47] Desactivado por defecto: genera falsos positivos que bloquean
+     * mensajes legítimos a mitad de conversación. Reactivable con
+     * AI_RELEVANCE_ENABLED=true si se mejora el clasificador. */
     if std::env::var("AI_RELEVANCE_ENABLED")
-        .unwrap_or_else(|_| "true".to_string())
+        .unwrap_or_else(|_| "false".to_string())
         .to_lowercase()
-        == "false"
+        != "true"
     {
         return Ok(true);
     }
