@@ -7,7 +7,7 @@
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
-use crate::repositories::{ChatRepository, OrderRepository};
+use crate::repositories::ChatRepository;
 
 /* Resultado de ejecutar una tool: JSON para la IA y opcionalmente un
  * mensaje rico para mostrar en el chat del visitante. */
@@ -37,34 +37,10 @@ pub fn tool_definitions() -> Value {
     tools
 }
 
-/* Tools de servicios, facturas y escalación (T-2) */
+/* [084A-51] show_service y list_services removidos — las service cards son antinaturales
+ * en un chat conversacional. Solo se mantienen tools de factura, escalación y captura. */
 fn service_tool_defs() -> Value {
     json!([
-        {
-            "type": "function",
-            "function": {
-                "name": "show_service",
-                "description": "Muestra una tarjeta de servicio al cliente con precio y descripción. Úsalo cuando el cliente pregunte por un servicio específico o quieras recomendar uno.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "service_slug": {
-                            "type": "string",
-                            "description": "Slug del servicio: diseno-de-sitios-web, desarrollo-apps, agentes-ia, branding"
-                        }
-                    },
-                    "required": ["service_slug"]
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "list_services",
-                "description": "Lista todos los servicios disponibles con precios. Úsalo cuando el cliente pida ver todos los servicios o no sepa qué necesita.",
-                "parameters": { "type": "object", "properties": {} }
-            }
-        },
         {
             "type": "function",
             "function": {
@@ -146,8 +122,6 @@ pub async fn execute_tool(
     arguments: &Value,
 ) -> ToolExecResult {
     match tool_name {
-        "show_service" => exec_show_service(pool, arguments).await,
-        "list_services" => exec_list_services(pool).await,
         "create_invoice" => exec_create_invoice(http_client, stripe_key, arguments).await,
         "request_human_assistance" => exec_request_human(arguments),
         "capture_email" => exec_capture_email(pool, visitor_id, arguments).await,
@@ -160,82 +134,9 @@ pub async fn execute_tool(
     }
 }
 
-/* show_service: busca servicio por slug y devuelve service_card */
-async fn exec_show_service(pool: &PgPool, args: &Value) -> ToolExecResult {
-    let slug = args["service_slug"].as_str().unwrap_or("");
-
-    let service = match OrderRepository::find_service_by_slug(pool, slug).await {
-        Ok(Some(s)) => s,
-        Ok(None) => {
-            return ToolExecResult {
-                tool_result_json: json!({"error": "Servicio no encontrado", "slug": slug}).to_string(),
-                rich_message: None,
-            };
-        }
-        Err(e) => {
-            tracing::error!("Error buscando servicio {slug}: {e}");
-            return ToolExecResult {
-                tool_result_json: json!({"error": "Error interno"}).to_string(),
-                rich_message: None,
-            };
-        }
-    };
-
-    let price_usd = f64::from(service.base_price_cents) / 100.0;
-    let result = json!({
-        "slug": service.slug,
-        "title": service.title,
-        "description": service.description,
-        "base_price_usd": price_usd,
-    });
-
-    let metadata = json!({
-        "service_slug": service.slug,
-        "title": service.title,
-        "description": service.description,
-        "base_price_cents": service.base_price_cents,
-    });
-
-    ToolExecResult {
-        tool_result_json: result.to_string(),
-        rich_message: Some(RichMessage {
-            content: format!("{} — desde ${price_usd:.2} USD", service.title),
-            message_type: "service_card".to_string(),
-            metadata,
-        }),
-    }
-}
-
-/* list_services: muestra todos los servicios disponibles */
-async fn exec_list_services(pool: &PgPool) -> ToolExecResult {
-    let services = match OrderRepository::list_services(pool).await {
-        Ok(s) => s,
-        Err(e) => {
-            tracing::error!("Error listando servicios: {e}");
-            return ToolExecResult {
-                tool_result_json: json!({"error": "Error interno"}).to_string(),
-                rich_message: None,
-            };
-        }
-    };
-
-    let items: Vec<Value> = services
-        .iter()
-        .map(|s| {
-            json!({
-                "slug": s.slug,
-                "title": s.title,
-                "description": s.description,
-                "base_price_usd": f64::from(s.base_price_cents) / 100.0,
-            })
-        })
-        .collect();
-
-    ToolExecResult {
-        tool_result_json: json!({"services": items}).to_string(),
-        rich_message: None,
-    }
-}
+/* [084A-51] exec_show_service y exec_list_services eliminados — herramientas desactivadas.
+ * Las service cards son antinaturales en el chat conversacional. Si se reactivan en el futuro,
+ * recuperar implementación del git history (commit anterior a 084A-51). */
 
 /* create_invoice: crea factura en Stripe con link de pago.
  * Flujo: create customer → create invoice → add line item → finalize → get URL.
