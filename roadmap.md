@@ -67,7 +67,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~084A-41: Ampliar modelos Gemini — 6 modelos en cadena fallback (2.5-flash, 2.5-flash-lite, 2.5-pro, 3-flash-preview, 3.1-pro-preview, 3.1-flash-lite-preview)~~ ✅
 - ~~084A-42: Sistema antibots en chat — rate limit por IP + max conexiones WS por IP + cap longitud mensajes~~ ✅
 - ~~084A-43: chatAreaMensajes — ajustar altura a la pantalla con min-height:0 en cadena flex~~ ✅
-- 084A-44: pagosOrdenesLista — rediseñar como tabla profesional (el usuario lo ha pedido varias veces).
+- ~~084A-44: pagosOrdenesLista — rediseñado como tabla profesional con headers, filas clickeables y responsive~~ ✅
 - 084A-45: hostingDetallePlanOption — diseño minimalista (badges sin color, botón separado, beneficios como lista) + hostingEventos quitar padding innecesario.
 - ~~084A-46: Renombrar agente de chat a "Claudia" + reducir delay de respuesta en 3 segundos~~ ✅
 - ~~084A-47: Desactivar sistema de relevancia del chatbot (falsos positivos bloquean mensajes legítimos)~~ ✅
