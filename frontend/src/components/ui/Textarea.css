@@ -3,9 +3,8 @@
     font-family: var(--font-primary);
     font-size: var(--text-sm);
     padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--border-color, var(--border-default));
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-sm);
-    background: var(--bg-primary);
     color: var(--text-primary);
     outline: none;
     transition: border-color 0.2s;

@@ -36,10 +36,6 @@ export const SeccionPerfil: React.FC = () => {
 
     return (
         <div className="perfilSeccion">
-            <p className="perfilDescripcionIntro">
-                {t('panel.profile_intro')}
-            </p>
-
             <form className="perfilFormulario" onSubmit={handleGuardar}>
                 {/* Avatar */}
                 <div className="perfilAvatarSeccion">

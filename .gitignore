@@ -43,3 +43,4 @@ frontend/openapi-debug.json
 .sentinel-report.md
 frontend/tsconfig.tsbuildinfo
 /uploads
+/scripts
