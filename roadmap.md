@@ -62,7 +62,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 ## Pendientes nuevas (por prioridad)
 
 - ~~084A-38: Factura duplicada texto plano — 3 bugs corregidos~~ ✅
-- 084A-39: Deploy al servidor — Revisar Coolify por deploys anteriores. El usuario dice que ya se hizo un despliegue antes. Investigar.
+- ~~084A-39: Deploy al servidor — Revisar Coolify por deploys anteriores. El usuario dice que ya se hizo un despliegue antes. Investigar.~~ ✅
 - ~~084A-40: Comando /reset en chat — borrar todo el contexto de la conversación y usuario para empezar de cero al testear~~ ✅
 - ~~084A-41: Ampliar modelos Gemini — 6 modelos en cadena fallback (2.5-flash, 2.5-flash-lite, 2.5-pro, 3-flash-preview, 3.1-pro-preview, 3.1-flash-lite-preview)~~ ✅
 - ~~084A-42: Sistema antibots en chat — rate limit por IP + max conexiones WS por IP + cap longitud mensajes~~ ✅
@@ -145,3 +145,24 @@ el segund error es que si, me acabo de dar cuenta que usar chatWidgetMsgRich cha
 ## Algo que no llegaste a leer: 
 
 el tercer problema es "Ha ocurrido un error al generar la factura. Voy a transferir tu solicitud a un miembro de nuestro equipo para que pueda asistirte de inmediato. Gracias por tu paciencia." Porque fallo en generar la factura? 
+
+- Sigue fallando 
+
+2026-04-09T01:41:39.383770Z  INFO glory_backend::services::ai_chat: AI OK: proveedor=Groq, modelo=openai/gpt-oss-120b, key=gsk_YvZ4..., intento=1
+2026-04-09T01:41:39.384628Z DEBUG glory_backend::services::ai_chat: AI tool call: create_invoice({"amount_cents":10000,"client_email":"andoryyu@gmail.com","description":"Diseño web para blog de comida"})
+2026-04-09T01:41:41.207263Z ERROR glory_backend::services::ai_tools: Stripe create invoice error: Line item creation failed: {
+  "error": {
+    "message": "You cannot combine currencies on a single invoice. This invoice has invoice items currency usd that conflicts with the invoice currency mxn.",
+    "request_log_url": "https://dashboard.stripe.com/acct_1M9uLoCdHJpmDkrr/workbench/logs?object=req_RXIIFj06CGuImC",
+    "type": "invalid_request_error"
+  }
+}
+
+2026-04-09T01:41:41.209368Z DEBUG glory_backend::services::ai_chat: AI tool call iteration 3, 1 tools executed
+2026-04-09T01:41:42.084715Z ERROR glory_backend::services::ai_chat: AI Groq [openai/gpt-oss-120b] key gsk_2uFi... intento 1/3: HTTP 400 Bad Request: {"error":{"message":"Tool choice is none, but model called a tool","type":"invalid_request_error","code":"tool_use_failed","failed_generation":"{\"name\": \"create_invoice\", \"arguments\": {\"amount_cents\":10000,\"client_email\":\"andoryyu@gmail.com\",\"description\":\"Diseño web para blog de comida\"}}"}}
+
+2026-04-09T01:41:42.523320Z  INFO glory_backend::services::ai_chat: AI OK: proveedor=Groq, modelo=openai/gpt-oss-120b, key=gsk_5Ltv..., intento=2
+
+parece ser algo con el tipo de moneda, todo tiene que ser en usd o genestionarse bien
+
+- Por que el diespliegue costo tanto? Definitivamente coolify funciona muy mal, arreglalo
