@@ -108,12 +108,15 @@
     color: var(--brand-black);
 }
 
+/* [084A-43] min-height: 0 para que el flex item se encoja a la altura del viewport.
+ * Sin esto, el contenido desborda porque flexbox no shrink debajo de su min-height: auto. */
 .chatAreaMensajes {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
-    overflow-x: hidden;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .chatAreaHeader {
