@@ -336,7 +336,8 @@ async fn create_stripe_invoice(
     description: &str,
     amount_cents: i64,
 ) -> Result<StripeInvoice, String> {
-    /* Crear invoice draft */
+    /* Crear invoice draft — currency explícito para evitar conflicto con
+     * el default de la cuenta Stripe (puede ser MXN u otra moneda local) */
     let inv_resp = client
         .post("https://api.stripe.com/v1/invoices")
         .header("Authorization", format!("Bearer {key}"))
@@ -345,6 +346,7 @@ async fn create_stripe_invoice(
             ("collection_method", "send_invoice"),
             ("days_until_due", "7"),
             ("auto_advance", "true"),
+            ("currency", "usd"),
         ])
         .send()
         .await
