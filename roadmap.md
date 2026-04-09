@@ -76,6 +76,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~084A-50: IA no debe usar markdown — instrucción de texto plano en system prompt~~ ✅
 - ~~084A-51: Desactivar show_service/list_services — service cards eliminadas, solo facturas como rich messages~~ ✅
 - ~~084A-52: Investigar y corregir error al generar factura con Stripe — parsing defensivo de tool call args + amount_cents robusto~~ ✅
+- ~~084A-53: Fix Stripe currency mismatch — invoice draft sin currency explícito heredaba MXN de la cuenta, conflicto con line item USD~~ ✅
 
 ## Notas del usuario 
 
