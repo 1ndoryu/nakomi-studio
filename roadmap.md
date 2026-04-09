@@ -102,6 +102,10 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - 084A-39: Deploy al servidor — Revisar Coolify por deploys anteriores. El usuario dice que ya se hizo un despliegue antes. Investigar.
 - ~~084A-40: Comando /reset en chat — borrar todo el contexto de la conversación y usuario para empezar de cero al testear~~ ✅
 - ~~084A-41: Ampliar modelos Gemini — 6 modelos en cadena fallback (2.5-flash, 2.5-flash-lite, 2.5-pro, 3-flash-preview, 3.1-pro-preview, 3.1-flash-lite-preview)~~ ✅
+- ~~084A-42: Sistema antibots en chat — rate limit por IP + max conexiones WS por IP + cap longitud mensajes~~ ✅
+- 084A-43: chatAreaMensajes — ajustar altura a la pantalla para que no exceda la viewport y haya scroll interno en el chat.
+- 084A-44: pagosOrdenesLista — rediseñar como tabla profesional (el usuario lo ha pedido varias veces).
+- 084A-45: hostingDetallePlanOption — diseño minimalista (badges sin color, botón separado, beneficios como lista) + hostingEventos quitar padding innecesario.
 
 ## Notas del usuario (raw)
 
@@ -176,3 +180,5 @@ Descargar recibo
 - hostingDetallePlanOption se ve mal, tiene que ser minimalista, los badge no tienen que tener color, el boton esta muy pegado, los beneficios deberían ser una lista, y hostingEventos tiene un padding innecesario.
 
 - He dicho esto varias veces, chatAreaMensajes  necesita ajustar al la altura de la pantalla para que no supere la altura y haya un scroll en el chat. 
+
+- El nombre del agente "¡Hola! Soy Nakomi de Nakomi Studio. ¿En qué puedo ayudarte hoy?" Cambialo a Claudia, y presiento que tarda mucho en responder, bajalo 3 segundos
