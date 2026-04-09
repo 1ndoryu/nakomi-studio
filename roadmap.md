@@ -72,6 +72,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~084A-46: Renombrar agente de chat a "Claudia" + reducir delay de respuesta en 3 segundos~~ ✅
 - ~~084A-47: Desactivar sistema de relevancia del chatbot (falsos positivos bloquean mensajes legítimos)~~ ✅
 - ~~084A-48: Reducir contexto máximo de 64k a 32k tokens + verificar que compresión/resumen funcione al llegar al límite~~ ✅
+- ~~084A-49: Mejorar system prompt para redirigir off-topic sin bloquear — reconducción suave en 3 niveles~~ ✅
+- ~~084A-50: IA no debe usar markdown — instrucción de texto plano en system prompt~~ ✅
+- ~~084A-51: Desactivar show_service/list_services — service cards eliminadas, solo facturas como rich messages~~ ✅
 
 ## Notas del usuario 
 
@@ -136,3 +139,8 @@ andoryyu@gmail.com
 Ha ocurrido un error al generar la factura. Voy a transferir tu solicitud a un miembro de nuestro equipo para que pueda asistirte de inmediato. Gracias por tu paciencia.
 
 El error es que usa ** como si fuera un md
+el segund error es que si, me acabo de dar cuenta que usar chatWidgetMsgRich chatWidgetServiceCard para mostrar servicios o cosas es antinatural, solo debe ser para cosas necesarias como pagar facturas.
+
+## Algo que no llegaste a leer: 
+
+el tercer problema es "Ha ocurrido un error al generar la factura. Voy a transferir tu solicitud a un miembro de nuestro equipo para que pueda asistirte de inmediato. Gracias por tu paciencia." Porque fallo en generar la factura? 
