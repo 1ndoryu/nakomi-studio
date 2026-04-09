@@ -100,7 +100,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~084A-38: Factura duplicada texto plano — 3 bugs corregidos~~ ✅
 - 084A-39: Deploy al servidor — Revisar Coolify por deploys anteriores. El usuario dice que ya se hizo un despliegue antes. Investigar.
-- 084A-40: Comando /reset en chat — borrar todo el contexto de la conversación y usuario para empezar de cero al testear.
+- ~~084A-40: Comando /reset en chat — borrar todo el contexto de la conversación y usuario para empezar de cero al testear~~ ✅
 - 084A-41: Ampliar modelos Gemini — investigar gemini-3-flash, gemini-3.1, etc. y agregarlos al fallback chain.
 
 ## Notas del usuario (raw)
@@ -166,3 +166,11 @@ Descargar recibo
 - Agrega un comando para reiniciar el chat, asi puedo testear mejor, lo que hare este comando es borrar todo el contexto de la conversacion y usuario para empezar de cero el comando sería " /reset ", 
 
 - gemini-2.5-flash no es el unico modelo, hay mas, hay gemini flash 3.0 y 3.5 creo o 3.1, investiga bien
+
+# Mas tareas
+
+- Creo que hay que verificar que el chat tenga un sistema antibots, para que los bot de internet no consuman los token de la api.
+
+- He dicho muchisimas vez que pagosOrdenesLista se ve muy mal, debería ser una tabla mas profesional. 
+
+- hostingDetallePlanOption se ve mal, tiene que ser minimalista, los badge no tienen que tener color, el boton esta muy pegado, los beneficios deberían ser una lista, y hostingEventos tiene un padding innecesario.
