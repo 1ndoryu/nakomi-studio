@@ -1,13 +1,16 @@
 import axios from 'axios';
 import type { AxiosRequestConfig } from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+/* [104A-1] En producción, API_BASE_URL vacío = URLs relativas al mismo origen (nakomi.studio/api/...).
+ * En desarrollo, VITE_API_URL=http://localhost:3000 viene de .env.development. */
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const instance = axios.create({
   baseURL: API_BASE_URL,
 });
 
 export function getApiHost(): string {
+  if (!API_BASE_URL) return window.location.host;
   return new URL(API_BASE_URL, window.location.origin).host;
 }
 
