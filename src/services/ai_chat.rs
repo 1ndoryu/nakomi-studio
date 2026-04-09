@@ -604,9 +604,9 @@ fn estimate_tokens(text: &str) -> usize {
     text.len() / 4 + 1
 }
 
-/* [084A-32] Construye el array de mensajes para la API con truncamiento inteligente.
- * Budget de 64k tokens (Groq soporta 131k). Mensajes antiguos se comprimen como resumen
- * inline priorizando siempre el contexto reciente. */
+/* [084A-48] Construye el array de mensajes para la API con truncamiento inteligente.
+ * Budget de 32k tokens (más eficiente en costo/latencia). Mensajes antiguos se comprimen
+ * como resumen inline priorizando siempre el contexto reciente. */
 fn build_context_messages(
     system_prompt: &str,
     history: &[ChatMessage],
@@ -615,7 +615,7 @@ fn build_context_messages(
     let mut messages = vec![serde_json::json!({"role": "system", "content": system_prompt})];
     let system_tokens = estimate_tokens(system_prompt);
     let user_tokens = estimate_tokens(user_message);
-    let token_budget = 64_000_usize.saturating_sub(system_tokens + user_tokens + 2000);
+    let token_budget = 32_000_usize.saturating_sub(system_tokens + user_tokens + 2000);
 
     let mut history_tokens = 0usize;
     let mut fit_from = 0usize;
