@@ -458,8 +458,8 @@ async fn try_groq_provider(
     Err(last_error)
 }
 
-/* [084A-37] Intenta Google Gemini como proveedor secundario OpenAI-compatible.
- * Modelos ordenados: flash (rápido/barato) → pro (más capaz).
+/* [084A-37] [084A-41] Intenta Google Gemini como proveedor secundario OpenAI-compatible.
+ * Modelos ordenados: flash barato → flash-lite → pro → preview nuevos.
  * Avanza al siguiente modelo solo si el actual devuelve 429. */
 async fn try_gemini_provider(
     config: &AiChatConfig,
@@ -468,7 +468,19 @@ async fn try_gemini_provider(
     tools: Option<&Value>,
 ) -> Result<Value, String> {
     let gemini_key = config.gemini_key.as_deref().ok_or("Gemini no configurado")?;
-    let gemini_models = ["gemini-2.5-flash", "gemini-2.5-pro"];
+    /* [084A-41] Cadena completa: estables primero, luego previews.
+     * gemini-3-flash-preview = frontier performance a bajo costo.
+     * gemini-3.1-pro-preview = inteligencia avanzada, razonamiento complejo.
+     * gemini-3.1-flash-lite-preview = frontier más económico.
+     * Gemini 3 Pro deprecated (9 mar 2026) → se excluye. */
+    let gemini_models = [
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-pro",
+        "gemini-3-flash-preview",
+        "gemini-3.1-pro-preview",
+        "gemini-3.1-flash-lite-preview",
+    ];
     let key_hint = &gemini_key[..gemini_key.len().min(8)];
     let mut last_error = String::new();
 
