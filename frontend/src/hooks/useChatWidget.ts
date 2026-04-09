@@ -106,6 +106,21 @@ export function useChatWidget() {
                 setConnected(false);
                 break;
 
+            /* [084A-40] /reset: limpiar todo el estado local y desconectar.
+             * El visitante obtiene un estado fresco al volver a abrir el chat. */
+            case 'reset':
+                localStorage.removeItem(STORAGE_KEY_VISITOR_ID);
+                localStorage.removeItem(STORAGE_KEY_SESSION_ID);
+                setMessages([]);
+                setSessionId(null);
+                setTyping(null);
+                setConnected(false);
+                if (wsRef.current) {
+                    wsRef.current.close();
+                    wsRef.current = null;
+                }
+                break;
+
             case 'error':
                 console.warn('[ChatWidget] Server error:', msg.message);
                 break;

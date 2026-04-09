@@ -37,7 +37,7 @@ export interface ChatMessage {
 }
 
 export interface WsServerMessage {
-    type: 'message' | 'typing' | 'status' | 'session_new' | 'session_closed' | 'error' | 'init';
+    type: 'message' | 'typing' | 'status' | 'session_new' | 'session_closed' | 'error' | 'init' | 'reset';
     /* message */
     id?: string;
     session_id?: string;

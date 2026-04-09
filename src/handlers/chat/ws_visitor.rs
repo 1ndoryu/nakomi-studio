@@ -201,6 +201,25 @@ async fn send_history(
     Ok(())
 }
 
+/* [084A-40] Ejecutar /reset: borrar mensajes, perfil, cerrar sesión y notificar al cliente.
+ * El visitante obtiene un estado completamente limpio (como si fuera la primera visita). */
+async fn handle_reset(state: &AppState, session_id: uuid::Uuid, visitor_id: &str) {
+    let pool = &state.pool;
+
+    if let Err(e) = ChatRepository::delete_session_messages(pool, session_id).await {
+        tracing::error!("Reset: error borrando mensajes session={session_id}: {e}");
+    }
+    if let Err(e) = ChatRepository::delete_visitor_profile(pool, visitor_id).await {
+        tracing::error!("Reset: error borrando perfil visitor={visitor_id}: {e}");
+    }
+    if let Err(e) = ChatRepository::close_session(pool, session_id).await {
+        tracing::error!("Reset: error cerrando session={session_id}: {e}");
+    }
+
+    state.chat_hub.broadcast(session_id, WsServerMessage::Reset);
+    tracing::info!("Reset ejecutado: session={session_id}, visitor={visitor_id}");
+}
+
 /* [T-4] Loop principal de procesamiento de mensajes del visitante.
  * Aplica rate limiting, persiste mensajes y envía eventos al timing service.
  * Retorna true si el cierre fue explícito (usuario o rate limit), false si el stream terminó. */
@@ -221,6 +240,12 @@ async fn process_visitor_messages(
 
         match ws_msg {
             WsClientMessage::Message { content } => {
+                /* [084A-40] Comando /reset: limpiar sesión, mensajes y perfil del visitante */
+                if content.trim().eq_ignore_ascii_case("/reset") {
+                    handle_reset(state, session_id, visitor_id).await;
+                    return true;
+                }
+
                 /* [T-1] Rate limiting antes de procesar */
                 let (rate_result, rate_msg) =
                     state.chat_timing.check_rate(visitor_id);

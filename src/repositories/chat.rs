@@ -182,6 +182,35 @@ impl ChatRepository {
         .await
     }
 
+    /* [084A-40] Borrar todos los mensajes de una sesión (usado por /reset) */
+    pub async fn delete_session_messages(
+        pool: &PgPool,
+        session_id: Uuid,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query(
+            "DELETE FROM chat_messages WHERE session_id = $1",
+        )
+        .bind(session_id)
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
+    /* [084A-40] Borrar perfil del visitante (usado por /reset para limpiar
+     * context_summary, preferences, sesiones acumuladas, etc.) */
+    pub async fn delete_visitor_profile(
+        pool: &PgPool,
+        visitor_id: &str,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query(
+            "DELETE FROM visitor_profiles WHERE visitor_id = $1",
+        )
+        .bind(visitor_id)
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
     /* ============================================================
        MENSAJES
        ============================================================ */

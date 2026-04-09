@@ -218,4 +218,7 @@ pub enum WsServerMessage {
     Error {
         message: String,
     },
+    /* [084A-40] Comando /reset: el backend ordena al cliente limpiar estado local */
+    #[serde(rename = "reset")]
+    Reset,
 }
