@@ -29,6 +29,15 @@ pub struct Claims {
 
 pub struct AuthService;
 
+/* [104A-3] Verifica si el email está en GLORY_ADMIN_EMAILS y promueve a admin.
+ * Env var es comma-separated, case-insensitive. Si no existe, no promueve a nadie. */
+fn is_admin_email(email: &str) -> bool {
+    std::env::var("GLORY_ADMIN_EMAILS")
+        .unwrap_or_default()
+        .split(',')
+        .any(|e| e.trim().eq_ignore_ascii_case(email))
+}
+
 impl AuthService {
     /// Registra un nuevo usuario: valida unicidad, hashea contraseña, genera JWT
     pub async fn register(
@@ -50,6 +59,14 @@ impl AuthService {
             .to_string();
 
         let user = UserRepository::create(pool, &req.email, &password_hash).await?;
+
+        /* [104A-3] Auto-promote admin emails on registration */
+        let user = if is_admin_email(&req.email) {
+            UserRepository::update_role(pool, user.id, UserRole::Admin).await?
+        } else {
+            user
+        };
+
         let effective = user.effective_role();
         let token = Self::generate_token(user.id, user.role, effective, None, jwt_secret)?;
 
@@ -91,6 +108,14 @@ impl AuthService {
             .to_string();
 
         let user = UserRepository::create(pool, &req.email, &password_hash).await?;
+
+        /* [104A-3] Auto-promote admin emails on quick registration */
+        let user = if is_admin_email(&req.email) {
+            UserRepository::update_role(pool, user.id, UserRole::Admin).await?
+        } else {
+            user
+        };
+
         let effective = user.effective_role();
         let token = Self::generate_token(user.id, user.role, effective, None, jwt_secret)?;
 
