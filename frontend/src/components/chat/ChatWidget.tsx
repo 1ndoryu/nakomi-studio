@@ -187,7 +187,6 @@ function renderMessageContent(msg: {
             return (
                 <div className="chatWidgetMsgRich chatWidgetInvoiceCard">
                     <div className="chatWidgetInvoiceHeader">
-                        <span className="chatWidgetInvoiceIcon">🧾</span>
                         <span className="chatWidgetInvoiceTitle">Factura</span>
                         {isPaid && <span className="chatWidgetInvoicePaid">Pagada</span>}
                         {isOpen && <span className="chatWidgetInvoicePending">Pendiente</span>}

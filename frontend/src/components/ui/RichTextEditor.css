@@ -74,19 +74,19 @@
 
 .richTextContenido .tiptap h1 {
     font-size: var(--text-xl);
-    font-weight: 600;
+    
     margin: var(--spacing-md) 0 var(--spacing-sm);
 }
 
 .richTextContenido .tiptap h2 {
     font-size: var(--text-lg);
-    font-weight: 600;
+    
     margin: var(--spacing-md) 0 var(--spacing-sm);
 }
 
 .richTextContenido .tiptap h3 {
     font-size: var(--text-base);
-    font-weight: 600;
+    
     margin: var(--spacing-sm) 0 var(--spacing-xs);
 }
 

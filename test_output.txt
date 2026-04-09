@@ -1,0 +1,55 @@
+﻿
+running 35 tests
+test handlers::hosting::tests::calculate_uptime_no_events_active_status ... ok
+test handlers::hosting::tests::calculate_uptime_active_then_suspended ... ok
+test handlers::hosting::tests::calculate_uptime_ignores_non_status_events ... ok
+test handlers::hosting::tests::plan_price_cents_invalid_returns_none ... ok
+test handlers::hosting::tests::calculate_uptime_no_events_pending_status ... ok
+test handlers::hosting::tests::plan_bandwidth_gb_unknown_plan_returns_default ... ok
+test handlers::hosting::tests::plan_bandwidth_gb_returns_correct_limits ... ok
+test handlers::hosting::tests::calculate_uptime_active_suspended_active_again ... ok
+test handlers::hosting::tests::plan_price_cents_valid_plans ... ok
+test handlers::hosting::tests::plan_storage_mb_unknown_plan_returns_default ... ok
+test handlers::hosting::tests::plan_storage_mb_returns_correct_limits ... ok
+test models::hosting::tests::self_subscribe_request_empty_plan_rejected ... ok
+test models::hosting::tests::self_subscribe_request_no_domain_ok ... ok
+test services::ai_chat::tests::build_context_fits_all_short_history ... ok
+test services::ai_chat::tests::estimate_tokens_approximation ... ok
+test services::ai_chat::tests::gemini_url_default ... ok
+test services::ai_chat::tests::is_configured_with_groq_and_gemini ... ok
+test services::ai_chat::tests::is_configured_with_only_gemini ... ok
+test services::ai_chat::tests::model_fallback_chain_default_gpt_oss ... ok
+test services::ai_chat::tests::model_fallback_chain_primary_first ... ok
+test services::ai_chat::tests::next_key_empty_returns_none ... ok
+test services::ai_chat::tests::parse_escalation_detects_tag ... ok
+test services::ai_chat::tests::parse_escalation_no_tag ... ok
+test services::ai_chat::tests::round_robin_key_rotation ... ok
+test services::ai_chat::tests::sanitize_preserves_newlines_strips_control ... ok
+test services::ai_chat::tests::sanitize_removes_injection_keywords ... ok
+test services::ai_chat::tests::sanitize_truncates_to_max_len ... ok
+test services::hosting_stripe::tests::config_from_env_invalid_format_rejected ... ok
+test services::hosting_stripe::tests::config_from_env_missing_var_returns_none ... ok
+test services::hosting_stripe::tests::config_from_env_valid_prices ... ok
+test services::hosting_stripe::tests::price_for_plan_returns_correct_id ... ok
+test models::hosting::tests::self_subscribe_request_invalid_domain_rejected ... ok
+test models::hosting::tests::self_subscribe_request_valid_domain ... ok
+test models::hosting::tests::domain_regex_rejects_invalid ... ok
+test models::hosting::tests::domain_regex_valid_domains ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

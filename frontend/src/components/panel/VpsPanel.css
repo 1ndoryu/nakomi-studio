@@ -37,7 +37,7 @@
 .vpsCardNombre {
     margin: 0;
     font-size: var(--text-sm);
-    font-weight: 600;
+    
     color: var(--brand-black);
     flex: 1;
 }
@@ -86,7 +86,7 @@
 
 .vpsStatValor {
     color: var(--brand-black);
-    font-weight: 600;
+    
 }
 
 /* Loading / error / empty states */

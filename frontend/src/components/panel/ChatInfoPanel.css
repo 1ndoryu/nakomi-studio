@@ -22,7 +22,7 @@
 /* [074A-20] Consistente con chatAreaTitulo y chatListaHeader h3 */
 .chatInfoTitulo {
     font-size: var(--text-sm);
-    font-weight: 600;
+    
     color: var(--brand-black);
     flex: 1;
 }

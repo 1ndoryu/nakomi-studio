@@ -20,7 +20,7 @@
 .notFoundCodigo {
     font-family: var(--font-primary);
     font-size: clamp(6rem, 15vw, 12rem);
-    font-weight: 600;
+    
     color: var(--brand-black);
     opacity: 0.1;
     line-height: 1;

@@ -125,7 +125,7 @@
 
 .hostingCardTitulo {
     font-size: var(--text-base);
-    font-weight: 600;
+    
     color: var(--brand-black);
     margin: 0;
 }
@@ -175,7 +175,7 @@
 }
 
 .hostingCardPrecio {
-    font-weight: 600;
+    
     color: var(--brand-black);
 }
 
@@ -202,7 +202,7 @@
 /* Status badges — [074A-62] Colores eliminados por request del usuario [084A-18] subido a --text-sm */
 .hostingStatus {
     font-size: var(--text-sm);
-    font-weight: 600;
+    
     flex-shrink: 0;
     color: var(--text-tertiary);
 }
@@ -277,7 +277,7 @@
     border: none;
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
-    font-weight: 600;
+    
     cursor: pointer;
     transition: opacity 0.15s;
 }
@@ -324,7 +324,7 @@
 }
 
 .hostingEventoTipo {
-    font-weight: 600;
+    
     text-transform: uppercase;
     color: var(--brand-black);
 }

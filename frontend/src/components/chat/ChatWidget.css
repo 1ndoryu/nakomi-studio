@@ -361,10 +361,7 @@
 
 /* [084A-26] Invoice card: factura con botón de pago */
 .chatWidgetInvoiceCard {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-sm) var(--spacing-md);
+
 }
 
 .chatWidgetInvoiceHeader {
@@ -378,14 +375,14 @@
 }
 
 .chatWidgetInvoiceTitle {
-    font-weight: 600;
+    
     font-size: var(--text-sm);
     color: var(--text-primary);
 }
 
 .chatWidgetInvoicePaid {
     font-size: var(--text-2xs);
-    font-weight: 600;
+    
     text-transform: uppercase;
     color: var(--color-success-text);
     background: var(--color-success-bg-soft);
@@ -394,15 +391,6 @@
 }
 
 /* [084A-38] Badge "Pendiente" para facturas aún no pagadas */
-.chatWidgetInvoicePending {
-    font-size: var(--text-2xs);
-    font-weight: 600;
-    text-transform: uppercase;
-    color: var(--color-warning-text, #9a6700);
-    background: var(--color-warning-bg-soft, #fff8c5);
-    padding: 1px 6px;
-    border-radius: var(--radius-full);
-}
 
 .chatWidgetInvoiceAmount {
     margin: var(--spacing-xs) 0 0;
@@ -426,7 +414,7 @@
     border-radius: var(--radius-sm);
     text-decoration: none;
     font-size: var(--text-sm);
-    font-weight: 600;
+    
     text-align: center;
     transition: opacity var(--transicion-rapida);
 }
@@ -454,7 +442,7 @@
 }
 
 .chatWidgetServiceTitle {
-    font-weight: 600;
+    
     font-size: var(--text-sm);
     color: var(--text-primary);
 }
@@ -492,7 +480,7 @@
 }
 
 .chatWidgetOrderTitle {
-    font-weight: 600;
+    
     font-size: var(--text-sm);
     color: var(--text-primary);
 }

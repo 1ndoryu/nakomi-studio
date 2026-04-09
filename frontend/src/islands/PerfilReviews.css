@@ -27,7 +27,7 @@
 .perfilReviewTabActivo {
     color: var(--text-primary);
     border-bottom-color: var(--brand-primary);
-    font-weight: 600;
+    
 }
 
 /* Sección de reviews */
@@ -76,14 +76,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
+    
     color: var(--text-primary);
     font-size: var(--text-base);
 }
 
 .perfilCardReviewNombre {
     display: block;
-    font-weight: 600;
+    
     color: var(--text-primary);
     font-size: var(--text-base);
 }
@@ -125,7 +125,7 @@
 }
 
 .perfilCardReviewRespuestaLabel {
-    font-weight: 600;
+    
     color: var(--text-primary);
 }
 

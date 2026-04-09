@@ -74,7 +74,6 @@
 .ordenCardBadge,
 .ordenDetalleBadge {
     font-size: var(--text-xs);
-    font-weight: 600;
     padding: 6px 10px;
     border-radius: var(--radius-full);
     white-space: nowrap;
@@ -178,7 +177,6 @@
 
 .ordenCardTitulo {
     font-size: var(--text-base);
-    font-weight: 600;
     color: var(--brand-black);
     margin: 0;
     white-space: nowrap;
@@ -197,7 +195,6 @@
 }
 
 .ordenCardPrecio {
-    font-weight: 600;
     color: var(--brand-black);
     font-family: var(--font-primary);
 }

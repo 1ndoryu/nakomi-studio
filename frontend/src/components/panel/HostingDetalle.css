@@ -145,7 +145,7 @@
     margin: 0;
     font-family: var(--font-primary);
     font-size: var(--text-base);
-    font-weight: 600;
+    
     color: var(--brand-black);
     padding-bottom: var(--spacing-xs);
     border-bottom: 1px solid var(--bg-item-hover);
@@ -155,7 +155,7 @@
     margin: var(--spacing-sm) 0 0;
     font-family: var(--font-primary);
     font-size: var(--text-sm);
-    font-weight: 600;
+    
     color: var(--brand-black);
 }
 
@@ -226,7 +226,7 @@
 .hostingDetalleCopied {
     color: var(--color-success);
     font-size: var(--text-xs);
-    font-weight: 600;
+    
 }
 
 /* ── Nameservers ─────────────────────────── */
@@ -376,7 +376,7 @@
 /* [084A-45] Badges sin color de fondo (minimalista), botón más separado */
 .hostingDetallePlanBadge {
     font-size: var(--text-xs);
-    font-weight: 600;
+    
     padding: 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;

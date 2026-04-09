@@ -22,7 +22,7 @@
 
 .listaProyectosTitulo {
     font-size: var(--text-lg);
-    font-weight: 600;
+    
     color: var(--text-primary);
     margin: 0;
 }
@@ -80,7 +80,7 @@
 }
 
 .listaProyectosNombre {
-    font-weight: 600;
+    
     font-size: var(--text-sm);
     color: var(--text-primary);
     overflow: hidden;

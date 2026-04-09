@@ -54,7 +54,7 @@
 .ordenDetalleTitulo {
     font-family: var(--font-primary);
     font-size: var(--text-xl);
-    font-weight: 600;
+    
     color: var(--brand-black);
     margin: 0;
 }
@@ -224,7 +224,7 @@
 .faseNombre {
     font-family: var(--font-primary);
     font-size: var(--text-sm);
-    font-weight: 600;
+    
     color: var(--brand-black);
     margin: 0;
 }
@@ -233,7 +233,7 @@
 .faseBadge {
     font-family: var(--font-primary);
     font-size: var(--text-2xs);
-    font-weight: 600;
+    
     padding: 2px 8px;
     border-radius: var(--radius-full);
     white-space: nowrap;
@@ -345,7 +345,7 @@
 }
 
 .ordenInfoPrecio {
-    font-weight: 600;
+    
 }
 
 /*    [064A-30] HISTORIAL CARD — progreso, entregas, revisiones */
@@ -548,7 +548,7 @@
     gap: var(--spacing-xs);
     font-family: var(--font-primary);
     font-size: var(--text-2xs);
-    font-weight: 600;
+    
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--text-tertiary);

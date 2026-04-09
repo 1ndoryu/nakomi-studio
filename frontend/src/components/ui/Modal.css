@@ -42,7 +42,7 @@
  * Esto centraliza la consistencia visual evitando clases custom por modal. */
 .modalTitulo {
     font-size: var(--text-lg);
-    font-weight: 600;
+    
     color: var(--brand-black);
     margin: 0;
     font-family: var(--font-primary);

@@ -68,6 +68,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - 104A-7: Fix .reembolsoCard fondo negro con letras negras + centralizar clases duplicadas (.disponibleCardIcono / .delegCardIcono)
 - 104A-8: Deploy a producción con todos los fixes
 
-## Notas del usuario
+- Cosas como .disponibleCardIcono y son delegCardIcono tambien tiene fondo negro y literalmente son clases innecesarias para algo que es lo mismo, claramente hay un problema de fondo, este problema se repite una y otra vez, no se alguna regla en el protocolo de desarrollo, alguna regla en sentinel para que dejes de cometer el error de no centralizar componentes.
 
-(abordadas: CORS producción → 104A-1 ✅, fonts 404 → 104A-2 ✅, sentinel → 104A-4, env vars → 104A-3, imágenes → 104A-5, chatContenedor → 104A-6, reembolsoCard/clases duplicadas → 104A-7)
+- 

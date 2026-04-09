@@ -121,7 +121,7 @@
 
 .modalCompraModoNombre {
     font-size: var(--text-sm);
-    font-weight: 600;
+    
 }
 
 .modalCompraModoDesc {
@@ -131,7 +131,7 @@
 
 .modalCompraModoDescuento {
     font-size: var(--text-xs);
-    font-weight: 600;
+    
     color: var(--color-success);
 }
 
@@ -177,7 +177,7 @@
 
 .modalCompraMesesDescuento {
     font-size: var(--text-xs);
-    font-weight: 600;
+    
     color: var(--color-success);
 }
 
@@ -204,7 +204,7 @@
 
 .modalCompraPrecioAhorro {
     font-size: var(--text-xs);
-    font-weight: 600;
+    
     color: var(--color-success);
     background: var(--color-success-bg);
     padding: 2px var(--spacing-xs);

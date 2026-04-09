@@ -108,7 +108,7 @@
 
 .disponibleCardTitulo {
     font-size: var(--text-base);
-    font-weight: 600;
+    
     color: var(--brand-black);
     margin: 0;
     white-space: nowrap;
@@ -123,7 +123,7 @@
 
 .disponibleCardBadge {
     font-size: var(--text-xs);
-    font-weight: 600;
+    
     color: var(--color-warning);
     flex-shrink: 0;
 }
@@ -146,7 +146,7 @@
 }
 
 .disponibleCardPrecio {
-    font-weight: 600;
+    
     color: var(--brand-black);
 }
 

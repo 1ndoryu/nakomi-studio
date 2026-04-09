@@ -75,7 +75,7 @@
 
 .entregablesRevisionLabel {
     font-size: var(--text-xs);
-    font-weight: 600;
+    
     color: var(--primary-500);
 }
 
