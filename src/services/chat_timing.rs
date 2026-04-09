@@ -53,6 +53,11 @@ const MAX_ACCUMULATION: Duration = Duration::from_secs(30);
 const RATE_LIMIT_PER_MIN: u32 = 10;
 const RATE_WINDOW: Duration = Duration::from_secs(60);
 
+/* [084A-42] Anti-bot: limites por IP (más altos porque IPs pueden ser compartidas) */
+const IP_RATE_LIMIT_PER_MIN: u32 = 30;
+const MAX_WS_CONNECTIONS_PER_IP: u32 = 10;
+const MSG_MAX_LENGTH: usize = 2000;
+
 /* Relevancia */
 const MAX_IRRELEVANT_STREAK: u32 = 3;
 
@@ -96,6 +101,9 @@ impl Default for RateState {
 pub struct ChatTimingService {
     sessions: Arc<DashMap<Uuid, mpsc::Sender<TimingEvent>>>,
     rate_limits: Arc<DashMap<String, RateState>>,
+    /* [084A-42] Rate limiting por IP y contador de conexiones concurrentes */
+    ip_rate_limits: Arc<DashMap<String, RateState>>,
+    ip_connections: Arc<DashMap<String, u32>>,
 }
 
 impl ChatTimingService {
@@ -104,6 +112,8 @@ impl ChatTimingService {
         Self {
             sessions: Arc::new(DashMap::new()),
             rate_limits: Arc::new(DashMap::new()),
+            ip_rate_limits: Arc::new(DashMap::new()),
+            ip_connections: Arc::new(DashMap::new()),
         }
     }
 
@@ -165,6 +175,77 @@ impl ChatTimingService {
                 ),
             ),
         }
+    }
+
+    /* [084A-42] Rate limit por IP: mismo mecanismo pero con umbral más alto.
+     * Previene que un bot rote visitor_ids para evadir el rate limit por visitor. */
+    #[must_use]
+    pub fn check_ip_rate(&self, ip: &str) -> (RateCheckResult, Option<String>) {
+        let mut entry = self.ip_rate_limits.entry(ip.to_string()).or_default();
+        let state = entry.value_mut();
+
+        if state.window_start.elapsed() >= RATE_WINDOW {
+            state.count = 0;
+            state.window_start = Instant::now();
+        }
+
+        if let Some(until) = state.mute_until {
+            if Instant::now() < until {
+                return (
+                    RateCheckResult::Muted,
+                    Some("Demasiadas conexiones desde tu red. Intenta más tarde.".into()),
+                );
+            }
+            state.mute_until = None;
+        }
+
+        state.count += 1;
+
+        if state.count <= IP_RATE_LIMIT_PER_MIN {
+            return (RateCheckResult::Ok, None);
+        }
+
+        state.cooldown_level += 1;
+        match state.cooldown_level {
+            1 => (RateCheckResult::Warning, None),
+            2 => {
+                state.mute_until = Some(Instant::now() + Duration::from_secs(60));
+                (
+                    RateCheckResult::Muted,
+                    Some("Demasiados mensajes desde tu red. Espera un minuto.".into()),
+                )
+            }
+            _ => (
+                RateCheckResult::Closed,
+                Some("Sesión cerrada por exceso de actividad desde tu red.".into()),
+            ),
+        }
+    }
+
+    /* [084A-42] Tracker de conexiones WS concurrentes por IP.
+     * Retorna false si la IP excede el máximo de conexiones. */
+    #[must_use]
+    pub fn track_ip_connect(&self, ip: &str) -> bool {
+        let mut count = self.ip_connections.entry(ip.to_string()).or_insert(0);
+        if *count >= MAX_WS_CONNECTIONS_PER_IP {
+            tracing::warn!("Anti-bot: IP {ip} excede {MAX_WS_CONNECTIONS_PER_IP} conexiones WS");
+            return false;
+        }
+        *count += 1;
+        true
+    }
+
+    /* [084A-42] Decrementar contador al desconectar */
+    pub fn track_ip_disconnect(&self, ip: &str) {
+        if let Some(mut count) = self.ip_connections.get_mut(ip) {
+            *count = count.saturating_sub(1);
+        }
+    }
+
+    /* [084A-42] Longitud máxima de mensajes para prevenir token drain */
+    #[must_use]
+    pub const fn max_message_length() -> usize {
+        MSG_MAX_LENGTH
     }
 
     /// Registra una sesión en el timing service. Devuelve el sender para

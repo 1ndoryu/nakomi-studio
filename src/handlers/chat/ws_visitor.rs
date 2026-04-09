@@ -68,6 +68,13 @@ async fn handle_visitor_ws(
     visitor_ip: Option<String>,
     visitor_ua: Option<String>,
 ) {
+    /* [084A-42] Anti-bot: verificar límite de conexiones WS por IP */
+    let ip_for_tracking = visitor_ip.clone().unwrap_or_default();
+    if !ip_for_tracking.is_empty() && !state.chat_timing.track_ip_connect(&ip_for_tracking) {
+        tracing::warn!("Anti-bot: rechazada conexión WS de IP {ip_for_tracking}");
+        return;
+    }
+
     /* [T-9] Detectar usuario autenticado si envió token JWT */
     let user_id = try_extract_user_id(params.token.as_deref(), &state.jwt_secret);
     if let Some(uid) = user_id {
@@ -156,6 +163,7 @@ async fn handle_visitor_ws(
         &state,
         session_id,
         &params.visitor_id,
+        visitor_ip.as_deref(),
         &timing_tx,
     )
     .await;
@@ -167,6 +175,10 @@ async fn handle_visitor_ws(
         let _ = timing_tx.send(TimingEvent::Disconnect).await;
         state.chat_timing.unregister_session(session_id);
         let _ = state.chat_hub.close_session(session_id).await;
+    }
+    /* [084A-42] Decrementar conexión IP al desconectar */
+    if !ip_for_tracking.is_empty() {
+        state.chat_timing.track_ip_disconnect(&ip_for_tracking);
     }
     send_task.abort();
 }
@@ -221,13 +233,14 @@ async fn handle_reset(state: &AppState, session_id: uuid::Uuid, visitor_id: &str
 }
 
 /* [T-4] Loop principal de procesamiento de mensajes del visitante.
- * Aplica rate limiting, persiste mensajes y envía eventos al timing service.
+ * Aplica rate limiting (por visitor_id + IP), persiste mensajes y envía eventos al timing service.
  * Retorna true si el cierre fue explícito (usuario o rate limit), false si el stream terminó. */
 async fn process_visitor_messages(
     receiver: &mut futures::stream::SplitStream<WebSocket>,
     state: &AppState,
     session_id: uuid::Uuid,
     visitor_id: &str,
+    client_ip: Option<&str>,
     timing_tx: &tokio::sync::mpsc::Sender<TimingEvent>,
 ) -> bool {
     while let Some(Ok(msg)) = receiver.next().await {
@@ -244,6 +257,33 @@ async fn process_visitor_messages(
                 if content.trim().eq_ignore_ascii_case("/reset") {
                     handle_reset(state, session_id, visitor_id).await;
                     return true;
+                }
+
+                /* [084A-42] Truncar mensajes largos para prevenir token drain */
+                let content = if content.len() > crate::services::ChatTimingService::max_message_length() {
+                    content[..crate::services::ChatTimingService::max_message_length()].to_string()
+                } else {
+                    content
+                };
+
+                /* [084A-42] Rate limiting por IP (paralelo al de visitor_id) */
+                if let Some(ip) = client_ip {
+                    let (ip_result, ip_msg) = state.chat_timing.check_ip_rate(ip);
+                    match ip_result {
+                        RateCheckResult::Muted => {
+                            if let Some(w) = ip_msg {
+                                let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                            }
+                            continue;
+                        }
+                        RateCheckResult::Closed => {
+                            if let Some(w) = ip_msg {
+                                let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                            }
+                            return true;
+                        }
+                        _ => {}
+                    }
                 }
 
                 /* [T-1] Rate limiting antes de procesar */
