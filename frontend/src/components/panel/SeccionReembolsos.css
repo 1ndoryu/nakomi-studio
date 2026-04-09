@@ -42,8 +42,10 @@
     gap: var(--spacing-md);
 }
 
+/* [104A-7] Cambiado de var(--bg-dark) a var(--bg-primary) — fondo negro
+ * era ilegible con texto negro. */
 .reembolsoCard {
-    background: var(--bg-dark);
+    background: var(--bg-primary);
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-lg);
     padding: var(--spacing-md);

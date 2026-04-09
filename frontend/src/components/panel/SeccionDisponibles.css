@@ -79,15 +79,7 @@
     border-color: var(--border-hover);
 }
 
-.disponibleCardIcono {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 80px;
-    flex-shrink: 0;
-    background: var(--bg-dark);
-    color: var(--text-tertiary);
-}
+/* [104A-7] Clase movida a PanelIsland.css como .panelCardIcono (compartida) */
 
 .disponibleCardBody {
     display: flex;
@@ -162,10 +154,7 @@
         flex-direction: column;
     }
 
-    .disponibleCardIcono {
-        width: 100%;
-        height: 48px;
-    }
+    /* [104A-7] Responsive de panelCardIcono ahora en PanelIsland.css */
 
     .disponibleCardBody {
         padding: 0 var(--spacing-md) var(--spacing-md);

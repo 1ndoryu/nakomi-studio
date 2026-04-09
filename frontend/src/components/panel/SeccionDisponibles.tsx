@@ -68,7 +68,7 @@ function OrdenDisponibleCard({
 }) {
     return (
         <div className="disponibleCard">
-            <div className="disponibleCardIcono">
+            <div className="panelCardIcono">
                 <Package size={28} strokeWidth={1.4} />
             </div>
             <div className="disponibleCardBody">

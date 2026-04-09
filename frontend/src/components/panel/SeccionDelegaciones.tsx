@@ -81,7 +81,7 @@ function DelegacionCard({
 
     return (
         <div className="delegCard">
-            <div className="delegCardIcono">
+            <div className="panelCardIcono">
                 {esDelegacion
                     ? <ArrowRightLeft size={28} strokeWidth={1.4} />
                     : <HelpCircle size={28} strokeWidth={1.4} />

@@ -3,11 +3,15 @@
  * Responsive: en mobile se muestra una u otra con transicion. */
 
 /* [064A-52] border var(--bg-item-active) para que se vea en fondos claros.
- * [114A-3] max-width para evitar que chatContenedor se salga del panel. */
+ * [114A-3] max-width para evitar que chatContenedor se salga del panel.
+ * [104A-6] max-height para que el chat no crezca más allá del viewport.
+ * Sin esto, los mensajes empujan el contenedor indefinidamente porque
+ * ningún ancestro en la cadena flex tiene altura fija. */
 .chatContenedor {
     display: flex;
     height: 100%;
     min-height: 0;
+    max-height: calc(100vh - 10rem);
     max-width: 100%;
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-lg);

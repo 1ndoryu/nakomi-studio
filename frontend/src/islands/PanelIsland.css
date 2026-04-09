@@ -52,8 +52,26 @@
     min-width: 0;
 }
 
+/* [104A-7] Clase compartida para iconos de card en secciones del panel.
+ * Elimina duplicación de .disponibleCardIcono / .delegCardIcono que eran idénticos.
+ * Las secciones con variantes (ej: hostingCardIcono con width diferente) extienden esta clase. */
+.panelCardIcono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    flex-shrink: 0;
+    background: var(--bg-dark);
+    color: var(--text-tertiary);
+}
+
 /* Responsive: stack vertical en movil */
 @media (max-width: 768px) {
+    .panelCardIcono {
+        width: 100%;
+        height: 48px;
+    }
+
     .panelContenedor {
         padding: 15vh var(--spacing-md) var(--spacing-xl);
     }
