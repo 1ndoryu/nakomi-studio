@@ -53,10 +53,10 @@
     padding: 0 0 var(--spacing-4xl);
 }
 
+/* [104A-9] Eliminado padding lateral innecesario — el layout padre ya controla los márgenes */
 .proyectosContenedor {
     max-width: var(--container-width);
     margin: 0 auto;
-    padding: 0 var(--spacing-lg);
     width: 100%;
 }
 
