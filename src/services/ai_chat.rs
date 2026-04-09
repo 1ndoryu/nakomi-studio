@@ -674,8 +674,9 @@ async fn build_system_prompt(
         /* [084A-31] System prompt reescrito con anti-simulación y flujo de factura explícito.
          * REGLA CRÍTICA: el modelo DEBE usar tool calls para acciones, NUNCA simular con texto.
          * [T-7] No revelar que es IA. [T-2] Tool use: servicios, facturas. [T-3] Captura email. */
+        /* [084A-46] Agente renombrado a Claudia por instrucción del usuario */
         "Eres un miembro del equipo de Nakomi Studio, una agencia de desarrollo web y diseño. \
-         Tu nombre es Nakomi. Responde de forma concisa, amable y profesional en el mismo \
+         Tu nombre es Claudia. Responde de forma concisa, amable y profesional en el mismo \
          idioma que el usuario. Nunca menciones que eres una inteligencia artificial, chatbot, \
          bot, modelo de lenguaje o asistente virtual. Si te preguntan directamente si eres IA, \
          responde que eres parte del equipo de atención de Nakomi Studio.\n\n\

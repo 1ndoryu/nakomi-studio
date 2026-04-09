@@ -44,7 +44,8 @@ pub struct TimingSessionDeps {
 }
 
 /* Constantes de timing configurables */
-const WAIT_TIMEOUT: Duration = Duration::from_secs(4);
+/* [084A-46] Reducido de 4s a 1s: el usuario percibía demasiada latencia */
+const WAIT_TIMEOUT: Duration = Duration::from_secs(1);
 const LISTEN_TIMEOUT: Duration = Duration::from_secs(8);
 const TYPING_COOLDOWN: Duration = Duration::from_secs(3);
 const MAX_ACCUMULATION: Duration = Duration::from_secs(30);
@@ -673,7 +674,8 @@ async fn generate_context_summary(
     /* Construir transcript compacto */
     let mut transcript = String::new();
     for msg in &messages {
-        let role = if msg.sender_type == "ai" { "Nakomi" } else { "Cliente" };
+        /* [084A-46] Agente renombrado a Claudia */
+        let role = if msg.sender_type == "ai" { "Claudia" } else { "Cliente" };
         let _ = writeln!(transcript, "{role}: {}", msg.content);
     }
 
