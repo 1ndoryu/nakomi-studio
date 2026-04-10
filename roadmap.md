@@ -94,11 +94,21 @@ js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2
 
 - chatBell__badge el numero nunca se actualiza nunca se leen los mensajes!!!! → ✅ 154A-12
 
-- En las tarjetas proyectosLista debería haber un badge con icono de mensaje o notificaciones cuando hayan mensajes nuevos o historial nuevo sin leer, revisar que todo este tambien genere notificaciones a los usuarios. 
+- En las tarjetas proyectosLista debería haber un badge con icono de mensaje o notificaciones cuando hayan mensajes nuevos o historial nuevo sin leer, revisar que todo este tambien genere notificaciones a los usuarios. → ✅ 154A-13
 
 - chatSesionTitulo, las conversaciones de las ordenes no es muy claro, de hecho debería centralizarse todo en vez de mostrar Orden #tal numero, debe mostrar el nombre del responsable o cliente, si un cliente tiene 2 ordenes con el mismo responsable entonces debe ser el mismo chat pero mostrar la foto perfil de ambos usuarios y sus nombre para saber con quien se habla.
 
-- No me aparece ningun hosting real, y tambien aparece "Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas."
+- No me aparece ningun hosting real, y tambien aparece "Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas." (tal vez sea error: failed to remove file y veo el backend desactualizado)
+
+-    Compiling glory-backend v0.1.0 (C:\Users\Owner\OneDrive\Documentos\glory-rust-template)
+error: failed to remove file `C:\Users\Owner\OneDrive\Documentos\glory-rust-template\target\debug\glory-backend.exe`
+
+Caused by:
+  Acceso denegado. (os error 5)
+[backend] Proceso terminado con codigo 101
+[frontend] Proceso terminado con codigo null
+
+-  154A-12 no se arreglo, el problema sigue. (tal vez sea error: failed to remove file y veo el backend desactualizado)
 
 ## Delegacioens y pedidos
 
