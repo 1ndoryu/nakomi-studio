@@ -8,14 +8,16 @@
  * que no son reutilizables; data ya está en useOrdenes.
  * sentinel-disable-file usestate-excesivo: 4 useState — tab, búsqueda, filtroEmpleado,
  * menuAbierto son estados UI independientes del componente lista. */
-import React from 'react';
-import {FolderOpen, Search, ChevronDown} from 'lucide-react';
+import React, {useMemo} from 'react';
+import {FolderOpen, Search, ChevronDown, MessageSquare} from 'lucide-react';
+import {useQuery} from '@tanstack/react-query';
 import {useSeccionProyectos} from '../../hooks/useSeccionProyectos';
 import {OrdenDetalle} from './OrdenDetalle';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
 import {MenuContextual} from '../ui/ContextMenu';
 import OptimizedImage from '../ui/OptimizedImage';
+import {apiListChatSessions} from '../../api/chat';
 import {
     ORDER_STATUS_LABELS,
     PAYMENT_MODE_LABELS,
@@ -55,6 +57,25 @@ export const SeccionProyectos: React.FC = () => {
         handleVolver, handleCancelar, handleAprobar, handleRevision,
         handleActualizarDescripcion, handleActualizarFase,
     } = useSeccionProyectos();
+
+    /* [154A-13] Reutilizar cache de chat-sessions (ChatBell lo pollea cada 15s)
+     * para detectar órdenes con mensajes sin leer y mostrar badge en tarjetas. */
+    const {data: chatSessions = []} = useQuery({
+        queryKey: ['chat-sessions'],
+        queryFn: apiListChatSessions,
+        refetchInterval: 15_000,
+    });
+
+    const ordenesConNoLeidos = useMemo(() => {
+        const ids = new Set<string>();
+        for (const s of chatSessions) {
+            if (!s.order_id || !s.last_message_at) continue;
+            if (!s.last_viewed_at || new Date(s.last_message_at) > new Date(s.last_viewed_at)) {
+                ids.add(s.order_id);
+            }
+        }
+        return ids;
+    }, [chatSessions]);
 
     if (cargando) {
         return <div className="proyectosLoading"><div className="proyectosSpinner" /><p>Cargando proyectos...</p></div>;
@@ -162,6 +183,7 @@ export const SeccionProyectos: React.FC = () => {
                             orden={orden}
                             onClick={() => seleccionarOrden(orden.id)}
                             mostrarEmpleado={isAdmin}
+                            tieneNoLeidos={ordenesConNoLeidos.has(orden.id)}
                         />
                     ))}
                 </div>
@@ -212,17 +234,25 @@ const SERVICE_IMAGE: Record<string, string> = {
  * Agrega imagen del servicio resuelta por slug.
  * [084A-1] Vista admin muestra empleado responsable en footer.
  * [074A-59] Admin/empleado ven client_name en footer. */
-function OrdenCard({orden, onClick, mostrarEmpleado}: {orden: OrderResponse; onClick: () => void; mostrarEmpleado?: boolean}) {
+function OrdenCard({orden, onClick, mostrarEmpleado, tieneNoLeidos}: {orden: OrderResponse; onClick: () => void; mostrarEmpleado?: boolean; tieneNoLeidos?: boolean}) {
     const imgSrc = SERVICE_IMAGE[orden.service_slug] || '/assets/Servicios/diseno web.jpg';
 
     return (
         <Button className="ordenCard" onClick={onClick} type="button" variante="texto">
-            <OptimizedImage
-                className="ordenCardImagen"
-                src={imgSrc}
-                alt={orden.service_title}
-                loading="lazy"
-            />
+            <div className="ordenCardImagenWrapper">
+                <OptimizedImage
+                    className="ordenCardImagen"
+                    src={imgSrc}
+                    alt={orden.service_title}
+                    loading="lazy"
+                />
+                {/* [154A-13] Badge de mensajes no leídos en la tarjeta */}
+                {tieneNoLeidos && (
+                    <span className="ordenCardChatBadge" title="Mensajes sin leer">
+                        <MessageSquare size={14} />
+                    </span>
+                )}
+            </div>
             <div className="ordenCardBody">
                 <div className="ordenCardHeader">
                     <h3 className="ordenCardTitulo">{orden.service_title}</h3>

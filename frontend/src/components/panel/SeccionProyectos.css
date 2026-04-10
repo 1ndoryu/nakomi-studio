@@ -150,6 +150,11 @@
 
 /* [064A-74] Imagen cuadrada 1:1 en tarjeta de pedido
  * [104A-23] display:block elimina gap de baseline inline dentro de <picture>. */
+.ordenCardImagenWrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
 .ordenCardImagen {
     width: 120px;
     height: 120px;
@@ -158,6 +163,22 @@
     flex-shrink: 0;
     border-radius: var(--radius-md);
     display: block;
+}
+
+/* [154A-13] Badge de chat no leído en la esquina de la imagen del pedido */
+.ordenCardChatBadge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--brand-primary);
+    color: var(--brand-white);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .ordenCardBody {
