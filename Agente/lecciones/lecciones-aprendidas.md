@@ -46,6 +46,11 @@
 ## CSS validator — variables resueltas
 - Algunos diagnósticos de CSS siguen reportando “hardcodeado” aunque la regla ya use `var(--token)` y el build pase. Cuando ocurra, corroborar con `npm --prefix frontend run build` antes de perseguir falsos positivos del validador.
 
+## Imágenes responsive — `sizes` omitido no puede caer siempre en `100vw`
+- Si un `img` con `srcset` usa anchos descriptivos y el componente no recibe `sizes`, el navegador asume `100vw` y sobre-descarga variantes grandes en avatars, logos y cards pequeñas.
+- Medir el ancho real renderizado con `ResizeObserver` y derivar un `sizes` en píxeles evita ese sesgo sin obligar a propagar `sizes` manual en todos los callers.
+- Si el backend ya soporta más buckets que el frontend, el cuello de botella real está en la generación del `srcset`, no en el proxy.
+
 ## Admin deletes — dependencias reales
 - Si una entidad admin pide “eliminar” pero tiene FKs sin cascade repartidas en varias tablas, no implementar hard delete ciego. Primero exponer al panel un preflight de dependencias con mensaje explícito y usar suspensión como fallback operativo.
 

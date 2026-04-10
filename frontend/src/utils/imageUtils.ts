@@ -15,6 +15,66 @@ interface OptimizeOptions {
     format?: 'webp' | 'jpeg' | 'png';
 }
 
+const DEFAULT_WIDTHS = [...ALLOWED_WIDTHS] as AllowedWidth[];
+
+function normalizeDevicePixelRatio(devicePixelRatio = 1): number {
+    if (!Number.isFinite(devicePixelRatio) || devicePixelRatio <= 0) {
+        return 1;
+    }
+
+    return Math.min(Math.max(devicePixelRatio, 1), 3);
+}
+
+function findWidthAbove(targetWidth: number): AllowedWidth {
+    return ALLOWED_WIDTHS.find(width => width >= targetWidth) ?? ALLOWED_WIDTHS[ALLOWED_WIDTHS.length - 1];
+}
+
+/* [104A-13] Ajusta los buckets del srcSet al ancho real renderizado.
+ * Evita servir 300w/640w por defecto a logos, avatars o cards pequeñas.
+ * Mantiene un bucket por debajo y otro por encima para cambios de layout sin descargar originales. */
+export function resolveResponsiveWidths(
+    renderedWidth?: number,
+    devicePixelRatio = 1,
+): AllowedWidth[] {
+    if (!renderedWidth || !Number.isFinite(renderedWidth) || renderedWidth <= 0) {
+        return DEFAULT_WIDTHS;
+    }
+
+    const normalizedWidth = Math.round(renderedWidth);
+    const normalizedDpr = normalizeDevicePixelRatio(devicePixelRatio);
+    const lowerBound = normalizedWidth * 0.75;
+    const upperBound = normalizedWidth * Math.max(normalizedDpr * 1.5, 1.5);
+    const widthsInRange = ALLOWED_WIDTHS.filter(width => width >= lowerBound && width <= upperBound);
+    const previousWidth = [...ALLOWED_WIDTHS].reverse().find(width => width < lowerBound);
+    const nextWidth = ALLOWED_WIDTHS.find(width => width > upperBound);
+    const selectedWidths = new Set<AllowedWidth>(widthsInRange);
+
+    if (previousWidth) {
+        selectedWidths.add(previousWidth);
+    }
+
+    if (nextWidth) {
+        selectedWidths.add(nextWidth);
+    }
+
+    if (selectedWidths.size === 0) {
+        selectedWidths.add(findWidthAbove(normalizedWidth * normalizedDpr));
+    }
+
+    return Array.from(selectedWidths).sort((left, right) => left - right);
+}
+
+export function resolveBestWidth(
+    renderedWidth?: number,
+    devicePixelRatio = 1,
+): AllowedWidth | undefined {
+    if (!renderedWidth || !Number.isFinite(renderedWidth) || renderedWidth <= 0) {
+        return undefined;
+    }
+
+    return findWidthAbove(Math.round(renderedWidth * normalizeDevicePixelRatio(devicePixelRatio)));
+}
+
 function isOptimizableSrc(src: string): boolean {
     return OPTIMIZABLE_PREFIXES.some(prefix => src.startsWith(prefix));
 }
@@ -65,7 +125,7 @@ export function optimizedUrl(src: string, options: OptimizeOptions = {}): string
  * Retorna pares ancho→URL para los breakpoints especificados. */
 export function generateSrcSet(
     src: string,
-    widths: AllowedWidth[] = [300, 640, 1024, 1600],
+    widths: AllowedWidth[] = DEFAULT_WIDTHS,
     options: Omit<OptimizeOptions, 'width'> = {},
 ): string {
     if (!src || src.startsWith('data:') || src.startsWith('http') || src.endsWith('.svg')) {
@@ -84,7 +144,7 @@ export function generateSrcSet(
 /* Genera srcSet en formato WebP para usar con <picture> <source> */
 export function generateWebPSrcSet(
     src: string,
-    widths: AllowedWidth[] = [300, 640, 1024, 1600],
+    widths: AllowedWidth[] = DEFAULT_WIDTHS,
     quality = 80,
 ): string {
     return generateSrcSet(src, widths, { format: 'webp', quality });

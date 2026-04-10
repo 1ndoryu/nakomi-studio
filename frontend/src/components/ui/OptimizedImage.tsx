@@ -4,7 +4,7 @@
 
 import type {SyntheticEvent} from 'react';
 
-import { generateSrcSet, generateWebPSrcSet, optimizedUrl } from '../../utils/imageUtils';
+import {useOptimizedImage} from '../../hooks/useOptimizedImage';
 
 interface OptimizedImageProps {
     src: string;
@@ -12,7 +12,7 @@ interface OptimizedImageProps {
     width?: number;
     height?: number;
     className?: string;
-    /** Anchos para srcSet responsive (default: [300, 640, 1024, 1600]) */
+    /** Hint manual para el navegador cuando el layout ya es conocido. */
     sizes?: string;
     /** Calidad de compresión 10-100 (default: 80) */
     quality?: number;
@@ -38,17 +38,26 @@ export default function OptimizedImage({
     onClick,
     onError,
 }: OptimizedImageProps) {
+    const {
+        pictureRef,
+        shouldOptimize,
+        resolvedSizes,
+        fallbackSrc,
+        fallbackSrcSet,
+        webpSrcSet,
+    } = useOptimizedImage({
+        src,
+        width,
+        sizes,
+        quality,
+        noOptimize,
+    });
+
     /* Si no hay src, no renderizar nada */
     if (!src) return null;
 
     /* Sin optimización: renderizar img simple */
-    if (
-        noOptimize
-        || src.startsWith('data:')
-        || src.startsWith('http')
-        || src.endsWith('.svg')
-        || (!src.startsWith('/uploads/') && !src.startsWith('/assets/'))
-    ) {
+    if (!shouldOptimize) {
         return (
             <img
                 src={src}
@@ -64,17 +73,13 @@ export default function OptimizedImage({
         );
     }
 
-    const webpSrcSet = generateWebPSrcSet(src, undefined, quality);
-    const fallbackSrcSet = generateSrcSet(src, undefined, { quality });
-    const fallbackSrc = optimizedUrl(src, { quality });
-
     return (
-        <picture>
-            {webpSrcSet && <source type="image/webp" srcSet={webpSrcSet} sizes={sizes} />}
+        <picture ref={pictureRef}>
+            {webpSrcSet && <source type="image/webp" srcSet={webpSrcSet} sizes={resolvedSizes} />}
             <img
                 src={fallbackSrc}
                 srcSet={fallbackSrcSet || undefined}
-                sizes={fallbackSrcSet ? sizes : undefined}
+                sizes={fallbackSrcSet ? resolvedSizes : undefined}
                 alt={alt}
                 width={width}
                 height={height}
