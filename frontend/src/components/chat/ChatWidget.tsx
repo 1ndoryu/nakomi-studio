@@ -289,8 +289,7 @@ function ChatWidgetMessages({
         <div className="chatWidgetMessages">
             {messages.length === 0 && (
                 <p className="chatWidgetEmpty">
-                    Envía un mensaje para comenzar la conversación.
-                    Un asistente te responderá pronto.
+                    Conectando...
                 </p>
             )}
             {messages.map((msg) => {
