@@ -80,3 +80,15 @@
 ## Checkout publico - no crear dos PaymentIntent para la misma orden
 - Si el flujo publico ya creo la orden y recibio `client_secret`, el checkout siguiente debe reutilizarlo. Volver a llamar `/api/orders/{id}/pay` desde la siguiente pantalla duplica intents y complica la conciliacion del pago cancelado.
 - Cuando el panel persiste la tab activa en `sessionStorage`, cualquier flujo que redirija a `/panel` como fallback debe fijar primero la seccion correcta o el usuario puede aterrizar lejos de la orden recien creada.
+
+## Hosting publico - no reutilizar el funnel de ordenes
+- Si un producto ya tiene backend propio de suscripcion (`/api/hosting/subscribe`), la UI publica no debe seguir entrando por `/api/orders` aunque visualmente reuse cards o modales de compra.
+- Un `404` en checkout puede venir de un contrato de dominio equivocado: en este caso `service_slug = hosting` no existia en el catalogo de ordenes, asi que la solucion correcta fue mover el flujo al endpoint real de hosting, no inventar aliases en orders.
+
+## Upstreams opcionales - no esconderlos tras 500 internos
+- Si una integración externa opcional falla (Contabo, por ejemplo), no devolver `Internal` genérico desde el handler. Clasificar y exponer un `message` accionable evita perseguir fantasmas de backend cuando el bloqueo real es `invalid_grant`, parseo o indisponibilidad del proveedor.
+- Cuando una credencial legacy es ambigua (`PASSWORD_CONTABO`), documentar y soportar una variable explícita (`CONTABO_API_PASSWORD`) reduce drift entre proyectos y evita repetir el mismo diagnóstico en cada repo.
+
+## Auditorías vagas - convertirlas en backlog ejecutable
+- Si el roadmap trae una tarea tipo “hay que revisar” o “presiento que falta mucho”, cerrarla solo con lectura no alcanza. Hay que salir de la auditoría con un documento, un plan activo y subtareas concretas reinsertadas en el roadmap.
+- En hosting, el valor real de la revisión estuvo en separar claramente: provisioning, ciclo de cobro/suspensión, datos reales del servidor y dominios. Sin ese corte, todo queda escondido en una sola tarea imposible de cerrar.
