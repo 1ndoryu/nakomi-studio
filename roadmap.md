@@ -120,7 +120,7 @@ js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2
 
 ## Hosting
 
-- Lo explique antes, lo solicite antes, pero claramente no se me entiendo, necesito un hosting real para probar en el panel de admin, que sea real, sin wordpress ni nada, quiero ver como se vería un hosting real comprado por el cliente, en este caso yo como el admin sería el cliente y el hosting que tendría en mi panel sería mío, necesito la implementación real para ver las limitaciones y que falta por hacer
+- Lo explique antes, lo solicite antes, pero claramente no se me entiendo, necesito un hosting real para probar en el panel de admin, que sea real, sin wordpress ni nada, quiero ver como se vería un hosting real comprado por el cliente, en este caso yo como el admin sería el cliente y el hosting que tendría en mi panel sería mío, necesito la implementación real para ver las limitaciones y que falta por hacer → ✅ 154A-11
 
 
 ## Hosting Automation — ✅ Fases 1-3 completadas (104A-42)
