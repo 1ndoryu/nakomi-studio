@@ -58,18 +58,17 @@ export function useHostingDetalle(hostingId: string) {
 
     /* [094A-4] Derivar info de dominio.
      * SSL es automático vía Let's Encrypt en Coolify para dominios configurados.
-     * serverIp se usa para instrucciones DNS (registro A). Por ahora, valor fijo
-     * del VPS único; en el futuro vendrá del backend cuando haya multi-VPS. */
+     * [104A-42] serverIp viene del backend (server_ip real del VPS), no hardcodeada. */
     const domainInfo = useMemo((): DomainInfo => {
         const domain = subscription?.domain ?? null;
-        /* IP del VPS de producción (Contabo). En setup multi-VPS, vendrá de la API. */
-        const serverIp = subscription?.coolify_site_name ? '66.94.100.241' : null;
+        /* IP proviene del backend tras provisioning en Coolify */
+        const serverIp = subscription?.server_ip ?? null;
         return {
             domain,
             nameservers: ['ns1.contabo.net', 'ns2.contabo.net', 'ns3.contabo.net'],
             sslStatus: domain ? 'active' : 'none',
             sslProvider: 'Let\'s Encrypt (automático vía Coolify)',
-            serverIp: serverIp ?? (subscription?.status === 'active' ? '66.94.100.241' : null),
+            serverIp,
         };
     }, [subscription]);
 

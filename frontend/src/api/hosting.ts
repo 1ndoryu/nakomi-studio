@@ -16,6 +16,9 @@ export interface HostingSubscription {
     status: string;
     monthly_price_cents: number;
     storage_limit_mb: number;
+    /* [104A-42] Datos reales del servidor Coolify */
+    server_uuid: string | null;
+    server_ip: string | null;
     created_at: string;
     updated_at: string;
 }

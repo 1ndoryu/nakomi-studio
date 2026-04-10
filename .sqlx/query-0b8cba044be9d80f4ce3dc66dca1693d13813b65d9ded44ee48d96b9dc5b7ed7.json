@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb, created_at, updated_at\n             FROM hosting_subscriptions\n             WHERE user_id = $1\n             ORDER BY created_at DESC",
+  "query": "INSERT INTO hosting_subscriptions (user_id, client_name, client_email, plan, domain, monthly_price_cents, storage_limit_mb)\n             VALUES ($1, $2, $3, $4, $5, $6, $7)\n             RETURNING id, user_id, client_name, client_email, plan, domain,\n                       coolify_site_name, status, stripe_subscription_id,\n                       monthly_price_cents, storage_limit_mb,\n                       server_uuid, server_ip, created_at, updated_at",
   "describe": {
     "columns": [
       {
@@ -60,18 +60,34 @@
       },
       {
         "ordinal": 11,
+        "name": "server_uuid",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "server_ip",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 14,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Int4"
       ]
     },
     "nullable": [
@@ -86,9 +102,11 @@
       true,
       false,
       false,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "4575bdbf09ebbb17a88e290114c8552f216e0b18ae2b12fe45a410f2a86f35d4"
+  "hash": "0b8cba044be9d80f4ce3dc66dca1693d13813b65d9ded44ee48d96b9dc5b7ed7"
 }

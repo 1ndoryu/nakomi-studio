@@ -26,7 +26,8 @@ impl HostingRepository {
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
-                    monthly_price_cents, storage_limit_mb, created_at, updated_at
+                    monthly_price_cents, storage_limit_mb,
+                    server_uuid, server_ip, created_at, updated_at
              FROM hosting_subscriptions
              ORDER BY created_at DESC"
         )
@@ -44,7 +45,8 @@ impl HostingRepository {
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
-                    monthly_price_cents, storage_limit_mb, created_at, updated_at
+                    monthly_price_cents, storage_limit_mb,
+                    server_uuid, server_ip, created_at, updated_at
              FROM hosting_subscriptions
              WHERE user_id = $1
              ORDER BY created_at DESC",
@@ -63,7 +65,8 @@ impl HostingRepository {
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
-                    monthly_price_cents, storage_limit_mb, created_at, updated_at
+                    monthly_price_cents, storage_limit_mb,
+                    server_uuid, server_ip, created_at, updated_at
              FROM hosting_subscriptions
              WHERE id = $1",
             id
@@ -83,7 +86,8 @@ impl HostingRepository {
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        coolify_site_name, status, stripe_subscription_id,
-                       monthly_price_cents, storage_limit_mb, created_at, updated_at",
+                       monthly_price_cents, storage_limit_mb,
+                       server_uuid, server_ip, created_at, updated_at",
             params.user_id,
             params.client_name,
             params.client_email,
@@ -128,7 +132,8 @@ impl HostingRepository {
              WHERE id = $5
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        coolify_site_name, status, stripe_subscription_id,
-                       monthly_price_cents, storage_limit_mb, created_at, updated_at",
+                       monthly_price_cents, storage_limit_mb,
+                       server_uuid, server_ip, created_at, updated_at",
             plan,
             domain,
             monthly_price_cents,
@@ -200,7 +205,8 @@ impl HostingRepository {
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
-                    monthly_price_cents, storage_limit_mb, created_at, updated_at
+                    monthly_price_cents, storage_limit_mb,
+                    server_uuid, server_ip, created_at, updated_at
              FROM hosting_subscriptions
              WHERE stripe_subscription_id = $1",
             stripe_sub_id
@@ -219,6 +225,29 @@ impl HostingRepository {
         sqlx::query!(
             "UPDATE hosting_subscriptions SET stripe_subscription_id = $1, updated_at = NOW() WHERE id = $2",
             stripe_sub_id,
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /* [104A-42] Guardar datos del servidor Coolify tras provisioning exitoso.
+     * coolify_site_name = nombre del servicio, server_uuid = UUID en Coolify, server_ip = IP del VPS. */
+    pub async fn update_server_info(
+        pool: &PgPool,
+        id: Uuid,
+        coolify_site_name: &str,
+        server_uuid: &str,
+        server_ip: &str,
+    ) -> Result<(), AppError> {
+        sqlx::query!(
+            "UPDATE hosting_subscriptions
+             SET coolify_site_name = $1, server_uuid = $2, server_ip = $3, updated_at = NOW()
+             WHERE id = $4",
+            coolify_site_name,
+            server_uuid,
+            server_ip,
             id
         )
         .execute(pool)

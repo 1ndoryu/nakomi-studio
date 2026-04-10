@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE hosting_subscriptions\n             SET plan = $1, domain = $2, monthly_price_cents = $3, storage_limit_mb = $4, updated_at = NOW()\n             WHERE id = $5\n             RETURNING id, user_id, client_name, client_email, plan, domain,\n                       coolify_site_name, status, stripe_subscription_id,\n                       monthly_price_cents, storage_limit_mb, created_at, updated_at",
+  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb,\n                    server_uuid, server_ip, created_at, updated_at\n             FROM hosting_subscriptions\n             ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -60,23 +60,27 @@
       },
       {
         "ordinal": 11,
+        "name": "server_uuid",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "server_ip",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 14,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Varchar",
-        "Varchar",
-        "Int4",
-        "Int4",
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -90,9 +94,11 @@
       true,
       false,
       false,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "7e4910f94c87596c2bec1fe8bfacee18790d281d0e5989ee9db7bd54dcff9700"
+  "hash": "df070b70016c87e12fb4b20af1444c2b7f1c052a655306bc313685f9b73b8818"
 }

@@ -164,8 +164,15 @@ pub async fn stripe_webhook(
 
     /* [084A-24] Hosting subscriptions: procesar eventos de checkout.session.completed,
      * invoice.paid, invoice.payment_failed, customer.subscription.deleted.
+     * [104A-42] Se pasa http_client y coolify_config para provisioning automático.
      * HostingStripeService retorna bool indicando si procesó el evento. */
-    HostingStripeService::handle_webhook(&state.pool, event_type, &event["data"]).await?;
+    HostingStripeService::handle_webhook(
+        &state.pool,
+        &state.http_client,
+        state.coolify_config.as_ref(),
+        event_type,
+        &event["data"],
+    ).await?;
 
     /* [064A-73] Audit: webhook procesado exitosamente */
     AuditService::log(

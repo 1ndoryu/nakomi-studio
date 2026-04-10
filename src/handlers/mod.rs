@@ -283,6 +283,14 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         tracing::info!("Stripe Hosting configurado (3 planes)");
     }
 
+    /* [104A-42] Coolify: config para provisioning automático */
+    let coolify_config = crate::services::CoolifyConfig::from_env();
+    if coolify_config.is_some() {
+        tracing::info!("Coolify provisioning configurado");
+    } else {
+        tracing::warn!("Coolify NO configurado — provisioning de hosting desactivado (faltan vars COOLIFY_*)");
+    }
+
     let state = AppState {
         pool,
         jwt_secret: config.jwt_secret,
@@ -296,6 +304,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         chat_timing: crate::services::ChatTimingService::new(),
         contabo_service,
         hosting_stripe_config,
+        coolify_config,
     };
 
     /* [064A-73] CORS: restringir orígenes en producción. Si GLORY_ALLOWED_ORIGINS vacío, allow all (dev). */

@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::repositories::HostingRepository;
+use crate::services::coolify::{CoolifyConfig, CoolifyService};
 
 /* Mapeo plan → Stripe Price ID (cargados desde env) */
 #[derive(Debug, Clone)]
@@ -147,21 +148,30 @@ impl HostingStripeService {
     /// Eventos: checkout.session.completed, invoice.paid, customer.subscription.deleted
     pub async fn handle_webhook(
         pool: &PgPool,
+        http_client: &Client,
+        coolify_config: Option<&CoolifyConfig>,
         event_type: &str,
         data: &serde_json::Value,
     ) -> Result<bool, AppError> {
         match event_type {
-            "checkout.session.completed" => Self::on_checkout_completed(pool, data).await,
+            "checkout.session.completed" => {
+                Self::on_checkout_completed(pool, http_client, coolify_config, data).await
+            }
             "invoice.paid" => Self::on_invoice_paid(pool, data).await,
-            "customer.subscription.deleted" => Self::on_subscription_deleted(pool, data).await,
+            "customer.subscription.deleted" => {
+                Self::on_subscription_deleted(pool, http_client, coolify_config, data).await
+            }
             "invoice.payment_failed" => Self::on_payment_failed(pool, data).await,
             _ => Ok(false),
         }
     }
 
     /* Cliente completó el checkout — activar suscripción */
+    #[allow(clippy::too_many_lines)]
     async fn on_checkout_completed(
         pool: &PgPool,
+        http_client: &Client,
+        coolify_config: Option<&CoolifyConfig>,
         data: &serde_json::Value,
     ) -> Result<bool, AppError> {
         let mode = data["object"]["mode"].as_str().unwrap_or("");
@@ -206,6 +216,79 @@ impl HostingStripeService {
 
         HostingRepository::set_stripe_subscription_id(pool, hosting_id, stripe_sub_id).await?;
         HostingRepository::update_status(pool, hosting_id, "active").await?;
+
+        /* [104A-42] Provisioning real en Coolify — no-fatal: si falla, el pago ya fue aceptado.
+         * El admin puede provisionar manualmente desde el panel de Coolify.
+         * service_name usa los 8 primeros chars del UUID para idempotencia. */
+        if let Some(config) = coolify_config {
+            let service_name = CoolifyService::service_name_for(&hosting_id);
+            match CoolifyService::provision_hosting(http_client, config, &service_name).await {
+                Ok(result) => {
+                    tracing::info!(
+                        "Hosting {} provisionado en Coolify: uuid={}, domain={}, ip={}",
+                        hosting_id,
+                        result.service_uuid,
+                        result.domain,
+                        result.server_ip
+                    );
+                    if let Err(e) = HostingRepository::update_server_info(
+                        pool,
+                        hosting_id,
+                        &service_name,
+                        &result.service_uuid,
+                        &result.server_ip,
+                    )
+                    .await
+                    {
+                        tracing::warn!(
+                            "Error guardando server_info para hosting {}: {e}",
+                            hosting_id
+                        );
+                    }
+                    if let Err(e) = HostingRepository::add_event(
+                        pool,
+                        hosting_id,
+                        "coolify_provisioned",
+                        Some(serde_json::json!({
+                            "service_uuid": result.service_uuid,
+                            "domain": result.domain,
+                            "server_ip": result.server_ip,
+                        })),
+                    )
+                    .await
+                    {
+                        tracing::warn!(
+                            "Error registrando evento coolify_provisioned para {}: {e}",
+                            hosting_id
+                        );
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Coolify provisioning falló para hosting {} (error: {e}). Requiere setup manual.",
+                        hosting_id
+                    );
+                    if let Err(ev_err) = HostingRepository::add_event(
+                        pool,
+                        hosting_id,
+                        "coolify_provision_failed",
+                        Some(serde_json::json!({"error": e.to_string()})),
+                    )
+                    .await
+                    {
+                        tracing::warn!(
+                            "Error registrando evento coolify_provision_failed para {}: {ev_err}",
+                            hosting_id
+                        );
+                    }
+                }
+            }
+        } else {
+            tracing::warn!(
+                "Coolify no configurado — hosting {} activado sin provisioning automático.",
+                hosting_id
+            );
+        }
 
         /* [094A-9] Log de errores en evento, no silenciar */
         if let Err(e) = HostingRepository::add_event(
@@ -258,6 +341,8 @@ impl HostingStripeService {
     /* Suscripción cancelada en Stripe */
     async fn on_subscription_deleted(
         pool: &PgPool,
+        http_client: &Client,
+        coolify_config: Option<&CoolifyConfig>,
         data: &serde_json::Value,
     ) -> Result<bool, AppError> {
         /* [094A-9] Validar campo id explícitamente */
@@ -272,6 +357,26 @@ impl HostingStripeService {
         };
 
         HostingRepository::update_status(pool, hosting.id, "cancelled").await?;
+
+        /* [104A-42] Eliminar servicio Coolify al cancelar — no-fatal */
+        if let (Some(config), Some(service_uuid)) = (coolify_config, &hosting.server_uuid) {
+            if let Err(e) =
+                CoolifyService::delete_service(http_client, config, service_uuid, false).await
+            {
+                tracing::warn!(
+                    "Error eliminando servicio Coolify {} para hosting {}: {e}",
+                    service_uuid,
+                    hosting.id
+                );
+            } else {
+                tracing::info!(
+                    "Servicio Coolify {} eliminado por cancelación de hosting {}",
+                    service_uuid,
+                    hosting.id
+                );
+            }
+        }
+
         /* [094A-9] Log de errores en evento, no silenciar */
         if let Err(e) = HostingRepository::add_event(
             pool, hosting.id, "stripe_subscription_cancelled", None,

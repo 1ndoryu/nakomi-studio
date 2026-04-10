@@ -37,6 +37,11 @@ pub struct HostingSubscription {
     pub stripe_subscription_id: Option<String>,
     pub monthly_price_cents: i32,
     pub storage_limit_mb: i32,
+    /* [104A-42] Campos de servidor Coolify: UUID del servicio y IP del VPS */
+    #[sqlx(default)]
+    pub server_uuid: Option<String>,
+    #[sqlx(default)]
+    pub server_ip: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -108,6 +113,9 @@ pub struct HostingSubscriptionResponse {
     pub status: String,
     pub monthly_price_cents: i32,
     pub storage_limit_mb: i32,
+    /* [104A-42] IP y UUID de Coolify expuestos al frontend para datos reales del servidor */
+    pub server_uuid: Option<String>,
+    pub server_ip: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -125,6 +133,8 @@ impl From<HostingSubscription> for HostingSubscriptionResponse {
             status: s.status,
             monthly_price_cents: s.monthly_price_cents,
             storage_limit_mb: s.storage_limit_mb,
+            server_uuid: s.server_uuid,
+            server_ip: s.server_ip,
             created_at: s.created_at,
             updated_at: s.updated_at,
         }

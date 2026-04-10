@@ -143,6 +143,7 @@ pub async fn create_session(
         visitor_ip: session.visitor_ip,
         visitor_user_agent: session.visitor_user_agent,
         last_viewed_at: session.last_viewed_at,
+        visitor_last_connected_at: session.visitor_last_connected_at,
     };
     Ok((StatusCode::CREATED, Json(response)))
 }

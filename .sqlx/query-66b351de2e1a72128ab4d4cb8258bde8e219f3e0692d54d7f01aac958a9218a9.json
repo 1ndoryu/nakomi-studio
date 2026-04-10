@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb, created_at, updated_at\n             FROM hosting_subscriptions\n             ORDER BY created_at DESC",
+  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb,\n                    server_uuid, server_ip, created_at, updated_at\n             FROM hosting_subscriptions\n             WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -60,17 +60,29 @@
       },
       {
         "ordinal": 11,
+        "name": "server_uuid",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "server_ip",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 14,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -84,9 +96,11 @@
       true,
       false,
       false,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "5ce8ffa94246642faabefaa323d78375d75cd1efceb9b4f132688ba4c2962d25"
+  "hash": "66b351de2e1a72128ab4d4cb8258bde8e219f3e0692d54d7f01aac958a9218a9"
 }
