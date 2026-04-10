@@ -79,7 +79,7 @@ export const Header: React.FC = () => {
                 </div>
 
                 {/* Botón hamburguesa para móvil */}
-                <Button variante="texto" className="botonMenuMovil" onClick={() => menuMovilAbierto ? cerrarMenuMovil() : setMenuMovilAbierto(true)} aria-expanded={menuMovilAbierto} aria-controls="menu-movil" aria-label={menuMovilAbierto ? t('accessibility.close_menu') : t('accessibility.open_menu')}>
+                <Button variante="texto" className="controlMenuMovil" onClick={() => menuMovilAbierto ? cerrarMenuMovil() : setMenuMovilAbierto(true)} aria-expanded={menuMovilAbierto} aria-controls="menu-movil" aria-label={menuMovilAbierto ? t('accessibility.close_menu') : t('accessibility.open_menu')}>
                     {menuMovilAbierto ? <X size={24} /> : <Menu size={24} />}
                 </Button>
 
@@ -134,7 +134,7 @@ export const Header: React.FC = () => {
                             {t('nav.login')}
                         </Button>
                     )}
-                    <Button variante="primario" tamano="pequeno" className="botonHeader" onClick={() => abrirChat()}>
+                    <Button variante="primario" tamano="pequeno" className="accionHeaderPrincipal" onClick={() => abrirChat()}>
                         {textoCta}
                         <ChevronRight size={14} strokeWidth={3} aria-hidden="true" />
                     </Button>

@@ -111,7 +111,7 @@ export const Footer: React.FC = () => {
                                         aria-describedby={estado === 'error' ? 'newsletter-error' : undefined}
                                         aria-invalid={estado === 'error' ? true : undefined}
                                     />
-                                    <Button variante="outline" className="botonFooter" disabled={estado === 'enviando'}>
+                                    <Button variante="outline" className="footerAccionSuscripcion" disabled={estado === 'enviando'}>
                                         {estado === 'enviando' ? t('footer.newsletter_sending') : t('footer.newsletter_submit')}
                                     </Button>
                                 </form>

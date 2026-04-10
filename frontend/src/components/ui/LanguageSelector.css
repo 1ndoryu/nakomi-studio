@@ -5,7 +5,7 @@
     display: inline-block;
 }
 
-.selectorIdiomaBoton {
+.selectorIdiomaTrigger {
     background: transparent;
     border: none;
     color: var(--text-dark);
@@ -18,7 +18,7 @@
     transition: color 0.2s ease, background 0.2s ease;
 }
 
-.selectorIdiomaBoton:hover {
+.selectorIdiomaTrigger:hover {
     color: var(--text-primary);
 }
 
@@ -71,12 +71,12 @@
 
 .selectorIdiomaOpcion:first-child {
     padding-top: calc(var(--spacing-xs) + var(--spacing-sm));
-    border-radius: var(--radius-md) 8px 0 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .selectorIdiomaOpcion:last-child {
     padding-bottom: calc(var(--spacing-xs) + var(--spacing-sm));
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 .selectorIdiomaOpcion:hover {

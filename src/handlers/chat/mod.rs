@@ -70,10 +70,11 @@ async fn enrich_messages(
             avatar_url: Option<String>,
             display_name: Option<String>,
         }
-        if let Ok(rows) = sqlx::query_as::<_, UserInfo>(
+        if let Ok(rows) = sqlx::query_as!(
+            UserInfo,
             "SELECT id, avatar_url, display_name FROM users WHERE id = ANY($1)",
+            &user_ids[..]
         )
-        .bind(&user_ids)
         .fetch_all(pool)
         .await
         {

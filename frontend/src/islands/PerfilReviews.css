@@ -141,7 +141,7 @@
     font-size: var(--text-sm);
 }
 
-.perfilPaginacionBoton {
+.perfilPaginacionControl {
     background: none;
     border: 1px solid var(--border-default);
     padding: var(--spacing-xs) var(--spacing-md);
@@ -151,11 +151,11 @@
     transition: background var(--transicion-rapida);
 }
 
-.perfilPaginacionBoton:hover:not(:disabled) {
+.perfilPaginacionControl:hover:not(:disabled) {
     background: var(--bg-item-hover);
 }
 
-.perfilPaginacionBoton:disabled {
+.perfilPaginacionControl:disabled {
     opacity: 0.4;
     cursor: default;
 }

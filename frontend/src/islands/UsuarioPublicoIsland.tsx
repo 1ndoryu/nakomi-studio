@@ -20,7 +20,7 @@ function Estrellas({rating}: {rating: number}) {
     return (
         <span className="perfilEstrellas" aria-label={`${rating} de 5 estrellas`}>
             {[1, 2, 3, 4, 5].map(i => (
-                <span key={i} className={i <= rating ? 'estrellaLlena' : 'estrellaVacia'}><Star size={14} /></span>
+                <span key={`estrella-${i}`} className={i <= rating ? 'estrellaLlena' : 'estrellaVacia'}><Star size={14} /></span>
             ))}
         </span>
     );
@@ -135,9 +135,9 @@ function Paginacion({page, total, perPage, onCambiar}: {
     if (totalPages <= 1) return null;
     return (
         <div className="perfilPaginacion">
-            <Button type="button" variante="outline" tamano="pequeno" className="perfilPaginacionBoton" disabled={page <= 1} onClick={() => onCambiar(page - 1)}>← Anterior</Button>
+            <Button type="button" variante="outline" tamano="pequeno" className="perfilPaginacionControl" disabled={page <= 1} onClick={() => onCambiar(page - 1)}>← Anterior</Button>
             <span>{page} / {totalPages}</span>
-            <Button type="button" variante="outline" tamano="pequeno" className="perfilPaginacionBoton" disabled={page >= totalPages} onClick={() => onCambiar(page + 1)}>Siguiente →</Button>
+            <Button type="button" variante="outline" tamano="pequeno" className="perfilPaginacionControl" disabled={page >= totalPages} onClick={() => onCambiar(page + 1)}>Siguiente →</Button>
         </div>
     );
 }

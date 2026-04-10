@@ -27,6 +27,9 @@
 - Cada regla del sentinel debe implementar su propia verificación de `sentinel-disable-file` explícitamente si necesita soporte file-level.
 - [104A-4] Se añadió soporte sentinel-disable-file a: html-nativo-en-vez-de-componente, componente-sin-hook, usestate-excesivo.
 - La suite de `code-sentinel` está forzada por `.mocharc.json` a cargar `out/test/suite/*.test.js`; para validar una regla aislada hay que usar `mocha --no-config --require out/test/registerMocks.js <archivo>`.
+- Las reglas CSS que miran selectores no pueden usar regex ciega sobre el bloque completo: primero hay que strippear comentarios y distinguir clases del sistema (`menuContextualBoton`, `botonBase`, etc.) o aparecen falsos positivos masivos.
+- `inline-style-prohibido` debe aceptar `style={{ '--mi-var': valor }}` también cuando el objeto está en una sola línea; si no, barras de progreso y layouts con CSS vars vuelven a romper el reporte.
+- Para validar una versión local de Sentinel contra otro repo sin reinstalar la extensión del editor, usar `CODE_SENTINEL_TARGET_WORKSPACE=<ruta> npm test` en `.agent/code-sentinel`; ese host de pruebas puede regenerar `.sentinel-report.md` de forma reproducible.
 
 ## Coolify — deploy vs restart
 - `POST /api/v1/services/{uuid}/restart` solo reinicia containers existentes con la misma imagen.

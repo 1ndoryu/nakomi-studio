@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb, created_at, updated_at\n             FROM hosting_subscriptions\n             WHERE user_id = $1\n             ORDER BY created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "client_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "client_email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "plan",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "domain",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "coolify_site_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "stripe_subscription_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "monthly_price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "storage_limit_mb",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4575bdbf09ebbb17a88e290114c8552f216e0b18ae2b12fe45a410f2a86f35d4"
+}

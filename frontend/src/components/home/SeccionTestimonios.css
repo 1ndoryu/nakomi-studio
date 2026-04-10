@@ -44,7 +44,7 @@
 }
 
 /* [064A-1] Usa Button variante="outline" tamano="pequeno". Solo white-space contextual. */
-.testimoniosBotonEscribir {
+.testimoniosAccionEscribir {
     white-space: nowrap;
 }
 

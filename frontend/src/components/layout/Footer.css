@@ -141,7 +141,7 @@
 
 /* Botón outline invertido para fondo oscuro */
 /* [074A-35] Borde visible en fondo oscuro — --white-20 es el estándar para bordes en bg oscuro. */
-.botonFooter {
+.footerAccionSuscripcion {
     border-color: var(--white-20);
     color: var(--bg-primary);
 }

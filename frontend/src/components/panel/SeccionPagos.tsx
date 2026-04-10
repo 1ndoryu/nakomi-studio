@@ -241,7 +241,7 @@ export function SeccionPagos() {
                             <Button
                                 variante="outline"
                                 tamano="pequeno"
-                                className="pagoBotonReembolso"
+                                className="pagoAccionReembolso"
                                 type="button"
                                 onClick={() => {
                                     setPagoDetalle(null);
@@ -272,7 +272,7 @@ export function SeccionPagos() {
                     />
                     <div className="pagoModalBotones">
                         <Button
-                            className="pagoBotonEnviarReembolso"
+                            className="pagoAccionEnviarReembolso"
                             tamano="pequeno"
                             type="button"
                             onClick={() => void enviarSolicitud()}
@@ -283,7 +283,7 @@ export function SeccionPagos() {
                         <Button
                             variante="outline"
                             tamano="pequeno"
-                            className="pagoBotonCancelarReembolso"
+                            className="pagoAccionCancelarReembolso"
                             type="button"
                             onClick={cerrarModal}
                             disabled={refundEnCurso}

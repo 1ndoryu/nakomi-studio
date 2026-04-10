@@ -12,6 +12,7 @@
      * El valor es negro: úsalo solo en secciones oscuras (footer, hero dark). */
     --bg-dark: #141413;
     --bg-accent: #f5f3f1;
+    --bg-glass-soft: rgba(245, 242, 239, 0.92);
     /* [074A-4] Beige cálido para botón primario y elementos interactivos sutiles. */
     --bg-warm: #e8e6e2;
     --bg-warm-hover: #e0deda;

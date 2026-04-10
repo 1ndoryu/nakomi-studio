@@ -4,6 +4,7 @@
  * Storage/bandwidth muestran límites; uso real requiere monitoreo futuro (Coolify). */
 
 import {useQuery} from '@tanstack/react-query';
+import type {CSSProperties} from 'react';
 import type {HostingSubscription} from '../../api/hosting';
 import {apiGetHostingStats} from '../../api/hosting';
 import './HostingStats.css';
@@ -29,8 +30,12 @@ function ResourceBar({label, used, total, unit, unavailable}: {
                     </span>
                 </div>
                 <div className="hostingStatBarraTrack">
-                {/* sentinel-disable-next-line inline-style-prohibido: dynamic width percentage */}
-                    <div className="hostingStatBarraFill hostingStatBarraFill--pendiente" style={{width: '0%'}} />
+                    {/* [104A-11] El ancho vive en una CSS var dinámica; Sentinel lo trata
+                     * como excepción válida y evitamos width inline real. */}
+                    <div
+                        className="hostingStatBarraFill hostingStatBarraFill--pendiente"
+                        style={{'--hosting-bar-width': '0%'} as CSSProperties}
+                    />
                 </div>
                 <span className="hostingStatBarraNota">Monitoreo pendiente</span>
             </div>
@@ -49,10 +54,9 @@ function ResourceBar({label, used, total, unit, unavailable}: {
                 </span>
             </div>
             <div className="hostingStatBarraTrack">
-                {/* sentinel-disable-next-line inline-style-prohibido: dynamic width percentage */}
                 <div
                     className={`hostingStatBarraFill hostingStatBarraFill--${level}`}
-                    style={{width: `${percent}%`}}
+                    style={{'--hosting-bar-width': `${percent}%`} as CSSProperties}
                 />
             </div>
         </div>

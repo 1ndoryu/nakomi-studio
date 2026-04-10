@@ -2,7 +2,7 @@
  * Muestra un carrusel interactivo de testimonios.
  * Datos centralizados en data/testimonios.ts (DRY).
  * Incluye botón para escribir un testimonio (abre modal).
- * sentinel-disable-file inline-style: CSS custom properties dinámicas (--testimonio-idx,
+ * sentinel-disable-file inline-style-prohibido: CSS custom properties dinámicas (--testimonio-idx,
  * --testimonio-drag, --testimonio-transition) se asignan via style={{}}, no hay alternativa CSS pura. */
 import React, {useState} from 'react';
 import './SeccionTestimonios.css';
@@ -29,7 +29,7 @@ export const SeccionTestimonios: React.FC = () => {
             <div className="testimoniosContenedor">
                 <div className="testimoniosHeader">
                     <SeccionHeader titulo="Testimonials" />
-                    <Button variante="outline" tamano="pequeno" className="testimoniosBotonEscribir" onClick={() => setModalAbierto(true)} type="button">
+                    <Button variante="outline" tamano="pequeno" className="testimoniosAccionEscribir" onClick={() => setModalAbierto(true)} type="button">
                         Escribir un comentario
                     </Button>
                 </div>

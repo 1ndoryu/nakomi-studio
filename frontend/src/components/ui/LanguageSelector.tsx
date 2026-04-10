@@ -31,7 +31,7 @@ export const LanguageSelector = () => {
             onCerrar={() => setOpen(false)}
             ariaLabel="Seleccionar idioma"
             triggerContent={currentLang.label}
-            triggerClassName="selectorIdiomaBoton"
+            triggerClassName="selectorIdiomaTrigger"
             panelClassName="selectorIdiomaLista"
             className="selectorIdioma"
         >

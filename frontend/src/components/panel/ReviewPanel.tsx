@@ -94,7 +94,7 @@ export function ReviewPanel({ orderId, effectiveRole }: ReviewPanelProps) {
                         />
                         <Button
                             variante="texto"
-                            className="reviewBotonResponder"
+                            className="reviewAccionResponder"
                             onClick={() => void handleResponder()}
                             disabled={respondiendo || !respuesta.trim()}
                             type="button"
@@ -119,7 +119,7 @@ export function ReviewPanel({ orderId, effectiveRole }: ReviewPanelProps) {
                         <Button
                             variante="texto"
                             key={n}
-                            className="reviewEstrellaBoton"
+                            className="reviewEstrellaControl"
                             onClick={() => form.setRating(n)}
                             type="button"
                         >
@@ -138,7 +138,7 @@ export function ReviewPanel({ orderId, effectiveRole }: ReviewPanelProps) {
                     rows={3}
                 />
                 <Button
-                    className="reviewBotonEnviar"
+                    className="reviewAccionEnviar"
                     onClick={() => void form.enviarReview()}
                     disabled={form.enviando || form.rating < 1}
                     type="button"

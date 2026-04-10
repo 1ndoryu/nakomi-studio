@@ -40,15 +40,16 @@ impl HostingRepository {
         pool: &PgPool,
         user_id: Uuid,
     ) -> Result<Vec<HostingSubscription>, AppError> {
-        let rows = sqlx::query_as::<_, HostingSubscription>(
+        let rows = sqlx::query_as!(
+            HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb, created_at, updated_at
              FROM hosting_subscriptions
              WHERE user_id = $1
              ORDER BY created_at DESC",
+            user_id
         )
-        .bind(user_id)
         .fetch_all(pool)
         .await?;
         Ok(rows)

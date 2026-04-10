@@ -305,7 +305,7 @@
 }
 
 /* Botón reembolso en el modal de detalle */
-.pagoBotonReembolso {
+.pagoAccionReembolso {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -382,7 +382,7 @@
     }
 }
 
-.pagoBotonEnviarReembolso {
+.pagoAccionEnviarReembolso {
     background: var(--color-purple-text);
     color: var(--brand-white);
     border: none;
@@ -393,12 +393,12 @@
     cursor: pointer;
 }
 
-.pagoBotonEnviarReembolso:disabled {
+.pagoAccionEnviarReembolso:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-.pagoBotonCancelarReembolso {
+.pagoAccionCancelarReembolso {
     background: transparent;
     color: var(--brand-black);
     border: 1px solid var(--border-light);

@@ -46,12 +46,12 @@ export const SeccionCta: React.FC<SeccionCtaProps> = ({titulo, descripcion, text
                 {(textoBotonPrimario || textoBotonSecundario) && (
                     <div className="ctaBotones">
                         {textoBotonPrimario && (
-                            <Button variante="primario" tamano="mediano" className="ctaBotonPrimario" onClick={handlePrimarioClick}>
+                            <Button variante="primario" tamano="mediano" className="ctaAccionPrimaria" onClick={handlePrimarioClick}>
                                 {textoBotonPrimario}
                             </Button>
                         )}
                         {textoBotonSecundario && (
-                            <Button variante="outline" tamano="mediano" className="ctaBotonSecundario" onClick={handleSecundarioClick}>
+                            <Button variante="outline" tamano="mediano" className="ctaAccionSecundaria" onClick={handleSecundarioClick}>
                                 {textoBotonSecundario}
                             </Button>
                         )}

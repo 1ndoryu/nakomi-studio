@@ -55,7 +55,7 @@
     fill: none;
 }
 
-.reviewEstrellaBoton {
+.reviewEstrellaControl {
     background: none;
     border: none;
     padding: 2px;
@@ -63,7 +63,7 @@
     transition: transform 0.15s;
 }
 
-.reviewEstrellaBoton:hover {
+.reviewEstrellaControl:hover {
     transform: scale(1.2);
 }
 
@@ -130,8 +130,8 @@
     margin-top: var(--spacing-xs);
 }
 
-.reviewBotonEnviar,
-.reviewBotonResponder {
+.reviewAccionEnviar,
+.reviewAccionResponder {
     align-self: flex-start;
     background: var(--bg-accent);
     color: var(--brand-white);
@@ -144,13 +144,13 @@
     transition: opacity 0.2s;
 }
 
-.reviewBotonEnviar:hover,
-.reviewBotonResponder:hover {
+.reviewAccionEnviar:hover,
+.reviewAccionResponder:hover {
     opacity: 0.85;
 }
 
-.reviewBotonEnviar:disabled,
-.reviewBotonResponder:disabled {
+.reviewAccionEnviar:disabled,
+.reviewAccionResponder:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }

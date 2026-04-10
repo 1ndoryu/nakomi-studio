@@ -126,6 +126,10 @@
     margin-top: var(--spacing-sm);
 }
 
+.testimonioAccionEnviar {
+    width: 100%;
+}
+
 .testimonioError {
     font-family: var(--font-primary);
     font-size: var(--text-sm);

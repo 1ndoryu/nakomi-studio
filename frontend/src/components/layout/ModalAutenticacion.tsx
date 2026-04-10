@@ -94,7 +94,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
                         >
                             {t('auth.forgot_password')}
                         </Button>
-                        <Button variante="primario" tamano="mediano" className="modalBotonPrincipal" disabled={cargando}>
+                        <Button variante="primario" tamano="mediano" className="modalAccionPrincipal" disabled={cargando}>
                             {cargando ? t('auth.loading') : t('auth.login')}
                         </Button>
 
@@ -102,7 +102,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
                             <span>{t('auth.or')}</span>
                         </div>
 
-                        <Button variante="texto" type="button" className="modalBotonGoogle" onClick={handleGoogleLogin}>
+                        <Button variante="texto" type="button" className="modalAccionGoogle" onClick={handleGoogleLogin}>
                             <svg width="18" height="18" viewBox="0 0 24 24">
                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -169,7 +169,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
                         </div>
                         {/* TO-DO: Agregar reCAPTCHA aqui cuando se configuren las keys */}
                         <p className="modalNotaCaptcha">{t('auth.captcha_note')}</p>
-                        <Button variante="primario" tamano="mediano" className="modalBotonPrincipal" disabled={cargando}>
+                        <Button variante="primario" tamano="mediano" className="modalAccionPrincipal" disabled={cargando}>
                             {cargando ? t('auth.creating') : t('auth.register')}
                         </Button>
 
@@ -177,7 +177,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
                             <span>{t('auth.or')}</span>
                         </div>
 
-                        <Button variante="texto" type="button" className="modalBotonGoogle" onClick={handleGoogleLogin}>
+                        <Button variante="texto" type="button" className="modalAccionGoogle" onClick={handleGoogleLogin}>
                             <svg width="18" height="18" viewBox="0 0 24 24">
                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -214,7 +214,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
                                         required
                                     />
                                 </div>
-                                <Button variante="primario" tamano="mediano" className="modalBotonPrincipal" disabled={cargando}>
+                                <Button variante="primario" tamano="mediano" className="modalAccionPrincipal" disabled={cargando}>
                                     {cargando ? t('auth.sending') : t('auth.send_link')}
                                 </Button>
                                 <Button variante="texto" type="button" className="modalEnlaceTexto" onClick={() => setVista('login')}>

@@ -60,11 +60,11 @@
     margin-top: 0;
 }
 
-.ctaBotonPrimario {
+.ctaAccionPrimaria {
     min-width: 220px;
 }
 
-.ctaBotonSecundario {
+.ctaAccionSecundaria {
     min-width: 180px;
 }
 
@@ -74,8 +74,8 @@
         width: 100%;
     }
 
-    .ctaBotonPrimario,
-    .ctaBotonSecundario {
+    .ctaAccionPrimaria,
+    .ctaAccionSecundaria {
         width: 100%;
         min-width: 0;
     }

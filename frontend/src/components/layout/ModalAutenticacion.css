@@ -155,7 +155,7 @@
 }
 
 /* Boton principal */
-.modalBotonPrincipal {
+.modalAccionPrincipal {
     width: 100%;
     margin-top: var(--spacing-sm);
 }
@@ -183,7 +183,7 @@
 }
 
 /* Boton Google */
-.modalBotonGoogle {
+.modalAccionGoogle {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -201,7 +201,7 @@
     transition: background-color var(--transicion-rapida), border-color var(--transicion-rapida);
 }
 
-.modalBotonGoogle:hover {
+.modalAccionGoogle:hover {
     background-color: var(--bg-card-subtle);
     border-color: var(--border-hover);
 }

@@ -187,7 +187,7 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                             </div>
 
                             <div className="testimonioAcciones">
-                                <Button variante="primario" className="testimonioBotonEnviar" disabled={estado === 'enviando'}>
+                                <Button variante="primario" className="testimonioAccionEnviar" disabled={estado === 'enviando'}>
                                     {estado === 'enviando' ? 'Enviando...' : 'Enviar testimonio'}
                                 </Button>
                                 {estado === 'error' && (

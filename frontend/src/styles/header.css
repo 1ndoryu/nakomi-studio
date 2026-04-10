@@ -131,12 +131,12 @@
 
 .subMenuEnlace:first-child {
     padding-top: calc(var(--spacing-xs) + var(--spacing-sm));
-    border-radius: var(--radius-md) 8px 0 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .subMenuEnlace:last-child {
     padding-bottom: calc(var(--spacing-xs) + var(--spacing-sm));
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 .subMenuEnlace:hover {
@@ -167,7 +167,7 @@
     color: var(--brand-black);
 }
 
-.botonHeader {
+.accionHeaderPrincipal {
     gap: 8px;
 }
 
@@ -201,7 +201,7 @@
 }
 
 /* Botón hamburguesa para móvil */
-.botonMenuMovil {
+.controlMenuMovil {
     display: none;
     background: none;
     border: none;
@@ -212,7 +212,7 @@
 }
 
 @media (max-width: 1024px) {
-    .botonMenuMovil {
+    .controlMenuMovil {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -226,7 +226,7 @@
 
     /* [074A-25] En mobile, ocultar enlaces/CTAs pero mantener avatar visible */
     .accionCabecera .enlaceAcceder,
-    .accionCabecera .botonHeader {
+    .accionCabecera .accionHeaderPrincipal {
         display: none;
     }
 }
@@ -234,7 +234,7 @@
 /* [064A-61] Menú móvil: panel dentro del <Modal> del sistema.
  * Estilo inspirado en chatWidgetPanel: glassmorphism, border sutil, radius. */
 .menuMovilPanel {
-    background: rgba(245, 242, 239, 0.92);
+    background: var(--bg-glass-soft);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--bg-item-active);
@@ -258,7 +258,7 @@
     font-weight: 500;
     color: var(--text-dark);
     text-decoration: none;
-    border-radius: var(--radius-md, 8px);
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: background-color 0.15s;
 }
@@ -291,7 +291,7 @@
     font-weight: 500;
     color: var(--text-tertiary);
     cursor: pointer;
-    border-radius: var(--radius-md, 8px);
+    border-radius: var(--radius-md);
     transition: background-color 0.15s;
     margin-bottom: var(--spacing-xs);
 }
