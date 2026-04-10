@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_payment_methods SET is_default = FALSE, updated_at = NOW() WHERE user_id = $1 AND is_default = TRUE",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1bcf1d10248c0bda6ead695efde8f66863f7c3fec8d8b12674d71ecc1c8df2c8"
+}

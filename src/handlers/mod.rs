@@ -17,6 +17,7 @@ mod notes;
 mod notifications;
 mod orders;
 mod payments;
+mod payment_methods;
 mod projects;
 mod public_users;
 mod refunds;
@@ -85,6 +86,10 @@ impl utoipa::Modify for SecurityAddon {
         payments::initiate_payment,
         payments::stripe_webhook,
         payments::list_payments,
+        payment_methods::create_setup_intent,
+        payment_methods::list_payment_methods,
+        payment_methods::save_payment_method,
+        payment_methods::delete_payment_method,
         assignment::take_order,
         assignment::list_unassigned,
         assignment::list_employees,
@@ -176,6 +181,9 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::InitiatePaymentRequest,
         crate::models::PaymentIntentResponse,
         crate::models::PaymentResponse,
+        crate::models::PaymentMethodResponse,
+        crate::models::SetupIntentResponse,
+        crate::models::SavePaymentMethodRequest,
         crate::models::DelegationStatus,
         crate::models::DelegationResponse,
         crate::models::EmployeeListItem,
@@ -383,6 +391,7 @@ fn api_routes() -> Router<AppState> {
         .merge(assignment::routes())
         .merge(orders::routes())
         .merge(payments::routes())
+        .merge(payment_methods::routes())
         .merge(chat::rest_routes())
         .merge(deliverables::routes())
         .merge(refunds::routes())

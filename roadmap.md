@@ -59,5 +59,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Pendientes 
 
-- En metodos de pagos agregar tarjeta no funciona.
 - Cuando le doy a pagar una orden debería el cliente debería pagar primero,  primero antes ir al panel, si el usuario cancela debería simplemente llevarlo al panel como pago pendiente, si va a panel primero complica mucho el proceso del pago, hay que reducir los pasos necesarios para cobrar.

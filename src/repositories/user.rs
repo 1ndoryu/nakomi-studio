@@ -195,6 +195,36 @@ impl UserRepository {
         Ok(())
     }
 
+    pub async fn stripe_customer_id(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<Option<String>, sqlx::Error> {
+        let row = sqlx::query!(
+            "SELECT stripe_customer_id FROM users WHERE id = $1",
+            user_id,
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.and_then(|record| record.stripe_customer_id))
+    }
+
+    pub async fn set_stripe_customer_id(
+        pool: &PgPool,
+        user_id: Uuid,
+        stripe_customer_id: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE users SET stripe_customer_id = $2 WHERE id = $1",
+            user_id,
+            stripe_customer_id,
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
     /* [054A-1] Lista paginada de usuarios con búsqueda y filtros para panel admin.
      * Usa COUNT(*) OVER() para obtener el total sin query extra.
      * Filtros: role, status, búsqueda por email/display_name (ILIKE). */

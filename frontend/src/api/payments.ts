@@ -29,6 +29,24 @@ export interface InitiatePaymentRequest {
     phase_number?: number;
 }
 
+export interface SavedPaymentMethod {
+    id: string;
+    brand: string;
+    last_four: string;
+    exp_month: number;
+    exp_year: number;
+    is_default: boolean;
+    created_at: string;
+}
+
+export interface SetupIntentClientSecretResponse {
+    client_secret: string;
+}
+
+export interface SavePaymentMethodRequest {
+    setup_intent_id: string;
+}
+
 /* [064A-57] Corregido: faltaba /api prefix en ambos endpoints. */
 export async function apiInitiatePayment(
     orderId: string,
@@ -46,6 +64,29 @@ export async function apiListPayments(orderId: string): Promise<PaymentResponse[
         `/api/orders/${orderId}/payments`
     );
     return data;
+}
+
+export async function apiCreatePaymentMethodSetupIntent(): Promise<SetupIntentClientSecretResponse> {
+    const { data } = await instance.post<SetupIntentClientSecretResponse>(
+        '/api/payment-methods/setup-intent'
+    );
+    return data;
+}
+
+export async function apiListPaymentMethods(signal?: AbortSignal): Promise<SavedPaymentMethod[]> {
+    const { data } = await instance.get<SavedPaymentMethod[]>('/api/payment-methods', {signal});
+    return data;
+}
+
+export async function apiSavePaymentMethod(
+    req: SavePaymentMethodRequest
+): Promise<SavedPaymentMethod> {
+    const { data } = await instance.post<SavedPaymentMethod>('/api/payment-methods', req);
+    return data;
+}
+
+export async function apiDeletePaymentMethod(paymentMethodId: string): Promise<void> {
+    await instance.delete(`/api/payment-methods/${paymentMethodId}`);
 }
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {

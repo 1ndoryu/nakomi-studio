@@ -8,6 +8,7 @@ mod note;
 mod notification;
 mod order;
 mod payment;
+mod payment_method;
 mod project;
 mod public_profile;
 mod refund;
@@ -44,6 +45,9 @@ pub use order::{
 };
 pub use payment::{
     InitiatePaymentRequest, OrderPayment, PaymentIntentResponse, PaymentResponse, PaymentStatus,
+};
+pub use payment_method::{
+    PaymentMethodResponse, SavePaymentMethodRequest, SetupIntentResponse, UserPaymentMethod,
 };
 pub use project::{
     CreateProjectRequest, Project, ProjectLink, ProjectResponse, ProjectSkill,

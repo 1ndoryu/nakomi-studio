@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_payment_methods\n               WHERE id = $1 AND user_id = $2\n               RETURNING id, user_id, stripe_payment_method_id, card_fingerprint, brand,\n                         last_four, exp_month, exp_year, is_default, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "stripe_payment_method_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "card_fingerprint",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "brand",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_four",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "exp_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "exp_year",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_default",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0d88ebd0f2386805d144f15768d78f1e2a1f7b60c57c0bb4fec65b5a5f0b9f9f"
+}

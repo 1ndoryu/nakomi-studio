@@ -12,6 +12,7 @@ mod note;
 mod notification;
 mod order;
 mod payment;
+mod payment_method;
 mod seed;
 
 pub use ai_chat::{AiChatConfig, AiChatService, AiResponse, AiSessionContext};
@@ -26,4 +27,5 @@ pub use note::NoteService;
 pub use notification::NotificationHub;
 pub use order::OrderService;
 pub use payment::PaymentService;
+pub use payment_method::PaymentMethodService;
 pub use seed::SeedService;

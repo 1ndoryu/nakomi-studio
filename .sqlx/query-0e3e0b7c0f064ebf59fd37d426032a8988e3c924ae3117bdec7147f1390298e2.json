@@ -1,0 +1,89 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_payment_methods (\n                    user_id,\n                    stripe_payment_method_id,\n                    card_fingerprint,\n                    brand,\n                    last_four,\n                    exp_month,\n                    exp_year,\n                    is_default\n                )\n                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n                ON CONFLICT (user_id, card_fingerprint) DO UPDATE SET\n                    stripe_payment_method_id = EXCLUDED.stripe_payment_method_id,\n                    brand = EXCLUDED.brand,\n                    last_four = EXCLUDED.last_four,\n                    exp_month = EXCLUDED.exp_month,\n                    exp_year = EXCLUDED.exp_year,\n                    is_default = CASE\n                        WHEN EXCLUDED.is_default THEN TRUE\n                        ELSE user_payment_methods.is_default\n                    END,\n                    updated_at = NOW()\n                RETURNING id, user_id, stripe_payment_method_id, card_fingerprint, brand,\n                          last_four, exp_month, exp_year, is_default, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "stripe_payment_method_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "card_fingerprint",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "brand",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_four",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "exp_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "exp_year",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_default",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Int4",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0e3e0b7c0f064ebf59fd37d426032a8988e3c924ae3117bdec7147f1390298e2"
+}

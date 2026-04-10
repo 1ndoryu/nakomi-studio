@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, user_id, stripe_payment_method_id, card_fingerprint, brand,\n                      last_four, exp_month, exp_year, is_default, created_at, updated_at\n               FROM user_payment_methods\n               WHERE user_id = $1\n               ORDER BY is_default DESC, created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "stripe_payment_method_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "card_fingerprint",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "brand",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_four",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "exp_month",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "exp_year",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_default",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b6eae1126d8dd56a8d6788be003c3cf7cf5fced5a9a318472bf90727e660c8e8"
+}
