@@ -92,11 +92,13 @@ js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2
 
 - En el cms de los proyectos se olvido totalmente de la galería y de los iconos de enlace, debería poder elegirse con buscardor. y un pequeño menu de los iconos. → ✅ 154A-10
 
-- chatBell__badge el numero nunca se actualiza nunca se leen los mensajes!!!!
+- chatBell__badge el numero nunca se actualiza nunca se leen los mensajes!!!! → ✅ 154A-12
 
 - En las tarjetas proyectosLista debería haber un badge con icono de mensaje o notificaciones cuando hayan mensajes nuevos o historial nuevo sin leer, revisar que todo este tambien genere notificaciones a los usuarios. 
 
 - chatSesionTitulo, las conversaciones de las ordenes no es muy claro, de hecho debería centralizarse todo en vez de mostrar Orden #tal numero, debe mostrar el nombre del responsable o cliente, si un cliente tiene 2 ordenes con el mismo responsable entonces debe ser el mismo chat pero mostrar la foto perfil de ambos usuarios y sus nombre para saber con quien se habla.
+
+- No me aparece ningun hosting real, y tambien aparece "Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas."
 
 ## Delegacioens y pedidos
 
