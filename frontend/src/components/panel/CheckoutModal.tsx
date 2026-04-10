@@ -1,7 +1,9 @@
 /* [044A-38 Fase 3] Modal de checkout con Stripe Elements.
  * Inicia PaymentIntent en el backend, muestra formulario de tarjeta,
  * y confirma el pago. El webhook procesa el resultado asíncronamente.
- * [064A-55] Migrado a <Modal> del sistema (focus trap, Escape, scroll lock). */
+ * [064A-55] Migrado a <Modal> del sistema (focus trap, Escape, scroll lock).
+ * [104A-15] Si recibe `clientSecret`, reutiliza el PaymentIntent ya creado
+ * por el flujo publico y evita generar uno duplicado al entrar a Stripe. */
 
 import { useCallback, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
@@ -26,18 +28,23 @@ interface CheckoutModalProps {
     orderNumber: number;
     amountCents: number;
     currency: string;
+    clientSecret?: string;
     phaseNumber?: number;
     onClose: () => void;
     onSuccess: () => void;
 }
 
 export default function CheckoutModal(props: CheckoutModalProps) {
-    const { orderId, phaseNumber, onClose, onSuccess } = props;
-    const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const { orderId, phaseNumber, onClose, onSuccess, clientSecret: initialClientSecret } = props;
+    const [clientSecret, setClientSecret] = useState<string | null>(initialClientSecret ?? null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const iniciar = useCallback(async () => {
+        if (clientSecret) {
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {

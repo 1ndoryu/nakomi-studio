@@ -22,15 +22,12 @@ import {SeccionContenido} from '../components/panel/SeccionContenido';
 /* [064A-34] EmployeesSection y ServicesCatalogSection eliminados del panel. */
 import {SidebarPanel} from '../components/panel/SidebarPanel';
 import {PlaceholderSeccion} from '../components/panel/PlaceholderSeccion';
-import {obtenerTabsPorRol, seccionInicialPorRol, type SeccionPanel} from '../data/panel';
+import {PANEL_TAB_KEY, obtenerTabsPorRol, seccionInicialPorRol, type SeccionPanel} from '../data/panel';
 import {useAuthStore} from '../stores/authStore';
 import {SEOHead} from '../components/seo/SEOHead';
 import type {UserRole} from '../api/auth';
 import '../styles/variables.css';
 import './PanelIsland.css';
-
-/* [084A-9] Clave de sessionStorage para persistir la tab activa entre recargas */
-const PANEL_TAB_KEY = 'panel-tab';
 
 export const PanelIsland: React.FC = () => {
     const logueado = useAuthStore(s => s.logueado);

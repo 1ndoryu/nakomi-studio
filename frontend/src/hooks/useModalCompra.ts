@@ -7,10 +7,19 @@ import {useAuthStore} from '../stores/authStore';
 import {apiQuickRegister, apiLogin} from '../api/auth';
 import {apiCreateOrder, type PaymentMode} from '../api/orders';
 import {apiInitiatePayment} from '../api/payments';
+import {PANEL_TAB_KEY} from '../data/panel';
 import {navegar} from '../navegacionSPA';
 import type {PlanServicio} from '../data/planes/tipos';
 
-export type PasoModal = 'resumen' | 'auth' | 'procesando' | 'error';
+export type PasoModal = 'resumen' | 'auth' | 'procesando' | 'checkout' | 'error';
+
+interface CheckoutPendiente {
+    clientSecret: string;
+    orderId: string;
+    orderNumber: number;
+    amountCents: number;
+    currency: string;
+}
 
 interface UseModalCompraParams {
     plan: PlanServicio;
@@ -33,9 +42,19 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     /* [084A-28] Meses de pago para hosting (1-12). No aplica a servicios. */
     const [months, setMonths] = useState(1);
     const [projectDescription, setProjectDescription] = useState('');
+    const [checkoutPendiente, setCheckoutPendiente] = useState<CheckoutPendiente | null>(null);
     const isHosting = !!plan.periodo;
 
-    /* Crear orden y redirigir a pasarela de pago */
+    const navegarAlPanelPendiente = () => {
+        /* [104A-15] Forzar tab proyectos evita que el usuario aterrice en la
+         * ultima seccion persistida y pierda de vista la orden pendiente. */
+        sessionStorage.setItem(PANEL_TAB_KEY, 'proyectos');
+        navegar('/panel');
+        onClose();
+    };
+
+    /* [104A-15] Crear la orden y abrir checkout inmediatamente con el
+     * PaymentIntent ya creado, en vez de redirigir primero al panel. */
     const crearOrdenYPagar = async () => {
         setPaso('procesando');
         try {
@@ -49,15 +68,25 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
 
             /* Intentar iniciar pago Stripe */
             try {
-                await apiInitiatePayment(orden.id, {phase_number: 1});
-                /* TO-DO: Integrar Stripe Elements con client_secret para confirmación de pago.
-                 * Por ahora redirigir al panel donde puede ver la orden pendiente de pago. */
+                const paymentIntent = await apiInitiatePayment(orden.id, {
+                    phase_number: paymentMode === 'phased' ? 1 : undefined,
+                });
+                sessionStorage.setItem(PANEL_TAB_KEY, 'proyectos');
+                setCheckoutPendiente({
+                    clientSecret: paymentIntent.client_secret,
+                    orderId: orden.id,
+                    orderNumber: orden.order_number,
+                    amountCents: paymentIntent.amount_cents,
+                    currency: paymentIntent.currency,
+                });
+                setPaso('checkout');
+                return;
             } catch {
-                /* Si Stripe no está configurado, ir directo al panel */
+                /* Si Stripe no esta configurado o falla el intent, al menos dejar
+                 * la orden visible en el panel como pendiente de pago. */
+                navegarAlPanelPendiente();
+                return;
             }
-
-            navegar('/panel');
-            onClose();
         } catch (err: unknown) {
             setPaso('error');
             const msg = err instanceof Error ? err.message : 'Error al crear la orden.';
@@ -126,6 +155,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         setPaso('resumen');
         setEmailExiste(false);
         setErrorMsg('');
+        setCheckoutPendiente(null);
     };
 
     return {
@@ -142,7 +172,9 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         setMonths,
         projectDescription,
         setProjectDescription,
+        checkoutPendiente,
         isHosting,
+        navegarAlPanelPendiente,
         handleContinuar,
         handleAuth,
         reintentar

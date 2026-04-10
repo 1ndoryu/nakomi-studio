@@ -76,3 +76,7 @@
 ## Stripe live mode - verificacion local de SetupIntent
 - Si el entorno local apunta a llaves `pk_live` y `sk_live`, Stripe bloquea crear tarjetas de prueba por REST con numeros crudos aunque el flujo real con Stripe.js si sea valido.
 - Para validar un flujo nuevo de tarjetas guardadas en ese contexto, separar: backend y contrato por API local, compilacion del modal con Stripe.js, y justificar que la confirmacion completa requiere navegador o llaves test.
+
+## Checkout publico - no crear dos PaymentIntent para la misma orden
+- Si el flujo publico ya creo la orden y recibio `client_secret`, el checkout siguiente debe reutilizarlo. Volver a llamar `/api/orders/{id}/pay` desde la siguiente pantalla duplica intents y complica la conciliacion del pago cancelado.
+- Cuando el panel persiste la tab activa en `sessionStorage`, cualquier flujo que redirija a `/panel` como fallback debe fijar primero la seccion correcta o el usuario puede aterrizar lejos de la orden recien creada.

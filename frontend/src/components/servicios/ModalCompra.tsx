@@ -5,6 +5,7 @@
  * Usa componente <Modal> base y hook useModalCompra para la lógica. */
 import React from 'react';
 import {useTranslation} from 'react-i18next';
+import CheckoutModal from '../panel/CheckoutModal';
 import {Modal} from '../ui/Modal';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
@@ -53,8 +54,8 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
     const {
         paso, email, setEmail, password, setPassword,
         emailExiste, errorMsg, paymentMode, setPaymentMode,
-        months, setMonths, projectDescription, setProjectDescription, isHosting,
-        handleContinuar, handleAuth, reintentar
+        months, setMonths, projectDescription, setProjectDescription, checkoutPendiente, isHosting,
+        navegarAlPanelPendiente, handleContinuar, handleAuth, reintentar
     } = useModalCompra({plan, servicioSlug, onClose: onCerrar});
 
     /* [084A-28] Descuento progresivo por meses para hosting: 0% (1m) → 33% (12m) */
@@ -70,6 +71,20 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
         : null;
     const precioFinal = totalCents != null ? formatPrecioDescontado(totalCents) : plan.precio;
     const tieneDescuento = baseCents != null && descuento > 0;
+
+    if (paso === 'checkout' && checkoutPendiente) {
+        return (
+            <CheckoutModal
+                orderId={checkoutPendiente.orderId}
+                orderNumber={checkoutPendiente.orderNumber}
+                amountCents={checkoutPendiente.amountCents}
+                currency={checkoutPendiente.currency}
+                clientSecret={checkoutPendiente.clientSecret}
+                onClose={navegarAlPanelPendiente}
+                onSuccess={navegarAlPanelPendiente}
+            />
+        );
+    }
 
     return (
         <Modal abierto={abierto} onCerrar={onCerrar} className="modalCompraContenido">

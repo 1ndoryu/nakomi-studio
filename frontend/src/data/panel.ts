@@ -19,6 +19,11 @@ export interface TabConfig {
     descripcion: string;
 }
 
+/* [104A-15] El flujo publico de compra fuerza esta tab al volver al panel para
+ * que la orden recien creada quede visible aunque el usuario hubiera dejado otra
+ * seccion persistida en sessionStorage. */
+export const PANEL_TAB_KEY = 'panel-tab';
+
 /* [044A-38 Fase 1] Tabs para cliente
  * [064A-34] Tab 'servicios' eliminado. */
 const TABS_CLIENT: TabConfig[] = [
