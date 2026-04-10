@@ -9,24 +9,19 @@ import '../styles/variables.css';
 import './BlogIsland.css';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
-import {POSTS_BLOG} from '../data/blog';
-import {PostBlog} from '../types/contenido';
+import {POSTS_BLOG, apiPostToPostBlog} from '../data/blog';
+import type {PostBlog} from '../types/contenido';
 import {obtenerImagenBlog} from '../hooks/useImagenes';
 import {navegar} from '../navegacionSPA';
 import {Button} from '../components/ui/Button';
 import {AdminOverlay} from '../components/ui/AdminOverlay';
 import OptimizedImage from '../components/ui/OptimizedImage';
 import {apiListPublicBlog} from '../api/admin-blog';
-import type {AdminBlogPost} from '../api/admin-blog';
 
 interface BlogIslandProps {
     titulo?: string;
 }
 
-/*
- * Tarjeta de artículo con layout horizontal.
- * Siempre muestra imagen: backend -> fallback colors (obtenerImagenBlog).
- */
 /* [044A-35] Tarjeta minimalista: imagen de fondo con título y categoría superpuestos. */
 const TarjetaArticulo: React.FC<{post: PostBlog; destacado?: boolean}> = ({post, destacado = false}) => {
     const imagenFinal = post.imagen || obtenerImagenBlog(post.id);
@@ -43,21 +38,6 @@ const TarjetaArticulo: React.FC<{post: PostBlog; destacado?: boolean}> = ({post,
         </AdminOverlay>
     );
 };
-
-/* [074A-11] Convierte AdminBlogPost de la API a PostBlog para las tarjetas */
-function apiPostToPostBlog(post: AdminBlogPost): PostBlog {
-    return {
-        id: typeof post.id === 'string' ? parseInt(post.id.replace(/-/g, '').slice(0, 8), 16) : 0,
-        adminId: post.id,
-        titulo: post.title,
-        resumen: post.excerpt ?? '',
-        contenido: post.content,
-        fecha: new Date(post.published_at ?? post.created_at).toLocaleDateString('es', {day: 'numeric', month: 'short', year: 'numeric'}),
-        categoria: post.tags[0] ?? 'General',
-        link: `/blog/${post.slug}`,
-        imagen: post.featured_image ?? undefined,
-    };
-}
 
 export const BlogIsland = ({titulo}: BlogIslandProps): JSX.Element => {
     const {t} = useTranslation();

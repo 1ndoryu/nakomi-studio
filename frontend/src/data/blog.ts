@@ -37,3 +37,29 @@ const POSTS_FALLBACK: PostBlog[] = [
 ];
 
 export const POSTS_BLOG: PostBlog[] = POSTS_FALLBACK;
+
+/* [104A-35] Transformación compartida: AdminBlogPost → PostBlog.
+ * Usada por SeccionBlog (home) y BlogIsland (página blog). */
+export function apiPostToPostBlog(post: {
+    id: string;
+    title: string;
+    excerpt?: string | null;
+    content: string;
+    published_at?: string | null;
+    created_at: string;
+    tags: string[];
+    slug: string;
+    featured_image?: string | null;
+}): PostBlog {
+    return {
+        id: typeof post.id === 'string' ? parseInt(post.id.replace(/-/g, '').slice(0, 8), 16) : 0,
+        adminId: post.id,
+        titulo: post.title,
+        resumen: post.excerpt ?? '',
+        contenido: post.content,
+        fecha: new Date(post.published_at ?? post.created_at).toLocaleDateString('es', {day: 'numeric', month: 'short', year: 'numeric'}),
+        categoria: post.tags[0] ?? 'General',
+        link: `/blog/${post.slug}`,
+        imagen: post.featured_image ?? undefined,
+    };
+}
