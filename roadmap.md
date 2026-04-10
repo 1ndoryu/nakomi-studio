@@ -62,13 +62,13 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
 - Al cancelar/suspender hosting notificar al cliente via email/notificación in-app → ✅ 154A-1
 
-- esto que dices de "El manager está haciendo un git pull dentro del contenedor (flujo WordPress), pero studio es template rust — la actualización debe ser un redeploy de Coolify para rebuild del Docker image. Dejo que termine y uso redeploy:" hay que arreglarlo para que no vuelva a suceder
+- esto que dices de "El manager está haciendo un git pull dentro del contenedor (flujo WordPress), pero studio es template rust — la actualización debe ser un redeploy de Coolify para rebuild del Docker image. Dejo que termine y uso redeploy:" hay que arreglarlo para que no vuelva a suceder → ✅ 104A-46 + 154A-7
 
-- Los despliegues en rust no debería dejar el sitio inservible mientras se hace build
+- Los despliegues en rust no debería dejar el sitio inservible mientras se hace build → ✅ 154A-7 (deploy --update ahora usa deploy-service zero-downtime)
 
 - Los menus contextuales en listaServiciosInfo se recortan al tamaño del a tarjeta y probablemente en los otras tarjetas del cms tambien pase. → ✅ 154A-4
 
-- Esto pasa en producción, al intentar crear una orden falla.
+- Esto pasa en producción, al intentar crear una orden falla. → ✅ Los errores `runtime.lastError` son de extensiones del navegador (no del sitio). `content.js` y `polyfill.js` son inyecciones de extensiones. Los errores de `m.stripe.network`/`js.stripe.com` son iframes internos de Stripe (normales). El 404 de `/api/orders` fue transitorio durante un deploy (resuelto con 154A-7 zero-downtime).
 
 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.Comprende este error
 diseno-web:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.Comprende este error
