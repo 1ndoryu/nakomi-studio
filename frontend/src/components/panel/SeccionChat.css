@@ -175,6 +175,46 @@
     opacity: 1;
 }
 
+/* [104A-40] Indicador de presencia del visitante en el header del chat activo */
+.chatVisitorStatus {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: var(--radius-full, 9999px);
+    cursor: default;
+    white-space: nowrap;
+}
+
+.chatVisitorOnline {
+    color: var(--color-success-text);
+    background: var(--color-success-bg);
+}
+
+.chatVisitorOffline {
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+}
+
+.chatVisitorDot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.chatVisitorOnline .chatVisitorDot {
+    background: var(--color-success);
+    box-shadow: 0 0 0 2px var(--color-success-bg);
+}
+
+.chatVisitorOffline .chatVisitorDot {
+    background: var(--text-muted);
+}
+
 /* [074A-43] max-width para legibilidad + scroll adaptativo */
 .chatMensajes {
     flex: 1;

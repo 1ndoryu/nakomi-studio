@@ -399,6 +399,7 @@ impl ChatHub {
                     visitor_ip: s.visitor_ip,
                     visitor_user_agent: s.visitor_user_agent,
                     last_viewed_at: s.last_viewed_at,
+                    visitor_last_connected_at: s.visitor_last_connected_at,
                 }
             })
             .collect())
@@ -408,5 +409,28 @@ impl ChatHub {
     #[must_use]
     pub fn pool(&self) -> &PgPool {
         &self.pool
+    }
+
+    /* [104A-40] Broadcast de estado del visitante al canal de sesión + canal global de staff.
+     * online=true cuando el visitor abre la conexión WS; online=false al desconectar.
+     * Staff usa esto para mostrar online/offline y confirmar que el visitante lee los mensajes. */
+    pub fn notify_visitor_online(&self, session_id: Uuid, last_connected_at: chrono::DateTime<chrono::Utc>) {
+        let msg = WsServerMessage::VisitorStatus {
+            session_id,
+            online: true,
+            last_connected_at: Some(last_connected_at),
+        };
+        self.broadcast(session_id, msg.clone());
+        let _ = self.staff_channel.send(msg);
+    }
+
+    pub fn notify_visitor_offline(&self, session_id: Uuid, last_connected_at: Option<chrono::DateTime<chrono::Utc>>) {
+        let msg = WsServerMessage::VisitorStatus {
+            session_id,
+            online: false,
+            last_connected_at,
+        };
+        self.broadcast(session_id, msg.clone());
+        let _ = self.staff_channel.send(msg);
     }
 }

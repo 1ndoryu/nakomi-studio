@@ -61,6 +61,7 @@ fn try_extract_user_id(token: Option<&str>, jwt_secret: &str) -> Option<uuid::Uu
     })
 }
 
+#[allow(clippy::too_many_lines)]
 async fn handle_visitor_ws(
     socket: WebSocket,
     state: AppState,
@@ -120,6 +121,19 @@ async fn handle_visitor_ws(
         return;
     }
 
+    /* [104A-40] Registrar timestamp de conexión y notificar al staff que el visitante está online.
+     * Sirve como confirmación de lectura: si el visitante está online, vio los mensajes. */
+    let visitor_online_at: chrono::DateTime<chrono::Utc> = crate::repositories::ChatRepository::update_visitor_last_connected(
+        &state.pool,
+        session_id,
+    )
+    .await
+    .unwrap_or_else(|e| {
+        tracing::warn!("Error actualizando visitor_last_connected_at: {e}");
+        chrono::Utc::now()
+    });
+    state.chat_hub.notify_visitor_online(session_id, visitor_online_at);
+
     /* Notificar a staff de nueva sesión */
     state.chat_hub.broadcast(
         session_id,
@@ -172,6 +186,8 @@ async fn handle_visitor_ws(
      * o si el usuario cerró explícitamente. */
     let remaining = state.chat_hub.unsubscribe(session_id);
     if explicit_close || remaining == 0 {
+        /* [104A-40] Última conexión desconectada: notificar offline al staff */
+        state.chat_hub.notify_visitor_offline(session_id, Some(visitor_online_at));
         let _ = timing_tx.send(TimingEvent::Disconnect).await;
         state.chat_timing.unregister_session(session_id);
         let _ = state.chat_hub.close_session(session_id).await;
@@ -316,7 +332,7 @@ async fn process_visitor_messages(
                     .await;
                 let _ = timing_tx.send(TimingEvent::Message(content)).await;
             }
-            WsClientMessage::Typing { content } => {
+            WsClientMessage::Typing { content, .. } => {
                 state.chat_hub.send_typing(session_id, "client", &content);
                 if content.is_empty() {
                     let _ = timing_tx.send(TimingEvent::TypingStop).await;

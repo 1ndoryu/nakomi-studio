@@ -7,6 +7,7 @@
 
 use sqlx::PgPool;
 use uuid::Uuid;
+use chrono::{DateTime, Utc};
 
 use crate::models::{ChatAttachment, ChatMessage, ChatSession, ChatSessionNote, VisitorProfile};
 
@@ -46,7 +47,7 @@ impl ChatRepository {
         sqlx::query_as::<_, ChatSession>(
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
-               visitor_ip, visitor_user_agent, last_viewed_at \
+               visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at \
              FROM chat_sessions WHERE id = $1",
         )
         .bind(id)
@@ -117,7 +118,7 @@ impl ChatRepository {
         sqlx::query_as::<_, ChatSession>(
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
-               visitor_ip, visitor_user_agent, last_viewed_at \
+               visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at \
              FROM chat_sessions \
              WHERE status != 'closed' \
              AND EXISTS (SELECT 1 FROM chat_messages WHERE session_id = chat_sessions.id) \
@@ -195,6 +196,23 @@ impl ChatRepository {
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    /* [104A-40] Actualizar timestamp de última conexión WS del visitante.
+     * Llamado en ws_visitor.rs al conectar. Devuelve el timestamp actualizado
+     * para poder brodcastearlo inmediatamente al canal de staff. */
+    pub async fn update_visitor_last_connected(
+        pool: &PgPool,
+        session_id: Uuid,
+    ) -> Result<DateTime<Utc>, sqlx::Error> {
+        let row: (DateTime<Utc>,) = sqlx::query_as(
+            "UPDATE chat_sessions SET visitor_last_connected_at = NOW() \
+             WHERE id = $1 RETURNING visitor_last_connected_at",
+        )
+        .bind(session_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(row.0)
     }
 
     /* [084A-40] Borrar todos los mensajes de una sesión (usado por /reset) */

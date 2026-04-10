@@ -131,6 +131,9 @@ export function useSeccionChat() {
         input,
         messagesEndRef,
         typingMap: ws.typingMap,
+        /* [104A-40] Presencia del visitante para indicador online/offline */
+        visitorOnlineMap: ws.visitorOnlineMap,
+        sendTyping: ws.sendTyping,
         showingChat: activeSessionId !== null,
         hasOlderMessages,
         setInput,

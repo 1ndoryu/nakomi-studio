@@ -26,6 +26,7 @@ export const SeccionChat: React.FC = () => {
         input,
         messagesEndRef,
         typingMap,
+        visitorOnlineMap,
         showingChat,
         hasOlderMessages,
         setInput,
@@ -43,6 +44,9 @@ export const SeccionChat: React.FC = () => {
     /* [104A-36] Info panel visible para admin y empleados (no solo admin) */
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole);
     const isStaff = effectiveRole === 'admin' || effectiveRole === 'employee';
+
+    /* [104A-40] Info de presencia del visitante en la sesión activa */
+    const visitorStatus = activeSessionId ? (visitorOnlineMap[activeSessionId] ?? null) : null;
 
     if (cargandoSesiones) {
         return (
@@ -96,6 +100,19 @@ export const SeccionChat: React.FC = () => {
                                     ? `Chat de orden #${activeSession.order_number ?? '...'}`
                                     : activeSession?.visitor_name || 'Chat general'}
                             </span>
+                            {/* [104A-40] Indicador de presencia del visitante (staff only) */}
+                            {isStaff && visitorStatus && (
+                                <span className={`chatVisitorStatus ${visitorStatus.online ? 'chatVisitorOnline' : 'chatVisitorOffline'}`}
+                                    title={visitorStatus.online
+                                        ? 'Visitante en línea'
+                                        : visitorStatus.lastConnectedAt
+                                            ? `Última conexión: ${new Date(visitorStatus.lastConnectedAt).toLocaleString('es', {hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short'})}`
+                                            : 'Desconectado'}
+                                >
+                                    <span className="chatVisitorDot" />
+                                    {visitorStatus.online ? 'En línea' : 'Desconectado'}
+                                </span>
+                            )}
                             {/* [064A-72] Botón para abrir/cerrar panel de info
                              * [104A-36] Visible para admin y empleados — contiene IP, user-agent, notas */}
                             {isStaff && (

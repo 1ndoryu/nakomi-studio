@@ -34,6 +34,10 @@ pub struct ChatSession {
      * queries que no seleccionan esta columna (sesiones visitante, etc.). */
     #[sqlx(default)]
     pub last_viewed_at: Option<DateTime<Utc>>,
+    /* [104A-40] Cuándo se conectó el visitante por última vez via WS.
+     * Actualizado en cada conexión WS del visitor. Default para queries legacy. */
+    #[sqlx(default)]
+    pub visitor_last_connected_at: Option<DateTime<Utc>>,
 }
 
 /* [P-2] Perfil de visitante — memoria persistente entre sesiones.
@@ -135,6 +139,8 @@ pub struct ChatSessionResponse {
     pub visitor_user_agent: Option<String>,
     /* [104A-39] Cuándo se vio por última vez esta sesión (para badge unread) */
     pub last_viewed_at: Option<DateTime<Utc>>,
+    /* [104A-40] Cuándo se conectó el visitante por última vez via WS */
+    pub visitor_last_connected_at: Option<DateTime<Utc>>,
 }
 
 /* [064A-72] Modelo de notas de sesión de chat */
@@ -168,7 +174,9 @@ pub enum WsClientMessage {
     #[serde(rename = "message")]
     Message { content: String },
     #[serde(rename = "typing")]
-    Typing { content: String },
+    /* [104A-40] session_id opcional: staff lo envía para indicar en qué sesión escribe.
+     * Visitor no lo necesita (siempre en su propia sesión). */
+    Typing { content: String, session_id: Option<Uuid> },
     #[serde(rename = "join")]
     Join { session_id: Uuid },
     #[serde(rename = "close")]
@@ -227,4 +235,14 @@ pub enum WsServerMessage {
     /* [084A-40] Comando /reset: el backend ordena al cliente limpiar estado local */
     #[serde(rename = "reset")]
     Reset,
+    /* [104A-40] Estado de conexión del visitante: online/offline.
+     * Enviado al canal de staff cuando el visitor conecta o desconecta su WS.
+     * Sirve como señal de presencia y confirmación de lectura (si está online, vio los mensajes). */
+    #[serde(rename = "visitor_status")]
+    VisitorStatus {
+        session_id: Uuid,
+        online: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        last_connected_at: Option<DateTime<Utc>>,
+    },
 }

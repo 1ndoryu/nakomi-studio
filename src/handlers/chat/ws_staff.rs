@@ -112,8 +112,13 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
             WsClientMessage::Message { content } => {
                 tracing::debug!("Staff message (sin session_id en WsClientMessage::Message): {content}");
             }
-            WsClientMessage::Typing { content } => {
-                tracing::debug!("Staff typing: {content}");
+            WsClientMessage::Typing { content, session_id } => {
+                /* [104A-40] Broadcast typing del staff al visitante de la sesión indicada.
+                 * session_id es obligatorio para staff (puede estar en varias sesiones).
+                 * Gotcha: WsClientMessage::Typing no lo tenía antes → fix aquí. */
+                if let Some(sid) = session_id {
+                    hub.send_typing(sid, "staff", &content);
+                }
             }
             WsClientMessage::ToggleAi {
                 session_id,

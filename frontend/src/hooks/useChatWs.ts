@@ -1,6 +1,7 @@
 /* [084A-22] Hook de WebSocket en tiempo real para staff panel.
  * Extraído de useChat.ts para SRP — el hook REST y el WS son independientes.
- * [054A-4] Typing indicator: mapa session_id → info del que escribe. */
+ * [054A-4] Typing indicator: mapa session_id → info del que escribe.
+ * [104A-40] visitorOnlineMap: session_id → {online, lastConnectedAt} */
 
 import {useState, useCallback, useRef, useEffect} from 'react';
 import {
@@ -16,12 +17,20 @@ export interface TypingInfo {
     content: string;
 }
 
+/* [104A-40] Estado de presencia del visitante por sesión */
+export interface VisitorOnlineInfo {
+    online: boolean;
+    lastConnectedAt: string | null;
+}
+
 export function useChatWs() {
     const token = useAuthStore(s => s.token);
     const [connected, setConnected] = useState(false);
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [typingMap, setTypingMap] = useState<Record<string, TypingInfo>>({});
+    /* [104A-40] Presencia del visitante: session_id → {online, lastConnectedAt} */
+    const [visitorOnlineMap, setVisitorOnlineMap] = useState<Record<string, VisitorOnlineInfo>>({});
     const wsRef = useRef<WebSocket | null>(null);
     const typingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -106,6 +115,18 @@ export function useChatWs() {
                             }, 3000);
                         }
                         break;
+                    /* [104A-40] Presencia del visitante: online/offline + última conexión */
+                    case 'visitor_status':
+                        if (msg.session_id !== undefined) {
+                            setVisitorOnlineMap(prev => ({
+                                ...prev,
+                                [msg.session_id!]: {
+                                    online: msg.online ?? false,
+                                    lastConnectedAt: msg.last_connected_at ?? null,
+                                },
+                            }));
+                        }
+                        break;
                 }
             } catch {
                 /* Mensaje no JSON, ignorar */
@@ -143,6 +164,13 @@ export function useChatWs() {
         [sendWsMessage],
     );
 
+    /* [104A-40] Enviar typing del staff al visitante — requiere session_id */
+    const sendTyping = useCallback(
+        (sessionId: string, content: string) =>
+            sendWsMessage({type: 'typing', session_id: sessionId, content}),
+        [sendWsMessage],
+    );
+
     /* Limpiar al desmontar */
     useEffect(() => () => disconnect(), [disconnect]);
 
@@ -151,10 +179,12 @@ export function useChatWs() {
         sessions,
         messages,
         typingMap,
+        visitorOnlineMap,
         connect,
         disconnect,
         joinSession,
         toggleAi,
         sendWsMessage,
+        sendTyping,
     };
 }

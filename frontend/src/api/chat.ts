@@ -21,6 +21,8 @@ export interface ChatSession {
     visitor_user_agent: string | null;
     /* [104A-39] Cuándo se vio por última vez (para badge unread) */
     last_viewed_at: string | null;
+    /* [104A-40] Cuándo se conectó el visitante por última vez via WS */
+    visitor_last_connected_at: string | null;
 }
 
 export interface ChatMessage {
@@ -39,7 +41,7 @@ export interface ChatMessage {
 }
 
 export interface WsServerMessage {
-    type: 'message' | 'typing' | 'status' | 'session_new' | 'session_closed' | 'error' | 'init' | 'reset';
+    type: 'message' | 'typing' | 'status' | 'session_new' | 'session_closed' | 'error' | 'init' | 'reset' | 'visitor_status';
     /* message */
     id?: string;
     session_id?: string;
@@ -58,6 +60,9 @@ export interface WsServerMessage {
     sessions?: ChatSession[];
     /* error */
     message?: string;
+    /* [104A-40] visitor_status */
+    online?: boolean;
+    last_connected_at?: string | null;
 }
 
 /*    REST API */
