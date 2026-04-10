@@ -72,4 +72,32 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
 - Ejecutar Hosting Automation
 - sentinel report md tiene muchos Warning, arreglarlos todos si son reales o corregir el falso positivo.
-- Hay muchos planes que no estan en la carpeta de completados, revisar si realmente es que tienen cosas pendientes, y en caso de que tengan pendiente, organizar las tareas pendientes aca, y realizar todos planes, lo que necesita accion externa mia organizalo aca en el roadmap. 
+
+## Tareas pendientes extraídas de planes activos (104A-26)
+
+### Chatbot v2 (`plan-chatbot-v2-2026-04-10.md`)
+- P-1: Refactorizar `chat.rs` (660 líneas → modular)
+- P-2: Migración BD para archivos, perfiles, mensajes especiales
+- Fase I (8 tareas): anti-spam, generación pedidos, memoria, sync, archivos, escalación, branding
+- Fase II (3 tareas): clientes registrados, IA intermediaria en pedidos
+- Testing e2e: 8 smoke tests + tests unitarios (`plan-testing-chatbot-e2e-2026-04-10.md`)
+
+### Seed system (`plan-glory-rs-seed-system-2026-04-07.md`)
+- Fase 5: Migrar órdenes, chat, reviews, activity log, notifications de Rust a TOML
+
+### SEO (`plan-seo-completo-2026-04-04.md`)
+- Fase 2 pendiente: conversión WebP + srcset + width/height explícitos en imágenes
+- Fase 3: Pre-rendering para crawlers
+
+### Hosting Automation (`plan-hosting-automation-2026-04-10.md`)
+- Fase 1: Provisioning real post-checkout (endpoint + invocar Coolify)
+- Fase 2: Sync cobro (webhooks Stripe + BD)
+- Fase 3: Datos reales en panel (IP, VPS, estado)
+- Fase 4: Dominios y DNS
+
+## Bloqueado — requiere acción del usuario
+
+- **Dominios** (`plan-dominios-2026-04-07.md`): ¿Qué proveedor DNS? (Cloudflare Registrar, Contabo DNS, Namecheap). Necesito API keys.
+- **VPS2 Coolify**: Falta `apiToken`, `serverUuid`, `projectUuid` para provisioning real.
+- **Contabo DNS API**: Credenciales no validadas.
+- **Google Drive OAuth**: Necesita `auth-drive` manual para backups.
