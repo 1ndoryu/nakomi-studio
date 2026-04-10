@@ -86,7 +86,7 @@ js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2
 
 - Veo que una vez que el usuario se registra al intentar crear una orden, en el panel debería haber una aviso para crear una contraseña, tampoco debería haber impedimiento que por ejemplo si intenta registrarse con el mismo correo y no tiene contraseña, pues, que le permita registrarse con esa contraseña. → ✅ 154A-5
 
-- https://pagespeed.web.dev/analysis/https-nakomi-studio/yh3fbg56c3?form_factor=mobile revisa, el rendimiento es horrible, hay que arreglar todo. 
+- https://pagespeed.web.dev/analysis/https-nakomi-studio/yh3fbg56c3?form_factor=mobile revisa, el rendimiento es horrible, hay que arreglar todo. → ✅ 154A-6
 
 - EL primer mensaje inicial al abrir el chat debe ser enviado automaticamente, este no necesita IA puede ser una plantilla pero claro la ia lo necesita en su contexto para no volver a darlo, puede ser algo como. "Hola! Estoy aquí para ayudarte, puedes preguntarme acerca de los servicios, resolver problemas, cualquier duda, etc" no se algo asi
 
