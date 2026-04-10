@@ -2,15 +2,16 @@
  * Reemplaza el sistema de islands de WordPress por rutas SPA.
  * Cada island se convierte en una ruta. Las páginas de detalle
  * reciben el slug del URL param y buscan datos en data/.
- * [044A-38 Fase 1] Redirige / → /panel si el usuario está logueado. */
+ * [044A-38 Fase 1] Redirige / → /panel si el usuario está logueado.
+ * [154A-6] Code splitting con React.lazy para rutas pesadas (PanelIsland, AdminEditorProvider). */
 
-import {useEffect} from 'react';
+import {useEffect, lazy, Suspense} from 'react';
 import {BrowserRouter, Routes, Route, useNavigate, useParams} from 'react-router-dom';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {registrarNavigate} from './navegacionSPA';
 import {ScrollToTop} from './components/ui/ScrollToTop';
 
-/* Pages (ex-islands) */
+/* Pages (ex-islands) — carga directa para rutas públicas */
 import {BienvenidaIsland} from './islands/BienvenidaIsland';
 import {ServiciosIsland} from './islands/ServiciosIsland';
 import {ServicioIndividualIsland} from './islands/ServicioIndividualIsland';
@@ -22,18 +23,18 @@ import {BlogSingleIsland} from './islands/BlogSingleIsland';
 import {SolucionesIsland} from './islands/SolucionesIsland';
 import {SolucionPlaceholderIsland} from './islands/SolucionPlaceholderIsland';
 import {SolucionHostingIsland} from './islands/SolucionHostingIsland';
-import {PanelIsland} from './islands/PanelIsland';
 import {UsuarioPublicoIsland} from './islands/UsuarioPublicoIsland';
 import {NotFoundIsland} from './islands/NotFoundIsland';
 
 /* [054A-5] Toast system */
 import {ToastContainer} from './components/ui/ToastContainer';
 
-/* [054A-3] Chat widget flotante para visitantes */
-import {ChatWidget} from './components/chat/ChatWidget';
-
-/* [084A-29] Provider global de edición admin inline */
-import {AdminEditorProvider} from './components/AdminEditorProvider';
+/* [154A-6] Lazy load: PanelIsland importa @tiptap (~350KB), Stripe, y componentes admin pesados.
+ * AdminEditorProvider importa editores inline que solo usan admins.
+ * ChatWidget es moderado pero no es crítico para el first paint. */
+const PanelIsland = lazy(() => import('./islands/PanelIsland').then(m => ({default: m.PanelIsland})));
+const AdminEditorProvider = lazy(() => import('./components/AdminEditorProvider').then(m => ({default: m.AdminEditorProvider})));
+const ChatWidget = lazy(() => import('./components/chat/ChatWidget').then(m => ({default: m.ChatWidget})));
 
 /* Data para resolver slugs */
 import {PROYECTOS_DATA} from './data/showcase';
@@ -113,14 +114,14 @@ function App() {
                     <Route path="/soluciones/:slug" element={<SolucionPlaceholderIsland />} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
                     <Route path="/usuario/:username" element={<UsuarioPublicoIsland />} />
-                    <Route path="/panel" element={<PanelIsland />} />
+                    <Route path="/panel" element={<Suspense fallback={null}><PanelIsland /></Suspense>} />
                     {/* [044A-28] Página 404 real en vez de redirigir silenciosamente al home */}
                     <Route path="*" element={<NotFoundIsland />} />
                 </Routes>
                 {/* [054A-3] Chat flotante para visitantes (se oculta en /panel) */}
-                <ChatWidget />
+                <Suspense fallback={null}><ChatWidget /></Suspense>
                 {/* [084A-29] Editores admin accesibles desde páginas públicas */}
-                <AdminEditorProvider />
+                <Suspense fallback={null}><AdminEditorProvider /></Suspense>
             </BrowserRouter>
         </QueryClientProvider>
     );

@@ -30,6 +30,7 @@ mod uploads;
 
 use axum::Router;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::compression::CompressionLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
@@ -357,10 +358,19 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         .merge(chat::ws_routes())
         /* [044A-38 Fase 9] WebSocket de notificaciones en tiempo real */
         .merge(notifications::ws_routes())
-        /* [044A-43] Servir archivos estáticos de uploads/ (avatares, etc.) */
-        .nest_service("/uploads", ServeDir::new("uploads"))
+        /* [044A-43] Servir archivos estáticos de uploads/ (avatares, etc.)
+         * [154A-6] Cache agresivo: uploads no cambian una vez subidos (1 año) */
+        .nest_service("/uploads", tower::ServiceBuilder::new()
+            .layer(SetResponseHeaderLayer::if_not_present(
+                HeaderName::from_static("cache-control"),
+                HeaderValue::from_static("public, max-age=31536000, immutable"),
+            ))
+            .service(ServeDir::new("uploads"))
+        )
         .nest("/api", api_routes())
         .layer(TraceLayer::new_for_http())
+        /* [154A-6] Compresión HTTP gzip+brotli — reduce transferencia ~70% */
+        .layer(CompressionLayer::new())
         .layer(cors)
         .layer(hsts)
         .layer(nosniff)
@@ -369,7 +379,8 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
 }
 
 /* [044A-9] Monta el frontend React como SPA: archivos estaticos con fallback a index.html.
- * Solo se activa si STATIC_DIR esta configurado (en produccion). En desarrollo, Vite sirve el frontend. */
+ * Solo se activa si STATIC_DIR esta configurado (en produccion). En desarrollo, Vite sirve el frontend.
+ * [154A-6] Cache-Control: assets con hash de Vite se cachean; index.html se revalida siempre. */
 pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Router {
     let static_dir = config.static_dir.clone();
     let router = create_router(pool, config);
@@ -377,7 +388,22 @@ pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Route
     if let Some(dir) = static_dir {
         let index_path = format!("{dir}/index.html");
         let serve = ServeDir::new(&dir).not_found_service(ServeFile::new(&index_path));
-        router.fallback_service(serve)
+
+        /* [154A-6] Cache headers para assets estáticos del frontend.
+         * Vite genera filenames con content-hash (ej: assets/index-a1b2c3.js).
+         * Cache moderado (1 día) es seguro: si el contenido cambia, el hash cambia.
+         * index.html no se cachea porque el fallback lo sirve en rutas SPA
+         * y necesita siempre apuntar a los assets más recientes. */
+        let cache_layer = SetResponseHeaderLayer::if_not_present(
+            HeaderName::from_static("cache-control"),
+            HeaderValue::from_static("public, max-age=86400"),
+        );
+
+        router.fallback_service(
+            tower::ServiceBuilder::new()
+                .layer(cache_layer)
+                .service(serve),
+        )
     } else {
         router
     }

@@ -5,6 +5,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content="Nakomi Studio — Agencia creativa especializada en desarrollo web, diseño UI/UX y soluciones digitales." />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <!-- [154A-6] Preload fuentes críticas para evitar FOIT y mejorar FCP -->
+        <link rel="preload" as="font" href="/assets/fonts/NeueMontreal-Regular.woff2" type="font/woff2" crossorigin />
+        <link rel="preload" as="font" href="/assets/fonts/NeueMontreal-Medium.woff2" type="font/woff2" crossorigin />
         <!-- [074A-14] Preconnect a Stripe (se usa en checkout) -->
         <link rel="preconnect" href="https://js.stripe.com" crossorigin />
         <link rel="dns-prefetch" href="https://js.stripe.com" />
