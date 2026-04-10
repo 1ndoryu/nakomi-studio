@@ -104,21 +104,16 @@ export function HostingCard({
                             {sub.client_name} · {sub.client_email}
                         </span>
                     )}
-                    {/* [094A-11] Info básica en card — stats completas están en el detalle (tab Recursos) */}
-                    <div className="hostingCardRecursos">
+                    {/* [104A-24] Recursos movidos al footer, precio eliminado */}
+                    <div className="hostingCardFooter">
                         <span className="hostingCardRecurso">
-                            Almacenamiento: {(sub.storage_limit_mb / 1024).toFixed(0)} GB
+                            {(sub.storage_limit_mb / 1024).toFixed(0)} GB
                         </span>
                         {sub.domain && (
                             <span className="hostingCardRecurso">
-                                Dominio: {sub.domain}
+                                {sub.domain}
                             </span>
                         )}
-                    </div>
-                    <div className="hostingCardFooter">
-                        <span className="hostingCardPrecio">
-                            ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
-                        </span>
                         {/* [094A-2] stopPropagation evita navegar al detalle al usar acciones */}
                         <div className="hostingCardAcciones" onClick={e => e.stopPropagation()}>
                             {/* [084A-24] Botón de checkout Stripe para suscripciones pendientes */}

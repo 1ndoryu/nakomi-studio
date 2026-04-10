@@ -134,20 +134,13 @@
     color: var(--text-tertiary);
 }
 
+/* [104A-24] Sin italic según indicación del usuario. */
 .hostingCardCliente {
     font-size: var(--text-sm);
     color: var(--text-muted);
-    font-style: italic;
 }
 
-/* [084A-24] Recursos del plan visible para cliente */
-.hostingCardRecursos {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--text-sm);
-    color: var(--text-tertiary);
-}
+/* [104A-24] Recursos ahora viven dentro del footer como spans inline. */
 
 .hostingCardRecurso {
     display: flex;
@@ -164,11 +157,6 @@
     color: var(--text-muted);
     padding-top: var(--spacing-xs);
     border-top: 1px solid var(--bg-item-hover);
-}
-
-.hostingCardPrecio {
-    
-    color: var(--brand-black);
 }
 
 .hostingCardAcciones {

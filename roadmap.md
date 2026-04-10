@@ -66,7 +66,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Elimina el estado pendiente de pago, solo es un estado para cuando se termine una fase y falte pagar por otra. 
 - Cuando le doy a reportar un problema, debería abrir el chatbot y el chatbot debe entender que se abrio el chat desde ahi para que el cliente escriba el problema, y sea atentido por el chatbot, tenemos que preparar el chatbot para los problemas comunes de un pedido.
 - En los pedidos los empleados no tienen acciones, claramente falta acciones reportar un problema, para delegar, cancelar pedido, para cada cosa tiene que escribir una razon, el reportar problema no abre el chat para los empleados, tienen que escribir la razon, tampoco veo que en el panel de admin haya algo para ver y atender los problemas, esto falta.
-- hostingCardCliente no necesitar estart italic, mueve lo que hay en hostingCardRecursos al footer de la tarjeta y quita el precio
 - Necesito probar un hosting real, usar la segunda vps que maneja coolify para crear un hosting, emulando como si un usuario lo hubiera comprado, tiene que ser un hosting real, o sea un despliegue dentro de la vps.
 - Al completar el checkout de hosting se debe provisionar el sitio real en Coolify y guardar `coolify_site_name` + datos reales del servidor.
 - Cuando falle una renovación o se cancele la suscripción, hay que notificar al cliente y sincronizar suspensión/cancelación real en Coolify, no solo en base de datos.
