@@ -128,6 +128,7 @@
 }
 
 /* Card de orden — [054A-6] rediseño con imagen de servicio */
+/* [104A-23] cursor:pointer eliminado — ya proporcionado por <Button>. */
 .ordenCard {
     display: flex;
     flex-direction: row;
@@ -136,7 +137,6 @@
     background: var(--brand-white);
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-lg);
-    cursor: pointer;
     transition: all var(--transicion-rapida);
     text-align: left;
     width: 100%;
@@ -148,7 +148,8 @@
     border-color: var(--border-hover);
 }
 
-/* [064A-74] Imagen cuadrada 1:1 en tarjeta de pedido */
+/* [064A-74] Imagen cuadrada 1:1 en tarjeta de pedido
+ * [104A-23] display:block elimina gap de baseline inline dentro de <picture>. */
 .ordenCardImagen {
     width: 120px;
     height: 120px;
@@ -156,6 +157,7 @@
     object-fit: cover;
     flex-shrink: 0;
     border-radius: var(--radius-md);
+    display: block;
 }
 
 .ordenCardBody {
