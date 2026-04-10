@@ -164,8 +164,11 @@ export async function apiUpdateOrderPhaseDefinition(
     return data;
 }
 
-export async function apiCancelOrder(orderId: string): Promise<{status: OrderStatus}> {
-    const {data} = await instance.post<{status: OrderStatus}>(`/api/orders/${orderId}/cancel`);
+export async function apiCancelOrder(orderId: string, reason?: string): Promise<{status: OrderStatus}> {
+    const {data} = await instance.post<{status: OrderStatus}>(
+        `/api/orders/${orderId}/cancel`,
+        reason ? {reason} : undefined,
+    );
     return data;
 }
 

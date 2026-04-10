@@ -1,6 +1,7 @@
-/* [064A-30] Hook para OrdenDetalle: extrae estado y lógica del componente.
- * Maneja checkout, menú contextual, modales de cancelación y reporte. */
-import {useState} from 'react';
+/* [104A-28] Hook para OrdenDetalle: estado y lógica del componente.
+ * Maneja checkout, menú contextual, modales de cancelación, reporte y delegación. */
+import {useState, useCallback} from 'react';
+import {apiReportProblem} from '../api/problems';
 import type {OrderResponse} from '../api/orders';
 
 interface CheckoutState {
@@ -8,16 +9,43 @@ interface CheckoutState {
     phaseNumber?: number;
 }
 
-export function useOrdenDetalle(order: OrderResponse, onCancelar: (id: string) => Promise<void>) {
+export function useOrdenDetalle(
+    order: OrderResponse,
+    onCancelar: (id: string, reason?: string) => Promise<void>,
+) {
     const [checkout, setCheckout] = useState<CheckoutState | null>(null);
     const [menuAbierto, setMenuAbierto] = useState(false);
     const [modalCancelarAbierto, setModalCancelarAbierto] = useState(false);
     const [modalReportarAbierto, setModalReportarAbierto] = useState(false);
+    const [reportando, setReportando] = useState(false);
+    const [reportError, setReportError] = useState<string | null>(null);
+    const [reportExito, setReportExito] = useState(false);
 
-    const confirmarCancelacion = async () => {
-        await onCancelar(order.id);
+    const confirmarCancelacion = async (reason?: string) => {
+        await onCancelar(order.id, reason);
         setModalCancelarAbierto(false);
     };
+
+    const enviarReporte = useCallback(async (reason: string) => {
+        setReportando(true);
+        setReportError(null);
+        try {
+            await apiReportProblem(order.id, {reason});
+            setReportExito(true);
+        } catch (err: unknown) {
+            const msg = (err as {response?: {data?: {message?: string}}})
+                ?.response?.data?.message || 'Error al reportar';
+            setReportError(msg);
+        } finally {
+            setReportando(false);
+        }
+    }, [order.id]);
+
+    const cerrarReportar = useCallback(() => {
+        setModalReportarAbierto(false);
+        setReportError(null);
+        setReportExito(false);
+    }, []);
 
     const abrirCheckout = (amountCents: number, phaseNumber?: number) => {
         setCheckout({amountCents, phaseNumber});
@@ -34,6 +62,11 @@ export function useOrdenDetalle(order: OrderResponse, onCancelar: (id: string) =
         modalReportarAbierto,
         setModalReportarAbierto,
         confirmarCancelacion,
+        enviarReporte,
+        reportando,
+        reportError,
+        reportExito,
+        cerrarReportar,
         abrirCheckout,
         cerrarCheckout,
     };

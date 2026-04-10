@@ -11,7 +11,7 @@ export type SeccionPanel =
     | 'proyectos' | 'pagos' | 'perfil' | 'metodos-pago' | 'mensajes'
     | 'asignados' | 'disponibles' | 'delegaciones'
     | 'todos-ordenes' | 'reembolsos' | 'usuarios' | 'hosting' | 'configuracion'
-    | 'contenido';
+    | 'contenido' | 'problemas';
 
 export interface TabConfig {
     id: SeccionPanel;
@@ -133,6 +133,12 @@ const TABS_ADMIN: TabConfig[] = [
         id: 'contenido',
         label: 'Contenido',
         descripcion: 'Gestiona servicios, blog, proyectos y equipo. Editor de contenido con texto enriquecido.'
+    },
+    /* [104A-28] Tab de problemas reportados — gestión de tickets */
+    {
+        id: 'problemas',
+        label: 'Problemas',
+        descripcion: 'Reportes de problemas en órdenes. Revisa, resuelve o descarta tickets de clientes y empleados.'
     }
 ];
 

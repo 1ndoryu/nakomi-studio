@@ -1,0 +1,193 @@
+/* [104A-28] Estilos para SeccionProblemas (admin).
+ * Patrón visual consistente con SeccionReembolsos. */
+
+.problemasContenedor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.problemasVacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-2xl) 0;
+    color: var(--brand-black);
+    opacity: 0.5;
+}
+
+.problemasSpinner {
+    animation: spin 1s linear infinite;
+}
+
+.problemasError {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--color-error-text);
+    background: var(--color-error-bg);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+}
+
+.problemasTabs {
+    display: flex;
+    gap: var(--spacing-xs);
+    border-bottom: 1px solid var(--bg-item-active);
+    padding-bottom: 0;
+}
+
+.problemasTab {
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    transition: color var(--transicion-rapida), border-color var(--transicion-rapida);
+}
+
+.problemasTab:hover {
+    color: var(--brand-black);
+}
+
+.problemasTab--activa {
+    color: var(--brand-black);
+    border-bottom-color: var(--brand-black);
+}
+
+.problemasConteo {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.problemasLista {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.problemaCard {
+    background: var(--bg-primary);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    transition: border-color var(--transicion-rapida);
+}
+
+.problemaCard--expandido {
+    border-color: var(--brand-black);
+}
+
+.problemaCardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    gap: var(--spacing-sm);
+}
+
+.problemaCardInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.problemaBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-xs);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    color: var(--brand-white);
+    white-space: nowrap;
+}
+
+.problemaBadge--open {
+    background-color: #e74c3c;
+}
+
+.problemaBadge--in_review {
+    background-color: #f39c12;
+}
+
+.problemaBadge--resolved {
+    background-color: #27ae60;
+}
+
+.problemaBadge--dismissed {
+    background-color: #95a5a6;
+}
+
+.problemaOrden {
+    font-family: monospace;
+    font-size: var(--text-sm);
+    color: var(--brand-black);
+}
+
+.problemaFecha {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.problemaReporter {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.problemaRazon {
+    font-size: var(--text-sm);
+    color: var(--brand-black);
+    opacity: 0.85;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.problemaRespuestaAdmin {
+    font-size: var(--text-sm);
+    color: var(--brand-black);
+    background: var(--bg-card-subtle);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    margin: 0;
+}
+
+.problemaAcciones {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+}
+
+.problemaAccionesBtns {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .problemasContenedor {
+        padding: var(--spacing-md);
+    }
+
+    .problemaCardHeader {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .problemaAccionesBtns {
+        flex-direction: column;
+    }
+}

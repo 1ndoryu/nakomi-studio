@@ -6,7 +6,7 @@
  */
 import React, {useState, useCallback} from 'react';
 import {useTranslation} from 'react-i18next';
-import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit} from 'lucide-react';
+import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle} from 'lucide-react';
 import {obtenerTabsPorRol, type SeccionPanel} from '../../data/panel';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {useAuthStore} from '../../stores/authStore';
@@ -37,6 +37,7 @@ const ICONOS_SECCION: Record<SeccionPanel, React.ElementType> = {
     'hosting': Server,
     'configuracion': Settings,
     'contenido': FileEdit,
+    'problemas': AlertTriangle,
 };
 
 /* [044A-38 Fase 1] Etiquetas legibles para cada rol */

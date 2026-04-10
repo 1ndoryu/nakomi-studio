@@ -561,6 +561,41 @@
     line-height: 1.5;
 }
 
+/* [104A-28] Textarea para razón de cancelación/reporte */
+.ordenDetalleModalTextarea {
+    width: 100%;
+    min-height: 80px;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input, var(--bg-secondary));
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.ordenDetalleModalTextarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.ordenDetalleModalTextarea:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ordenDetalleModalError {
+    margin: 0;
+    color: var(--color-error, #e53e3e);
+    font-size: 0.8125rem;
+}
+
+.ordenDetalleModalTexto--exito {
+    color: var(--color-success, #38a169);
+}
+
 /* [084A-8] Acciones ahora via .modalAcciones estándar */
 
 /* [064A-1] Cancelar confirmar: ahora usa variante="peligro" del Button. */

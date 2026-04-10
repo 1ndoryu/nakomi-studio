@@ -97,7 +97,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Bloqueado — requiere acción del usuario
 
-- **Dominios** (`plan-dominios-2026-04-07.md`): ¿Qué proveedor DNS? (Cloudflare Registrar, Contabo DNS, Namecheap). Necesito API keys.
-- **VPS2 Coolify**: Falta `apiToken`, `serverUuid`, `projectUuid` para provisioning real.
-- **Contabo DNS API**: Credenciales no validadas.
-- **Google Drive OAuth**: Necesita `auth-drive` manual para backups.
+- **Dominios** (`plan-dominios-2026-04-07.md`): ¿Qué proveedor DNS? (Cloudflare Registrar, Contabo DNS, Namecheap). Necesito API keys. RESPUESTA; PUES YA TENEMOS LA API DE CONTABO
+- **VPS2 Coolify**: Falta `apiToken`, `serverUuid`, `projectUuid` para provisioning real. REPUESTA; NO ENTIENDO PORQUE NO PEUDES CONSEGUIR ESA INFORMACION CON LA API.
+- **Contabo DNS API**: Credenciales no validadas. (LA DE LA VPS1 LAS HA PROBADO ANTES Y FUNCIONAN)
+- **Google Drive OAuth**: Necesita `auth-drive` manual para backups. (LOS BACKUP AHORA SE HACEN LA VPS2)

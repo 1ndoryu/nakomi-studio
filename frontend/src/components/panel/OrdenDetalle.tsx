@@ -4,7 +4,7 @@
  * Opciones: reportar, extensión de tiempo (empleado), cancelar.
  * custom toggle (<label> con CSS switch). */
 import React, {useState, useCallback} from 'react';
-import {CreditCard, XCircle, ArrowLeft, AlertTriangle, User, Bot} from 'lucide-react';
+import {CreditCard, XCircle, ArrowLeft, AlertTriangle, User, Bot, ArrowRightLeft} from 'lucide-react';
 import {
     ORDER_STATUS_LABELS,
     PAYMENT_MODE_LABELS,
@@ -50,7 +50,7 @@ interface OrdenDetalleProps {
     phases: OrderPhaseResponse[];
     effectiveRole: string;
     onVolver: () => void;
-    onCancelar: (orderId: string) => Promise<void>;
+    onCancelar: (orderId: string, reason?: string) => Promise<void>;
     onAprobar: (orderId: string, phase: number) => Promise<void>;
     onRevision: (orderId: string, phase: number) => Promise<void>;
     onActualizarDescripcion: (orderId: string, projectDescription: string) => Promise<void>;
@@ -66,6 +66,7 @@ interface OrdenDetalleProps {
         },
     ) => Promise<void>;
     onPagoExitoso: () => void;
+    onIrADelegaciones?: () => void;
     cancelando: boolean;
     actualizandoDescripcion: boolean;
     actualizandoFase: boolean;
@@ -73,13 +74,14 @@ interface OrdenDetalleProps {
 
 export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     order, phases, effectiveRole, onVolver, onCancelar, onAprobar, onRevision, onPagoExitoso, cancelando,
-    onActualizarDescripcion, onActualizarFase, actualizandoDescripcion, actualizandoFase,
+    onActualizarDescripcion, onActualizarFase, actualizandoDescripcion, actualizandoFase, onIrADelegaciones,
 }) => {
     const {
         checkout, menuAbierto, setMenuAbierto,
         modalCancelarAbierto, setModalCancelarAbierto,
         modalReportarAbierto, setModalReportarAbierto,
-        confirmarCancelacion, abrirCheckout, cerrarCheckout,
+        confirmarCancelacion, enviarReporte, reportando, reportError, reportExito,
+        cerrarReportar, abrirCheckout, cerrarCheckout,
     } = useOrdenDetalle(order, onCancelar);
 
     /* [T-10] Toggle IA intermediaria: solo visible para admin/employee */
@@ -99,23 +101,24 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
         }
     }, [order.id, intermediaryEnabled]);
 
-    const canCancel = CANCELABLE_STATUSES.includes(order.status);
+    const isEmployee = effectiveRole === 'employee';
+    const isClient = effectiveRole === 'client' || effectiveRole === 'admin';
+    const isActiveOrder = order.status !== 'cancelled' && order.status !== 'completed';
+    const canCancel = CANCELABLE_STATUSES.includes(order.status)
+        || (isEmployee && order.status === 'in_progress');
     const needsPayment = order.status === 'pending_payment';
     /* [064A-60] Tanto phased como half_half usan pagos por fase individuales */
     const isPerPhasePayment = order.payment_mode === 'phased' || order.payment_mode === 'half_half';
-    const isEmployee = effectiveRole === 'employee';
-    const isClient = effectiveRole === 'client' || effectiveRole === 'admin';
     const canEditDescription = isClient && order.status !== 'completed' && order.status !== 'cancelled';
     const canDefinePhases = order.payment_mode === 'phased' && (isEmployee || effectiveRole === 'admin');
 
     /* [064A-31] Chat disponible cuando hay empleado asignado y la orden está activa */
-    const canChat = !!order.assigned_employee_id
-        && order.status !== 'cancelled'
-        && order.status !== 'completed';
+    const canChat = !!order.assigned_employee_id && isActiveOrder;
 
-    /* [064A-30] Menú contextual con más opciones según rol */
+    /* [104A-28] Menú contextual con acciones según rol */
     const menuItems: MenuContextualItem[] = [];
 
+    /* Cancelar: cliente (estados iniciales) o empleado (con razón, incluyendo in_progress) */
     if (canCancel) {
         menuItems.push({
             id: 'cancel-order',
@@ -127,13 +130,23 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
         });
     }
 
-    /* Reportar: disponible para cliente cuando hay empleado asignado */
-    if (isClient && order.assigned_employee_id && order.status !== 'cancelled' && order.status !== 'completed') {
+    /* Reportar: disponible para cliente y empleado en órdenes activas con empleado asignado */
+    if (order.assigned_employee_id && isActiveOrder) {
         menuItems.push({
             id: 'report-order',
             label: 'Reportar problema',
             onSelect: () => setModalReportarAbierto(true),
             icon: <AlertTriangle size={16} />,
+        });
+    }
+
+    /* Delegar: solo empleados asignados en órdenes activas */
+    if (isEmployee && order.assigned_employee_id && isActiveOrder && onIrADelegaciones) {
+        menuItems.push({
+            id: 'delegate-order',
+            label: 'Delegar orden',
+            onSelect: onIrADelegaciones,
+            icon: <ArrowRightLeft size={16} />,
         });
     }
 
@@ -251,12 +264,17 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
 
             <OrderDetailModals
                 orderNumber={order.order_number}
+                isEmployee={isEmployee}
                 modalCancelarAbierto={modalCancelarAbierto}
                 modalReportarAbierto={modalReportarAbierto}
                 cancelando={cancelando}
+                reportando={reportando}
+                reportError={reportError}
+                reportExito={reportExito}
                 onCerrarCancelar={() => setModalCancelarAbierto(false)}
-                onConfirmarCancelacion={() => void confirmarCancelacion()}
-                onCerrarReportar={() => setModalReportarAbierto(false)}
+                onConfirmarCancelacion={(reason) => void confirmarCancelacion(reason)}
+                onCerrarReportar={cerrarReportar}
+                onEnviarReporte={(reason) => void enviarReporte(reason)}
             />
 
             {checkout && (

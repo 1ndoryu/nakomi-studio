@@ -295,11 +295,12 @@ pub async fn switch_role(
    [044A-38 Fase 2] CANCELAR, ENTREGAR, APROBAR, REVISIÓN
    ============================================================ */
 
-/// Cancelar una orden (solo el cliente dueño o admin, solo en estados iniciales)
+/// Cancelar una orden (cliente dueño, empleado asignado con razón, o admin)
 #[utoipa::path(
     post,
     path = "/api/orders/{order_id}/cancel",
     params(("order_id" = Uuid, Path, description = "ID de la orden")),
+    request_body(content = Option<crate::models::CancelOrderRequest>, description = "Razón opcional (obligatoria para empleados)"),
     responses(
         (status = 200, description = "Orden cancelada"),
         (status = 400, description = "Estado no permite cancelación", body = crate::errors::ErrorResponse),
@@ -313,8 +314,12 @@ pub async fn cancel_order_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(order_id): Path<Uuid>,
+    body: Option<Json<crate::models::CancelOrderRequest>>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let order = OrderService::cancel_order(&state.pool, order_id, auth.user_id, auth.effective_role).await?;
+    let reason = body.and_then(|b| b.0.reason);
+    let order = OrderService::cancel_order(
+        &state.pool, order_id, auth.user_id, auth.effective_role, reason.as_deref(),
+    ).await?;
     Ok(Json(serde_json::json!({ "status": order.status })))
 }
 

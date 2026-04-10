@@ -45,6 +45,8 @@ export const NOTIF_TYPES = {
   delegation_received: { label: 'Delegación recibida', icon: 'ArrowRightLeft' },
   delegation_resolved: { label: 'Delegación resuelta', icon: 'ArrowRightLeft' },
   new_message: { label: 'Nuevo mensaje', icon: 'MessageCircle' },
+  problem_reported: { label: 'Problema reportado', icon: 'AlertTriangle' },
+  problem_resolved: { label: 'Problema atendido', icon: 'CheckCircle' },
 } as const;
 
 export type NotificationType = keyof typeof NOTIF_TYPES;

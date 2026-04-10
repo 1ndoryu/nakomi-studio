@@ -342,13 +342,14 @@ impl OrderService {
         Ok(assigned)
     }
 
-    /* [044A-38 Fase 2] Cancela una orden. Solo si está en estados iniciales.
-     * Máquina de estados: PendingPayment | PaymentHeld | AwaitingAssignment → Cancelled */
+    /* [104A-28] Cancela una orden. Empleados pueden cancelar con razón obligatoria.
+     * Máquina de estados: PendingPayment | PaymentHeld | AwaitingAssignment | InProgress → Cancelled */
     pub async fn cancel_order(
         pool: &PgPool,
         order_id: Uuid,
         user_id: Uuid,
         effective_role: crate::models::UserRole,
+        reason: Option<&str>,
     ) -> Result<Order, AppError> {
         use crate::models::UserRole;
 
@@ -356,21 +357,49 @@ impl OrderService {
             .await?
             .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
-        /* Solo el dueño o un admin pueden cancelar */
-        if effective_role != UserRole::Admin && order.client_id != user_id {
-            return Err(AppError::Forbidden("No tienes permiso para cancelar esta orden".into()));
+        /* Verificar permisos: dueño, empleado asignado (con razón), o admin */
+        match effective_role {
+            UserRole::Admin => {}
+            UserRole::Client => {
+                if order.client_id != user_id {
+                    return Err(AppError::Forbidden("No tienes permiso para cancelar esta orden".into()));
+                }
+            }
+            UserRole::Employee => {
+                if order.assigned_employee_id != Some(user_id) {
+                    return Err(AppError::Forbidden("No estás asignado a esta orden".into()));
+                }
+                if reason.is_none_or(|r| r.trim().is_empty()) {
+                    return Err(AppError::Validation(
+                        "Los empleados deben proporcionar una razón para cancelar".into(),
+                    ));
+                }
+            }
         }
 
-        /* Solo se puede cancelar en estados iniciales */
-        match order.status {
+        /* Solo se puede cancelar en estados iniciales + in_progress para empleados */
+        let can_cancel = matches!(
+            order.status,
             OrderStatus::PendingPayment
-            | OrderStatus::PaymentHeld
-            | OrderStatus::AwaitingAssignment => {}
-            _ => {
-                return Err(AppError::BadRequest(
-                    format!("No se puede cancelar una orden en estado {:?}", order.status),
-                ));
-            }
+                | OrderStatus::PaymentHeld
+                | OrderStatus::AwaitingAssignment
+        ) || (effective_role == UserRole::Employee
+            && order.status == OrderStatus::InProgress);
+
+        if !can_cancel {
+            return Err(AppError::BadRequest(
+                format!("No se puede cancelar una orden en estado {:?}", order.status),
+            ));
+        }
+
+        /* Guardar razón si se proporcionó */
+        if let Some(r) = reason {
+            sqlx::query("UPDATE orders SET cancel_reason = $1 WHERE id = $2")
+                .bind(r)
+                .bind(order_id)
+                .execute(pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("Error guardando razón: {e}")))?;
         }
 
         let cancelled = OrderRepository::cancel_order(pool, order_id).await?;

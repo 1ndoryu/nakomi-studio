@@ -36,8 +36,8 @@ export function useSeccionProyectos() {
     } = useOrdenes();
 
     const handleVolver = useCallback(() => seleccionarOrden(null), [seleccionarOrden]);
-    const handleCancelar = useCallback(async (orderId: string) => {
-        await cancelarOrden(orderId);
+    const handleCancelar = useCallback(async (orderId: string, reason?: string) => {
+        await cancelarOrden({orderId, reason});
     }, [cancelarOrden]);
     const handleAprobar = useCallback(async (orderId: string, phase: number) => {
         await aprobarFase({orderId, phase});

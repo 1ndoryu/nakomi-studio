@@ -18,6 +18,7 @@ mod notifications;
 mod orders;
 mod payments;
 mod payment_methods;
+mod problems;
 mod projects;
 mod public_users;
 mod refunds;
@@ -154,6 +155,10 @@ impl utoipa::Modify for SecurityAddon {
         public_users::get_reviews_received,
         public_users::get_reviews_given,
         public_users::get_rating_distribution,
+        problems::report_problem,
+        problems::list_problems,
+        problems::list_order_problems,
+        problems::resolve_problem,
     ),
     components(schemas(
         health::HealthResponse,
@@ -240,6 +245,12 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::PublicReviewItem,
         crate::models::PaginatedPublicReviews,
         crate::models::RatingDistribution,
+        crate::models::ProblemStatus,
+        crate::models::ProblemResponse,
+        crate::models::ProblemAction,
+        crate::models::ReportProblemRequest,
+        crate::models::ResolveProblemRequest,
+        crate::models::CancelOrderRequest,
         profile::AvatarResponse,
         uploads::UploadResponse,
         crate::errors::ErrorResponse,
@@ -410,6 +421,7 @@ fn api_routes() -> Router<AppState> {
         .merge(public_users::public_routes())
         .merge(admin_seed::seed_routes())
         .merge(hosting::hosting_routes())
+        .merge(problems::routes())
         .merge(uploads::routes())
         .merge(image_proxy::routes())
         .layer(GovernorLayer {

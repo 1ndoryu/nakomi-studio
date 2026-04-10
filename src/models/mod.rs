@@ -9,6 +9,7 @@ mod notification;
 mod order;
 mod payment;
 mod payment_method;
+mod problem;
 mod project;
 mod public_profile;
 mod refund;
@@ -82,4 +83,8 @@ pub use hosting::{
 pub use public_profile::{
     GivenReviewRow, PaginatedPublicReviews, PublicProfileRow, PublicReviewItem,
     PublicUserProfile, RatingDistribution, ReceivedReviewRow,
+};
+pub use problem::{
+    CancelOrderRequest, OrderProblem, ProblemAction, ProblemResponse, ProblemStatus,
+    ReportProblemRequest, ResolveProblemRequest,
 };
