@@ -34,6 +34,10 @@ pub enum AppError {
     /* [084A-24] Servicio externo no disponible (ej: Contabo API no configurada) */
     #[error("Servicio no disponible: {0}")]
     ServiceUnavailable(String),
+
+    /* [104A-36] Rate limiting — demasiadas peticiones del cliente */
+    #[error("Demasiadas peticiones: {0}")]
+    TooManyRequests(String),
 }
 
 /// Estructura de respuesta de error expuesta en la API
@@ -81,6 +85,11 @@ impl IntoResponse for AppError {
             Self::ServiceUnavailable(msg) => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 "service_unavailable",
+                msg.clone(),
+            ),
+            Self::TooManyRequests(msg) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "too_many_requests",
                 msg.clone(),
             ),
         };

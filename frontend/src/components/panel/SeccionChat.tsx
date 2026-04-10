@@ -34,11 +34,15 @@ export const SeccionChat: React.FC = () => {
         loadOlderMessages,
         handleKeyDown,
         handleSend,
+        handleCloseSession,
+        closing,
     } = useSeccionChat();
 
     const [showInfo, setShowInfo] = useState(false);
     const activeSession = sessions.find(s => s.id === activeSessionId) ?? null;
-    const isAdmin = useAuthStore(s => s.user?.effectiveRole === 'admin');
+    /* [104A-36] Info panel visible para admin y empleados (no solo admin) */
+    const effectiveRole = useAuthStore(s => s.user?.effectiveRole);
+    const isStaff = effectiveRole === 'admin' || effectiveRole === 'employee';
 
     if (cargandoSesiones) {
         return (
@@ -93,8 +97,8 @@ export const SeccionChat: React.FC = () => {
                                     : activeSession?.visitor_name || 'Chat general'}
                             </span>
                             {/* [064A-72] Botón para abrir/cerrar panel de info
-                             * [074A-60] Solo visible para admin — contiene IP, user-agent, notas */}
-                            {isAdmin && (
+                             * [104A-36] Visible para admin y empleados — contiene IP, user-agent, notas */}
+                            {isStaff && (
                                 <Button
                                     className="chatBtnInfo"
                                     onClick={() => setShowInfo(prev => !prev)}
@@ -106,19 +110,21 @@ export const SeccionChat: React.FC = () => {
                                     <Info size={18} />
                                 </Button>
                             )}
-                            {/* [064A-71] Botón para deseleccionar la conversación activa,
-                             * sin cerrarla permanentemente. El cierre definitivo (close_session)
-                             * requiere acción explícita desde un menú contextual futuro. */}
-                            <Button
-                                className="chatBtnCerrar"
-                                onClick={clearActiveSession}
-                                type="button"
-                                title="Volver a la lista"
-                                variante="texto"
-                                tamano="pequeno"
-                            >
-                                <XCircle size={18} />
-                            </Button>
+                            {/* [104A-36] Cerrar sesión en BD (staff) — antes solo limpiaba UI.
+                             * clearActiveSession desselecciona, handleCloseSession cierra via API. */}
+                            {isStaff && activeSession?.status !== 'closed' && (
+                                <Button
+                                    className="chatBtnCerrar"
+                                    onClick={() => void handleCloseSession()}
+                                    disabled={closing}
+                                    type="button"
+                                    title="Cerrar conversación"
+                                    variante="texto"
+                                    tamano="pequeno"
+                                >
+                                    <XCircle size={18} />
+                                </Button>
+                            )}
                         </div>
 
                         <div className="chatMensajes">
@@ -186,8 +192,8 @@ export const SeccionChat: React.FC = () => {
             </div>
 
             {/* [064A-72] Panel lateral de info del visitante
-             * [074A-60] Solo admin puede ver info sensible (IP, user-agent, notas) */}
-            {isAdmin && showInfo && activeSession && (
+             * [104A-36] Admin y empleados pueden ver info (IP, user-agent, notas) */}
+            {isStaff && showInfo && activeSession && (
                 <ChatInfoPanel
                     session={activeSession}
                     onClose={() => setShowInfo(false)}

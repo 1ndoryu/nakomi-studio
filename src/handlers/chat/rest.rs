@@ -165,6 +165,17 @@ pub async fn send_message(
     Path(session_id): Path<Uuid>,
     Json(req): Json<SendMessageRequest>,
 ) -> Result<(StatusCode, Json<ChatMessage>), AppError> {
+    /* [104A-36] Rate limiting para REST — reutiliza ChatTimingService con user_id como key.
+     * Solo aplica a clientes; staff/admin no tienen límite. */
+    if auth.effective_role == crate::models::UserRole::Client {
+        let (result, _msg) = state.chat_timing.check_rate(&auth.user_id.to_string());
+        if matches!(result, crate::services::RateCheckResult::Muted) {
+            return Err(AppError::TooManyRequests(
+                "Has enviado demasiados mensajes. Espera un momento.".to_string(),
+            ));
+        }
+    }
+
     let sender_type = match auth.effective_role {
         crate::models::UserRole::Admin => "admin",
         crate::models::UserRole::Employee => "employee",
