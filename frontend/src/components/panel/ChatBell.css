@@ -30,11 +30,12 @@
     background: none;
 }
 
+/* [104A-35 fix] bg-accent es #f5f3f1 (casi blanco), brand-black da contraste real */
 .chatBell__badge {
     position: absolute;
     top: 0;
     right: 0;
-    background: var(--bg-accent);
+    background: var(--brand-black);
     color: var(--brand-white);
     font-size: var(--text-2xs);
     font-weight: 700;
