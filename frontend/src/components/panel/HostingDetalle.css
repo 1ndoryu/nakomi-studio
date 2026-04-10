@@ -491,6 +491,16 @@
     text-decoration: none;
 }
 
+/* [154A-11] Spinner de provisioning */
+.hostingSpinner {
+    animation: hostingSpinnerRotate 1s linear infinite;
+}
+
+@keyframes hostingSpinnerRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 /* ── Responsive ──────────────────────────── */
 
 @media (max-width: 767px) {

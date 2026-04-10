@@ -88,12 +88,16 @@ export function HostingDetalle({
     onVolver,
     onPlanChange,
     planChangeLoading,
+    onProvision,
+    provisionLoading,
 }: {
     hostingId: string;
     isAdmin: boolean;
     onVolver: () => void;
     onPlanChange?: (plan: string, domain?: string) => void;
     planChangeLoading?: boolean;
+    onProvision?: () => void;
+    provisionLoading?: boolean;
 }) {
     const {
         subscription: sub,
@@ -170,7 +174,14 @@ export function HostingDetalle({
             </div>
 
             <div className="hostingDetalleContent">
-                {tabActiva === 'general' && <TabGeneral sub={sub} isAdmin={isAdmin} />}
+                {tabActiva === 'general' && (
+                    <TabGeneral
+                        sub={sub}
+                        isAdmin={isAdmin}
+                        onProvision={onProvision}
+                        provisionLoading={provisionLoading}
+                    />
+                )}
                 {tabActiva === 'recursos' && <TabRecursos sub={sub} />}
                 {tabActiva === 'dominio' && <TabDominio domainInfo={domainInfo} />}
                 {tabActiva === 'acceso' && <TabAcceso sshInfo={sshInfo} />}

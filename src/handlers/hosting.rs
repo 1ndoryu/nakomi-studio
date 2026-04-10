@@ -19,6 +19,7 @@ use crate::models::{
     UpdateHostingRequest, UpdateHostingStatusRequest, UserRole,
 };
 use crate::repositories::{CreateHostingParams, HostingRepository, UserRepository};
+use crate::services::CoolifyService;
 use crate::AppState;
 
 /* [084A-10] Precios por plan en centavos: Básico $5, Pro $10, E-commerce $15 */
@@ -825,6 +826,104 @@ pub async fn get_vps(
     Ok(Json(serde_json::json!({ "data": instance })))
 }
 
+/* ============================================================
+   PROVISIONING — Crear servicio real en Coolify (solo admin)
+   [154A-11] Endpoint que conecta la suscripción pendiente con Coolify VPS2
+   ============================================================ */
+
+/// Provisionar un hosting: crea servicio Nginx en Coolify y actualiza la suscripción.
+/// Solo admin. La suscripción debe estar en estado "pending" o "provisioning".
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/provision",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "Hosting provisionado", body = HostingSubscriptionResponse),
+        (status = 400, description = "Estado inválido para provisioning"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "Suscripción no encontrada"),
+        (status = 503, description = "Coolify no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn provision_subscription(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<HostingSubscriptionResponse>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Suscripción {id} no encontrada")))?;
+
+    /* Solo se provisiona desde pending o provisioning (reintento) */
+    if sub.status != "pending" && sub.status != "provisioning" {
+        return Err(AppError::Validation(format!(
+            "Solo se puede provisionar hostings en estado 'pending' o 'provisioning', actual: '{}'",
+            sub.status
+        )));
+    }
+
+    let config = state
+        .coolify_config
+        .as_ref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Coolify no configurado. Variables COOLIFY_* ausentes.".into()))?;
+
+    /* Marcar como provisioning antes de llamar a Coolify */
+    HostingRepository::update_status(&state.pool, id, "provisioning").await?;
+
+    let service_name = CoolifyService::service_name_for(&id);
+
+    let result = match CoolifyService::provision_hosting(&state.http_client, config, &service_name).await {
+        Ok(r) => r,
+        Err(e) => {
+            /* Revertir a pending si Coolify falla —  admin puede reintentar */
+            tracing::error!("[Provision] Falló para {id}: {e}");
+            HostingRepository::update_status(&state.pool, id, "pending").await.ok();
+            return Err(e);
+        }
+    };
+
+    /* Guardar datos reales del servidor */
+    HostingRepository::update_server_info(
+        &state.pool,
+        id,
+        &service_name,
+        &result.service_uuid,
+        &result.server_ip,
+    )
+    .await?;
+
+    /* Activar la suscripción */
+    HostingRepository::update_status(&state.pool, id, "active").await?;
+
+    /* Evento de auditoría */
+    if let Err(e) = HostingRepository::add_event(
+        &state.pool,
+        id,
+        "provisioned",
+        Some(serde_json::json!({
+            "coolify_uuid": result.service_uuid,
+            "domain": result.domain,
+            "server_ip": result.server_ip,
+            "service_name": service_name,
+            "by": auth.user_id.to_string(),
+        })),
+    )
+    .await
+    {
+        tracing::warn!("Error registrando evento provisioned para {id}: {e}");
+    }
+
+    let updated = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or_else(|| AppError::Internal("Suscripción perdida tras provisioning".into()))?;
+
+    Ok(Json(updated.into()))
+}
+
 pub fn hosting_routes() -> Router<AppState> {
     Router::new()
         .route(
@@ -867,6 +966,11 @@ pub fn hosting_routes() -> Router<AppState> {
         /* [084A-24] VPS stats: proxy a Contabo API */
         .route("/hosting/vps", get(list_vps))
         .route("/hosting/vps/:instance_id", get(get_vps))
+        /* [154A-11] Provisioning real: crea servicio Nginx en Coolify VPS2 */
+        .route(
+            "/hosting/subscriptions/:id/provision",
+            axum::routing::post(provision_subscription),
+        )
 }
 
 /* ============================================================

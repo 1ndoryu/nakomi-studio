@@ -10,6 +10,7 @@ import {
     apiRequestCancelHosting,
     apiCreateHostingCheckout,
     apiSelfSubscribe,
+    apiProvisionHosting,
     type CreateHostingRequest,
     type UpdateHostingRequest,
     type SelfSubscribeRequest,
@@ -88,6 +89,16 @@ export function useHostingMutations(
         onError: () => toast.error('Error al contratar hosting'),
     });
 
+    /* [154A-11] Provisionar hosting real en Coolify (admin only) */
+    const provisionMutation = useMutation({
+        mutationFn: (id: string) => apiProvisionHosting(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success('Hosting provisionado correctamente');
+        },
+        onError: () => toast.error('Error al provisionar hosting'),
+    });
+
     return {
         createMutation,
         statusMutation,
@@ -96,5 +107,6 @@ export function useHostingMutations(
         cancelMutation,
         checkoutMutation,
         subscribeMutation,
+        provisionMutation,
     };
 }

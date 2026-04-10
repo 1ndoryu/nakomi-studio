@@ -5,7 +5,7 @@
  * [094A-5] TabAcceso mejorada: info SSH incluso sin coolify_site_name.
  * [094A-6] TabFacturacion extraída a TabFacturacion.tsx por límite de líneas. */
 
-import {Server, Shield, Terminal, ExternalLink} from 'lucide-react';
+import {Server, Shield, Terminal, ExternalLink, Loader} from 'lucide-react';
 import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
 import {
     HOSTING_PLAN_LABELS,
@@ -19,8 +19,15 @@ import {CopyButton, InfoRow} from './HostingDetalle';
 type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscription']>;
 
 /* ── Tab: General ────────────────────────── */
-export function TabGeneral({sub, isAdmin}: {sub: Subscription; isAdmin: boolean}) {
+export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
+    sub: Subscription;
+    isAdmin: boolean;
+    onProvision?: () => void;
+    provisionLoading?: boolean;
+}) {
     const sitioUrl = sub.domain ? `https://${sub.domain}` : null;
+    /* [154A-11] Provisioning disponible para admin cuando el hosting está pendiente */
+    const canProvision = isAdmin && (sub.status === 'pending' || sub.status === 'provisioning') && onProvision;
 
     return (
         <div className="hostingDetalleSection">
@@ -32,6 +39,12 @@ export function TabGeneral({sub, isAdmin}: {sub: Subscription; isAdmin: boolean}
                 <InfoRow label="Almacenamiento" value={`${(sub.storage_limit_mb / 1024).toFixed(0)} GB`} />
                 {sub.domain && (
                     <InfoRow label="Dominio" value={sub.domain} copyable link={sitioUrl ?? undefined} />
+                )}
+                {sub.server_ip && (
+                    <InfoRow label="IP servidor" value={sub.server_ip} copyable />
+                )}
+                {sub.coolify_site_name && (
+                    <InfoRow label="Servicio" value={sub.coolify_site_name} copyable />
                 )}
                 <InfoRow
                     label="Creado"
@@ -47,6 +60,21 @@ export function TabGeneral({sub, isAdmin}: {sub: Subscription; isAdmin: boolean}
                 )}
             </div>
             <div className="hostingDetalleAcciones">
+                {canProvision && (
+                    <Button
+                        type="button"
+                        variante="primario"
+                        tamano="pequeno"
+                        onClick={onProvision}
+                        disabled={provisionLoading}
+                    >
+                        {provisionLoading ? (
+                            <><Loader size={14} className="hostingSpinner" /> Provisionando…</>
+                        ) : (
+                            <><Server size={14} /> Provisionar hosting</>
+                        )}
+                    </Button>
+                )}
                 {sitioUrl && (
                     <a href={sitioUrl} target="_blank" rel="noopener noreferrer" className="hostingDetalleAccionLink">
                         <Button type="button" variante="outline" tamano="pequeno">

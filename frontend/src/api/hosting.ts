@@ -91,6 +91,14 @@ export async function apiRequestCancelHosting(id: string): Promise<void> {
     await axiosInstance.post(`/api/hosting/subscriptions/${id}/cancel`);
 }
 
+/* [154A-11] Provisionar hosting: crea servicio Nginx real en Coolify (admin only). */
+export async function apiProvisionHosting(id: string): Promise<HostingSubscription> {
+    const {data} = await axiosInstance.post<HostingSubscription>(
+        `/api/hosting/subscriptions/${id}/provision`,
+    );
+    return data;
+}
+
 /* [084A-24] Iniciar checkout Stripe para suscripción de hosting.
  * Retorna la URL de Stripe Checkout a la que redirigir al cliente. */
 export async function apiCreateHostingCheckout(id: string): Promise<string> {

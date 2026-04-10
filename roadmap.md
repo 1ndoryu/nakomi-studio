@@ -92,6 +92,12 @@ js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2
 
 - En el cms de los proyectos se olvido totalmente de la galería y de los iconos de enlace, debería poder elegirse con buscardor. y un pequeño menu de los iconos. → ✅ 154A-10
 
+- chatBell__badge el numero nunca se actualiza nunca se leen los mensajes!!!!
+
+- En las tarjetas proyectosLista debería haber un badge con icono de mensaje o notificaciones cuando hayan mensajes nuevos o historial nuevo sin leer, revisar que todo este tambien genere notificaciones a los usuarios. 
+
+- chatSesionTitulo, las conversaciones de las ordenes no es muy claro, de hecho debería centralizarse todo en vez de mostrar Orden #tal numero, debe mostrar el nombre del responsable o cliente, si un cliente tiene 2 ordenes con el mismo responsable entonces debe ser el mismo chat pero mostrar la foto perfil de ambos usuarios y sus nombre para saber con quien se habla.
+
 ## Delegacioens y pedidos
 
 - En los pedidos veo el boton de cancelar pedido en el usuario de empleado, pero, claro. ¿Que pasa despues? Claramente hace falta implementar como en fiverr algo mas robuzto, en el header del panel tiene que haber un monto en usd de dinero, igualmente para los empleados, si un pedido se cancela, el cliente tiene su dinero de vuelta pero lo tiene que gastar en la plataforma, y luego darle la posibilidad de retirarlo si quiere, asi se gestionara el dinero que ganan los empleados y clientes, esto requiere un plan, requiere planificar como se va retirar el dinero, requiere que todos los proyectos cancelados por el empleado primero reciban una solicitud que el cliente puede aceptar o rechazar en el historial con la explicación del empleado, si el cliente acepta recibe el dinero, si el cliente rachaza, el proyecto queda libre para ser atendido por otro usuario. Esto implica arreglar otra cosa que no he planteado, todos los proyectos nuevos tienen que estar visibles solamente para el admin. Esto implica la siguiente inconsistencia
@@ -102,7 +108,15 @@ js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2
 
 2.1 El cliente tiene que tener su pedido y recibir un mensaje en el chat del pedido, tu pedido será atentido pronto por los miembros de nuestro equipo, con una notificaciones felicidades, tu primer pedido será atendido pronto, recibir un correo bonito con la info del pedido y con el breve mensaje de que sera atendido dentro de las proximas 48 horas. 
 
-2.2 En 4
+2.2 En 48 horas si no fue revisado por el admin, delegado o tomado por el entonces todos los empleados reciben una notificación de un nuevo pedido, y en el panel pueden decidir si tomarlo o no, y en se momento ellos seran los responsables. 
+
+2.3 El admmin ve todos los pedidos, tiene la opción de cambiar el responsable, hacerse responsable, cancelar pedido, etc. En el chat, si el admin no es responsable no puede enviar mensajes, las conversaciones deben ser solo entre 2 personas. 
+
+2.4 Hay que hacer una auditoría detallada y completa al sistema de historial de los pedidos, cuando se cambia el resposable, cuando se cancela, cuando se entrega y finaliza todo esto debe generar un historial claro para que el cliente lo pueda leer. 
+
+2.5 orderChatMensajes, o sea en el chat dentro de los pedidos no veo que salga el nombre de los participantes, hay que revisar que la imagen de perfil realmente salga. 
+
+2.6 La opción de IA tiene que estar desactivada por defecto dentro de los pedidos y desactivarse automaticamente cuando el resposable responde, tampoco veo que esto este funcionando. 
 
 ## Hosting
 

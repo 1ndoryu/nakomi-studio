@@ -38,6 +38,7 @@ export const SeccionHosting: React.FC = () => {
         cancelMutation,
         checkoutMutation,
         subscribeMutation,
+        provisionMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -60,6 +61,8 @@ export const SeccionHosting: React.FC = () => {
                     updateMutation.mutate({id: selectedHostingId, req: {plan, domain}})
                 }
                 planChangeLoading={updateMutation.isPending}
+                onProvision={() => provisionMutation.mutate(selectedHostingId)}
+                provisionLoading={provisionMutation.isPending}
             />
         );
     }

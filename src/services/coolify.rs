@@ -1,10 +1,10 @@
 /* [104A-42] Servicio de provisioning Coolify para hosting administrado.
- * Invoca la API REST de Coolify para crear y gestionar servicios WordPress+MariaDB.
+ * [154A-11] Cambiado de WordPress+MariaDB a Nginx puro vía docker_compose_raw.
  * Lee configuración desde variables de entorno COOLIFY_*.
  * Idempotencia: el service_name incluye el UUID del hosting para evitar duplicados.
- * Diseño no-fatal: los errores de provisioning se loguean pero no bloquean el pago.
- * Pendiente: añadir retries con backoff exponencial si el provisioning falla (Fase 2). */
+ * Diseño no-fatal: los errores de provisioning se loguean pero no bloquean el pago. */
 
+use base64::Engine;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tracing;
@@ -55,14 +55,14 @@ impl CoolifyConfig {
    TIPOS DE API
    ============================================================ */
 
-/// Body de la llamada POST /api/v1/services
+/// Body de la llamada POST /api/v1/services (`docker_compose_raw` en base64)
 #[derive(Debug, Serialize)]
 struct CreateServiceBody<'a> {
     name: &'a str,
     project_uuid: &'a str,
     environment_name: &'static str,
     server_uuid: &'a str,
-    r#type: &'static str,
+    docker_compose_raw: String,
 }
 
 /// Respuesta de POST /api/v1/services (solo campos que usamos)
@@ -90,8 +90,9 @@ pub struct CoolifyProvisionResult {
 pub struct CoolifyService;
 
 impl CoolifyService {
-    /// Provision completo: crea servicio `WordPress` en Coolify y lo arranca.
-    /// Usa el nombre de servicio para garantizar idempotencia (Coolify rechaza nombres duplicados).
+    /// Provision completo: crea servicio Nginx en Coolify y lo arranca.
+    /// Usa `docker_compose_raw` con Nginx puro (sin `WordPress` ni BD).
+    /// El nombre de servicio garantiza idempotencia (Coolify rechaza duplicados).
     ///
     /// # Errors
     /// Retorna `AppError` si la API falla o el JSON no parsea.
@@ -100,13 +101,18 @@ impl CoolifyService {
         config: &CoolifyConfig,
         service_name: &str,
     ) -> Result<CoolifyProvisionResult, AppError> {
+        /* [154A-11] Compose Nginx puro: SERVICE_FQDN_APP= le dice a Coolify que genere
+         * FQDN sslip.io y Traefik labels automáticamente. */
+        let compose_yaml = "services:\n  app:\n    image: 'nginx:alpine'\n    environment:\n      - SERVICE_FQDN_APP=\n    volumes:\n      - 'site-data:/usr/share/nginx/html'\n    restart: unless-stopped\nvolumes:\n  site-data:\n";
+        let compose_b64 = base64::engine::general_purpose::STANDARD.encode(compose_yaml);
+
         /* Paso 1: Crear el servicio */
         let create_body = CreateServiceBody {
             name: service_name,
             project_uuid: &config.project_uuid,
             environment_name: "production",
             server_uuid: &config.server_uuid,
-            r#type: "wordpress-with-mariadb",
+            docker_compose_raw: compose_b64,
         };
 
         let create_url = format!("{}/api/v1/services", config.base_url);
