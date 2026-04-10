@@ -1,14 +1,10 @@
 import React from 'react';
 import './Button.css';
 
-/* [064A-1] Variantes semánticas: cubren estados (exito, peligro, advertencia, info)
- * y variantes suaves (Suave) para acciones secundarias. */
-type ButtonVariante =
-    | 'primario' | 'secundario' | 'outline' | 'texto'
-    | 'exito' | 'exitoSuave'
-    | 'peligro' | 'peligroSuave'
-    | 'advertencia' | 'advertenciaSuave'
-    | 'info' | 'infoSuave';
+/* [104A-20] Se eliminaron variantes semánticas de color (exito, peligro, advertencia, info).
+ * Solo quedan primario, secundario, outline, texto. Los botones de acción usan
+ * secundario (bold) o primario (sutil) según importancia, nunca colores. */
+type ButtonVariante = 'primario' | 'secundario' | 'outline' | 'texto';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variante?: ButtonVariante;

@@ -188,7 +188,7 @@ export function HostingCard({
                                 .map(s => (
                                     <Button
                                         key={s}
-                                        variante={s === 'suspended' || s === 'cancelled' ? 'peligro' : 'secundario'}
+                                        variante={s === 'suspended' || s === 'cancelled' ? 'outline' : 'secundario'}
                                         type="button"
                                         onClick={() => {
                                             onStatusChange(s);

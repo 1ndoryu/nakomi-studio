@@ -171,7 +171,7 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                             <Button
                                 onClick={() => abrirCheckout(order.final_price_cents)}
                                 type="button"
-                                variante="exito"
+                                variante="secundario"
                                 tamano="pequeno"
                             >
                                 <CreditCard size={16} /> Pagar

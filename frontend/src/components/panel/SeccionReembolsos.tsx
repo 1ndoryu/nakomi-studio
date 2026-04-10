@@ -104,7 +104,7 @@ export function SeccionReembolsos() {
                                         />
                                         <div className="reembolsoBotonesRevision">
                                             <Button
-                                                variante="exito"
+                                                variante="secundario"
                                                 tamano="pequeno"
                                                 type="button"
                                                 onClick={() => void handleRevisar('approve')}
@@ -116,7 +116,7 @@ export function SeccionReembolsos() {
                                                 </span>
                                             </Button>
                                             <Button
-                                                variante="peligro"
+                                                variante="outline"
                                                 tamano="pequeno"
                                                 type="button"
                                                 onClick={() => void handleRevisar('reject')}
@@ -143,7 +143,7 @@ export function SeccionReembolsos() {
                                     </div>
                                 ) : (
                                     <Button
-                                        variante="info"
+                                        variante="primario"
                                         tamano="pequeno"
                                         type="button"
                                         onClick={() => setRefundActivo(r)}

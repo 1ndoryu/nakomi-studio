@@ -197,7 +197,7 @@ export function FaseCard({
                                 className="faseBtn"
                                 onClick={() => onPagarFase(phase.phase_number, phase.price_cents)}
                                 type="button"
-                                variante="exito"
+                                variante="secundario"
                                 tamano="pequeno"
                             >
                                 <CreditCard size={14} /> Pagar fase
@@ -208,7 +208,7 @@ export function FaseCard({
                                 className="faseBtn"
                                 onClick={() => onAprobar(orderId, phase.phase_number)}
                                 type="button"
-                                variante="exitoSuave"
+                                variante="primario"
                                 tamano="pequeno"
                             >
                                 <Check size={14} /> Aprobar
@@ -219,7 +219,7 @@ export function FaseCard({
                                 className="faseBtn"
                                 onClick={() => onRevision(orderId, phase.phase_number)}
                                 type="button"
-                                variante="advertenciaSuave"
+                                variante="outline"
                                 tamano="pequeno"
                             >
                                 <RotateCcw size={14} /> Revisión

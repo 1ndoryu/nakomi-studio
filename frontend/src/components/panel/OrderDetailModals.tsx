@@ -39,7 +39,7 @@ export function OrderDetailModals({
                             onClick={onCerrarCancelar} disabled={cancelando}>
                             Volver
                         </Button>
-                        <Button variante="peligro" tamano="pequeno" type="button"
+                        <Button variante="secundario" tamano="pequeno" type="button"
                             onClick={onConfirmarCancelacion} disabled={cancelando}>
                             {cancelando ? 'Cancelando...' : 'Sí, cancelar'}
                         </Button>

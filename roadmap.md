@@ -70,7 +70,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - disponibleCardBadge sin color, ningun badge debe tener color, mas inconsistencias "delegCardFooter" y "disponibleCardFooter", deben ser igual a ordenCardFooter, y todos los footer de las tarjetas, esto es inconsistente y es un error.
 - reembolsoMonto no necesitar estar en negrita
 - los badge de reembolsoEstado reembolsoEstado--rechazado deben ser blanco y negro, en la pagina de reembolsos en el panel falta algo como proyectosTabs 
-- botonBase botonInfo botonPequeno  borra boton info y boton de peligro, no quiero esos botones, que sean primarios o secundarios, y todos los demas botones que usen colores, implica arreglar todos.
 - hostingCardCliente no necesitar estart italic, mueve lo que hay en hostingCardRecursos al footer de la tarjeta y quita el precio
 - Necesito probar un hosting real, usar la segunda vps que maneja coolify para crear un hosting, emulando como si un usuario lo hubiera comprado, tiene que ser un hosting real, o sea un despliegue dentro de la vps.
 - Al completar el checkout de hosting se debe provisionar el sitio real en Coolify y guardar `coolify_site_name` + datos reales del servidor.
