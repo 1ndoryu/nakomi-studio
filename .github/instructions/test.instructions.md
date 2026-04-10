@@ -70,6 +70,11 @@ Sin este anuncio, no se inicia ninguna tarea. Esta regla existe para que el agen
   - CSS: nombres en espanol y `camelCase` (`.contenedorPrincipal`). Todo en archivos `.css` separados. Prohibido CSS inline. Variables obligatorias para colores/espaciados/tipografia.
   - Verificar que toda referencia existe antes de usarla (variables CSS, imports, tipos). Si lo creas, conectalo.
   - UI atomica: todo elemento reutilizable es su propio componente. Zustand para estado global.
+  - **Consistencia visual obligatoria.** Antes de crear o modificar cualquier estilo CSS, revisar primero:
+    1. Variables existentes en `styles/variables.css` (colores, espaciados, tipografia, radios).
+    2. Componentes atomicos en `components/ui/` (Badge, Button, Tarjeta, etc.) y sus CSS.
+    3. Patrones visuales de componentes similares ya implementados (footers, headers, cards, badges).
+    Si el estilo necesario ya existe como variable o componente, reutilizarlo. Prohibido crear clases ad-hoc que dupliquen o contradigan el sistema de diseño. Toda tarea UI empieza leyendo los estilos existentes para seguir la identidad visual.
   - Codegen API (Orval): siempre usar modo `tags-split` para que cada tag OpenAPI genere su propio archivo. Prohibido tener un unico `generated.ts` monolitico — si se detecta, dividirlo inmediatamente.
   - **Nombres de carpetas y archivos siempre en ingles.** Prohibido crear directorios o archivos con nombres en español (ej: `componentes/`, `estilos/`, `servicios/`). Usar equivalentes en ingles (`components/`, `styles/`, `services/`). Esto aplica a codigo fuente, no a documentacion del agente (`Agente/`, `completados/`, etc.).
 
@@ -88,11 +93,12 @@ Sin este anuncio, no se inicia ninguna tarea. Esta regla existe para que el agen
   - Antes de cada commit: ejecutar validaciones del stack correspondiente (ver seccion V).
   - **Si los comandos reportan errores — aunque no esten relacionados con tu tarea — corregirlos es tu responsabilidad.** No se avanza ni se commitea con errores pendientes. Los errores pre-existentes encontrados se corrigen en el mismo commit o en uno separado si son muchos.
 
-**12. Commits.**
+**12. Commits — uno por tarea, push inmediato.**
   - Prohibido `git add .` o `git add --all`. Siempre `git add archivo1 archivo2` explicito.
   - Verificar `git diff --stat HEAD` y `git status` antes de commitear.
   - Cada tarea = un commit separado. Mensaje claro: `{id}: descripcion breve`.
   - Commit automatico al completar tarea, sin pedir permiso.
+  - **Prohibido acumular 2+ tareas completadas sin commit+push.** Cada tarea se commitea y hace push ANTES de iniciar la siguiente. Si falla el push, resolver antes de avanzar. Esta regla existe porque el agente sistematicamente acumula cambios de varias tareas y pierde el ciclo commit-por-tarea.
 
 **13. PowerShell + SSH.**
   - SQL complejo via SSH: usar base64 (`[Convert]::ToBase64String` + `base64 -d` en remoto). PS5 no tiene heredoc.
@@ -146,7 +152,7 @@ Tomar una tarea pendiente y completarla. Reglas:
 - **2.1** Cada tarea = un commit separado con mensaje claro.
 - **2.2** Completar una tarea individualmente antes de pasar a otra. Se permite agrupar solo tareas completamente relacionadas.
 - **2.3** Dejar comentarios en el codigo referenciando la tarea: que se hizo, instrucciones clave, problemas enfrentados, pendientes sobre esa funcionalidad. No borrar comentarios anteriores.
-- **2.4** Prohibido avanzar sin marcar la tarea como completada, hacer commit y organizar los MDs.
+- **2.4** Prohibido avanzar sin marcar la tarea como completada, hacer commit+push y organizar los MDs. El push es parte del cierre de la tarea, no del final de la sesion.
 - **2.5** Editar archivo por archivo. No acumular cambios en muchos archivos sin validar entre cada uno.
 - **2.6** Si la tarea es compleja (>1 sesion o multiples fases) o es un problema repetitivo que ya reaparecio, crear un plan en `Agente/planes/` con nombre `plan-tema-YYYY-MM-DD.md` describiendo fases, estado actual y proximos pasos. Continuar desde donde se quedo.
 

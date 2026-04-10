@@ -77,7 +77,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Cuando falle una renovación o se cancele la suscripción, hay que notificar al cliente y sincronizar suspensión/cancelación real en Coolify, no solo en base de datos.
 - HostingDetalle debe dejar de usar IP hardcodeada y mostrar VPS/IP reales desde backend.
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
-- El agente esta haciendo varias tareas sin subir commit de cada una, reforzar el protocolo de desarrollo para que deje de hacer este problema, tambien reforzar el protocolo evitando el problema de inconsistencias visuales de no centralizar estilos mediante componentes, o revisar los estilos primero de otras cosas para seguir la identidad visual. 
 - Ejecutar Hosting Automation
 
 ##
