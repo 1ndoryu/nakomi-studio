@@ -103,9 +103,13 @@ export function useSeccionChat() {
     const selectSession = useCallback((sessionId: string) => {
         setActiveSessionId(sessionId);
         setMessageLimit(100);
-        /* [104A-39] Marcar como vista para limpiar el badge del ChatBell */
-        void apiMarkSessionViewed(sessionId).catch(() => { /* silenciar — no crítico */ });
-    }, []);
+        /* [104A-39] Marcar como vista para limpiar el badge del ChatBell.
+         * [104A-41] Invalidar cache ['chat-sessions'] inmediatamente para que ChatBell
+         * refleje el nuevo last_viewed_at sin esperar el polling de 15s. */
+        void apiMarkSessionViewed(sessionId)
+            .then(() => queryClient.invalidateQueries({queryKey: ['chat-sessions']}))
+            .catch(() => { /* silenciar — no crítico */ });
+    }, [queryClient]);
 
     const clearActiveSession = useCallback(() => {
         setActiveSessionId(null);
