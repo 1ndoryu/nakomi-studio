@@ -67,8 +67,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Cuando le doy a reportar un problema, debería abrir el chatbot y el chatbot debe entender que se abrio el chat desde ahi para que el cliente escriba el problema, y sea atentido por el chatbot, tenemos que preparar el chatbot para los problemas comunes de un pedido.
 - En los pedidos los empleados no tienen acciones, claramente falta acciones reportar un problema, para delegar, cancelar pedido, para cada cosa tiene que escribir una razon, el reportar problema no abre el chat para los empleados, tienen que escribir la razon, tampoco veo que en el panel de admin haya algo para ver y atender los problemas, esto falta.
 - ordenCard esta dejando un espacio vacío debajo de la iamgen, no se por qué. 
-- reembolsoMonto no necesitar estar en negrita
-- los badge de reembolsoEstado reembolsoEstado--rechazado deben ser blanco y negro, en la pagina de reembolsos en el panel falta algo como proyectosTabs 
 - hostingCardCliente no necesitar estart italic, mueve lo que hay en hostingCardRecursos al footer de la tarjeta y quita el precio
 - Necesito probar un hosting real, usar la segunda vps que maneja coolify para crear un hosting, emulando como si un usuario lo hubiera comprado, tiene que ser un hosting real, o sea un despliegue dentro de la vps.
 - Al completar el checkout de hosting se debe provisionar el sitio real en Coolify y guardar `coolify_site_name` + datos reales del servidor.
@@ -77,3 +75,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
 - Ejecutar Hosting Automation
 - sentinel report md tiene muchos Warning, arreglarlos todos si son reales o corregir el falso positivo.
+- Hay muchos planes que no estan en la carpeta de completados, revisar si realmente es que tienen cosas pendientes, y en caso de que tengan pendiente, organizar las tareas pendientes aca, y realizar todos planes, lo que necesita accion externa mia organizalo aca en el roadmap. 

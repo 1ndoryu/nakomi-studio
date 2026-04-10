@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Loader2, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useRefunds } from '../../hooks/useRefunds';
-import { REFUND_STATUS_LABELS, REFUND_STATUS_CLASS } from '../../api/refunds';
+import { REFUND_STATUS_LABELS } from '../../api/refunds';
 import { formatPrice } from '../../api/orders';
 import type { RefundResponse } from '../../api/refunds';
 import { Textarea } from '../ui/Textarea';
@@ -16,6 +16,12 @@ export function SeccionReembolsos() {
     const [refundActivo, setRefundActivo] = useState<RefundResponse | null>(null);
     const [respuestaAdmin, setRespuestaAdmin] = useState('');
     const [accionEnCurso, setAccionEnCurso] = useState(false);
+    /* [104A-22] Tabs para filtrar reembolsos activos vs historial */
+    const [tab, setTab] = useState<'activos' | 'historial'>('activos');
+
+    const activos = reembolsos.filter(r => r.status === 'requested' || r.status === 'under_review');
+    const historial = reembolsos.filter(r => r.status !== 'requested' && r.status !== 'under_review');
+    const listaFiltrada = tab === 'activos' ? activos : historial;
 
     const handleRevisar = async (action: 'approve' | 'reject') => {
         if (!refundActivo) return;
@@ -52,18 +58,39 @@ export function SeccionReembolsos() {
 
     return (
         <div className="reembolsosContenedor">
-            {reembolsos.length === 0 && (
+            <div className="reembolsosTabs">
+                <Button
+                    variante="texto"
+                    tamano="pequeno"
+                    type="button"
+                    className={`reembolsosTab ${tab === 'activos' ? 'reembolsosTab--activa' : ''}`}
+                    onClick={() => setTab('activos')}
+                >
+                    Activos ({activos.length})
+                </Button>
+                <Button
+                    variante="texto"
+                    tamano="pequeno"
+                    type="button"
+                    className={`reembolsosTab ${tab === 'historial' ? 'reembolsosTab--activa' : ''}`}
+                    onClick={() => setTab('historial')}
+                >
+                    Historial ({historial.length})
+                </Button>
+            </div>
+
+            {listaFiltrada.length === 0 && (
                 <div className="reembolsosVacio">
                     <CheckCircle size={32} />
-                    <p>No hay solicitudes de reembolso pendientes</p>
+                    <p>{tab === 'activos' ? 'No hay solicitudes de reembolso pendientes' : 'Sin reembolsos en el historial'}</p>
                 </div>
             )}
 
             <div className="reembolsosLista">
-                {reembolsos.map((r) => (
+                {listaFiltrada.map((r) => (
                     <div key={r.id} className="reembolsoCard">
                         <div className="reembolsoCardHeader">
-                            <span className={`reembolsoEstado ${REFUND_STATUS_CLASS[r.status]}`}>
+                            <span className="reembolsoEstado">
                                 {REFUND_STATUS_LABELS[r.status]}
                             </span>
                             <span className="reembolsoMonto">
