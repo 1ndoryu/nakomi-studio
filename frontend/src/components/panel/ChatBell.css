@@ -1,0 +1,157 @@
+/* [104A-34] Estilos del dropdown de chat en header.
+ * Mantiene consistencia visual con NotificationBell. */
+
+.chatBell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.chatBell .menuContextualBoton.chatBell__trigger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    padding: 4px;
+    color: var(--brand-black);
+    border-radius: 50%;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    min-width: auto;
+    min-height: auto;
+    text-decoration: none;
+}
+
+.chatBell .menuContextualBoton.chatBell__trigger:hover {
+    opacity: 0.6;
+    background: none;
+}
+
+.chatBell__badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--bg-accent);
+    color: var(--brand-white);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    transform: translate(30%, -30%);
+    line-height: 1;
+}
+
+.chatBell__dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 340px;
+    max-height: 420px;
+    background: var(--brand-white);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px var(--border-light);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chatBell__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--bg-item-active);
+}
+
+.chatBell__title {
+    font-size: var(--text-sm);
+    margin: 0;
+}
+
+.chatBell__list {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.chatBell__empty {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.chatBell__item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    border-bottom: 1px solid var(--bg-item-active);
+    background: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.chatBell__item:last-child {
+    border-bottom: none;
+}
+
+.chatBell__item:hover {
+    background: var(--bg-accent);
+}
+
+.chatBell__itemIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+}
+
+.chatBell__itemContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.chatBell__itemTitle {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--brand-black);
+}
+
+.chatBell__itemPreview {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chatBell__itemTime {
+    font-size: var(--text-mini);
+    color: var(--text-tertiary);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .chatBell__dropdown {
+        width: 290px;
+        right: -30px;
+    }
+}

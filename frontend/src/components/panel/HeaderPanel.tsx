@@ -12,11 +12,11 @@ import {LogOut} from 'lucide-react';
 import {GloryLink} from '../../core/router';
 import {useAuthStore} from '../../stores/authStore';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
-import {Button} from '../ui/Button';
 import {MenuContextual} from '../ui/ContextMenu';
 import {Logo} from '../ui/Logo';
 import OptimizedImage from '../ui/OptimizedImage';
 import NotificationBell from './NotificationBell';
+import ChatBell from './ChatBell';
 import './HeaderPanel.css';
 import '../../styles/header.css';
 
@@ -41,13 +41,10 @@ export const HeaderPanel: React.FC = () => {
                     <Logo className="headerPanelLogoSvg" />
                 </GloryLink>
 
-                {/* Acciones: Chat, Inicio, Avatar con submenú */}
+                {/* Acciones: Chat, Notificaciones, Inicio, Avatar con submenú */}
                 <div className="headerPanelAcciones">
+                    <ChatBell />
                     <NotificationBell />
-                    {/* [064A-5] Enlace de Chat abre la sección mensajes del panel */}
-                    <Button variante="texto" className="headerPanelEnlace" type="button" onClick={() => window.dispatchEvent(new CustomEvent('panel-cambiar-tab', {detail: 'mensajes'}))}>
-                        {t('nav.chat')}
-                    </Button>
                     {/* [074A-45] Ir a inicio sin desloguear */}
                     <GloryLink to="/" className="headerPanelEnlace">
                         {t('nav.home', 'Inicio')}

@@ -61,7 +61,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - Inconsistencias entre el blog de incio y la pagina de blog, algo no cuadra. 
 - Del lado de las notificaciones agregar un boton de chat, mostrara los chat al abrir y dar click redigirá al panel abriendo ese chat. 
-- Cuando le doy a reportar un problema, debería abrir el chatbot y el chatbot debe entender que se abrio el chat desde ahi para que el cliente escriba el problema, y sea atentido por el chatbot, tenemos que preparar el chatbot para los problemas comunes de un pedido.
 - Necesito probar un hosting real, usar la segunda vps que maneja coolify para crear un hosting, emulando como si un usuario lo hubiera comprado, tiene que ser un hosting real, o sea un despliegue dentro de la vps.
 - Al completar el checkout de hosting se debe provisionar el sitio real en Coolify y guardar `coolify_site_name` + datos reales del servidor.
 - Cuando falle una renovación o se cancele la suscripción, hay que notificar al cliente y sincronizar suspensión/cancelación real en Coolify, no solo en base de datos.
@@ -69,6 +68,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
 - Ejecutar Hosting Automation
 - sentinel report md tiene muchos Warning, arreglarlos todos si son reales o corregir el falso positivo.
+- Resuelve los problemas de # Auditoría Completa del Sistema de Chatbot — 2026-04-10
+- El circulo de numero en el icono de chat se ve con fondo blanco y las letras son blancas, ¿esta centralizado el componente? 
+- Hay que hacer una auditoría completa al sistema de notificaciones, por ejemplo si un cliente tiene 
 
 ## Tareas pendientes extraídas de planes activos (104A-26)
 
