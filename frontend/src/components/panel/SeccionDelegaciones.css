@@ -67,26 +67,16 @@
     text-overflow: ellipsis;
 }
 
+/* [104A-21] Badge unificado: chip neutro oscuro como ordenCardBadge. Sin colores.
+ * Las clases delegBadge* eran código muerto (TSX usa delegEstado-- que no existe en CSS). */
 .delegCardBadge {
     font-size: var(--text-xs);
-    
+    padding: 6px 10px;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
     flex-shrink: 0;
-}
-
-.delegBadgeRequested {
-    color: var(--color-warning);
-}
-
-.delegBadgeAccepted {
-    color: var(--color-success);
-}
-
-.delegBadgeRejected {
-    color: var(--color-error);
-}
-
-.delegBadgeCompleted {
-    color: var(--primary-500);
+    background-color: var(--bg-dark);
+    color: var(--brand-white);
 }
 
 .delegCardRazon {

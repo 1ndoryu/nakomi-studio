@@ -76,7 +76,7 @@ export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
                                 <div key={plan.id} className="hostingDetallePlanOption">
                                     <div className="hostingDetallePlanOptionHeader">
                                         <span className="hostingDetallePlanNombre">{plan.label}</span>
-                                        <span className={`hostingDetallePlanBadge ${isUpgrade ? 'hostingDetallePlanBadge--upgrade' : 'hostingDetallePlanBadge--downgrade'}`}>
+                                        <span className="hostingDetallePlanBadge">
                                             {isUpgrade ? 'Upgrade' : 'Downgrade'}
                                         </span>
                                     </div>

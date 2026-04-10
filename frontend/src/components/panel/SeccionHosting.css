@@ -155,12 +155,12 @@
     gap: 4px;
 }
 
-/* [084A-18] Footer también subido a --text-sm */
+/* [104A-21] Footer unificado a --text-xs como ordenCardFooter */
 .hostingCardFooter {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--text-muted);
     padding-top: var(--spacing-xs);
     border-top: 1px solid var(--bg-item-hover);

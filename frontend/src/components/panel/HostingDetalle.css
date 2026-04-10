@@ -373,23 +373,16 @@
     align-items: center;
 }
 
-/* [084A-45] Badges sin color de fondo (minimalista), botón más separado */
+/* [104A-21] Badge sin color — solo neutro. */
 .hostingDetallePlanBadge {
     font-size: var(--text-xs);
-    
     padding: 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-tertiary);
 }
 
-.hostingDetallePlanBadge--upgrade {
-    color: var(--color-success);
-}
-
-.hostingDetallePlanBadge--downgrade {
-    color: var(--color-warning);
-}
+/* upgrade/downgrade ya no usan colores (regla: ningún badge con color) */
 
 /* ── Estados vacíos (acceso, recursos) ───── */
 

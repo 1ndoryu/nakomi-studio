@@ -67,7 +67,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Cuando le doy a reportar un problema, debería abrir el chatbot y el chatbot debe entender que se abrio el chat desde ahi para que el cliente escriba el problema, y sea atentido por el chatbot, tenemos que preparar el chatbot para los problemas comunes de un pedido.
 - En los pedidos los empleados no tienen acciones, claramente falta acciones reportar un problema, para delegar, cancelar pedido, para cada cosa tiene que escribir una razon, el reportar problema no abre el chat para los empleados, tienen que escribir la razon, tampoco veo que en el panel de admin haya algo para ver y atender los problemas, esto falta.
 - ordenCard esta dejando un espacio vacío debajo de la iamgen, no se por qué. 
-- disponibleCardBadge sin color, ningun badge debe tener color, mas inconsistencias "delegCardFooter" y "disponibleCardFooter", deben ser igual a ordenCardFooter, y todos los footer de las tarjetas, esto es inconsistente y es un error.
 - reembolsoMonto no necesitar estar en negrita
 - los badge de reembolsoEstado reembolsoEstado--rechazado deben ser blanco y negro, en la pagina de reembolsos en el panel falta algo como proyectosTabs 
 - hostingCardCliente no necesitar estart italic, mueve lo que hay en hostingCardRecursos al footer de la tarjeta y quita el precio
@@ -77,7 +76,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - HostingDetalle debe dejar de usar IP hardcodeada y mostrar VPS/IP reales desde backend.
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
 - Ejecutar Hosting Automation
-
-##
-
-- 
+- sentinel report md tiene muchos Warning, arreglarlos todos si son reales o corregir el falso positivo.
