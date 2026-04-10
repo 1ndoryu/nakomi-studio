@@ -6,6 +6,7 @@ import {useCallback, useState} from 'react';
 import {MessageSquare, Bot, User} from 'lucide-react';
 
 import {useChat} from '../../hooks/useChat';
+import {useAuthStore} from '../../stores/authStore';
 import {Button} from '../ui/Button';
 import {MenuContextual} from '../ui/ContextMenu';
 import './ChatBell.css';
@@ -15,6 +16,9 @@ const PANEL_CHAT_TARGET = 'PANEL_CHAT_TARGET';
 export default function ChatBell() {
     const {sessions, cargandoSesiones} = useChat();
     const [open, setOpen] = useState(false);
+    /* [154A-14] Rol del usuario para resolver títulos de sesión */
+    const effectiveRole = useAuthStore(s => s.user?.effectiveRole);
+    const isStaff = effectiveRole === 'admin' || effectiveRole === 'employee';
 
     /* Sesiones activas (no cerradas/archivadas) ordenadas por último mensaje */
     const activeSessions = sessions
@@ -107,7 +111,10 @@ export default function ChatBell() {
                             </span>
                             <div className="chatBell__itemContent">
                                 <span className="chatBell__itemTitle">
-                                    {s.order_number ? `Orden #${s.order_number}` : (s.visitor_name ?? 'Chat general')}
+                                    {/* [154A-14] Mostrar nombre del participante en vez de "Orden #N" */}
+                                    {s.order_id
+                                        ? (isStaff ? s.client_name : s.employee_name) || (s.order_number ? `Orden #${s.order_number}` : 'Chat')
+                                        : s.visitor_name ?? 'Chat general'}
                                 </span>
                                 {s.last_message && (
                                     <span className="chatBell__itemPreview">{s.last_message}</span>

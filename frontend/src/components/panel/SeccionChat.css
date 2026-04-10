@@ -74,6 +74,14 @@
     flex-shrink: 0;
 }
 
+/* [154A-14] Avatar del participante en la lista de sesiones */
+.chatSesionAvatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 .chatSesionInfo {
     flex: 1;
     min-width: 0;

@@ -15,6 +15,18 @@ import {Textarea} from '../ui/Textarea';
 import './SeccionChat.css';
 import './ChatBurbujas.css';
 
+/* [154A-14] Resuelve el título de una sesión de chat mostrando el nombre del
+ * otro participante en vez de "Orden #N". Staff ve el nombre del cliente,
+ * clientes ven el nombre del empleado. Fallback a order_number si no hay nombre. */
+function resolveSessionTitle(s: ChatSession, isStaff: boolean): string {
+    if (s.order_id) {
+        const name = isStaff ? s.client_name : s.employee_name;
+        if (name) return name;
+        return `Orden #${s.order_number ?? '...'}`;
+    }
+    return s.visitor_name || 'Chat general';
+}
+
 export const SeccionChat: React.FC = () => {
     const {
         activeSessionId,
@@ -76,6 +88,7 @@ export const SeccionChat: React.FC = () => {
                             session={s}
                             active={s.id === activeSessionId}
                             onClick={() => selectSession(s.id)}
+                            isStaff={isStaff}
                         />
                     ))
                 )}
@@ -96,9 +109,9 @@ export const SeccionChat: React.FC = () => {
                                 <ChevronLeft size={18} />
                             </Button>
                             <span className="chatAreaTitulo">
-                                {activeSession?.order_id
-                                    ? `Chat de orden #${activeSession.order_number ?? '...'}`
-                                    : activeSession?.visitor_name || 'Chat general'}
+                                {activeSession
+                                    ? resolveSessionTitle(activeSession, isStaff)
+                                    : 'Chat general'}
                             </span>
                             {/* [104A-40] Indicador de presencia del visitante (staff only) */}
                             {isStaff && visitorStatus && (
@@ -224,11 +237,16 @@ function SessionItem({
     session,
     active,
     onClick,
+    isStaff,
 }: {
     session: ChatSession;
     active: boolean;
     onClick: () => void;
+    isStaff: boolean;
 }) {
+    /* [154A-14] Avatar del otro participante (staff → avatar del cliente, cliente → avatar del empleado) */
+    const avatarUrl = isStaff ? session.client_avatar_url : session.employee_avatar_url;
+
     return (
         <Button
             className={`chatSesionItem ${active ? 'chatSesionActiva' : ''}`}
@@ -238,13 +256,13 @@ function SessionItem({
             tamano="pequeno"
         >
             <div className="chatSesionIcono">
-                {session.ai_enabled ? <Bot size={18} /> : <User size={18} />}
+                {avatarUrl
+                    ? <img src={avatarUrl} alt="" className="chatSesionAvatar" />
+                    : session.ai_enabled ? <Bot size={18} /> : <User size={18} />}
             </div>
             <div className="chatSesionInfo">
                 <div className="chatSesionTitulo">
-                    {session.order_id
-                        ? `Orden #${session.order_number ?? '...'}`
-                        : 'Chat general'}
+                    {resolveSessionTitle(session, isStaff)}
                 </div>
                 <div className="chatSesionPreview">
                     {session.last_message || 'Sin mensajes'}

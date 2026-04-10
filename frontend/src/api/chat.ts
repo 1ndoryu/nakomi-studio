@@ -23,6 +23,11 @@ export interface ChatSession {
     last_viewed_at: string | null;
     /* [104A-40] Cuándo se conectó el visitante por última vez via WS */
     visitor_last_connected_at: string | null;
+    /* [154A-14] Nombres y avatares de participantes (enriquecido desde orders+users) */
+    client_name: string | null;
+    client_avatar_url: string | null;
+    employee_name: string | null;
+    employee_avatar_url: string | null;
 }
 
 export interface ChatMessage {

@@ -144,6 +144,10 @@ pub async fn create_session(
         visitor_user_agent: session.visitor_user_agent,
         last_viewed_at: session.last_viewed_at,
         visitor_last_connected_at: session.visitor_last_connected_at,
+        client_name: None,
+        client_avatar_url: None,
+        employee_name: None,
+        employee_avatar_url: None,
     };
     Ok((StatusCode::CREATED, Json(response)))
 }

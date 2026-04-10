@@ -141,6 +141,11 @@ pub struct ChatSessionResponse {
     pub last_viewed_at: Option<DateTime<Utc>>,
     /* [104A-40] Cuándo se conectó el visitante por última vez via WS */
     pub visitor_last_connected_at: Option<DateTime<Utc>>,
+    /* [154A-14] Nombres y avatares de los participantes — enriquecido desde orders+users */
+    pub client_name: Option<String>,
+    pub client_avatar_url: Option<String>,
+    pub employee_name: Option<String>,
+    pub employee_avatar_url: Option<String>,
 }
 
 /* [064A-72] Modelo de notas de sesión de chat */

@@ -356,11 +356,21 @@ impl ChatHub {
         self.enrich_sessions(sessions).await
     }
 
-    /// Enriquecer sesiones con `last_message` preview y `order_number`
+    /// Enriquecer sesiones con `last_message` preview, `order_number` y nombres de participantes
     async fn enrich_sessions(
         &self,
         sessions: Vec<ChatSession>,
     ) -> Result<Vec<ChatSessionResponse>, AppError> {
+        /* [154A-14] Struct local para traer nombres/avatares de participantes de orden */
+        #[derive(sqlx::FromRow)]
+        struct OrderParticipants {
+            order_id: Uuid,
+            client_name: Option<String>,
+            client_avatar: Option<String>,
+            employee_name: Option<String>,
+            employee_avatar: Option<String>,
+        }
+
         let ids: Vec<Uuid> = sessions.iter().map(|s| s.id).collect();
         let last_msgs = ChatRepository::last_messages_for_sessions(&self.pool, &ids).await?;
 
@@ -378,12 +388,35 @@ impl ChatHub {
             .unwrap_or_default()
         };
 
+        /* [154A-14] Obtener nombres y avatares de cliente/empleado para sesiones de orden.
+         * Un solo JOIN trae ambos participantes de cada orden vinculada. */
+        let participants: Vec<OrderParticipants> = if order_ids.is_empty() {
+            vec![]
+        } else {
+            sqlx::query_as::<_, OrderParticipants>(
+                "SELECT o.id AS order_id, \
+                   c.display_name AS client_name, c.avatar_url AS client_avatar, \
+                   e.display_name AS employee_name, e.avatar_url AS employee_avatar \
+                 FROM orders o \
+                 JOIN users c ON c.id = o.client_id \
+                 LEFT JOIN users e ON e.id = o.assigned_employee_id \
+                 WHERE o.id = ANY($1)",
+            )
+            .bind(&order_ids)
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default()
+        };
+
         Ok(sessions
             .into_iter()
             .map(|s| {
                 let last = last_msgs.iter().find(|m| m.session_id == s.id);
                 let order_num = s.order_id.and_then(|oid| {
                     order_numbers.iter().find(|(id, _)| *id == oid).map(|(_, n)| *n)
+                });
+                let parts = s.order_id.and_then(|oid| {
+                    participants.iter().find(|p| p.order_id == oid)
                 });
                 ChatSessionResponse {
                     id: s.id,
@@ -400,6 +433,10 @@ impl ChatHub {
                     visitor_user_agent: s.visitor_user_agent,
                     last_viewed_at: s.last_viewed_at,
                     visitor_last_connected_at: s.visitor_last_connected_at,
+                    client_name: parts.and_then(|p| p.client_name.clone()),
+                    client_avatar_url: parts.and_then(|p| p.client_avatar.clone()),
+                    employee_name: parts.and_then(|p| p.employee_name.clone()),
+                    employee_avatar_url: parts.and_then(|p| p.employee_avatar.clone()),
                 }
             })
             .collect())
