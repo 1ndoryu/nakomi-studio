@@ -10,7 +10,7 @@ import type {AdminService, CreateServiceBody, UpdateServiceBody, SavePlanBody} f
 import {apiSaveServicePlans} from '../../api/admin-services';
 
 export const SubTabServicios: React.FC = () => {
-    const {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar: eliminarServicio} = useContenidoServicios();
+    const {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar: eliminarServicio, recargar} = useContenidoServicios();
     const [editorAbierto, setEditorAbierto] = useState(false);
     const [servicioEditando, setServicioEditando] = useState<AdminService | null>(null);
 
@@ -24,11 +24,13 @@ export const SubTabServicios: React.FC = () => {
         setEditorAbierto(true);
     }, []);
 
+    /* [154A-2] Refetch después de guardar planes para que features se reflejen en estado */
     const handleGuardar = useCallback(async (body: CreateServiceBody | UpdateServiceBody, planes: SavePlanBody[]) => {
         if (servicioEditando) {
             const result = await actualizar(servicioEditando.id, body as UpdateServiceBody);
             if (result) {
                 await apiSaveServicePlans(servicioEditando.id, planes);
+                await recargar();
                 setEditorAbierto(false);
             }
         } else {
@@ -37,10 +39,11 @@ export const SubTabServicios: React.FC = () => {
                 if (planes.length > 0) {
                     await apiSaveServicePlans(result.id, planes);
                 }
+                await recargar();
                 setEditorAbierto(false);
             }
         }
-    }, [servicioEditando, actualizar, crear]);
+    }, [servicioEditando, actualizar, crear, recargar]);
 
     const handleArchivar = useCallback(async (id: string) => {
         await archivar(id);
