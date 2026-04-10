@@ -7,6 +7,8 @@
  * [084A-4] Restaurado ModalCompra — click en plan abre modal de pago (revertido 074A-36).
  * sentinel-disable-file componente-sin-hook: Lógica minimal (fetch API + wiring de estado)
  * no justifica hook separado; datos estáticos vienen de imports directos.
+ * [094A-24] La compra solo puede salir de `apiData` real para no ofrecer servicios
+ * que ya no existen en el backend y terminan en 404 al crear la orden.
  */
 import {useState, useCallback, useEffect} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -25,11 +27,10 @@ import {SeccionCta} from '../components/ui/SeccionCta';
 import {SeccionPlanesServicio} from '../components/servicios/SeccionPlanesServicio';
 import {ModalCompra} from '../components/servicios/ModalCompra';
 import {SeccionContacto} from '../components/home/SeccionContacto';
+import {NotFoundIsland} from './NotFoundIsland';
 import {SKILLS_POR_DEFECTO} from '../data/skills';
-import {obtenerPlanesServicio} from '../data/planes/index';
 import type {PlanServicio} from '../data/planes/tipos';
-import {SERVICIOS_DATA} from '../data/servicios';
-import {apiGetServiceBySlug, type PublicService} from '../api/admin-services';
+import {apiGetServiceBySlug, type PublicService, type PublicServicePlan} from '../api/admin-services';
 
 /* [064A-47] Imagen del servicio añadida al hero. */
 interface ServicioIndividualIslandProps {
@@ -53,35 +54,55 @@ export const ServicioIndividualIsland = ({titulo, descripcion, precio_desde, slu
     /* [064A-5] Si logueado, CTA lleva al panel. Si no, abre el chat. */
     const ctaLink = logueado ? '/panel' : undefined;
 
-    /* ID del servicio actual para excluirlo de relacionados */
-    const servicioId = slug || titulo?.toLowerCase().replace(/\s+/g, '-') || '';
-
-    /* [074A-21] Fetch servicio de la API con fallback a datos estáticos */
+    /* [074A-21] Fetch servicio de la API pública. */
     const [apiData, setApiData] = useState<PublicService | null>(null);
+    const [apiError, setApiError] = useState(false);
+
     useEffect(() => {
         const controller = new AbortController();
+        setApiError(false);
+
         if (slug) {
             apiGetServiceBySlug(slug)
                 .then(data => { if (!controller.signal.aborted) setApiData(data); })
-                .catch(() => { /* mantiene fallback estático */ });
+                .catch(() => {
+                    if (!controller.signal.aborted) {
+                        setApiData(null);
+                        setApiError(true);
+                    }
+                });
         }
+
         return () => controller.abort();
     }, [slug]);
 
-    /* [064A-64] Buscar servicio por slug para traducir titulo y descripcion */
-    const servicioData = SERVICIOS_DATA.find(s => slug && s.link.includes(slug));
-    const tituloFinal = apiData?.title || (servicioData ? t(`content.services.${servicioData.id}.titulo`, {defaultValue: titulo ?? ''}) : titulo);
-    const descripcionFinal = apiData?.description || (servicioData ? t(`content.services.${servicioData.id}.descripcion`, {defaultValue: descripcion ?? ''}) : descripcion);
+    if (slug && apiError) {
+        return <NotFoundIsland />;
+    }
+
+    if (slug && !apiData) {
+        return (
+            <LayoutPagina className="servicioIndividualMain">
+                <p>{t('common.loading', 'Cargando...')}</p>
+            </LayoutPagina>
+        );
+    }
+
+    const servicioId = apiData?.slug || slug || titulo?.toLowerCase().replace(/\s+/g, '-') || '';
+
+    const tituloFinal = apiData?.title || titulo;
+    const descripcionFinal = apiData?.description || descripcion;
     const imagenFinal = apiData?.image_url || imagen;
     const skillsApi = apiData?.skills ? (apiData.skills as Array<{titulo: string; descripcion: string}>).map((sk, i) => ({id: i, titulo: sk.titulo, descripcion: sk.descripcion})) : null;
+    const planesApi = apiData?.plans?.map(plan => convertirPlanPublico(apiData.slug, plan)) || null;
 
     /* [044A-40] Obtener precio mínimo real de los planes del servicio. */
-    const datosPlanes = obtenerPlanesServicio(servicioId);
     const precioMinimo = (() => {
         if (precio_desde) return precio_desde;
-        if (!datosPlanes || datosPlanes.planes.length === 0) return '';
-        const precios = datosPlanes.planes
+        if (!planesApi || planesApi.length === 0) return '';
+        const precios = planesApi
             .map(p => {
+                if (p.esPersonalizado) return Infinity;
                 const num = parseFloat(p.precio.replace(/[^0-9.]/g, ''));
                 return isNaN(num) ? Infinity : num;
             })
@@ -93,14 +114,14 @@ export const ServicioIndividualIsland = ({titulo, descripcion, precio_desde, slu
     return (
         <LayoutPagina className="servicioIndividualMain">
             <SEOHead
-                title={titulo}
-                description={descripcion}
-                path={`/servicios/${slug || ''}`}
-                jsonLd={titulo && descripcion && slug ? serviceSchema(titulo, descripcion, slug) : undefined}
+                title={tituloFinal}
+                description={descripcionFinal}
+                path={`/servicios/${servicioId}`}
+                jsonLd={tituloFinal && descripcionFinal && servicioId ? serviceSchema(tituloFinal, descripcionFinal, servicioId) : undefined}
             />
             <SeccionHeroServicio titulo={tituloFinal} descripcion={descripcionFinal} imagen={imagenFinal} />
             <SeccionGaleriaServicio />
-            <SeccionPlanesServicio slug={servicioId} onSeleccionarPlan={handleSeleccionarPlan} />
+            <SeccionPlanesServicio slug={servicioId} planes={planesApi} onSeleccionarPlan={handleSeleccionarPlan} />
             {/* [084A-28] Pasar contexto de servicio al abrir chat para soporte contextual */}
             <SeccionCta descripcion={[t('service_detail.cta_1'), t('service_detail.cta_2')]} textoBotonPrimario={precioMinimo ? `${t('service_detail.cta_hire')} ${precioMinimo}` : t('service_detail.cta_hire')} linkBotonPrimario={ctaLink} onBotonPrimarioClick={logueado ? undefined : () => abrirChat(`service:${slug || servicioId}`)} textoBotonSecundario={t('service_detail.cta_contact')} onBotonSecundarioClick={() => abrirChat(`service:${slug || servicioId}`)} />
             <SeccionSkillsServicio skills={skillsApi || SKILLS_POR_DEFECTO} />
@@ -119,3 +140,38 @@ export const ServicioIndividualIsland = ({titulo, descripcion, precio_desde, slu
 };
 
 export default ServicioIndividualIsland;
+
+function convertirPlanPublico(serviceSlug: string, plan: PublicServicePlan): PlanServicio {
+    const features = Array.isArray(plan.features)
+        ? plan.features
+            .map((feature: unknown) => {
+                const data = feature as Record<string, unknown>;
+                const texto = typeof data.texto === 'string' ? data.texto : '';
+                const incluido = typeof data.incluido === 'boolean' ? data.incluido : false;
+                return texto ? {texto, incluido} : null;
+            })
+            .filter((feature): feature is {texto: string; incluido: boolean} => feature !== null)
+        : [];
+
+    const priceValue = plan.is_custom || plan.price_cents <= 0
+        ? 'A medida'
+        : formatPrice(plan.price_cents);
+
+    return {
+        id: plan.slug,
+        nombre: plan.name,
+        precio: priceValue,
+        periodo: serviceSlug === 'agentes-ia' && !plan.is_custom ? '/mes' : undefined,
+        descripcion: plan.description || '',
+        caracteristicas: features,
+        destacado: plan.is_highlighted,
+        esPersonalizado: plan.is_custom,
+        ctaTexto: plan.is_custom ? 'Hablar con nosotros' : 'Elegir plan',
+        ctaLink: '/contacto/',
+    };
+}
+
+function formatPrice(priceCents: number): string {
+    const price = priceCents / 100;
+    return Number.isInteger(price) ? `$${price}` : `$${price.toFixed(2)}`;
+}

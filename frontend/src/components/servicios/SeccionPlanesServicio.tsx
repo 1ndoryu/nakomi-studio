@@ -8,7 +8,8 @@ import {Button} from '../ui/Button';
 import './SeccionPlanesServicio.css';
 
 interface SeccionPlanesServicioProps {
-    slug: string;
+    slug?: string;
+    planes?: PlanServicio[] | null;
     onSeleccionarPlan?: (plan: PlanServicio) => void;
 }
 
@@ -68,9 +69,11 @@ const TarjetaPlan: React.FC<TarjetaPlanProps> = ({plan, onSeleccionar}) => {
     );
 };
 
-export const SeccionPlanesServicio: React.FC<SeccionPlanesServicioProps> = ({slug, onSeleccionarPlan}) => {
+export const SeccionPlanesServicio: React.FC<SeccionPlanesServicioProps> = ({slug, planes, onSeleccionarPlan}) => {
     const {t} = useTranslation();
-    const datos = obtenerPlanesServicio(slug);
+    const datos = planes && planes.length > 0
+        ? {servicioSlug: slug || '', servicioTitulo: '', planes}
+        : (slug ? obtenerPlanesServicio(slug) : null);
 
     if (!datos) return null;
 

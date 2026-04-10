@@ -14,6 +14,13 @@
 - El fix cubre el flujo de compra público sin exigir reiniciar el backend.
 - También protege otros callers del frontend que reutilicen `apiCreateOrder()`.
 
+## Ajuste adicional [094A-24]
+- El 404 persistente no venía ya de los slugs canónicos para los 4 servicios publicados, sino de páginas/frontend que seguían ofreciendo servicios fantasma (`ecommerce`, `seo`, `marketing-digital`) ausentes en el backend.
+- `ServicioIndividualIsland`, `App.tsx`, `SeccionPlanesServicio`, `SeccionServiciosRelacionados` y `useServicios` dejaron de depender del catálogo estático para la compra.
+- El detalle individual ahora carga el servicio real desde `/api/services/:slug`, usa `apiData.plans` como fuente de verdad y devuelve 404 visual si el slug no existe en la API pública.
+- Con esto, el usuario ya no puede abrir un checkout contra un servicio inexistente y disparar `Servicio '...' no encontrado` al crear la orden.
+
 ## Validación
 - `npm --prefix frontend run type-check`
 - `npm --prefix frontend run build`
+- Sonda HTTP autenticada: servicios reales (`diseno-de-sitios-web`, `desarrollo-apps`, `agentes-ia`, `branding`) crean órdenes con `201`; servicios fantasma (`ecommerce`, `seo`, `marketing-digital`) reproducían el `404` antes del ajuste.

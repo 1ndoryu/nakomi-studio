@@ -36,7 +36,6 @@ import {ChatWidget} from './components/chat/ChatWidget';
 import {AdminEditorProvider} from './components/AdminEditorProvider';
 
 /* Data para resolver slugs */
-import {SERVICIOS_DATA} from './data/servicios';
 import {PROYECTOS_DATA} from './data/showcase';
 
 import './App.css';
@@ -62,18 +61,7 @@ function NavigateRegistrar() {
 /* Wrapper: resuelve slug de servicio a props */
 function ServicioDetallePage() {
     const {slug} = useParams<{slug: string}>();
-    const servicio = SERVICIOS_DATA.find(s => {
-        const sSlug = s.link?.split('/').filter(Boolean).pop() || '';
-        return sSlug === slug || String(s.id) === slug;
-    });
-    return (
-        <ServicioIndividualIsland
-            titulo={servicio?.titulo}
-            descripcion={servicio?.descripcion}
-            imagen={servicio?.imagen}
-            slug={slug}
-        />
-    );
+    return <ServicioIndividualIsland slug={slug} />;
 }
 
 /* Wrapper: resuelve slug de proyecto a props */

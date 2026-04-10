@@ -69,4 +69,3 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - las imagenes parecen estar optmizandose pero no se optmizan automaticamente segun el tamaño en el que aparecen
 - En metodos de pagos agregar tarjeta no funciona.
 - regenera los datos de prueba
-- sigue el problema!!! DE orders.ts:140  POST http://localhost:3000/api/orders 404 (Not Found)

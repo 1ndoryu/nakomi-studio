@@ -1,8 +1,9 @@
-/* [074A-21] Hook de servicios públicos — consume API con fallback a datos estáticos.
- * [084A-30] Migrado a useQuery + isPending para eliminar flash de contenido. */
+/* [074A-21] Hook de servicios públicos.
+ * [084A-30] Migrado a useQuery + isPending para eliminar flash de contenido.
+ * [094A-24] Sin fallback estático: el catálogo visible debe reflejar exactamente
+ * los servicios que el backend publica para evitar compras contra slugs fantasma. */
 import {useState, useMemo} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {SERVICIOS_DATA} from '../data/servicios';
 import {Servicio} from '../types/servicios';
 import {apiListPublicServices, type PublicService} from '../api/admin-services';
 
@@ -40,12 +41,10 @@ export const useServicios = ({initialCategory = 'todos', initialSearch = ''}: Us
         retry: 1,
     });
 
-    const servicios = useMemo(() => {
-        if (isPending) return [];
-        if (!apiData || apiData.length === 0) return SERVICIOS_DATA;
-        const mapped = apiData.map(convertirServicio);
-        return mapped.length > 0 ? mapped : SERVICIOS_DATA;
-    }, [apiData, isPending]);
+    const servicios = useMemo(
+        () => (apiData || []).map(convertirServicio),
+        [apiData]
+    );
 
     /* Filtrado de servicios según categoría y búsqueda */
     const serviciosFiltrados = useMemo(() => {
