@@ -11,24 +11,28 @@ role = "user_role"
 
 [[records]]
 email = "admin@admin.com"
+username = "admin"
 password_hash = "plain:admin"
 role = "admin"
 display_name = "Admin"
 
 [[records]]
 email = "cliente@test.com"
+username = "cliente"
 password_hash = "plain:cliente"
 role = "client"
 display_name = "Cliente"
 
 [[records]]
 email = "empleado@test.com"
+username = "empleado"
 password_hash = "plain:empleado"
 role = "employee"
 display_name = "Empleado"
 
 [[records]]
 email = "empleado2@test.com"
+username = "empleado2"
 password_hash = "plain:empleado2"
 role = "employee"
 display_name = "Diseñador Jr"

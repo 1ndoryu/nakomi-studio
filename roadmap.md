@@ -68,4 +68,3 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - No puedo borrar los blogs en el cms.
 - las imagenes parecen estar optmizandose pero no se optmizan automaticamente segun el tamaño en el que aparecen
 - En metodos de pagos agregar tarjeta no funciona.
-- regenera los datos de prueba

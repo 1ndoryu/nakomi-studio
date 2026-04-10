@@ -57,3 +57,7 @@
 
 ## Inputs del sistema — no reestilar por costumbre
 - Si una sección usa `Input` base y el override local no cambia comportamiento ni semántica, eliminar la clase local en vez de mantener CSS duplicado. Cada wrapper visual extra encarece futuras limpiezas sin aportar contrato nuevo.
+
+## Fixtures TOML — tracking no sustituye existencia real
+- Si `_glory_fixtures` conserva `content_hash` y `db_id` pero la fila real ya no existe, el sync no puede hacer `skip` ciego. Primero debe verificar existencia física y reinsertar si falta.
+- Cuando una migración agrega columnas `NOT NULL` a una tabla fixture-managed, actualizar ese mismo día todos los `content/*.toml` de la tabla. Un solo campo faltante (`users.username` en este caso) rompe en cascada todos los fixtures dependientes y termina pareciendo un bug del seed en vez de un drift del fixture.
