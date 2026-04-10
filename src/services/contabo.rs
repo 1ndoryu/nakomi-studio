@@ -16,17 +16,21 @@ pub struct ContaboConfig {
     pub password: String,
 }
 
+fn first_env(keys: &[&str]) -> Option<String> {
+    keys.iter().find_map(|key| {
+        std::env::var(key)
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+    })
+}
+
 impl ContaboConfig {
     #[must_use]
     pub fn from_env() -> Option<Self> {
-        let client_id = std::env::var("CLIENT_ID_CONTABO").ok()?;
-        let client_secret = std::env::var("CLIENT_SECRET_CONTABO").ok()?;
-        let api_user = std::env::var("API_USER_CONTABO").ok()?;
-        let password = std::env::var("PASSWORD_CONTABO").ok()?;
-
-        if client_id.is_empty() || client_secret.is_empty() {
-            return None;
-        }
+        let client_id = first_env(&["CONTABO_CLIENT_ID", "CLIENT_ID_CONTABO"])?;
+        let client_secret = first_env(&["CONTABO_CLIENT_SECRET", "CLIENT_SECRET_CONTABO"])?;
+        let api_user = first_env(&["CONTABO_API_USER", "API_USER_CONTABO"])?;
+        let password = first_env(&["CONTABO_API_PASSWORD", "PASSWORD_CONTABO"])?;
 
         Some(Self {
             client_id,
@@ -173,7 +177,7 @@ impl ContaboService {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
             error!("Contabo auth failed: {status} — {body}");
-            return Err(format!("Contabo auth failed: {status}"));
+            return Err(format!("Contabo auth failed: {status} — {body}"));
         }
 
         let token_resp: TokenResponse = resp
@@ -217,7 +221,7 @@ impl ContaboService {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
             error!("Contabo list instances error: {status} — {body}");
-            return Err(format!("Contabo API error: {status}"));
+            return Err(format!("Contabo API error: {status} — {body}"));
         }
 
         let data: InstancesResponse = resp
@@ -258,5 +262,66 @@ impl ContaboService {
             .next()
             .map(VpsSummary::from)
             .ok_or_else(|| format!("Instance {instance_id} not found"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn clear_contabo_env() {
+        for key in [
+            "CONTABO_CLIENT_ID",
+            "CLIENT_ID_CONTABO",
+            "CONTABO_CLIENT_SECRET",
+            "CLIENT_SECRET_CONTABO",
+            "CONTABO_API_USER",
+            "API_USER_CONTABO",
+            "CONTABO_API_PASSWORD",
+            "PASSWORD_CONTABO",
+        ] {
+            std::env::remove_var(key);
+        }
+    }
+
+    #[test]
+    fn from_env_accepts_explicit_contabo_names() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        clear_contabo_env();
+
+        std::env::set_var("CONTABO_CLIENT_ID", "client-id");
+        std::env::set_var("CONTABO_CLIENT_SECRET", "client-secret");
+        std::env::set_var("CONTABO_API_USER", "api-user");
+        std::env::set_var("CONTABO_API_PASSWORD", "api-password");
+
+        let config = ContaboConfig::from_env().expect("config should exist");
+        assert_eq!(config.client_id, "client-id");
+        assert_eq!(config.client_secret, "client-secret");
+        assert_eq!(config.api_user, "api-user");
+        assert_eq!(config.password, "api-password");
+
+        clear_contabo_env();
+    }
+
+    #[test]
+    fn from_env_falls_back_to_legacy_names() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        clear_contabo_env();
+
+        std::env::set_var("CLIENT_ID_CONTABO", "legacy-client-id");
+        std::env::set_var("CLIENT_SECRET_CONTABO", "legacy-client-secret");
+        std::env::set_var("API_USER_CONTABO", "legacy-api-user");
+        std::env::set_var("PASSWORD_CONTABO", "legacy-password");
+
+        let config = ContaboConfig::from_env().expect("config should exist");
+        assert_eq!(config.client_id, "legacy-client-id");
+        assert_eq!(config.client_secret, "legacy-client-secret");
+        assert_eq!(config.api_user, "legacy-api-user");
+        assert_eq!(config.password, "legacy-password");
+
+        clear_contabo_env();
     }
 }

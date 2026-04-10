@@ -42,6 +42,43 @@ fn plan_storage_mb(plan: &str) -> i32 {
     }
 }
 
+/* [104A-17] Contabo es un upstream opcional del panel admin.
+ * Si falla por credenciales, parseo o indisponibilidad, no debe degradar como 500 opaco. */
+fn map_contabo_error(message: &str) -> AppError {
+    let lower = message.to_ascii_lowercase();
+    tracing::warn!("Contabo request failed: {message}");
+
+    if lower.contains("invalid_grant")
+        || lower.contains("auth failed: 400")
+        || lower.contains("auth failed: 401")
+        || lower.contains("unauthorized")
+    {
+        return AppError::ServiceUnavailable(
+            "Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas.".into(),
+        );
+    }
+
+    if lower.contains("parse error") {
+        return AppError::ServiceUnavailable(
+            "Contabo respondió con un formato inesperado. Revisa la integración antes de usar el panel VPS.".into(),
+        );
+    }
+
+    if lower.contains("api error: 5")
+        || lower.contains("timed out")
+        || lower.contains("dns")
+        || lower.contains("temporarily unavailable")
+    {
+        return AppError::ServiceUnavailable(
+            "Contabo no está disponible temporalmente. Intenta de nuevo en unos minutos.".into(),
+        );
+    }
+
+    AppError::ServiceUnavailable(
+        "No se pudo consultar Contabo. Revisa la configuración y el estado del proveedor.".into(),
+    )
+}
+
 /* ============================================================
    HANDLERS
    ============================================================ */
@@ -743,7 +780,7 @@ pub async fn list_vps(
     let instances = service
         .list_instances()
         .await
-        .map_err(|e| AppError::Internal(e.clone()))?;
+        .map_err(|error| map_contabo_error(&error))?;
 
     Ok(Json(serde_json::json!({ "data": instances })))
 }
@@ -778,10 +815,10 @@ pub async fn get_vps(
         .get_instance(instance_id)
         .await
         .map_err(|e| {
-            if e.contains("not found") {
+            if e.to_ascii_lowercase().contains("not found") {
                 AppError::NotFound(format!("VPS {instance_id} no encontrada"))
             } else {
-                AppError::Internal(e)
+                map_contabo_error(&e)
             }
         })?;
 
@@ -870,6 +907,32 @@ mod tests {
     fn plan_storage_mb_unknown_plan_returns_default() {
         assert_eq!(plan_storage_mb("unknown"), 5120);
         assert_eq!(plan_storage_mb(""), 5120);
+    }
+
+    #[test]
+    fn map_contabo_error_invalid_grant_is_service_unavailable() {
+        let error = map_contabo_error(
+            "Contabo auth failed: 400 Bad Request — {\"error_description\":\"invalid_grant\"}",
+        );
+
+        match error {
+            AppError::ServiceUnavailable(message) => {
+                assert!(message.contains("CONTABO_API_PASSWORD"));
+            }
+            other => panic!("unexpected error variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn map_contabo_error_parse_issue_is_service_unavailable() {
+        let error = map_contabo_error("Contabo parse error: missing field data");
+
+        match error {
+            AppError::ServiceUnavailable(message) => {
+                assert!(message.contains("formato inesperado"));
+            }
+            other => panic!("unexpected error variant: {other:?}"),
+        }
     }
 
     /* --- plan_bandwidth_gb --- */

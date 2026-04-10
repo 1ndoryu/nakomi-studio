@@ -12,6 +12,22 @@ function formatMb(mb: number): string {
     return `${mb} MB`;
 }
 
+function getVpsErrorMessage(error: unknown): string {
+    const apiMessage = (error as {
+        response?: {data?: {message?: string}};
+    })?.response?.data?.message;
+
+    if (typeof apiMessage === 'string' && apiMessage.trim()) {
+        return apiMessage;
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return 'No se pudo conectar con la API de Contabo';
+}
+
 function VpsCard({instance}: {instance: VpsSummary}) {
     const statusClass = instance.status === 'running'
         ? 'vpsStatus--running'
@@ -75,7 +91,7 @@ export const VpsPanel: React.FC = () => {
     if (error) {
         return (
             <div className="vpsError">
-                <p>No se pudo conectar con la API de Contabo</p>
+                <p>{getVpsErrorMessage(error)}</p>
             </div>
         );
     }
