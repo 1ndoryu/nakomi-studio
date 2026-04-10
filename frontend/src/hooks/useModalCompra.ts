@@ -163,7 +163,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             setPaso('procesando');
             try {
                 const authResp = await apiLogin(email, password);
-                login(authResp.token, authResp.user_id, email, authResp.role, authResp.effective_role);
+                login(authResp.token, authResp.user_id, email, authResp.role, authResp.effective_role, authResp.needs_password);
                 await iniciarCompra();
             } catch (err: unknown) {
                 setPaso('auth');
@@ -177,7 +177,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         setPaso('procesando');
         try {
             const authResp = await apiQuickRegister(email);
-            login(authResp.token, authResp.user_id, email, authResp.role, authResp.effective_role);
+            login(authResp.token, authResp.user_id, email, authResp.role, authResp.effective_role, authResp.needs_password);
             await iniciarCompra();
         } catch (err: unknown) {
             /* 409 = email ya registrado → pedir password */

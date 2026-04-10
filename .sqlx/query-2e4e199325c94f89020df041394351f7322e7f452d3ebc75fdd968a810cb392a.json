@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, password_hash,\n                      role as \"role: UserRole\",\n                      active_role as \"active_role: UserRole\",\n                      email_verified, status, avatar_url, display_name, username, created_at,\n                      COUNT(*) OVER() as \"total_count!: i64\"\n             FROM users\n             WHERE ($1::text IS NULL OR email ILIKE $1 OR display_name ILIKE $1)\n               AND ($2::user_role IS NULL OR role = $2)\n               AND ($3::text IS NULL OR status = $3)\n             ORDER BY created_at DESC\n             LIMIT $4 OFFSET $5",
+  "query": "UPDATE users SET active_role = $2\n             WHERE id = $1\n             RETURNING id, email, password_hash,\n                       role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                       email_verified, status, avatar_url, display_name, username, created_at, password_set",
   "describe": {
     "columns": [
       {
@@ -82,13 +82,13 @@
       },
       {
         "ordinal": 11,
-        "name": "total_count!: i64",
-        "type_info": "Int8"
+        "name": "password_set",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
+        "Uuid",
         {
           "Custom": {
             "name": "user_role",
@@ -100,10 +100,7 @@
               ]
             }
           }
-        },
-        "Text",
-        "Int8",
-        "Int8"
+        }
       ]
     },
     "nullable": [
@@ -118,8 +115,8 @@
       true,
       false,
       false,
-      null
+      false
     ]
   },
-  "hash": "2e299b2662fe775721d420918120a3741875e88a19ecc7b5a26ecff7a7d02293"
+  "hash": "2e4e199325c94f89020df041394351f7322e7f452d3ebc75fdd968a810cb392a"
 }

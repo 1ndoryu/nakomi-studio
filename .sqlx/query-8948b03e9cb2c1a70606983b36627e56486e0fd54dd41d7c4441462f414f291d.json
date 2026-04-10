@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO users (id, email, password_hash, username)\n             VALUES ($1, $2, $3, $4)\n             RETURNING id, email, password_hash,\n                       role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                       email_verified, status, avatar_url, display_name, username, created_at",
+  "query": "INSERT INTO users (id, email, password_hash, username, password_set)\n             VALUES ($1, $2, $3, $4, $5)\n             RETURNING id, email, password_hash,\n                       role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                       email_verified, status, avatar_url, display_name, username, created_at, password_set",
   "describe": {
     "columns": [
       {
@@ -79,6 +79,11 @@
         "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "password_set",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -86,7 +91,8 @@
         "Uuid",
         "Varchar",
         "Text",
-        "Varchar"
+        "Varchar",
+        "Bool"
       ]
     },
     "nullable": [
@@ -100,8 +106,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "f00340d358db81fce0f82ec1a5e3cceecb472795f2c322de2bcb02278ec35cf8"
+  "hash": "8948b03e9cb2c1a70606983b36627e56486e0fd54dd41d7c4441462f414f291d"
 }

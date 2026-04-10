@@ -1,11 +1,12 @@
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::routing::post;
+use axum::routing::{post, put};
 use axum::{Json, Router};
 use validator::Validate;
 
 use crate::errors::AppError;
-use crate::models::{AuthResponse, LoginRequest, QuickRegisterRequest, RegisterRequest};
+use crate::middleware::AuthUser;
+use crate::models::{AuthResponse, LoginRequest, QuickRegisterRequest, RegisterRequest, SetPasswordRequest};
 use crate::services::{AuditService, AuthService};
 use crate::AppState;
 
@@ -82,6 +83,7 @@ pub fn routes() -> Router<AppState> {
         .route("/auth/register", post(register))
         .route("/auth/quick-register", post(quick_register))
         .route("/auth/login", post(login))
+        .route("/auth/set-password", put(set_password))
 }
 
 /* [064A-3] Registro rapido: solo email, sin password.
@@ -106,4 +108,29 @@ pub async fn quick_register(
 
     let response = AuthService::quick_register(&state.pool, req, &state.jwt_secret).await?;
     Ok((StatusCode::CREATED, Json(response)))
+}
+
+/* [154A-5] Establece contraseña para usuarios de quick_register (password_set = false).
+ * Requiere autenticación. Si el usuario ya tiene contraseña, retorna 400. */
+#[utoipa::path(
+    put,
+    path = "/api/auth/set-password",
+    request_body = SetPasswordRequest,
+    responses(
+        (status = 200, description = "Contraseña establecida"),
+        (status = 400, description = "Ya tiene contraseña", body = crate::errors::ErrorResponse),
+        (status = 401, description = "No autenticado", body = crate::errors::ErrorResponse)
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn set_password(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(req): Json<SetPasswordRequest>,
+) -> Result<StatusCode, AppError> {
+    req.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+
+    AuthService::set_password(&state.pool, auth.user_id, req).await?;
+    Ok(StatusCode::OK)
 }

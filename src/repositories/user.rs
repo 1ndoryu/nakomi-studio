@@ -16,6 +16,7 @@ pub struct UserWithTotal {
     pub display_name: Option<String>,
     pub username: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    pub password_set: bool,
     pub total_count: i64,
 }
 
@@ -76,20 +77,22 @@ impl UserRepository {
         pool: &PgPool,
         email: &str,
         password_hash: &str,
+        password_set: bool,
     ) -> Result<User, sqlx::Error> {
         let id = Uuid::new_v4();
         let username = email.split('@').next().unwrap_or("user").to_lowercase();
         sqlx::query_as!(
             User,
-            r#"INSERT INTO users (id, email, password_hash, username)
-             VALUES ($1, $2, $3, $4)
+            r#"INSERT INTO users (id, email, password_hash, username, password_set)
+             VALUES ($1, $2, $3, $4, $5)
              RETURNING id, email, password_hash,
                        role as "role: UserRole", active_role as "active_role: UserRole",
-                       email_verified, status, avatar_url, display_name, username, created_at"#,
+                       email_verified, status, avatar_url, display_name, username, created_at, password_set"#,
             id,
             email,
             password_hash,
             username,
+            password_set,
         )
         .fetch_one(pool)
         .await
@@ -101,7 +104,7 @@ impl UserRepository {
             User,
             r#"SELECT id, email, password_hash,
                       role as "role: UserRole", active_role as "active_role: UserRole",
-                      email_verified, status, avatar_url, display_name, username, created_at
+                      email_verified, status, avatar_url, display_name, username, created_at, password_set
              FROM users WHERE email = $1"#,
             email,
         )
@@ -115,7 +118,7 @@ impl UserRepository {
             User,
             r#"SELECT id, email, password_hash,
                       role as "role: UserRole", active_role as "active_role: UserRole",
-                      email_verified, status, avatar_url, display_name, username, created_at
+                      email_verified, status, avatar_url, display_name, username, created_at, password_set
              FROM users WHERE id = $1"#,
             id,
         )
@@ -135,7 +138,7 @@ impl UserRepository {
              WHERE id = $1
              RETURNING id, email, password_hash,
                        role as "role: UserRole", active_role as "active_role: UserRole",
-                       email_verified, status, avatar_url, display_name, username, created_at"#,
+                       email_verified, status, avatar_url, display_name, username, created_at, password_set"#,
             user_id,
             active_role as Option<UserRole>,
         )
@@ -244,7 +247,7 @@ impl UserRepository {
             r#"SELECT id, email, password_hash,
                       role as "role: UserRole",
                       active_role as "active_role: UserRole",
-                      email_verified, status, avatar_url, display_name, username, created_at,
+                      email_verified, status, avatar_url, display_name, username, created_at, password_set,
                       COUNT(*) OVER() as "total_count!: i64"
              FROM users
              WHERE ($1::text IS NULL OR email ILIKE $1 OR display_name ILIKE $1)
@@ -275,7 +278,7 @@ impl UserRepository {
              WHERE id = $1
              RETURNING id, email, password_hash,
                        role as "role: UserRole", active_role as "active_role: UserRole",
-                       email_verified, status, avatar_url, display_name, username, created_at"#,
+                       email_verified, status, avatar_url, display_name, username, created_at, password_set"#,
             user_id,
             new_role as UserRole,
         )
@@ -296,7 +299,7 @@ impl UserRepository {
              WHERE id = $1
              RETURNING id, email, password_hash,
                        role as "role: UserRole", active_role as "active_role: UserRole",
-                       email_verified, status, avatar_url, display_name, username, created_at"#,
+                       email_verified, status, avatar_url, display_name, username, created_at, password_set"#,
             user_id,
             status,
         )
@@ -356,7 +359,7 @@ impl UserRepository {
             User,
             r#"SELECT id, email, password_hash,
                       role as "role: UserRole", active_role as "active_role: UserRole",
-                      email_verified, status, avatar_url, display_name, username, created_at
+                      email_verified, status, avatar_url, display_name, username, created_at, password_set
              FROM users
              WHERE role = $1 AND status = 'active'
              ORDER BY
@@ -377,5 +380,27 @@ impl UserRepository {
         .fetch_all(pool)
         .await?;
         Ok(rows)
+    }
+
+    /* [154A-5] Actualiza la contraseña de un usuario y marca password_set = true.
+     * Usado cuando un usuario de quick_register establece su propia contraseña,
+     * o cuando usa el endpoint explícito de set-password. */
+    pub async fn set_password(
+        pool: &PgPool,
+        user_id: Uuid,
+        password_hash: &str,
+    ) -> Result<User, sqlx::Error> {
+        sqlx::query_as!(
+            User,
+            r#"UPDATE users SET password_hash = $2, password_set = true
+             WHERE id = $1
+             RETURNING id, email, password_hash,
+                       role as "role: UserRole", active_role as "active_role: UserRole",
+                       email_verified, status, avatar_url, display_name, username, created_at, password_set"#,
+            user_id,
+            password_hash,
+        )
+        .fetch_one(pool)
+        .await
     }
 }

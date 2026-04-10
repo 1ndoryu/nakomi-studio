@@ -12,6 +12,8 @@ export interface AuthResponse {
     role: UserRole;
     effective_role: UserRole;
     impersonating: boolean;
+    /* [154A-5] true si el usuario necesita establecer contraseña (quick_register) */
+    needs_password: boolean;
 }
 
 interface ApiError {
@@ -41,6 +43,12 @@ export async function apiQuickRegister(email: string): Promise<AuthResponse> {
 export async function apiSwitchRole(targetRole: UserRole): Promise<AuthResponse> {
     const {data} = await instance.post<AuthResponse>('/api/auth/switch-role', {role: targetRole});
     return data;
+}
+
+/* [154A-5] Establece contraseña para usuarios de quick_register.
+ * Requiere autenticación (token JWT en header). */
+export async function apiSetPassword(password: string): Promise<void> {
+    await instance.put('/api/auth/set-password', {password});
 }
 
 /* [044A-46] Extrae mensaje de error legible desde respuestas del backend.

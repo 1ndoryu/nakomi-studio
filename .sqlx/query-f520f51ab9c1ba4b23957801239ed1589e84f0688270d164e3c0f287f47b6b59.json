@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, password_hash,\n                      role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                      email_verified, status, avatar_url, display_name, username, created_at\n             FROM users WHERE email = $1",
+  "query": "SELECT id, email, password_hash,\n                      role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                      email_verified, status, avatar_url, display_name, username, created_at, password_set\n             FROM users\n             WHERE role = $1 AND status = 'active'\n             ORDER BY\n                 CASE WHEN email LIKE '%@test.com' THEN 0 ELSE 1 END,\n                 created_at DESC\n             LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -79,11 +79,27 @@
         "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "password_set",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        {
+          "Custom": {
+            "name": "user_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "employee",
+                "client"
+              ]
+            }
+          }
+        }
       ]
     },
     "nullable": [
@@ -97,8 +113,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "39425b053e53058ebf02a48dec640b006128365ed0d3115b68822e227247f533"
+  "hash": "f520f51ab9c1ba4b23957801239ed1589e84f0688270d164e3c0f287f47b6b59"
 }

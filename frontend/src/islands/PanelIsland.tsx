@@ -23,6 +23,8 @@ import {SeccionProblemas} from '../components/panel/SeccionProblemas';
 /* [064A-34] EmployeesSection y ServicesCatalogSection eliminados del panel. */
 import {SidebarPanel} from '../components/panel/SidebarPanel';
 import {PlaceholderSeccion} from '../components/panel/PlaceholderSeccion';
+/* [154A-5] Banner para usuarios sin contraseña (quick_register) */
+import {BannerPassword} from '../components/panel/BannerPassword';
 import {PANEL_TAB_KEY, obtenerTabsPorRol, seccionInicialPorRol, type SeccionPanel} from '../data/panel';
 import {useAuthStore} from '../stores/authStore';
 import {SEOHead} from '../components/seo/SEOHead';
@@ -137,6 +139,7 @@ export const PanelIsland: React.FC = () => {
                     />
 
                     <main className="panelContenidoPrincipal">
+                        <BannerPassword />
                         <div className="panelContenidoCabecera">
                             <h1 className="panelTitulo">{tabActual.label}</h1>
                         </div>

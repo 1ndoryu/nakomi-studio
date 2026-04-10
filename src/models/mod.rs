@@ -78,8 +78,8 @@ pub use dashboard::{
 };
 pub use user::{
     AdminUserItem, AuthResponse, ChangeRoleRequest, ChangeStatusRequest, LoginRequest,
-    PaginatedUsers, QuickRegisterRequest, RegisterRequest, UpdateProfileRequest, User,
-    UserResponse, UserRole,
+    PaginatedUsers, QuickRegisterRequest, RegisterRequest, SetPasswordRequest,
+    UpdateProfileRequest, User, UserResponse, UserRole,
 };
 pub use hosting::{
     CreateHostingRequest, HostingEvent, HostingStatsResponse, HostingSubscription,

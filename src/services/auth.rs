@@ -8,7 +8,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::models::{AuthResponse, LoginRequest, QuickRegisterRequest, RegisterRequest, UserRole};
+use crate::models::{
+    AuthResponse, LoginRequest, QuickRegisterRequest, RegisterRequest, SetPasswordRequest, UserRole,
+};
 use crate::repositories::UserRepository;
 
 /* [044A-38] Claims extendidos con role y effective_role.
@@ -39,18 +41,15 @@ fn is_admin_email(email: &str) -> bool {
 }
 
 impl AuthService {
-    /// Registra un nuevo usuario: valida unicidad, hashea contraseña, genera JWT
+    /// Registra un nuevo usuario: valida unicidad, hashea contraseña, genera JWT.
+    /// [154A-5] Si el email ya existe pero `password_set` = false (`quick_register`),
+    /// actualiza la contraseña en lugar de retornar Conflict.
     pub async fn register(
         pool: &PgPool,
         req: RegisterRequest,
         jwt_secret: &str,
     ) -> Result<AuthResponse, AppError> {
-        if UserRepository::find_by_email(pool, &req.email)
-            .await?
-            .is_some()
-        {
-            return Err(AppError::Conflict("Email ya registrado".into()));
-        }
+        let existing = UserRepository::find_by_email(pool, &req.email).await?;
 
         let salt = SaltString::generate(&mut OsRng);
         let password_hash = Argon2::default()
@@ -58,7 +57,15 @@ impl AuthService {
             .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {e}")))?
             .to_string();
 
-        let user = UserRepository::create(pool, &req.email, &password_hash).await?;
+        let user = if let Some(existing_user) = existing {
+            if existing_user.password_set {
+                return Err(AppError::Conflict("Email ya registrado".into()));
+            }
+            /* Usuario de quick_register sin contraseña propia: actualizar hash */
+            UserRepository::set_password(pool, existing_user.id, &password_hash).await?
+        } else {
+            UserRepository::create(pool, &req.email, &password_hash, true).await?
+        };
 
         /* [104A-3] Auto-promote admin emails on registration */
         let user = if is_admin_email(&req.email) {
@@ -76,11 +83,13 @@ impl AuthService {
             role: user.role,
             effective_role: effective,
             impersonating: false,
+            needs_password: false,
         })
     }
 
     /* [064A-3] Registro rapido solo con email (flujo de compra).
      * Genera password aleatorio; el usuario puede cambiarlo desde el panel.
+     * [154A-5] Marca password_set = false para que el frontend muestre aviso.
      * Si el email ya existe retorna Conflict(409) para que el frontend pida password. */
     pub async fn quick_register(
         pool: &PgPool,
@@ -107,7 +116,7 @@ impl AuthService {
             .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {e}")))?
             .to_string();
 
-        let user = UserRepository::create(pool, &req.email, &password_hash).await?;
+        let user = UserRepository::create(pool, &req.email, &password_hash, false).await?;
 
         /* [104A-3] Auto-promote admin emails on quick registration */
         let user = if is_admin_email(&req.email) {
@@ -125,6 +134,7 @@ impl AuthService {
             role: user.role,
             effective_role: effective,
             impersonating: false,
+            needs_password: !user.password_set,
         })
     }
 
@@ -154,7 +164,35 @@ impl AuthService {
             role: user.role,
             effective_role: effective,
             impersonating: false,
+            needs_password: !user.password_set,
         })
+    }
+
+    /* [154A-5] Permite a un usuario autenticado establecer su contraseña.
+     * Solo para usuarios con password_set = false (quick_register). */
+    pub async fn set_password(
+        pool: &PgPool,
+        user_id: Uuid,
+        req: SetPasswordRequest,
+    ) -> Result<(), AppError> {
+        let user = UserRepository::find_by_id(pool, user_id)
+            .await?
+            .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+
+        if user.password_set {
+            return Err(AppError::BadRequest(
+                "Ya tienes una contraseña establecida. Usa cambiar contraseña.".into(),
+            ));
+        }
+
+        let salt = SaltString::generate(&mut OsRng);
+        let password_hash = Argon2::default()
+            .hash_password(req.password.as_bytes(), &salt)
+            .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {e}")))?
+            .to_string();
+
+        UserRepository::set_password(pool, user_id, &password_hash).await?;
+        Ok(())
     }
 
     /// Genera un JWT con expiración de 24 horas, incluye role y `effective_role`.

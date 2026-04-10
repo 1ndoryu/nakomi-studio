@@ -42,6 +42,8 @@ pub struct User {
     pub display_name: Option<String>,
     pub username: String,
     pub created_at: DateTime<Utc>,
+    /* [154A-5] true si el usuario estableció su propia contraseña, false si fue quick_register */
+    pub password_set: bool,
 }
 
 impl User {
@@ -100,6 +102,13 @@ pub struct QuickRegisterRequest {
     pub email: String,
 }
 
+/* [154A-5] Request para que un usuario sin contraseña establezca la suya */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct SetPasswordRequest {
+    #[validate(length(min = 8, message = "La contraseña debe tener al menos 8 caracteres"))]
+    pub password: String,
+}
+
 /// Request body para iniciar sesión
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct LoginRequest {
@@ -117,6 +126,8 @@ pub struct AuthResponse {
     pub role: UserRole,
     pub effective_role: UserRole,
     pub impersonating: bool,
+    /* [154A-5] true si el usuario necesita crear su propia contraseña (quick_register sin password) */
+    pub needs_password: bool,
 }
 
 /* [054A-1] Modelos para gestión de usuarios desde panel admin */

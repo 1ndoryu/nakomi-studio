@@ -302,6 +302,7 @@ pub async fn switch_role(
                 role: admin.role,
                 effective_role: effective,
                 impersonating: false,
+                needs_password: false,
             }))
         }
         target_role => {
@@ -320,6 +321,7 @@ pub async fn switch_role(
                 role: target.role,
                 effective_role: target.role,
                 impersonating: true,
+                needs_password: false,
             }))
         }
     }

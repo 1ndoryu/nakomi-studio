@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE users SET status = $2\n             WHERE id = $1\n             RETURNING id, email, password_hash,\n                       role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                       email_verified, status, avatar_url, display_name, username, created_at",
+  "query": "UPDATE users SET status = $2\n             WHERE id = $1\n             RETURNING id, email, password_hash,\n                       role as \"role: UserRole\", active_role as \"active_role: UserRole\",\n                       email_verified, status, avatar_url, display_name, username, created_at, password_set",
   "describe": {
     "columns": [
       {
@@ -79,6 +79,11 @@
         "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "password_set",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -98,8 +103,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "19fab1fb7e3365eed49da46bf62d307d5e3669d40d55350fdc5aeed85a51b0c2"
+  "hash": "90ca93b9296568a042ab41231047214083517cc57319591cd0fc27a85cdff89d"
 }

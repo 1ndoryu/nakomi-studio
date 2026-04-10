@@ -81,7 +81,7 @@ export const useAutenticacion = (onCerrar: () => void): RetornoUseAutenticacion 
         setCargando(true);
         try {
             const resp = await apiLogin(login.email, login.password);
-            authLogin(resp.token, resp.user_id, login.email, resp.role, resp.effective_role);
+            authLogin(resp.token, resp.user_id, login.email, resp.role, resp.effective_role, resp.needs_password);
             onCerrar();
             navigate('/panel');
         } catch (err) {
@@ -105,7 +105,7 @@ export const useAutenticacion = (onCerrar: () => void): RetornoUseAutenticacion 
             setCargando(true);
             try {
                 const resp = await apiRegister(registro.email, registro.password);
-                authLogin(resp.token, resp.user_id, registro.email, resp.role, resp.effective_role);
+                authLogin(resp.token, resp.user_id, registro.email, resp.role, resp.effective_role, resp.needs_password);
                 onCerrar();
                 navigate('/panel');
             } catch (err) {
