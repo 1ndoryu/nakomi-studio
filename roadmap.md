@@ -67,6 +67,8 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Ejecutar Hosting Automation
 - sentinel report md tiene muchos Warning, arreglarlos todos si son reales o corregir el falso positivo.
 - Hay que hacer una auditoría completa al sistema de notificaciones, por ejemplo si un cliente recibe un mensaje en pedido se le debe notificar, igual al empleado/responsable que esta en un pedido.
+- El numero en el icono de mensaje sigue apareciendo apesar de que los mensajes (no parece que haya un sistema de marcar como leido o no), pero se tiene que marcar como leido al abrir. 
+- Los empleados y admin tienen que ver en tiempo real lo que escriben los clientes, saber si leyeron el mensaje, ultimo tiempo de conexion de cliente, etc. El cliente no tiene acceso a estas caracteristiscas. 
 
 ## Tareas pendientes extraídas de planes activos (104A-26)
 

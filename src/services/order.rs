@@ -394,12 +394,14 @@ impl OrderService {
 
         /* Guardar razón si se proporcionó */
         if let Some(r) = reason {
-            sqlx::query("UPDATE orders SET cancel_reason = $1 WHERE id = $2")
-                .bind(r)
-                .bind(order_id)
-                .execute(pool)
-                .await
-                .map_err(|e| AppError::Internal(format!("Error guardando razón: {e}")))?;
+            sqlx::query!(
+                "UPDATE orders SET cancel_reason = $1 WHERE id = $2",
+                r,
+                order_id,
+            )
+            .execute(pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Error guardando razón: {e}")))?;
         }
 
         let cancelled = OrderRepository::cancel_order(pool, order_id).await?;

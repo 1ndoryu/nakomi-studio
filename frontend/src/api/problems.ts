@@ -2,9 +2,7 @@
  * Endpoints: report, list (admin), list by order, resolve. */
 import instance from './axios-instance';
 
-/* ============================================================
-   TIPOS
-   ============================================================ */
+/* TIPOS */
 
 export type ProblemStatus = 'open' | 'in_review' | 'resolved' | 'dismissed';
 export type ProblemAction = 'resolve' | 'dismiss';
@@ -33,9 +31,7 @@ export interface ResolveProblemRequest {
     response?: string;
 }
 
-/* ============================================================
-   LABELS Y COLORES
-   ============================================================ */
+/* LABELS Y COLORES */
 
 export const PROBLEM_STATUS_LABELS: Record<ProblemStatus, string> = {
     open: 'Abierto',
@@ -51,9 +47,7 @@ export const PROBLEM_STATUS_COLORS: Record<ProblemStatus, string> = {
     dismissed: '#95a5a6',
 };
 
-/* ============================================================
-   API CALLS
-   ============================================================ */
+/* API CALLS */
 
 export async function apiReportProblem(
     orderId: string,

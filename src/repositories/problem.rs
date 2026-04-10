@@ -17,15 +17,18 @@ impl ProblemRepository {
         reporter_role: &str,
         reason: &str,
     ) -> Result<OrderProblem, AppError> {
-        let row = sqlx::query_as::<_, OrderProblem>(
-            "INSERT INTO order_problems (order_id, reporter_id, reporter_role, reason)
+        let row = sqlx::query_as!(
+            OrderProblem,
+            r#"INSERT INTO order_problems (order_id, reporter_id, reporter_role, reason)
                VALUES ($1, $2, $3, $4)
-               RETURNING *",
+               RETURNING id, order_id, reporter_id, reporter_role, reason,
+                         status as "status: ProblemStatus", admin_response, resolved_by,
+                         resolved_at, created_at, updated_at"#,
+            order_id,
+            reporter_id,
+            reporter_role,
+            reason,
         )
-        .bind(order_id)
-        .bind(reporter_id)
-        .bind(reporter_role)
-        .bind(reason)
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Error creando problema: {e}")))?;
@@ -33,15 +36,19 @@ impl ProblemRepository {
     }
 
     pub async fn list_all(pool: &PgPool) -> Result<Vec<ProblemWithContext>, AppError> {
-        let rows = sqlx::query_as::<_, ProblemWithContext>(
-            "SELECT op.*, o.order_number,
-                      COALESCE(u.display_name, u.email) AS reporter_name
+        let rows = sqlx::query_as!(
+            ProblemWithContext,
+            r#"SELECT op.id, op.order_id, op.reporter_id, op.reporter_role, op.reason,
+                      op.status as "status: ProblemStatus", op.admin_response, op.resolved_by,
+                      op.resolved_at, op.created_at, op.updated_at,
+                      o.order_number,
+                      COALESCE(u.display_name, u.email) AS "reporter_name!"
                FROM order_problems op
                JOIN orders o ON o.id = op.order_id
                JOIN users u ON u.id = op.reporter_id
                ORDER BY
                  CASE op.status WHEN 'open' THEN 0 WHEN 'in_review' THEN 1 ELSE 2 END,
-                 op.created_at DESC",
+                 op.created_at DESC"#,
         )
         .fetch_all(pool)
         .await
@@ -50,16 +57,20 @@ impl ProblemRepository {
     }
 
     pub async fn list_by_order(pool: &PgPool, order_id: Uuid) -> Result<Vec<ProblemWithContext>, AppError> {
-        let rows = sqlx::query_as::<_, ProblemWithContext>(
-            "SELECT op.*, o.order_number,
-                      COALESCE(u.display_name, u.email) AS reporter_name
+        let rows = sqlx::query_as!(
+            ProblemWithContext,
+            r#"SELECT op.id, op.order_id, op.reporter_id, op.reporter_role, op.reason,
+                      op.status as "status: ProblemStatus", op.admin_response, op.resolved_by,
+                      op.resolved_at, op.created_at, op.updated_at,
+                      o.order_number,
+                      COALESCE(u.display_name, u.email) AS "reporter_name!"
                FROM order_problems op
                JOIN orders o ON o.id = op.order_id
                JOIN users u ON u.id = op.reporter_id
                WHERE op.order_id = $1
-               ORDER BY op.created_at DESC",
+               ORDER BY op.created_at DESC"#,
+            order_id,
         )
-        .bind(order_id)
         .fetch_all(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Error listando problemas de orden: {e}")))?;
@@ -67,10 +78,14 @@ impl ProblemRepository {
     }
 
     pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<OrderProblem>, AppError> {
-        let row = sqlx::query_as::<_, OrderProblem>(
-            "SELECT * FROM order_problems WHERE id = $1",
+        let row = sqlx::query_as!(
+            OrderProblem,
+            r#"SELECT id, order_id, reporter_id, reporter_role, reason,
+                      status as "status: ProblemStatus", admin_response, resolved_by,
+                      resolved_at, created_at, updated_at
+               FROM order_problems WHERE id = $1"#,
+            id,
         )
-        .bind(id)
         .fetch_optional(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Error buscando problema: {e}")))?;
@@ -84,17 +99,20 @@ impl ProblemRepository {
         admin_id: Uuid,
         response: Option<&str>,
     ) -> Result<OrderProblem, AppError> {
-        let row = sqlx::query_as::<_, OrderProblem>(
-            "UPDATE order_problems
+        let row = sqlx::query_as!(
+            OrderProblem,
+            r#"UPDATE order_problems
                SET status = $1, resolved_by = $2, admin_response = $3,
                    resolved_at = now(), updated_at = now()
                WHERE id = $4
-               RETURNING *",
+               RETURNING id, order_id, reporter_id, reporter_role, reason,
+                         status as "status: ProblemStatus", admin_response, resolved_by,
+                         resolved_at, created_at, updated_at"#,
+            status as ProblemStatus,
+            admin_id,
+            response,
+            id,
         )
-        .bind(status)
-        .bind(admin_id)
-        .bind(response)
-        .bind(id)
         .fetch_one(pool)
         .await
         .map_err(|e| AppError::Internal(format!("Error resolviendo problema: {e}")))?;

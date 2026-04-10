@@ -1,0 +1,97 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO order_problems (order_id, reporter_id, reporter_role, reason)\n               VALUES ($1, $2, $3, $4)\n               RETURNING id, order_id, reporter_id, reporter_role, reason,\n                         status as \"status: ProblemStatus\", admin_response, resolved_by,\n                         resolved_at, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "order_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "reporter_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "reporter_role",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "status: ProblemStatus",
+        "type_info": {
+          "Custom": {
+            "name": "problem_status",
+            "kind": {
+              "Enum": [
+                "open",
+                "in_review",
+                "resolved",
+                "dismissed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "admin_response",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "resolved_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "resolved_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "dba24c8f9d2dd91a8b3200bcc0d60fabc56127a58c31f2286c2a39c021195ed1"
+}

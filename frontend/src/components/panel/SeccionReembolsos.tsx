@@ -15,7 +15,6 @@ export function SeccionReembolsos() {
     const { reembolsos, cargando, error, revisarReembolso } = useRefunds();
     const [refundActivo, setRefundActivo] = useState<RefundResponse | null>(null);
     const [respuestaAdmin, setRespuestaAdmin] = useState('');
-    const [accionEnCurso, setAccionEnCurso] = useState(false);
     /* [104A-22] Tabs para filtrar reembolsos activos vs historial */
     const [tab, setTab] = useState<'activos' | 'historial'>('activos');
 
@@ -23,9 +22,11 @@ export function SeccionReembolsos() {
     const historial = reembolsos.filter(r => r.status !== 'requested' && r.status !== 'under_review');
     const listaFiltrada = tab === 'activos' ? activos : historial;
 
+    /* [104A-37] Eliminado useState accionEnCurso — se usa revisarReembolso.isPending de React Query */
+    const accionEnCurso = revisarReembolso.isPending;
+
     const handleRevisar = async (action: 'approve' | 'reject') => {
         if (!refundActivo) return;
-        setAccionEnCurso(true);
         try {
             await revisarReembolso.mutateAsync({
                 refundId: refundActivo.id,
@@ -34,9 +35,7 @@ export function SeccionReembolsos() {
             });
             setRefundActivo(null);
             setRespuestaAdmin('');
-        } finally {
-            setAccionEnCurso(false);
-        }
+        } catch { /* React Query maneja el error */ }
     };
 
     if (cargando) {
