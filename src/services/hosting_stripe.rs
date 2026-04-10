@@ -11,7 +11,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::repositories::HostingRepository;
+use crate::models::{CreateNotification, NOTIF_HOSTING_CANCELLED, NOTIF_HOSTING_SUSPENDED};
+use crate::repositories::{HostingRepository, NotificationRepository};
 use crate::services::coolify::{CoolifyConfig, CoolifyService};
 
 /* Mapeo plan → Stripe Price ID (cargados desde env) */
@@ -377,6 +378,26 @@ impl HostingStripeService {
             }
         }
 
+        /* [Notificación cancelación] Notificar al propietario del hosting si tiene cuenta */
+        if let Some(user_id) = hosting.user_id {
+            let notif = CreateNotification {
+                user_id,
+                notification_type: NOTIF_HOSTING_CANCELLED.to_string(),
+                title: "Tu plan de hosting fue cancelado".to_string(),
+                body: Some(
+                    "Tu suscripción de hosting ha sido cancelada. Si crees que es un error, contáctanos.".to_string(),
+                ),
+                link: Some("/panel/hosting".to_string()),
+                reference_type: Some("hosting_subscription".to_string()),
+                reference_id: Some(hosting.id),
+            };
+            if let Err(e) = NotificationRepository::create(pool, &notif).await {
+                tracing::warn!(
+                    "Error creando notificación hosting_cancelled para user {user_id}: {e}"
+                );
+            }
+        }
+
         /* [094A-9] Log de errores en evento, no silenciar */
         if let Err(e) = HostingRepository::add_event(
             pool, hosting.id, "stripe_subscription_cancelled", None,
@@ -405,6 +426,27 @@ impl HostingStripeService {
         };
 
         HostingRepository::update_status(pool, hosting.id, "suspended").await?;
+
+        /* [Notificación suspensión] Notificar al propietario si tiene cuenta */
+        if let Some(user_id) = hosting.user_id {
+            let notif = CreateNotification {
+                user_id,
+                notification_type: NOTIF_HOSTING_SUSPENDED.to_string(),
+                title: "Tu hosting fue suspendido por pago fallido".to_string(),
+                body: Some(
+                    "No pudimos procesar tu pago. Tu hosting está suspendido. Actualiza tu método de pago para restaurarlo.".to_string(),
+                ),
+                link: Some("/panel/hosting".to_string()),
+                reference_type: Some("hosting_subscription".to_string()),
+                reference_id: Some(hosting.id),
+            };
+            if let Err(e) = NotificationRepository::create(pool, &notif).await {
+                tracing::warn!(
+                    "Error creando notificación hosting_suspended para user {user_id}: {e}"
+                );
+            }
+        }
+
         /* [094A-9] Log de errores en evento, no silenciar */
         if let Err(e) = HostingRepository::add_event(
             pool, hosting.id, "payment_failed",

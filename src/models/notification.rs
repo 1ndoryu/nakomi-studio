@@ -33,6 +33,9 @@ pub const NOTIF_DELEGATION_RESOLVED: &str = "delegation_resolved";
 pub const NOTIF_NEW_MESSAGE: &str = "new_message";
 /* [T-6] Notificación de escalación: la IA detectó que se necesita intervención humana */
 pub const NOTIF_ESCALATION_NEEDED: &str = "escalation_needed";
+/* Hosting cancelado/suspendido: se notifica al cliente propietario */
+pub const NOTIF_HOSTING_CANCELLED: &str = "hosting_cancelled";
+pub const NOTIF_HOSTING_SUSPENDED: &str = "hosting_suspended";
 
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
 pub struct Notification {
