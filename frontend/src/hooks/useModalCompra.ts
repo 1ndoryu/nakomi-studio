@@ -1,8 +1,9 @@
 /* [044A-40] Hook para la lógica del modal de compra.
  * Maneja: pasos del modal, auth inline, creación de orden e inicio de pago.
  * Extraído de ModalCompra.tsx para cumplir SRP (max 3 useState en componente).
- * [064A-3] Flujo simplificado: solo pide email. Si el email ya existe, pide password. */
-import {useState} from 'react';
+ * [064A-3] Flujo simplificado: solo pide email. Si el email ya existe, pide password.
+ * [104A-25] Guard ref contra doble invocación de iniciarCompra (previene órdenes duplicadas). */
+import {useState, useRef} from 'react';
 import {useAuthStore} from '../stores/authStore';
 import {apiQuickRegister, apiLogin} from '../api/auth';
 import {apiCreateOrder, type PaymentMode} from '../api/orders';
@@ -50,6 +51,9 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     const [projectDescription, setProjectDescription] = useState('');
     const [checkoutPendiente, setCheckoutPendiente] = useState<CheckoutPendiente | null>(null);
     const isHosting = servicioSlug === 'hosting';
+    /* [104A-25] Ref guard: previene doble invocación de iniciarCompra.
+     * useState es async y no previene race conditions entre renders. */
+    const compraEnCurso = useRef(false);
 
     const navegarAlPanelPendiente = () => {
         /* [104A-15] Forzar la tab correcta evita que el usuario aterrice en la
@@ -120,12 +124,18 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     };
 
     const iniciarCompra = async () => {
-        if (isHosting) {
-            await crearHostingYRedirigir();
-            return;
+        /* [104A-25] Guard contra doble invocación: si ya hay una compra en curso, ignorar */
+        if (compraEnCurso.current) return;
+        compraEnCurso.current = true;
+        try {
+            if (isHosting) {
+                await crearHostingYRedirigir();
+                return;
+            }
+            await crearOrdenYPagar();
+        } finally {
+            compraEnCurso.current = false;
         }
-
-        await crearOrdenYPagar();
     };
 
     /* Paso 1: usuario confirma que quiere continuar */

@@ -77,14 +77,27 @@ export function useOrdenes() {
         },
     });
 
-    /* Cancelar orden */
+    /* [104A-25] Cancelar orden — optimistic update para feedback visual inmediato.
+     * Actualiza el status localmente antes del server response para evitar que el
+     * usuario vea datos stale durante el refetch y perciba "duplicación". */
     const cancelarMutation = useMutation({
         mutationFn: (orderId: string) => apiCancelOrder(orderId),
+        onMutate: async (orderId: string) => {
+            await queryClient.cancelQueries({queryKey: ordersKey(effectiveRole)});
+            const prev = queryClient.getQueryData<OrderResponse[]>(ordersKey(effectiveRole));
+            queryClient.setQueryData<OrderResponse[]>(ordersKey(effectiveRole), old =>
+                old?.map(o => o.id === orderId ? {...o, status: 'cancelled' as const} : o),
+            );
+            return {prev};
+        },
         onSuccess: () => {
             invalidar();
             setError(null);
         },
-        onError: (err: unknown) => {
+        onError: (err: unknown, _orderId, context) => {
+            if (context?.prev) {
+                queryClient.setQueryData(ordersKey(effectiveRole), context.prev);
+            }
             setError(extraerError(err));
         },
     });
