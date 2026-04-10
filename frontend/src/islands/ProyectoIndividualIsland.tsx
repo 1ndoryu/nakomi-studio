@@ -7,7 +7,13 @@
  */
 import React, {useState, useEffect} from 'react';
 import {useTranslation} from 'react-i18next';
-import {GitBranch, Globe, ExternalLink, Package} from 'lucide-react';
+import {
+    GitBranch, Globe, ExternalLink, Package,
+    AtSign, Briefcase, PlayCircle, Camera, Share2,
+    PenTool, CircleDot, Mail, FileText, Code, Play,
+    Smartphone, MonitorPlay, Music, BookOpen,
+    ShoppingBag, Palette, Pen, MessageCircle, Hash
+} from 'lucide-react';
 import {spaClick} from '../navegacionSPA';
 import {useChatStore} from '../stores/chatStore';
 import '../styles/variables.css';
@@ -19,7 +25,7 @@ import {SeccionGaleriaServicio} from '../components/servicios/SeccionGaleriaServ
 import {SeccionCta} from '../components/ui/SeccionCta';
 import {SeccionContacto} from '../components/home/SeccionContacto';
 import {PROYECTOS_DATA} from '../data/showcase';
-import {Proyecto} from '../types/contenido';
+import {Proyecto, EnlaceProyecto} from '../types/contenido';
 import {SeccionHeader} from '../components/ui/SeccionHeader';
 import OptimizedImage from '../components/ui/OptimizedImage';
 import {apiGetProjectBySlug, apiListPublicProjects, AdminProject} from '../api/admin-projects';
@@ -33,12 +39,33 @@ interface ProyectoIndividualIslandProps {
     slug?: string;
 }
 
-/* [064A-8] Icono según tipo de enlace */
+/* [064A-8] Icono según tipo de enlace — ampliado en 154A-10 con IconPickerEnlace */
 const ICONOS_ENLACE: Record<string, typeof GitBranch> = {
     github: GitBranch,
+    git: GitBranch,
     web: Globe,
     npm: Package,
-    demo: ExternalLink
+    demo: ExternalLink,
+    figma: PenTool,
+    dribbble: CircleDot,
+    behance: Palette,
+    twitter: AtSign,
+    linkedin: Briefcase,
+    youtube: PlayCircle,
+    instagram: Camera,
+    facebook: Share2,
+    discord: MessageCircle,
+    slack: Hash,
+    email: Mail,
+    docs: FileText,
+    api: Code,
+    playstore: Play,
+    appstore: Smartphone,
+    video: MonitorPlay,
+    podcast: Music,
+    blog: BookOpen,
+    tienda: ShoppingBag,
+    otro: Pen,
 };
 
 /* Tarjeta de proyecto relacionado */
@@ -65,7 +92,7 @@ function convertirProyecto(p: AdminProject): Proyecto {
         skills: p.skills.map((s, i) => ({id: i, titulo: s.titulo, descripcion: s.descripcion})),
         galeria: p.gallery,
         tecnologias: p.technologies,
-        enlaces: p.links.map(l => ({tipo: l.tipo as 'github' | 'web' | 'npm' | 'demo', url: l.url, etiqueta: l.etiqueta}))
+        enlaces: p.links.map(l => ({tipo: l.tipo as EnlaceProyecto['tipo'], url: l.url, etiqueta: l.etiqueta}))
     };
 }
 

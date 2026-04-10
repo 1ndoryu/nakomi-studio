@@ -10,6 +10,8 @@ import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { SlugInput } from '../ui/SlugInput';
 import { UploadImage } from '../ui/UploadImage';
+import { IconPickerEnlace } from './IconPickerEnlace';
+import { GaleriaEditor } from './GaleriaEditor';
 import { useEditorProyecto } from '../../hooks/useEditorProyecto';
 import type { AdminProject, CreateProjectBody, UpdateProjectBody } from '../../api/admin-projects';
 import './EditorProyecto.css';
@@ -131,6 +133,12 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                             onChange={form.setImagenUrl}
                             etiqueta="Imagen destacada"
                         />
+
+                        {/* [154A-10] Galería de imágenes del proyecto */}
+                        <GaleriaEditor
+                            galeria={form.galeria}
+                            onChange={form.setGaleria}
+                        />
                     </div>
                 )}
 
@@ -149,14 +157,13 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                             <span className="editorProyectoLabel">Enlaces</span>
                             {form.enlaces.map((enlace, idx) => (
                                 <div key={`enlace-${enlace.tipo}-${enlace.url}`} className="editorProyectoEnlaceRow">
-                                    <Input
+                                    <IconPickerEnlace
                                         value={enlace.tipo}
-                                        onChange={e => {
+                                        onChange={nuevoTipo => {
                                             const nuevos = [...form.enlaces];
-                                            nuevos[idx] = { ...nuevos[idx], tipo: e.target.value };
+                                            nuevos[idx] = { ...nuevos[idx], tipo: nuevoTipo };
                                             form.setEnlaces(nuevos);
                                         }}
-                                        placeholder="web, github, npm"
                                     />
                                     <Input
                                         value={enlace.url}

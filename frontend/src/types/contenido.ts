@@ -24,8 +24,12 @@ export interface PostBlog {
     adminId?: string;
 }
 
+/* [154A-10] Tipos de enlace ampliados con IconPickerEnlace */
 export interface EnlaceProyecto {
-    tipo: 'github' | 'web' | 'npm' | 'demo';
+    tipo: 'web' | 'github' | 'npm' | 'demo' | 'figma' | 'dribbble' | 'behance'
+        | 'twitter' | 'linkedin' | 'youtube' | 'instagram' | 'facebook'
+        | 'discord' | 'slack' | 'email' | 'docs' | 'api' | 'playstore'
+        | 'appstore' | 'video' | 'podcast' | 'blog' | 'tienda' | 'git' | 'otro';
     url: string;
     etiqueta?: string;
 }

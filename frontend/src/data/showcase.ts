@@ -2,7 +2,7 @@
  * Datos de showcase/proyectos centralizados.
  * [044A-3] Proyectos reales reemplazando placeholders.
  * [084A-11] Ahora exporta buildCategoriasShowcase para reconstruir con datos de API. */
-import {Proyecto, CategoriaShowcase} from '../types/contenido';
+import {Proyecto, CategoriaShowcase, EnlaceProyecto} from '../types/contenido';
 import type {AdminProject} from '../api/admin-projects';
 
 const PROYECTOS_FALLBACK: Proyecto[] = [
@@ -119,7 +119,7 @@ export function mapAdminProjectsToProyectos(projects: AdminProject[]): Proyecto[
             galeria: p.gallery,
             tecnologias: p.technologies,
             enlaces: p.links.map(l => ({
-                tipo: l.tipo as 'github' | 'web' | 'npm' | 'demo',
+                tipo: l.tipo as EnlaceProyecto['tipo'],
                 url: l.url,
                 etiqueta: l.etiqueta,
             })),
