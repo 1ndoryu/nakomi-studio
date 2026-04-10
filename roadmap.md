@@ -65,7 +65,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - HostingDetalle debe dejar de usar IP hardcodeada y mostrar VPS/IP reales desde backend.
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
 - Ejecutar Hosting Automation
-- Los empleados y admin tienen que ver en tiempo real lo que escriben los clientes, saber si leyeron el mensaje, ultimo tiempo de conexion de cliente, etc. El cliente no tiene acceso a estas caracteristiscas. 
+- El contador de mensajes nunca se actualiza, nunca se marcan las conversaciones como leida al abrir los mensajes.
 
 ## Tareas pendientes extraídas de planes activos (104A-26)
 
@@ -95,3 +95,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - **VPS2 Coolify**: Falta `apiToken`, `serverUuid`, `projectUuid` para provisioning real. REPUESTA; NO ENTIENDO PORQUE NO PEUDES CONSEGUIR ESA INFORMACION CON LA API.
 - **Contabo DNS API**: Credenciales no validadas. (LA DE LA VPS1 LAS HA PROBADO ANTES Y FUNCIONAN)
 - **Google Drive OAuth**: Necesita `auth-drive` manual para backups. (LOS BACKUP AHORA SE HACEN LA VPS2)
+
+## Ultima tarea
+
+Sube los cambios a nakomi.studio
