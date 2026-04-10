@@ -1,0 +1,295 @@
+/* [154A-15a] Wallet repository: queries para saldo virtual, transacciones
+ * y solicitudes de cancelación. Todas las operaciones de saldo usan
+ * transacciones SQL para garantizar consistencia atómica. */
+
+use sqlx::PgPool;
+use uuid::Uuid;
+
+use crate::errors::AppError;
+use crate::models::{CancellationRequest, UserWallet, WalletTransaction};
+
+pub struct WalletRepository;
+
+impl WalletRepository {
+    /* Obtener o crear wallet del usuario (on-demand) */
+    pub async fn get_or_create(pool: &PgPool, user_id: Uuid) -> Result<UserWallet, AppError> {
+        let wallet = sqlx::query_as!(
+            UserWallet,
+            r#"
+            INSERT INTO user_wallets (user_id)
+            VALUES ($1)
+            ON CONFLICT (user_id) DO UPDATE SET updated_at = user_wallets.updated_at
+            RETURNING id, user_id, balance_cents, currency, created_at, updated_at
+            "#,
+            user_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(wallet)
+    }
+
+    /* Obtener wallet existente (sin crear) */
+    pub async fn find_by_user(pool: &PgPool, user_id: Uuid) -> Result<Option<UserWallet>, AppError> {
+        let wallet = sqlx::query_as!(
+            UserWallet,
+            "SELECT id, user_id, balance_cents, currency, created_at, updated_at FROM user_wallets WHERE user_id = $1",
+            user_id
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(wallet)
+    }
+
+    /* Creditar saldo (ingreso). Retorna la transacción creada.
+     * Usa subconsulta atómica para evitar race conditions. */
+    pub async fn credit(
+        pool: &PgPool,
+        user_id: Uuid,
+        amount_cents: i32,
+        transaction_type: &str,
+        reference_type: Option<&str>,
+        reference_id: Option<Uuid>,
+        description: Option<&str>,
+    ) -> Result<WalletTransaction, AppError> {
+        if amount_cents <= 0 {
+            return Err(AppError::BadRequest("El monto debe ser positivo".into()));
+        }
+
+        let mut tx = pool.begin().await?;
+
+        /* Asegurar que el wallet existe */
+        sqlx::query!(
+            "INSERT INTO user_wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
+            user_id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        /* Actualizar balance atómicamente y obtener el wallet actualizado */
+        let wallet = sqlx::query_as!(
+            UserWallet,
+            r#"
+            UPDATE user_wallets
+            SET balance_cents = balance_cents + $1, updated_at = NOW()
+            WHERE user_id = $2
+            RETURNING id, user_id, balance_cents, currency, created_at, updated_at
+            "#,
+            amount_cents,
+            user_id
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+
+        /* Insertar transacción con snapshot del balance */
+        let transaction = sqlx::query_as!(
+            WalletTransaction,
+            r#"
+            INSERT INTO wallet_transactions
+                (wallet_id, user_id, amount_cents, transaction_type, reference_type, reference_id, description, balance_after_cents)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, wallet_id, user_id, amount_cents, transaction_type, reference_type, reference_id, description, balance_after_cents, created_at
+            "#,
+            wallet.id,
+            user_id,
+            amount_cents,
+            transaction_type,
+            reference_type,
+            reference_id,
+            description,
+            wallet.balance_cents
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(transaction)
+    }
+
+    /* Debitar saldo (gasto). Verifica que haya fondos suficientes. */
+    pub async fn debit(
+        pool: &PgPool,
+        user_id: Uuid,
+        amount_cents: i32,
+        transaction_type: &str,
+        reference_type: Option<&str>,
+        reference_id: Option<Uuid>,
+        description: Option<&str>,
+    ) -> Result<WalletTransaction, AppError> {
+        if amount_cents <= 0 {
+            return Err(AppError::BadRequest("El monto debe ser positivo".into()));
+        }
+
+        let mut tx = pool.begin().await?;
+
+        /* Obtener wallet con lock FOR UPDATE para evitar race conditions */
+        let wallet = sqlx::query_as!(
+            UserWallet,
+            "SELECT id, user_id, balance_cents, currency, created_at, updated_at FROM user_wallets WHERE user_id = $1 FOR UPDATE",
+            user_id
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(|| AppError::BadRequest("No tienes wallet activo".into()))?;
+
+        if wallet.balance_cents < amount_cents {
+            return Err(AppError::BadRequest("Fondos insuficientes".into()));
+        }
+
+        let new_balance = wallet.balance_cents - amount_cents;
+
+        sqlx::query!(
+            "UPDATE user_wallets SET balance_cents = $1, updated_at = NOW() WHERE id = $2",
+            new_balance,
+            wallet.id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        let transaction = sqlx::query_as!(
+            WalletTransaction,
+            r#"
+            INSERT INTO wallet_transactions
+                (wallet_id, user_id, amount_cents, transaction_type, reference_type, reference_id, description, balance_after_cents)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, wallet_id, user_id, amount_cents, transaction_type, reference_type, reference_id, description, balance_after_cents, created_at
+            "#,
+            wallet.id,
+            user_id,
+            -amount_cents,
+            transaction_type,
+            reference_type,
+            reference_id,
+            description,
+            new_balance
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(transaction)
+    }
+
+    /* Listar transacciones paginadas */
+    pub async fn list_transactions(
+        pool: &PgPool,
+        user_id: Uuid,
+        page: i64,
+        per_page: i64,
+    ) -> Result<(Vec<WalletTransaction>, i64), AppError> {
+        let offset = (page - 1) * per_page;
+
+        let total = sqlx::query_scalar!(
+            "SELECT COUNT(*) FROM wallet_transactions WHERE user_id = $1",
+            user_id
+        )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0);
+
+        let rows = sqlx::query_as!(
+            WalletTransaction,
+            r#"
+            SELECT id, wallet_id, user_id, amount_cents, transaction_type,
+                   reference_type, reference_id, description, balance_after_cents, created_at
+            FROM wallet_transactions
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+            user_id,
+            per_page,
+            offset
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok((rows, total))
+    }
+}
+
+/* ============================================================
+   CANCELLATION REQUESTS
+   ============================================================ */
+
+pub struct CancellationRequestRepository;
+
+impl CancellationRequestRepository {
+    pub async fn create(
+        pool: &PgPool,
+        order_id: Uuid,
+        requested_by: Uuid,
+        reason: &str,
+    ) -> Result<CancellationRequest, AppError> {
+        let row = sqlx::query_as!(
+            CancellationRequest,
+            r#"
+            INSERT INTO cancellation_requests (order_id, requested_by, reason)
+            VALUES ($1, $2, $3)
+            RETURNING id, order_id, requested_by, reason, status, resolved_by, resolved_at, created_at
+            "#,
+            order_id,
+            requested_by,
+            reason
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
+    }
+
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<CancellationRequest>, AppError> {
+        let row = sqlx::query_as!(
+            CancellationRequest,
+            "SELECT id, order_id, requested_by, reason, status, resolved_by, resolved_at, created_at FROM cancellation_requests WHERE id = $1",
+            id
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(row)
+    }
+
+    pub async fn find_pending_by_order(pool: &PgPool, order_id: Uuid) -> Result<Option<CancellationRequest>, AppError> {
+        let row = sqlx::query_as!(
+            CancellationRequest,
+            "SELECT id, order_id, requested_by, reason, status, resolved_by, resolved_at, created_at FROM cancellation_requests WHERE order_id = $1 AND status = 'pending' ORDER BY created_at DESC LIMIT 1",
+            order_id
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(row)
+    }
+
+    pub async fn resolve(
+        pool: &PgPool,
+        id: Uuid,
+        resolved_by: Uuid,
+        accept: bool,
+    ) -> Result<CancellationRequest, AppError> {
+        let status = if accept { "accepted" } else { "rejected" };
+        let row = sqlx::query_as!(
+            CancellationRequest,
+            r#"
+            UPDATE cancellation_requests
+            SET status = $1, resolved_by = $2, resolved_at = NOW()
+            WHERE id = $3
+            RETURNING id, order_id, requested_by, reason, status, resolved_by, resolved_at, created_at
+            "#,
+            status,
+            resolved_by,
+            id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
+    }
+
+    pub async fn list_by_order(pool: &PgPool, order_id: Uuid) -> Result<Vec<CancellationRequest>, AppError> {
+        let rows = sqlx::query_as!(
+            CancellationRequest,
+            "SELECT id, order_id, requested_by, reason, status, resolved_by, resolved_at, created_at FROM cancellation_requests WHERE order_id = $1 ORDER BY created_at DESC",
+            order_id
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+}

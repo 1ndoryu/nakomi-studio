@@ -16,6 +16,7 @@ mod refund;
 mod review;
 mod team_member;
 mod user;
+mod wallet;
 
 pub use blog::{
     BlogPost, BlogPostResponse, CreateBlogPostRequest, PaginatedBlogPosts,
@@ -93,4 +94,9 @@ pub use public_profile::{
 pub use problem::{
     CancelOrderRequest, OrderProblem, ProblemAction, ProblemResponse, ProblemStatus,
     ReportProblemRequest, ResolveProblemRequest,
+};
+pub use wallet::{
+    CancellationRequest, CancellationRequestResponse, CreateCancellationRequest,
+    RespondCancellationRequest, UserWallet, WalletResponse, WalletTransaction,
+    WalletTransactionResponse, WalletTransactionsPage,
 };

@@ -27,6 +27,7 @@ mod seo;
 mod services;
 mod team_members;
 mod uploads;
+mod wallet;
 
 use axum::Router;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
@@ -160,6 +161,10 @@ impl utoipa::Modify for SecurityAddon {
         problems::list_problems,
         problems::list_order_problems,
         problems::resolve_problem,
+        wallet::get_balance,
+        wallet::list_transactions,
+        wallet::create_cancellation_request,
+        wallet::respond_cancellation_request,
     ),
     components(schemas(
         health::HealthResponse,
@@ -252,6 +257,12 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::ReportProblemRequest,
         crate::models::ResolveProblemRequest,
         crate::models::CancelOrderRequest,
+        crate::models::WalletResponse,
+        crate::models::WalletTransactionResponse,
+        crate::models::WalletTransactionsPage,
+        crate::models::CancellationRequestResponse,
+        crate::models::CreateCancellationRequest,
+        crate::models::RespondCancellationRequest,
         profile::AvatarResponse,
         uploads::UploadResponse,
         crate::errors::ErrorResponse,
@@ -457,6 +468,8 @@ fn api_routes() -> Router<AppState> {
         .merge(admin_seed::seed_routes())
         .merge(hosting::hosting_routes())
         .merge(problems::routes())
+        .merge(wallet::wallet_routes())
+        .merge(wallet::cancellation_routes())
         .merge(uploads::routes())
         .merge(image_proxy::routes())
         .layer(GovernorLayer {

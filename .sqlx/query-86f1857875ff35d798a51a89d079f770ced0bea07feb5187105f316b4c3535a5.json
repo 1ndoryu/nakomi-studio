@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO activity_log (user_id, entity_type, entity_id, action, details)\n           VALUES ($1, 'order', $2, 'cancellation_accepted', $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "86f1857875ff35d798a51a89d079f770ced0bea07feb5187105f316b4c3535a5"
+}

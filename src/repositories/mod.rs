@@ -16,6 +16,7 @@ mod refund;
 mod review;
 mod team_member;
 mod user;
+mod wallet;
 
 pub use blog::{BlogRepository, CreateBlogPostParams, UpdateBlogPostParams};
 pub use chat::ChatRepository;
@@ -35,3 +36,4 @@ pub use review::ReviewRepository;
 pub use team_member::{CreateTeamMemberParams, TeamMemberRepository, UpdateTeamMemberParams};
 pub use user::{UserRepository, UserWithTotal};
 pub use problem::{ProblemRepository, ProblemWithContext};
+pub use wallet::{CancellationRequestRepository, WalletRepository};

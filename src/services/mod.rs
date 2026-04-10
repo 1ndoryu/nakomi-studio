@@ -15,6 +15,7 @@ mod order;
 mod payment;
 mod payment_method;
 mod seed;
+mod wallet;
 
 pub use ai_chat::{AiChatConfig, AiChatService, AiResponse, AiSessionContext};
 pub use assignment::AssignmentService;
@@ -31,3 +32,4 @@ pub use order::OrderService;
 pub use payment::PaymentService;
 pub use payment_method::PaymentMethodService;
 pub use seed::SeedService;
+pub use wallet::WalletService;
