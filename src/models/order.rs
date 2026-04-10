@@ -18,6 +18,8 @@ use super::UserRole;
 #[sqlx(type_name = "order_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum OrderStatus {
+    /* [104A-29] PendingPayment ya no se usa en órdenes nuevas (DB default = payment_held).
+     * Se mantiene en el enum para deserializar registros legacy de PostgreSQL. */
     PendingPayment,
     PaymentHeld,
     AwaitingAssignment,

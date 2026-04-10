@@ -232,7 +232,7 @@ impl PaymentService {
     ) -> Result<(i32, Option<Uuid>, String), AppError> {
         match order.payment_mode {
             PaymentMode::Full => {
-                if order.status != OrderStatus::PendingPayment {
+                if order.status != OrderStatus::PaymentHeld {
                     return Err(AppError::BadRequest("La orden ya fue pagada".into()));
                 }
                 Ok((
@@ -397,7 +397,7 @@ impl PaymentService {
                     .filter(|p| p.status == PaymentStatus::Held)
                     .count();
 
-                if held_count >= 1 && order.status == OrderStatus::PendingPayment {
+                if held_count >= 1 && order.status == OrderStatus::PaymentHeld {
                     /* Primer 50% → awaiting_assignment, desbloquear primera mitad de fases */
                     OrderRepository::set_awaiting_assignment(pool, order.id).await?;
                     let phases = OrderRepository::list_order_phases(pool, order.id).await?;
@@ -439,8 +439,8 @@ impl PaymentService {
                     OrderRepository::update_phase_status(pool, phase_id, PhaseStatus::Paid)
                         .await?;
                 }
-                /* Si la orden estaba en pending_payment y la primera fase se pagó, avanzar */
-                if order.status == OrderStatus::PendingPayment {
+                /* Si la orden estaba en payment_held y la primera fase se pagó, avanzar */
+                if order.status == OrderStatus::PaymentHeld {
                     OrderRepository::set_awaiting_assignment(pool, order.id).await?;
                 }
             }

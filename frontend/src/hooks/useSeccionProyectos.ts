@@ -8,7 +8,7 @@ const STATUS_PRIORITY: Record<string, number> = {
     under_review: 1,
     awaiting_assignment: 2,
     payment_held: 3,
-    pending_payment: 4,
+    pending_payment: 3,
     disputed: 5,
     completed: 6,
     cancelled: 7,

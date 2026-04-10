@@ -26,7 +26,7 @@ import './SeccionProyectos.css';
 
 /* Mapa status → clase CSS (evita inline style) */
 const STATUS_CLASS: Record<string, string> = {
-    pending_payment: 'ordenBadge--pendingPayment',
+    pending_payment: 'ordenBadge--paymentHeld',
     payment_held: 'ordenBadge--paymentHeld',
     awaiting_assignment: 'ordenBadge--awaiting',
     in_progress: 'ordenBadge--inProgress',

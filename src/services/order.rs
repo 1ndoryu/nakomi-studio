@@ -377,11 +377,11 @@ impl OrderService {
             }
         }
 
-        /* Solo se puede cancelar en estados iniciales + in_progress para empleados */
+        /* [104A-29] Solo se puede cancelar en estados iniciales + in_progress para empleados.
+         * pending_payment ya no se usa a nivel de orden — solo en fases. */
         let can_cancel = matches!(
             order.status,
-            OrderStatus::PendingPayment
-                | OrderStatus::PaymentHeld
+            OrderStatus::PaymentHeld
                 | OrderStatus::AwaitingAssignment
         ) || (effective_role == UserRole::Employee
             && order.status == OrderStatus::InProgress);

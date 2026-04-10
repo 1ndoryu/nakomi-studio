@@ -210,7 +210,8 @@ export async function apiToggleAiIntermediary(
 /*    HELPERS — labels y colores para UI */
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-    pending_payment: 'Pendiente de pago',
+    /* [104A-29] pending_payment ya no se usa en órdenes nuevas — legacy label */
+    pending_payment: 'Pago retenido',
     payment_held: 'Pago retenido',
     awaiting_assignment: 'Sin asignar',
     in_progress: 'En progreso',
@@ -221,7 +222,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 export const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
-    pending_payment: '#c59000',
+    pending_payment: '#0077b6',
     payment_held: '#0077b6',
     awaiting_assignment: '#7b2cbf',
     in_progress: '#0077b6',

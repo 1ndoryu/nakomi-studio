@@ -26,10 +26,11 @@ import {OrderProjectDescription} from './OrderProjectDescription';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
 import './OrdenDetalle.css';
 
-const CANCELABLE_STATUSES: OrderStatus[] = ['pending_payment', 'payment_held', 'awaiting_assignment'];
+/* [104A-29] pending_payment ya no se usa a nivel de orden. payment_held es el estado inicial. */
+const CANCELABLE_STATUSES: OrderStatus[] = ['payment_held', 'awaiting_assignment'];
 
 const STATUS_CLASS: Record<OrderStatus, string> = {
-    pending_payment: 'ordenBadge--pendingPayment',
+    pending_payment: 'ordenBadge--paymentHeld',
     payment_held: 'ordenBadge--paymentHeld',
     awaiting_assignment: 'ordenBadge--awaiting',
     in_progress: 'ordenBadge--inProgress',
@@ -106,7 +107,8 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     const isActiveOrder = order.status !== 'cancelled' && order.status !== 'completed';
     const canCancel = CANCELABLE_STATUSES.includes(order.status)
         || (isEmployee && order.status === 'in_progress');
-    const needsPayment = order.status === 'pending_payment';
+    /* [104A-29] payment_held es el estado inicial — el botón de pago aparece aquí */
+    const needsPayment = order.status === 'payment_held';
     /* [064A-60] Tanto phased como half_half usan pagos por fase individuales */
     const isPerPhasePayment = order.payment_mode === 'phased' || order.payment_mode === 'half_half';
     const canEditDescription = isClient && order.status !== 'completed' && order.status !== 'cancelled';
