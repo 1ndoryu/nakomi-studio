@@ -5,14 +5,13 @@
 
 import React, {useState} from 'react';
 import {MessageCircle, Send, Bot, User, ChevronLeft, XCircle, Info} from 'lucide-react';
-import {SENDER_LABELS, SESSION_STATUS_LABELS, type ChatSession, type ChatMessage} from '../../api/chat';
+import {SENDER_LABELS, SESSION_STATUS_LABELS, type ChatSession} from '../../api/chat';
 import {useSeccionChat} from '../../hooks/useSeccionChat';
 import {useAuthStore} from '../../stores/authStore';
 import {ChatInfoPanel} from './ChatInfoPanel';
+import {MessageBubble, resolveSenderToneClass} from './ChatBurbujaMessage';
 import {Button} from '../ui/Button';
-import OptimizedImage from '../ui/OptimizedImage';
 import {Textarea} from '../ui/Textarea';
-import {DEFAULT_PROFILE_AVATAR} from '../../hooks/useCurrentProfile';
 import './SeccionChat.css';
 import './ChatBurbujas.css';
 
@@ -237,48 +236,5 @@ function SessionItem({
     );
 }
 
-function MessageBubble({message}: {message: ChatMessage}) {
-    const isAi = message.sender_type === 'ai';
-    const isOwn = message.sender_type === 'client';
-    const displayName = message.sender_display_name
-        || SENDER_LABELS[message.sender_type]
-        || message.sender_type;
-
-    return (
-        <div className={`chatBurbuja ${isOwn ? 'chatBurbujaPropia' : ''} ${isAi ? 'chatBurbujaIA' : ''}`}>
-            <div className="chatBurbujaHeader">
-                {/* [074A-32] Avatar del sender — usa DEFAULT_PROFILE_AVATAR como fallback */}
-                <OptimizedImage
-                    className="chatBurbujaAvatar"
-                    src={message.sender_avatar_url || DEFAULT_PROFILE_AVATAR}
-                    alt={displayName}
-                />
-                <span className={resolveSenderToneClass(message.sender_type)}>{displayName}</span>
-                <span className="chatBurbujaHora">
-                    {new Date(message.created_at).toLocaleTimeString('es', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                    })}
-                </span>
-            </div>
-            <div className="chatBurbujaContenido">{message.content}</div>
-        </div>
-    );
-}
-
-function resolveSenderToneClass(senderType: string) {
-    switch (senderType) {
-        case 'admin':
-            return 'chatRemitente chatRemitente--admin';
-        case 'employee':
-            return 'chatRemitente chatRemitente--employee';
-        case 'client':
-            return 'chatRemitente chatRemitente--client';
-        case 'ai':
-            return 'chatRemitente chatRemitente--ai';
-        case 'visitor':
-            return 'chatRemitente chatRemitente--visitor';
-        default:
-            return 'chatRemitente chatRemitente--neutral';
-    }
-}
+/* [104A-32] MessageBubble, renderMessageContent y resolveSenderToneClass
+ * extraidos a ChatBurbujaMessage.tsx para cumplir SRP (max 300 lineas). */
