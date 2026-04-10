@@ -12,6 +12,11 @@ const STORAGE_KEY_VISITOR_ID = 'nakomi_visitor_id';
 const STORAGE_KEY_SESSION_ID = 'nakomi_chat_session_id';
 const TYPING_THROTTLE_MS = 200;
 const BC_CHANNEL_NAME = 'nakomi-chat';
+/* [154A-3] Reconexión automática con backoff */
+const WS_CONNECT_TIMEOUT_MS = 10_000;
+const WS_MAX_RETRIES = 5;
+const WS_BASE_BACKOFF_MS = 1_000;
+const WS_MAX_BACKOFF_MS = 15_000;
 
 function getOrCreateVisitorId(): string {
     const saved = localStorage.getItem(STORAGE_KEY_VISITOR_ID);
@@ -45,6 +50,13 @@ export function useChatWidget() {
     const lastTypingSentRef = useRef<number>(0);
     /* [T-4] BroadcastChannel para sync entre pestañas */
     const bcRef = useRef<BroadcastChannel | null>(null);
+    /* [154A-3] Reconexión automática */
+    const retriesRef = useRef(0);
+    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const intentionalCloseRef = useRef(false);
+    /* Guardar últimos args de connect para reconexión */
+    const lastConnectArgsRef = useRef<{visitorName?: string; context?: string | null}>({});
 
     /* [T-4] Procesar un WsServerMessage (reutilizado por WS onmessage y BroadcastChannel) */
     const handleServerMessage = useCallback((msg: WsServerMessage) => {
@@ -115,6 +127,7 @@ export function useChatWidget() {
                 setSessionId(null);
                 setTyping(null);
                 setConnected(false);
+                intentionalCloseRef.current = true;
                 if (wsRef.current) {
                     wsRef.current.close();
                     wsRef.current = null;
@@ -127,7 +140,24 @@ export function useChatWidget() {
         }
     }, [sessionId]);
 
-    const connect = useCallback((visitorName?: string, context?: string | null) => {
+    /* [154A-3] Intento de reconexión con backoff exponencial */
+    const scheduleReconnect = useCallback(() => {
+        if (intentionalCloseRef.current) return;
+        if (retriesRef.current >= WS_MAX_RETRIES) return;
+        const delay = Math.min(
+            WS_BASE_BACKOFF_MS * Math.pow(2, retriesRef.current),
+            WS_MAX_BACKOFF_MS,
+        );
+        retriesRef.current += 1;
+        reconnectTimerRef.current = setTimeout(() => {
+            reconnectTimerRef.current = null;
+            const args = lastConnectArgsRef.current;
+            connectInner(args.visitorName, args.context);
+        }, delay);
+    }, []);
+
+    /* Implementación interna de connect, separada para reutilizar en reconnect */
+    const connectInner = useCallback((visitorName?: string, context?: string | null) => {
         if (wsRef.current) return;
         setConnecting(true);
 
@@ -138,7 +168,22 @@ export function useChatWidget() {
         const ws = new WebSocket(url);
         wsRef.current = ws;
 
+        /* [154A-3] Timeout: si no conecta en 10s, abortar e intentar de nuevo */
+        connectTimeoutRef.current = setTimeout(() => {
+            if (ws.readyState !== WebSocket.OPEN) {
+                ws.close();
+                wsRef.current = null;
+                setConnecting(false);
+                scheduleReconnect();
+            }
+        }, WS_CONNECT_TIMEOUT_MS);
+
         ws.onopen = () => {
+            if (connectTimeoutRef.current) {
+                clearTimeout(connectTimeoutRef.current);
+                connectTimeoutRef.current = null;
+            }
+            retriesRef.current = 0;
             setConnected(true);
             setConnecting(false);
             /* [064A-29] El backend envia historial de mensajes automaticamente
@@ -147,15 +192,19 @@ export function useChatWidget() {
         };
 
         ws.onclose = () => {
+            if (connectTimeoutRef.current) {
+                clearTimeout(connectTimeoutRef.current);
+                connectTimeoutRef.current = null;
+            }
             setConnected(false);
             setConnecting(false);
             wsRef.current = null;
+            /* [154A-3] Reconexión automática en cierre inesperado */
+            scheduleReconnect();
         };
 
         ws.onerror = () => {
-            setConnected(false);
-            setConnecting(false);
-            wsRef.current = null;
+            /* onclose se dispara después de onerror, la reconexión se maneja ahí */
         };
 
         ws.onmessage = (event) => {
@@ -171,9 +220,25 @@ export function useChatWidget() {
                 /* Mensaje no JSON, ignorar */
             }
         };
-    }, [sessionId, handleServerMessage]);
+    }, [sessionId, handleServerMessage, scheduleReconnect]);
+
+    const connect = useCallback((visitorName?: string, context?: string | null) => {
+        intentionalCloseRef.current = false;
+        retriesRef.current = 0;
+        lastConnectArgsRef.current = {visitorName, context};
+        connectInner(visitorName, context);
+    }, [connectInner]);
 
     const disconnect = useCallback(() => {
+        intentionalCloseRef.current = true;
+        if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = null;
+        }
+        if (connectTimeoutRef.current) {
+            clearTimeout(connectTimeoutRef.current);
+            connectTimeoutRef.current = null;
+        }
         if (wsRef.current) {
             wsRef.current.close();
             wsRef.current = null;
@@ -183,6 +248,7 @@ export function useChatWidget() {
             typingTimerRef.current = null;
         }
         setConnected(false);
+        setConnecting(false);
         setTyping(null);
     }, []);
 
