@@ -3,13 +3,14 @@
  * Acciones: cambiar rol, banear/reactivar. */
 
 import { useState } from 'react';
-import { Loader2, AlertCircle, Search, Users, Shield, Ban, UserCheck, ChevronDown } from 'lucide-react';
-import { useAdminUsers } from '../../hooks/useAdminUsers';
+import { Loader2, AlertCircle, Search, Users, Shield, Ban, UserCheck, ChevronDown, Trash2 } from 'lucide-react';
+import { useUsersSection } from '../../hooks/useUsersSection';
 import { ROLE_LABELS, STATUS_LABELS, STATUS_CLASS } from '../../api/admin-users';
 import type { AdminUserItem } from '../../api/admin-users';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import { MenuContextual, type MenuContextualItem } from '../ui/ContextMenu';
 import './SeccionUsuarios.css';
 import './UsuariosAcciones.css';
@@ -19,29 +20,20 @@ export function SeccionUsuarios() {
         users, total, page, totalPages, isLoading, error,
         search, roleFilter, statusFilter,
         setSearch, setRoleFilter, setStatusFilter, setPage,
-        changeRole, changeStatus, isChangingRole, isChangingStatus,
-    } = useAdminUsers();
-
-    /* [064A-17] Menus de filtro personalizados en vez de <select> nativo */
-    const [rolMenuAbierto, setRolMenuAbierto] = useState(false);
-    const [statusMenuAbierto, setStatusMenuAbierto] = useState(false);
-
-    const [confirmAction, setConfirmAction] = useState<{
-        userId: string;
-        type: 'role' | 'status';
-        value: string;
-        email: string;
-    } | null>(null);
-
-    const handleConfirm = () => {
-        if (!confirmAction) return;
-        if (confirmAction.type === 'role') {
-            changeRole({ userId: confirmAction.userId, role: confirmAction.value });
-        } else {
-            changeStatus({ userId: confirmAction.userId, status: confirmAction.value });
-        }
-        setConfirmAction(null);
-    };
+        currentUserId,
+        rolMenuAbierto,
+        statusMenuAbierto,
+        confirmAction,
+        modalError,
+        isProcessing,
+        setRolMenuAbierto,
+        setStatusMenuAbierto,
+        openRoleConfirm,
+        openStatusConfirm,
+        openDeleteConfirm,
+        closeConfirm,
+        handleConfirm,
+    } = useUsersSection();
 
     if (isLoading) {
         return (
@@ -138,12 +130,10 @@ export function SeccionUsuarios() {
                                 <UserRow
                                     key={u.id}
                                     user={u}
-                                    onChangeRole={(role) => setConfirmAction({
-                                        userId: u.id, type: 'role', value: role, email: u.email,
-                                    })}
-                                    onChangeStatus={(status) => setConfirmAction({
-                                        userId: u.id, type: 'status', value: status, email: u.email,
-                                    })}
+                                    onChangeRole={(role) => openRoleConfirm(u.id, u.email, role)}
+                                    onChangeStatus={(status) => openStatusConfirm(u.id, u.email, status)}
+                                    onDelete={() => openDeleteConfirm(u.id, u.email)}
+                                    canDelete={u.id !== currentUserId}
                                 />
                             ))}
                         </tbody>
@@ -181,19 +171,28 @@ export function SeccionUsuarios() {
             )}
 
             {/* Modal de confirmación */}
-            <Modal abierto={!!confirmAction} onCerrar={() => setConfirmAction(null)} className="usuariosModal">
+            <Modal abierto={!!confirmAction} onCerrar={closeConfirm} className="usuariosModal">
                 <h3 className="modalTitulo">Confirmar acción</h3>
                 <p className="usuariosModalTexto">
                     {confirmAction?.type === 'role'
                         ? `¿Cambiar rol de ${confirmAction.email} a ${ROLE_LABELS[confirmAction.value] || confirmAction.value}?`
-                        : `¿Cambiar status de ${confirmAction?.email} a ${STATUS_LABELS[confirmAction?.value ?? ''] || confirmAction?.value}?`
+                        : confirmAction?.type === 'status'
+                            ? `¿Cambiar status de ${confirmAction.email} a ${STATUS_LABELS[confirmAction.value] || confirmAction.value}?`
+                            : `¿Eliminar permanentemente a ${confirmAction?.email}? Solo se podrá borrar si no tiene pedidos, hosting, chats u otras relaciones activas.`
                     }
                 </p>
+                {modalError && (
+                    <div className="usuariosError usuariosError--modal">
+                        <AlertCircle size={16} />
+                        <span>{modalError}</span>
+                    </div>
+                )}
                 <div className="modalAcciones">
                     <Button
                         variante="secundario"
                         tamano="pequeno"
-                        onClick={() => setConfirmAction(null)}
+                        onClick={closeConfirm}
+                        disabled={isProcessing}
                         type="button"
                     >
                         Cancelar
@@ -201,11 +200,11 @@ export function SeccionUsuarios() {
                     <Button
                         variante="primario"
                         tamano="pequeno"
-                        onClick={handleConfirm}
-                        disabled={isChangingRole || isChangingStatus}
+                        onClick={() => void handleConfirm()}
+                        disabled={isProcessing}
                         type="button"
                     >
-                        {(isChangingRole || isChangingStatus) ? 'Procesando...' : 'Confirmar'}
+                        {isProcessing ? 'Procesando...' : 'Confirmar'}
                     </Button>
                 </div>
             </Modal>
@@ -214,10 +213,12 @@ export function SeccionUsuarios() {
 }
 
 /* Fila individual de usuario con menú de acciones */
-function UserRow({ user, onChangeRole, onChangeStatus }: {
+function UserRow({ user, onChangeRole, onChangeStatus, onDelete, canDelete }: {
     user: AdminUserItem;
     onChangeRole: (role: string) => void;
     onChangeStatus: (status: string) => void;
+    onDelete: () => void;
+    canDelete: boolean;
 }) {
     const [menuAbierto, setMenuAbierto] = useState(false);
 
@@ -247,12 +248,22 @@ function UserRow({ user, onChangeRole, onChangeStatus }: {
             },
     ];
 
+    if (canDelete) {
+        menuItems.push({
+            id: 'eliminar',
+            label: 'Eliminar usuario',
+            icon: <Trash2 size={14} />,
+            onSelect: onDelete,
+            danger: true,
+        });
+    }
+
     return (
         <tr className="usuariosFila">
             <td className="usuariosCeldaUsuario">
                 <div className="usuariosAvatar">
                     {user.avatar_url
-                        ? <img src={user.avatar_url} alt="" className="usuariosAvatarImg" loading="lazy" />
+                        ? <OptimizedImage src={user.avatar_url} alt="" className="usuariosAvatarImg" loading="lazy" />
                         : <span className="usuariosAvatarPlaceholder">
                             {(user.display_name || user.email)[0].toUpperCase()}
                           </span>

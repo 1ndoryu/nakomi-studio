@@ -14,6 +14,7 @@ import {SENDER_LABELS} from '../../api/chat';
 import {useChatStore} from '../../stores/chatStore';
 import {Input} from '../ui/Input';
 import {Button} from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import './ChatWidget.css';
 
 const AVATAR_SRC = '/assets/random/85a51ba9a4233272662e744b48f97d67.jpg';
@@ -87,7 +88,7 @@ export const ChatWidget: React.FC = () => {
                 aria-label="Abrir chat"
                 type="button"
             >
-                <img src={AVATAR_SRC} alt="" className="chatWidgetBubbleAvatar" loading="lazy" />
+                <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetBubbleAvatar" loading="lazy" />
                 <span className="chatWidgetBubbleTexto">Chat</span>
             </Button>
 
@@ -140,7 +141,7 @@ function renderMessageContent(msg: {
             return (
                 <div className="chatWidgetMsgRich">
                     <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                        <img
+                        <OptimizedImage
                             src={fileUrl}
                             alt={fileName}
                             className="chatWidgetMsgImage"
@@ -317,7 +318,7 @@ function ChatWidgetMessages({
                         )}
                         {isAi ? (
                             <div className="chatWidgetAiRow">
-                                <img src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
+                                <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
                                 {bubble}
                             </div>
                         ) : (
@@ -336,7 +337,7 @@ function ChatWidgetMessages({
                     )}
                     {typing.sender === 'ai' ? (
                         <div className="chatWidgetAiRow">
-                            <img src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
+                            <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
                             <div className="chatWidgetMsgBubble chatWidgetMsgBubbleOther chatWidgetTyping">
                                 <span className="chatWidgetTypingDots">
                                     <span />

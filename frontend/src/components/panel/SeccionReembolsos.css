@@ -1,11 +1,11 @@
 /* [044A-38 Fase 7] Estilos para SeccionReembolsos (admin).
- * [114A-5] Eliminado reembolsosTitulo, padding alineado con hostingContenedor. */
+ * [114A-5] Eliminado reembolsosTitulo.
+ * [094A-17] Sin padding en el wrapper para mantener consistencia con el panel base. */
 
 .reembolsosContenedor {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    padding: var(--spacing-md);
 }
 
 .reembolsosVacio {
@@ -133,24 +133,12 @@
     margin: 0;
 }
 
+.reembolsoRespuestaEtiqueta {
+    color: var(--text-primary);
+}
+
 .reembolsoAcciones {
     margin-top: var(--spacing-xs);
-}
-
-.reembolsoBotonRevisar {
-    background: var(--bg-accent);
-    color: var(--brand-white);
-    border: none;
-    border-radius: var(--radius-md);
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--text-sm);
-    
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.reembolsoBotonRevisar:hover {
-    opacity: 0.85;
 }
 
 .reembolsoFormRevision {
@@ -176,52 +164,10 @@
     flex-wrap: wrap;
 }
 
-.reembolsoBotonAprobar {
+.reembolsoAccionContenido {
     display: flex;
     align-items: center;
     gap: 4px;
-    background: var(--color-success-text);
-    color: var(--brand-white);
-    border: none;
-    border-radius: var(--radius-md);
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--text-sm);
-    
-    cursor: pointer;
-}
-
-.reembolsoBotonAprobar:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.reembolsoBotonRechazar {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--color-error-text);
-    color: var(--brand-white);
-    border: none;
-    border-radius: var(--radius-md);
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--text-sm);
-    
-    cursor: pointer;
-}
-
-.reembolsoBotonRechazar:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.reembolsoBotonCancelar {
-    background: transparent;
-    color: var(--brand-black);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--text-sm);
-    cursor: pointer;
 }
 
 /* Responsive */

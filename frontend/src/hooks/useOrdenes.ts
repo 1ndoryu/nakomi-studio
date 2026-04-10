@@ -15,9 +15,12 @@ import {
     apiCancelOrder,
     apiApprovePhase,
     apiRequestRevision,
+    apiUpdateOrderPhaseDefinition,
+    apiUpdateOrderProjectDescription,
     type OrderResponse,
     type OrderDetailResponse,
     type CreateOrderRequest,
+    type UpdateOrderPhaseDefinitionRequest,
 } from '../api/orders';
 
 const ordersKey = (role: string) => ['orders', role] as const;
@@ -112,6 +115,37 @@ export function useOrdenes() {
         },
     });
 
+    const actualizarDescripcionMutation = useMutation({
+        mutationFn: ({orderId, projectDescription}: {orderId: string; projectDescription: string}) =>
+            apiUpdateOrderProjectDescription(orderId, {project_description: projectDescription}),
+        onSuccess: () => {
+            invalidar();
+            setError(null);
+        },
+        onError: (err: unknown) => {
+            setError(extraerError(err));
+        },
+    });
+
+    const actualizarFaseMutation = useMutation({
+        mutationFn: ({
+            orderId,
+            phase,
+            req,
+        }: {
+            orderId: string;
+            phase: number;
+            req: UpdateOrderPhaseDefinitionRequest;
+        }) => apiUpdateOrderPhaseDefinition(orderId, phase, req),
+        onSuccess: () => {
+            invalidar();
+            setError(null);
+        },
+        onError: (err: unknown) => {
+            setError(extraerError(err));
+        },
+    });
+
     /* [044A-38 Fase 6] entregarFase eliminada de useOrdenes:
      * la entrega ahora se maneja en useDeliverables con upload multipart. */
 
@@ -128,8 +162,12 @@ export function useOrdenes() {
         cancelarOrden: cancelarMutation.mutateAsync,
         aprobarFase: aprobarFaseMutation.mutateAsync,
         solicitarRevision: revisionMutation.mutateAsync,
+        actualizarDescripcionProyecto: actualizarDescripcionMutation.mutateAsync,
+        actualizarFase: actualizarFaseMutation.mutateAsync,
         creando: crearMutation.isPending,
         cancelando: cancelarMutation.isPending,
+        actualizandoDescripcion: actualizarDescripcionMutation.isPending,
+        actualizandoFase: actualizarFaseMutation.isPending,
     };
 }
 

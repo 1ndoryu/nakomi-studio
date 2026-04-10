@@ -1,0 +1,19 @@
+# Normalización de slugs al crear órdenes — 2026-04-09
+
+## Problema
+- El modal de compra enviaba `service_slug` y `plan_slug` usando IDs del catálogo visual (`diseno-web`, `web-basico`, `apps-medio`).
+- El backend resuelve servicios y planes con slugs canónicos de base de datos (`diseno-de-sitios-web`, `basico`, `medio`, `avanzado`, `personalizado`).
+- Esa deriva hacía que `POST /api/orders` respondiera `404` al no encontrar el plan o el servicio esperado.
+
+## Solución aplicada
+- `frontend/src/api/orders.ts` normaliza el payload antes de llamar a `/api/orders`.
+- `service_slug` pasa por un mapa de alias legacy → canónico.
+- `plan_slug` elimina prefijos de catálogo (`web-`, `apps-`, `ia-`, `branding-`, `ecommerce-`, `seo-`, `mkt-`) cuando el sufijo final coincide con un slug real del backend.
+
+## Alcance
+- El fix cubre el flujo de compra público sin exigir reiniciar el backend.
+- También protege otros callers del frontend que reutilicen `apiCreateOrder()`.
+
+## Validación
+- `npm --prefix frontend run type-check`
+- `npm --prefix frontend run build`

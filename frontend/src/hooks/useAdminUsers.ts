@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   apiChangeRole,
   apiChangeStatus,
+  apiDeleteUser,
   apiListUsers,
   type ListUsersParams,
   type PaginatedUsers,
@@ -55,6 +56,13 @@ export function useAdminUsers() {
     },
   });
 
+  const deleteUserMut = useMutation({
+    mutationFn: ({ userId }: { userId: string }) => apiDeleteUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [USERS_KEY] });
+    },
+  });
+
   const totalPages = data ? Math.ceil(data.total / data.per_page) : 0;
 
   return {
@@ -71,9 +79,11 @@ export function useAdminUsers() {
     setSearch: (val: string) => { setSearch(val); setPage(1); },
     setRoleFilter: (val: string) => { setRoleFilter(val); setPage(1); },
     setStatusFilter: (val: string) => { setStatusFilter(val); setPage(1); },
-    changeRole: changeRoleMut.mutate,
-    changeStatus: changeStatusMut.mutate,
+    changeRole: changeRoleMut.mutateAsync,
+    changeStatus: changeStatusMut.mutateAsync,
+    deleteUser: deleteUserMut.mutateAsync,
     isChangingRole: changeRoleMut.isPending,
     isChangingStatus: changeStatusMut.isPending,
+    isDeletingUser: deleteUserMut.isPending,
   };
 }

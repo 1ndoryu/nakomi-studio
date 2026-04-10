@@ -2,33 +2,33 @@
 /*
  * Componente: CarruselShowcase
  * Carrusel infinito de proyectos con desplazamiento automatico y soporte drag.
- * [084A-11] Ahora consume API pública, fallback a datos estáticos. */
+ * [084A-11] Ahora consume API pública.
+ * [094A-20] Sin fallback estático: home debe reflejar el CMS o quedar vacío. */
 import React, {useMemo} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {Badge} from '../ui/Badge';
+import OptimizedImage from '../ui/OptimizedImage';
 import {spaClick} from '../../navegacionSPA';
 import './CarruselShowcase.css';
 import {useCarruselInfinito} from '../../hooks/useCarruselInfinito';
-import {PROYECTOS_DATA, mapAdminProjectsToProyectos} from '../../data/showcase';
+import {mapAdminProjectsToProyectos} from '../../data/showcase';
 import {apiListPublicProjects} from '../../api/admin-projects';
 import {IMAGENES_SHOWCASE} from '../../hooks/useImagenes';
 
 export const CarruselShowcase: React.FC = () => {
-    /* [084A-11] Fetch proyectos publicados del API, fallback a datos estáticos
-     * [084A-30] isPending evita flash: no mostrar fallback mientras la API resuelve */
-    const {data: apiProjects, isPending} = useQuery({
+    /* [084A-11] Fetch proyectos publicados del API.
+     * [084A-30] Mientras carga no renderizamos un dataset fantasma. */
+    const {data: apiProjects} = useQuery({
         queryKey: ['public-projects-showcase'],
         queryFn: apiListPublicProjects,
         staleTime: 5 * 60 * 1000,
         retry: 1,
     });
 
-    const baseProyectos = useMemo(() => {
-        if (isPending) return [];
-        if (!apiProjects || apiProjects.length === 0) return PROYECTOS_DATA;
-        const mapped = mapAdminProjectsToProyectos(apiProjects);
-        return mapped.length > 0 ? mapped : PROYECTOS_DATA;
-    }, [apiProjects, isPending]);
+    const baseProyectos = useMemo(
+        () => mapAdminProjectsToProyectos(apiProjects || []),
+        [apiProjects]
+    );
 
     const proyectosConImagen = baseProyectos.map((proyecto, idx) => ({
         ...proyecto,
@@ -69,7 +69,7 @@ export const CarruselShowcase: React.FC = () => {
                         <a key={`proj-${index}`} href={proyecto.link || '#'} className="carruselItem" draggable={false} onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
                             <div className="carruselImagenWrapper">
                                 {proyecto.imagen && (
-                                    <img
+                                    <OptimizedImage
                                         src={proyecto.imagen}
                                         alt={proyecto.titulo}
                                         className="carruselImagen"

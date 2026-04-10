@@ -1,6 +1,7 @@
 /**
  * Componente: SeccionMetodosPago
  * Gestion de tarjetas de credito y direccion de facturacion.
+ * [094A-15] Se elimino la intro redundante para dejar la seccion mas directa.
  * TO-DO: Integrar Stripe Elements para captura segura de tarjetas.
  * TO-DO: Conectar con backend para CRUD de metodos de pago.
  */
@@ -12,10 +13,6 @@ import './SeccionMetodosPago.css';
 export const SeccionMetodosPago: React.FC = () => {
     return (
         <div className="metodosPagoSeccion">
-            <p className="metodosPagoIntro">
-                Administra tus tarjetas y metodos de pago para transacciones rapidas y seguras.
-            </p>
-
             {/* Tarjetas registradas (placeholder) */}
             <div className="tarjetasLista">
                 <div className="tarjetaVacia">
@@ -36,23 +33,23 @@ export const SeccionMetodosPago: React.FC = () => {
                 <div className="metodosPagoGrid">
                     <div className="metodosPagoCampo">
                         <label htmlFor="pagoNombre" className="metodosPagoEtiqueta">Nombre completo</label>
-                        <Input type="text" id="pagoNombre" placeholder="Nombre en la tarjeta" className="metodosPagoInput" />
+                        <Input type="text" id="pagoNombre" placeholder="Nombre en la tarjeta" />
                     </div>
                     <div className="metodosPagoCampo">
                         <label htmlFor="pagoPais" className="metodosPagoEtiqueta">Pais</label>
-                        <Input type="text" id="pagoPais" placeholder="Pais" className="metodosPagoInput" />
+                        <Input type="text" id="pagoPais" placeholder="Pais" />
                     </div>
                     <div className="metodosPagoCampo">
                         <label htmlFor="pagoDireccion" className="metodosPagoEtiqueta">Direccion</label>
-                        <Input type="text" id="pagoDireccion" placeholder="Calle y numero" className="metodosPagoInput" />
+                        <Input type="text" id="pagoDireccion" placeholder="Calle y numero" />
                     </div>
                     <div className="metodosPagoCampo">
                         <label htmlFor="pagoCiudad" className="metodosPagoEtiqueta">Ciudad</label>
-                        <Input type="text" id="pagoCiudad" placeholder="Ciudad" className="metodosPagoInput" />
+                        <Input type="text" id="pagoCiudad" placeholder="Ciudad" />
                     </div>
                     <div className="metodosPagoCampo">
                         <label htmlFor="pagoCodigoPostal" className="metodosPagoEtiqueta">Codigo postal</label>
-                        <Input type="text" id="pagoCodigoPostal" placeholder="00000" className="metodosPagoInput" />
+                        <Input type="text" id="pagoCodigoPostal" placeholder="00000" />
                     </div>
                 </div>
                 <div className="metodosPagoAcciones">

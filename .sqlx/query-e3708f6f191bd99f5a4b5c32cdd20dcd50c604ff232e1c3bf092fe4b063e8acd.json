@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE orders SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW()\n             WHERE id = $1\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, client_notes, internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary",
+  "query": "INSERT INTO orders (client_id, service_id, plan_id, payment_mode,\n             base_price_cents, discount_percent, final_price_cents, project_description, client_notes)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, project_description, client_notes,\n               internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary",
   "describe": {
     "columns": [
       {
@@ -122,38 +122,62 @@
       },
       {
         "ordinal": 18,
-        "name": "client_notes",
+        "name": "project_description",
         "type_info": "Text"
       },
       {
         "ordinal": 19,
-        "name": "internal_notes",
+        "name": "client_notes",
         "type_info": "Text"
       },
       {
         "ordinal": 20,
+        "name": "internal_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 21,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 22,
+        "ordinal": 23,
         "name": "ai_intermediary_enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 23,
+        "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "payment_mode",
+            "kind": {
+              "Enum": [
+                "full",
+                "half_half",
+                "phased"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Int4",
+        "Int4",
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -177,11 +201,12 @@
       true,
       true,
       true,
+      true,
       false,
       false,
       false,
       true
     ]
   },
-  "hash": "ed29c4abdac4613af878a8e36d2602fb04bf0f129ce9df046ec0fea18a0ac169"
+  "hash": "e3708f6f191bd99f5a4b5c32cdd20dcd50c604ff232e1c3bf092fe4b063e8acd"
 }

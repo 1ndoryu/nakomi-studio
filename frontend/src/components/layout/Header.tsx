@@ -21,6 +21,7 @@ import {useAuthStore} from '../../stores/authStore';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {GloryLink} from '../../core/router';
 import {Logo} from '../ui/Logo';
+import OptimizedImage from '../ui/OptimizedImage';
 import {useHeader} from '../../hooks/useHeader';
 import '../../styles/header.css';
 
@@ -119,7 +120,7 @@ export const Header: React.FC = () => {
                                 ariaLabel={t('accessibility.user_actions')}
                                 className="perfilDropdownWrapper"
                                 triggerClassName="perfilAvatarBtn"
-                                triggerContent={<img src={avatarUrl} alt="Perfil" className="perfilAvatarImg" />}
+                                triggerContent={<OptimizedImage src={avatarUrl} alt="Perfil" className="perfilAvatarImg" loading="eager" />}
                                 items={[{
                                     id: 'logout',
                                     label: t('nav.logout'),

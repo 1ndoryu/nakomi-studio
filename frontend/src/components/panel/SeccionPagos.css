@@ -1,6 +1,7 @@
 /* [044A-38 Fase 3] Estilos del historial de pagos.
  * [074A-61] Rediseño: lista compacta clickeable + modal de detalles.
  * [084A-21] Rediseño como tabla profesional con headers, totales y responsive.
+ * [094A-15] El detalle ya no depende de pagosDatos; el espaciado vive en los bloques reales.
  * [084A-44] Selector de órdenes rediseñado como tabla profesional. */
 
 .pagosContenedor {
@@ -80,10 +81,8 @@
     white-space: nowrap;
 }
 
-.pagosDatos {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
+.pagosBloque {
+    margin-top: var(--spacing-md);
 }
 
 /* [084A-21] Tabla profesional de pagos */

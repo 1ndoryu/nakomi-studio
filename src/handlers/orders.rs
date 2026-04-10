@@ -3,7 +3,7 @@
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::{get, post, put};
+use axum::routing::{get, patch, post, put};
 use axum::{Json, Router};
 use uuid::Uuid;
 use validator::Validate;
@@ -12,7 +12,8 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     CreateOrderRequest, OrderResponse, OrderStatus, SwitchRoleRequest,
-    ToggleAiIntermediaryRequest, UserRole,
+    ToggleAiIntermediaryRequest, UpdateOrderPhaseDefinitionRequest,
+    UpdateOrderProjectDescriptionRequest, UserRole,
 };
 use crate::repositories::{OrderRepository, UserRepository};
 use crate::services::{AuthService, OrderService, PaymentService};
@@ -114,6 +115,80 @@ pub async fn get_order(
         "order": order,
         "phases": phases,
     })))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/orders/{order_id}/project-description",
+    params(("order_id" = Uuid, Path, description = "ID de la orden")),
+    request_body = UpdateOrderProjectDescriptionRequest,
+    responses(
+        (status = 200, description = "Descripción del proyecto actualizada", body = OrderResponse),
+        (status = 400, description = "Datos inválidos", body = crate::errors::ErrorResponse),
+        (status = 401, description = "No autorizado", body = crate::errors::ErrorResponse),
+        (status = 403, description = "Sin permisos", body = crate::errors::ErrorResponse),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "orders"
+)]
+pub async fn update_order_project_description_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(order_id): Path<Uuid>,
+    Json(req): Json<UpdateOrderProjectDescriptionRequest>,
+) -> Result<Json<OrderResponse>, AppError> {
+    auth.require_role(&[UserRole::Client, UserRole::Admin])?;
+    req.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+
+    let order = OrderService::update_project_description(
+        &state.pool,
+        order_id,
+        auth.user_id,
+        auth.effective_role,
+        req.project_description,
+    )
+    .await?;
+
+    Ok(Json(order))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/orders/{order_id}/phases/{phase_number}",
+    params(
+        ("order_id" = Uuid, Path, description = "ID de la orden"),
+        ("phase_number" = i32, Path, description = "Número de fase"),
+    ),
+    request_body = UpdateOrderPhaseDefinitionRequest,
+    responses(
+        (status = 200, description = "Fase actualizada", body = crate::models::OrderPhaseResponse),
+        (status = 400, description = "Datos inválidos", body = crate::errors::ErrorResponse),
+        (status = 401, description = "No autorizado", body = crate::errors::ErrorResponse),
+        (status = 403, description = "Sin permisos", body = crate::errors::ErrorResponse),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "orders"
+)]
+pub async fn update_order_phase_definition_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((order_id, phase_number)): Path<(Uuid, i32)>,
+    Json(req): Json<UpdateOrderPhaseDefinitionRequest>,
+) -> Result<Json<crate::models::OrderPhaseResponse>, AppError> {
+    auth.require_role(&[UserRole::Employee, UserRole::Admin])?;
+
+    let phase = OrderService::update_phase_definition(
+        &state.pool,
+        order_id,
+        phase_number,
+        auth.user_id,
+        auth.effective_role,
+        req,
+    )
+    .await?;
+
+    Ok(Json(phase))
 }
 
 /// Asignar empleado a una orden (solo admin)
@@ -323,10 +398,18 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/orders", post(create_order).get(list_orders))
         .route("/orders/:order_id", get(get_order))
+        .route(
+            "/orders/:order_id/project-description",
+            patch(update_order_project_description_handler),
+        )
         .route("/orders/:order_id/cancel", post(cancel_order_handler))
         .route(
             "/orders/:order_id/assign/:employee_id",
             put(assign_order),
+        )
+        .route(
+            "/orders/:order_id/phases/:phase_number",
+            patch(update_order_phase_definition_handler),
         )
         .route("/orders/:order_id/phases/:phase_number/approve", put(approve_phase))
         .route("/orders/:order_id/phases/:phase_number/revision", put(request_revision))
@@ -386,6 +469,7 @@ pub async fn toggle_ai_intermediary(
         assigned_employee_name: employee_name,
         current_phase: order.current_phase,
         total_phases,
+        project_description: order.project_description,
         client_notes: order.client_notes,
         started_at: order.started_at,
         created_at: order.created_at,

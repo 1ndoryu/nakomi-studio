@@ -1,6 +1,7 @@
 /* [044A-38 Fase 3] Sección de historial de pagos en el panel.
  * [074A-61] Rediseño: lista compacta de pagos + modal de detalles al click.
  * [084A-21] Rediseño como tabla profesional con columnas alineadas, totales y diseño limpio.
+ * [094A-15] Se eliminó el wrapper pagosDatos para dejar el detalle plano y consistente.
  * Botón "Solicitar reembolso" movido al modal de detalle. */
 
 import { useState, useMemo } from 'react';
@@ -99,20 +100,20 @@ export function SeccionPagos() {
 
             {/* [084A-21] Tabla profesional de pagos */}
             {ordenSeleccionada && (
-                <div className="pagosDatos">
-                    {cargandoPagos && <Loader2 className="pagosSpinner" size={24} />}
+                <>
+                    {cargandoPagos && <Loader2 className="pagosSpinner pagosBloque" size={24} />}
                     {errorPagos && (
-                        <p className="pagosError"><AlertCircle size={16} /> {errorPagos}</p>
+                        <p className="pagosError pagosBloque"><AlertCircle size={16} /> {errorPagos}</p>
                     )}
                     {!cargandoPagos && pagos.length === 0 && (
-                        <div className="pagosVacioDetalle">
+                        <div className="pagosVacioDetalle pagosBloque">
                             <CreditCard size={32} />
                             <p>No hay pagos registrados para esta orden</p>
                         </div>
                     )}
                     {!cargandoPagos && pagos.length > 0 && (
                         <>
-                            <div className="pagosTablaWrapper">
+                            <div className="pagosTablaWrapper pagosBloque">
                                 <table className="pagosTabla">
                                     <thead>
                                         <tr>
@@ -157,7 +158,7 @@ export function SeccionPagos() {
 
                             {/* [084A-21] Resumen de totales */}
                             {totales && (
-                                <div className="pagosTotales">
+                                <div className="pagosTotales pagosBloque">
                                     {totales.pagado > 0 && (
                                         <div className="pagosTotalItem">
                                             <span className="pagosTotalLabel">Pagado</span>
@@ -186,7 +187,7 @@ export function SeccionPagos() {
                             )}
                         </>
                     )}
-                </div>
+                </>
             )}
 
             {/* Modal de detalle de pago */}

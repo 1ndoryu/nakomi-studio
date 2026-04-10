@@ -8,6 +8,7 @@ import {useOrderChat} from '../../hooks/useOrderChat';
 import {useAuthStore} from '../../stores/authStore';
 import {Input} from '../ui/Input';
 import {Button} from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import {DEFAULT_PROFILE_AVATAR} from '../../hooks/useCurrentProfile';
 import './OrderChat.css';
 
@@ -75,7 +76,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({orderId}) => {
                         <div key={msg.id} className={clsBurbuja}>
                             {/* [074A-38] Solo mostrar avatar del otro usuario, no el propio */}
                             {!esPropio && (
-                                <img
+                                <OptimizedImage
                                     className="orderChatBurbujaAvatar"
                                     src={msg.sender_avatar_url || DEFAULT_PROFILE_AVATAR}
                                     alt=""

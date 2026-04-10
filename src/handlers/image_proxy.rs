@@ -1,8 +1,9 @@
 /* [104A-5] Proxy de optimización de imágenes on-demand.
  * Ruta: GET /api/img/{*path}?w={ancho}&q={calidad}&fmt={formato}
- * Procesa imágenes de uploads/ al vuelo con cache en disco.
+ * Procesa imágenes locales de uploads/ y assets/ al vuelo con cache en disco.
  * Headers de cache agresivos (1 año) porque la URL incluye los params. */
 
+use axum::extract::State;
 use axum::extract::{Path, Query};
 use axum::http::header;
 use axum::response::IntoResponse;
@@ -53,6 +54,7 @@ pub struct ImageQueryParams {
     tag = "images"
 )]
 pub async fn image_proxy(
+    State(state): State<AppState>,
     Path(path): Path<String>,
     Query(params): Query<ImageQueryParams>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -93,20 +95,20 @@ pub async fn image_proxy(
         format,
     };
 
-    /* Construir ruta completa del archivo original en uploads/ */
-    let original_path = PathBuf::from("uploads").join(&path);
+    /* Resolver la raíz local permitida según el namespace solicitado */
+    let (source_root, original_path) = resolve_source_path(&state, &path);
 
-    /* Verificar que el archivo existe y está dentro de uploads/ */
+    /* Verificar que el archivo existe y está dentro de la raíz permitida */
     let canonical = original_path
         .canonicalize()
         .map_err(|_| AppError::NotFound("Imagen no encontrada".into()))?;
 
-    let uploads_dir = PathBuf::from("uploads")
+    let source_root = source_root
         .canonicalize()
-        .map_err(|_| AppError::Internal("Directorio uploads no encontrado".into()))?;
+        .map_err(|_| AppError::Internal("Directorio de imágenes no encontrado".into()))?;
 
-    if !canonical.starts_with(&uploads_dir) {
-        return Err(AppError::BadRequest("Ruta fuera de uploads/".into()));
+    if !canonical.starts_with(&source_root) {
+        return Err(AppError::BadRequest("Ruta fuera de directorio permitido".into()));
     }
 
     /* Verificar que es un formato de imagen soportado */
@@ -150,6 +152,19 @@ pub async fn image_proxy(
     ))
 }
 
+fn resolve_source_path(state: &AppState, path: &str) -> (PathBuf, PathBuf) {
+    if path.starts_with("assets/") {
+        let root = state.static_dir.as_deref().map_or_else(
+            || PathBuf::from("frontend/public"),
+            PathBuf::from,
+        );
+        return (root.clone(), root.join(path));
+    }
+
+    let root = PathBuf::from("uploads");
+    (root.clone(), root.join(path))
+}
+
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/img/{*path}", get(image_proxy))
+    Router::new().route("/img/*path", get(image_proxy))
 }

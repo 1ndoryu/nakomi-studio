@@ -3,6 +3,7 @@
 import React, {useState} from 'react';
 import { Plus, Archive, ArchiveRestore, Trash2, Globe } from 'lucide-react';
 import { Button } from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import { MenuContextual, type MenuContextualItem } from '../ui/ContextMenu';
 import type { AdminProject } from '../../api/admin-projects';
 import './ListaProyectos.css';
@@ -82,7 +83,7 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
                         >
                             {proyecto.featured_image && (
                                 <div className="listaProyectosImagen">
-                                    <img src={proyecto.featured_image} alt={proyecto.title} loading="lazy" />
+                                    <OptimizedImage src={proyecto.featured_image} alt={proyecto.title} loading="lazy" />
                                 </div>
                             )}
                             <div className="listaProyectosInfo">

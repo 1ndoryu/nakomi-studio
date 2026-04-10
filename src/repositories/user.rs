@@ -19,6 +19,55 @@ pub struct UserWithTotal {
     pub total_count: i64,
 }
 
+pub struct UserDeleteBlockers {
+    pub client_orders: i64,
+    pub assigned_orders: i64,
+    pub reviews: i64,
+    pub refunds: i64,
+    pub delegations: i64,
+    pub deliverables: i64,
+    pub hosting_subscriptions: i64,
+    pub chat_sessions: i64,
+    pub blog_posts: i64,
+}
+
+impl UserDeleteBlockers {
+    #[must_use]
+    pub fn blocking_references(&self) -> Vec<&'static str> {
+        let mut references = Vec::new();
+
+        if self.client_orders > 0 {
+            references.push("pedidos como cliente");
+        }
+        if self.assigned_orders > 0 {
+            references.push("pedidos asignados");
+        }
+        if self.reviews > 0 {
+            references.push("reviews");
+        }
+        if self.refunds > 0 {
+            references.push("reembolsos");
+        }
+        if self.delegations > 0 {
+            references.push("delegaciones");
+        }
+        if self.deliverables > 0 {
+            references.push("entregables subidos");
+        }
+        if self.hosting_subscriptions > 0 {
+            references.push("suscripciones de hosting");
+        }
+        if self.chat_sessions > 0 {
+            references.push("sesiones de chat");
+        }
+        if self.blog_posts > 0 {
+            references.push("artículos de blog");
+        }
+
+        references
+    }
+}
+
 pub struct UserRepository;
 
 impl UserRepository {
@@ -223,6 +272,46 @@ impl UserRepository {
         )
         .fetch_one(pool)
         .await
+    }
+
+    pub async fn delete_blockers(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<UserDeleteBlockers, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"SELECT
+                (SELECT COUNT(*) FROM orders WHERE client_id = $1) as "client_orders!",
+                (SELECT COUNT(*) FROM orders WHERE assigned_employee_id = $1) as "assigned_orders!",
+                (SELECT COUNT(*) FROM order_reviews WHERE client_id = $1 OR employee_id = $1) as "reviews!",
+                (SELECT COUNT(*) FROM order_refunds WHERE requested_by = $1 OR reviewed_by = $1) as "refunds!",
+                (SELECT COUNT(*) FROM order_delegations WHERE from_employee_id = $1 OR to_employee_id = $1) as "delegations!",
+                (SELECT COUNT(*) FROM phase_deliverables WHERE uploaded_by = $1) as "deliverables!",
+                (SELECT COUNT(*) FROM hosting_subscriptions WHERE user_id = $1) as "hosting_subscriptions!",
+                (SELECT COUNT(*) FROM chat_sessions WHERE user_id = $1 OR assigned_staff_id = $1) as "chat_sessions!",
+                (SELECT COUNT(*) FROM blog_posts WHERE author_id = $1) as "blog_posts!""#,
+            user_id,
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(UserDeleteBlockers {
+            client_orders: row.client_orders,
+            assigned_orders: row.assigned_orders,
+            reviews: row.reviews,
+            refunds: row.refunds,
+            delegations: row.delegations,
+            deliverables: row.deliverables,
+            hosting_subscriptions: row.hosting_subscriptions,
+            chat_sessions: row.chat_sessions,
+            blog_posts: row.blog_posts,
+        })
+    }
+
+    pub async fn hard_delete(pool: &PgPool, user_id: Uuid) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query!("DELETE FROM users WHERE id = $1", user_id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
     }
 
     /* [084A-1] Busca el primer usuario activo con un rol dado.

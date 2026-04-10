@@ -8,6 +8,7 @@ import {useTranslation} from 'react-i18next';
 import {Modal} from '../ui/Modal';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
+import {Textarea} from '../ui/Textarea';
 import {useModalCompra} from '../../hooks/useModalCompra';
 import {PAYMENT_MODE_LABELS, type PaymentMode} from '../../api/orders';
 import type {PlanServicio} from '../../data/planes/tipos';
@@ -52,7 +53,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
     const {
         paso, email, setEmail, password, setPassword,
         emailExiste, errorMsg, paymentMode, setPaymentMode,
-        months, setMonths, isHosting,
+        months, setMonths, projectDescription, setProjectDescription, isHosting,
         handleContinuar, handleAuth, reintentar
     } = useModalCompra({plan, servicioSlug, onClose: onCerrar});
 
@@ -83,6 +84,22 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
             {/* Paso resumen: selector de modo de pago + botón continuar */}
             {paso === 'resumen' && (
                 <div className="modalCompraAcciones">
+                    {!isHosting && (
+                        <label className="modalCompraBrief">
+                            <span className="modalCompraBriefLabel">
+                                Describe tu proyecto
+                            </span>
+                            <Textarea
+                                className="modalCompraBriefInput"
+                                value={projectDescription}
+                                onChange={e => setProjectDescription(e.target.value)}
+                                placeholder="Cuéntanos el objetivo, lo que necesitas y cualquier contexto importante para que el pedido nazca con información útil."
+                                rows={4}
+                                required
+                            />
+                        </label>
+                    )}
+
                     {/* [084A-28] Hosting: selector de meses con descuento progresivo */}
                     {isHosting ? (
                         <div className="modalCompraMeses">
@@ -157,6 +174,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                             )}
                         </div>
                     )}
+                    {errorMsg && <p className="modalCompraErrorTexto">{errorMsg}</p>}
                     <Button variante="primario" tamano="mediano" onClick={handleContinuar}>
                         {t('purchase.continue', 'Continuar')} ({precioFinal})
                     </Button>

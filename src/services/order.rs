@@ -9,7 +9,7 @@ use crate::errors::AppError;
 use crate::models::{
     CreateOrderRequest, Order, OrderPhaseResponse, OrderResponse,
     OrderStatus, PaymentMode, PhaseStatus, ServiceDetailResponse, ServicePlanResponse,
-    ServicePlanPhaseResponse,
+    ServicePlanPhaseResponse, UpdateOrderPhaseDefinitionRequest,
 };
 use crate::repositories::{OrderRepository, CreateOrderParams, CreatePhaseParams};
 
@@ -108,20 +108,28 @@ impl OrderService {
         client_id: Uuid,
         req: CreateOrderRequest,
     ) -> Result<OrderResponse, AppError> {
-        let svc = OrderRepository::find_service_by_slug(pool, &req.service_slug)
+        let CreateOrderRequest {
+            service_slug,
+            plan_slug,
+            payment_mode,
+            project_description,
+            client_notes,
+        } = req;
+
+        let svc = OrderRepository::find_service_by_slug(pool, &service_slug)
             .await?
             .ok_or_else(|| {
-                AppError::NotFound(format!("Servicio '{}' no encontrado", req.service_slug))
+                AppError::NotFound(format!("Servicio '{service_slug}' no encontrado"))
             })?;
 
-        let plan = OrderRepository::find_plan_by_slug(pool, svc.id, &req.plan_slug)
+        let plan = OrderRepository::find_plan_by_slug(pool, svc.id, &plan_slug)
             .await?
             .ok_or_else(|| {
-                AppError::NotFound(format!("Plan '{}' no encontrado", req.plan_slug))
+                AppError::NotFound(format!("Plan '{plan_slug}' no encontrado"))
             })?;
 
         let base_price = plan.price_cents;
-        let discount = Self::discount_for_mode(req.payment_mode);
+        let discount = Self::discount_for_mode(payment_mode);
         let final_price = base_price - (base_price * discount / 100);
 
         let plan_phases = OrderRepository::list_plan_phases(pool, plan.id).await?;
@@ -132,11 +140,12 @@ impl OrderService {
                 client_id,
                 service_id: svc.id,
                 plan_id: plan.id,
-                payment_mode: req.payment_mode,
+                payment_mode,
                 base_price_cents: base_price,
                 discount_percent: discount,
                 final_price_cents: final_price,
-                client_notes: req.client_notes.as_deref(),
+                project_description: project_description.as_deref(),
+                client_notes: client_notes.as_deref(),
             },
         )
         .await?;
@@ -147,18 +156,26 @@ impl OrderService {
         for tmpl in &plan_phases {
             let phase_price = final_price * tmpl.percentage_of_total / 100;
             let status = if tmpl.phase_number == 1 {
-                Self::initial_phase_status(req.payment_mode)
+                Self::initial_phase_status(payment_mode)
             } else {
                 PhaseStatus::Locked
             };
+
+            let (title, description) = Self::resolve_phase_definition(
+                payment_mode,
+                tmpl.phase_number,
+                &tmpl.title,
+                tmpl.description.as_deref(),
+                project_description.as_deref(),
+            );
 
             OrderRepository::create_order_phase(
                 pool,
                 CreatePhaseParams {
                     order_id: order.id,
                     phase_number: tmpl.phase_number,
-                    title: &tmpl.title,
-                    description: tmpl.description.as_deref(),
+                    title: &title,
+                    description: description.as_deref(),
                     price_cents: phase_price,
                     status,
                     max_revisions: tmpl.max_revisions,
@@ -186,6 +203,7 @@ impl OrderService {
             assigned_employee_name: None,
             current_phase: order.current_phase,
             total_phases,
+            project_description: order.project_description,
             client_notes: order.client_notes,
             started_at: order.started_at,
             created_at: order.created_at,
@@ -232,6 +250,7 @@ impl OrderService {
             assigned_employee_name: employee_name,
             current_phase: order.current_phase,
             total_phases,
+            project_description: order.project_description,
             client_notes: order.client_notes,
             started_at: order.started_at,
             created_at: order.created_at,
@@ -289,6 +308,7 @@ impl OrderService {
                     #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
                     { phases.len() as i32 }
                 },
+                project_description: order.project_description,
                 client_notes: order.client_notes,
                 started_at: order.started_at,
                 created_at: order.created_at,
@@ -355,6 +375,165 @@ impl OrderService {
 
         let cancelled = OrderRepository::cancel_order(pool, order_id).await?;
         Ok(cancelled)
+    }
+
+    pub async fn update_project_description(
+        pool: &PgPool,
+        order_id: Uuid,
+        user_id: Uuid,
+        effective_role: crate::models::UserRole,
+        project_description: String,
+    ) -> Result<OrderResponse, AppError> {
+        use crate::models::UserRole;
+
+        let order = OrderRepository::find_order_by_id(pool, order_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
+
+        if effective_role != UserRole::Admin && order.client_id != user_id {
+            return Err(AppError::Forbidden(
+                "Solo el cliente dueño puede actualizar la descripción del proyecto".into(),
+            ));
+        }
+
+        if matches!(order.status, OrderStatus::Completed | OrderStatus::Cancelled) {
+            return Err(AppError::BadRequest(
+                "La descripción no se puede editar en una orden cerrada".into(),
+            ));
+        }
+
+        let updated =
+            OrderRepository::update_project_description(pool, order_id, &project_description)
+                .await?;
+        let phases = OrderRepository::list_order_phases(pool, order_id).await?;
+        let (svc_title, svc_slug, plan_name) =
+            OrderRepository::get_order_display_info(pool, updated.service_id, updated.plan_id)
+                .await?;
+        let employee_name =
+            OrderRepository::get_employee_display_name(pool, updated.assigned_employee_id).await?;
+        let client_name = OrderRepository::get_client_display_name(pool, updated.client_id).await?;
+
+        #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+        let total_phases = phases.len() as i32;
+
+        Ok(OrderResponse {
+            id: updated.id,
+            order_number: updated.order_number,
+            client_id: updated.client_id,
+            client_name,
+            service_title: svc_title,
+            service_slug: svc_slug,
+            plan_name,
+            payment_mode: updated.payment_mode,
+            base_price_cents: updated.base_price_cents,
+            discount_percent: updated.discount_percent,
+            final_price_cents: updated.final_price_cents,
+            currency: updated.currency,
+            status: updated.status,
+            assigned_employee_id: updated.assigned_employee_id,
+            assigned_employee_name: employee_name,
+            current_phase: updated.current_phase,
+            total_phases,
+            project_description: updated.project_description,
+            client_notes: updated.client_notes,
+            started_at: updated.started_at,
+            created_at: updated.created_at,
+            ai_intermediary_enabled: updated.ai_intermediary_enabled.unwrap_or(false),
+            ai_summary: updated.ai_summary,
+        })
+    }
+
+    pub async fn update_phase_definition(
+        pool: &PgPool,
+        order_id: Uuid,
+        phase_number: i32,
+        user_id: Uuid,
+        effective_role: crate::models::UserRole,
+        req: UpdateOrderPhaseDefinitionRequest,
+    ) -> Result<crate::models::OrderPhaseResponse, AppError> {
+        use crate::models::UserRole;
+
+        let order = OrderRepository::find_order_by_id(pool, order_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
+
+        if order.payment_mode != PaymentMode::Phased {
+            return Err(AppError::BadRequest(
+                "Solo las órdenes por fases admiten definición manual de fases".into(),
+            ));
+        }
+
+        if effective_role != UserRole::Admin && order.assigned_employee_id != Some(user_id) {
+            return Err(AppError::Forbidden(
+                "Solo el empleado asignado puede definir las fases".into(),
+            ));
+        }
+
+        let phase = OrderRepository::find_phase_by_number(pool, order_id, phase_number)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Fase {phase_number} no encontrada")))?;
+
+        if !matches!(phase.status, PhaseStatus::Locked | PhaseStatus::PendingPayment) {
+            return Err(AppError::BadRequest(
+                "Solo se pueden definir fases que aún no comenzaron".into(),
+            ));
+        }
+
+        if req.title.is_none()
+            && req.description.is_none()
+            && req.price_cents.is_none()
+            && req.estimated_days.is_none()
+            && req.max_revisions.is_none()
+        {
+            return Err(AppError::BadRequest(
+                "Debes enviar al menos un cambio para actualizar la fase".into(),
+            ));
+        }
+
+        let title = req.title.as_deref().map(str::trim);
+        if matches!(title, Some("")) {
+            return Err(AppError::Validation(
+                "El título de la fase no puede estar vacío".into(),
+            ));
+        }
+
+        let description = req.description.as_deref().map(str::trim);
+        if let Some(price_cents) = req.price_cents {
+            if price_cents <= 0 {
+                return Err(AppError::Validation(
+                    "El precio de la fase debe ser mayor que cero".into(),
+                ));
+            }
+        }
+
+        if let Some(estimated_days) = req.estimated_days {
+            if estimated_days <= 0 {
+                return Err(AppError::Validation(
+                    "Los días estimados deben ser mayores que cero".into(),
+                ));
+            }
+        }
+
+        if let Some(max_revisions) = req.max_revisions {
+            if max_revisions < 0 {
+                return Err(AppError::Validation(
+                    "Las revisiones máximas no pueden ser negativas".into(),
+                ));
+            }
+        }
+
+        let updated = OrderRepository::update_order_phase_definition(
+            pool,
+            phase.id,
+            title,
+            description,
+            req.price_cents,
+            req.estimated_days,
+            req.max_revisions,
+        )
+        .await?;
+
+        Ok(crate::models::OrderPhaseResponse::from(updated))
     }
 
     /* [044A-38 Fase 2] Empleado entrega una fase.
@@ -502,5 +681,37 @@ impl OrderService {
             PaymentMode::Full => PhaseStatus::Paid,
             PaymentMode::HalfHalf | PaymentMode::Phased => PhaseStatus::PendingPayment,
         }
+    }
+
+    fn resolve_phase_definition(
+        payment_mode: PaymentMode,
+        phase_number: i32,
+        title: &str,
+        description: Option<&str>,
+        project_description: Option<&str>,
+    ) -> (String, Option<String>) {
+        if payment_mode != PaymentMode::Phased {
+            return (title.to_string(), description.map(ToOwned::to_owned));
+        }
+
+        if phase_number == 1 {
+            let detail = project_description
+                .filter(|value| !value.trim().is_empty())
+                .map_or_else(|| {
+                    "Revisión del brief del cliente y definición del alcance inicial del proyecto.".to_string()
+                }, |value| {
+                    format!(
+                        "Brief inicial del cliente: {value}. Esta fase sirve para revisar alcance, prioridades y la estructura del proyecto."
+                    )
+                });
+            return ("Definición del proyecto".to_string(), Some(detail));
+        }
+
+        (
+            format!("Fase {phase_number} por definir"),
+            Some(
+                "Esta fase será definida por el especialista cuando revise el brief y la conversación con el cliente.".to_string(),
+            ),
+        )
     }
 }

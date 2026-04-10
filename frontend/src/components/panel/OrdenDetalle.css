@@ -219,6 +219,14 @@
     gap: var(--spacing-sm);
 }
 
+.faseCardHeaderMeta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
 /* [064A-23] .faseCardTitulo y .faseNumero eliminados — sin numeración automática */
 
 .faseNombre {
@@ -261,6 +269,43 @@
     color: var(--text-muted);
     line-height: 1.4;
     margin: 0;
+}
+
+.faseDefinicionEditor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-md);
+    background: var(--bg-card-subtle);
+}
+
+.faseDefinicionGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-sm);
+}
+
+.faseDefinicionCampo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: var(--text-2xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.faseDefinicionCampo--full {
+    width: 100%;
+}
+
+.faseDefinicionAcciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
 }
 
 .faseMeta {
@@ -320,6 +365,47 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+
+.ordenDescripcionProyecto {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--bg-item-active);
+}
+
+.ordenDescripcionProyectoHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+}
+
+.ordenDescripcionProyectoTexto {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+}
+
+.ordenDescripcionProyectoEditor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.ordenDescripcionProyectoInput {
+    min-height: 140px;
+    resize: vertical;
+}
+
+.ordenDescripcionProyectoAcciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
 }
 
 .ordenInfoLabel {
@@ -417,6 +503,14 @@
 
     .faseCardHeader {
         flex-direction: column;
+    }
+
+    .faseCardHeaderMeta,
+    .ordenDescripcionProyectoHeader,
+    .ordenDescripcionProyectoAcciones,
+    .faseDefinicionAcciones {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .faseAcciones {

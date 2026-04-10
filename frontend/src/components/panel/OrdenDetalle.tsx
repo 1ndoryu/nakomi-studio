@@ -2,10 +2,9 @@
  * número, fecha inicio, precio, 3 puntos) + historial de fases con entregas y
  * revisiones. Clientes solicitan revisiones al recibir entrega.
  * Opciones: reportar, extensión de tiempo (empleado), cancelar.
- * sentinel-disable-file html-nativo-en-vez-de-componente: Checkbox nativo dentro de
- * custom toggle (<label> con CSS switch). No hay componente Checkbox UI en el proyecto. */
+ * custom toggle (<label> con CSS switch). */
 import React, {useState, useCallback} from 'react';
-import {CreditCard, XCircle, ArrowLeft, AlertTriangle, User, MessageCircle, Bot} from 'lucide-react';
+import {CreditCard, XCircle, ArrowLeft, AlertTriangle, User, Bot} from 'lucide-react';
 import {
     ORDER_STATUS_LABELS,
     PAYMENT_MODE_LABELS,
@@ -18,10 +17,12 @@ import {
 import {ReviewPanel} from './ReviewPanel';
 import {FaseCard} from './FaseCard';
 import {Button} from '../ui/Button';
+import {Input} from '../ui/Input';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
-import {Modal} from '../ui/Modal';
 import CheckoutModal from './CheckoutModal';
 import {OrderChat} from './OrderChat';
+import {OrderDetailModals} from './OrderDetailModals';
+import {OrderProjectDescription} from './OrderProjectDescription';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
 import './OrdenDetalle.css';
 
@@ -52,12 +53,27 @@ interface OrdenDetalleProps {
     onCancelar: (orderId: string) => Promise<void>;
     onAprobar: (orderId: string, phase: number) => Promise<void>;
     onRevision: (orderId: string, phase: number) => Promise<void>;
+    onActualizarDescripcion: (orderId: string, projectDescription: string) => Promise<void>;
+    onActualizarFase: (
+        orderId: string,
+        phase: number,
+        req: {
+            title?: string;
+            description?: string;
+            price_cents?: number;
+            estimated_days?: number;
+            max_revisions?: number;
+        },
+    ) => Promise<void>;
     onPagoExitoso: () => void;
     cancelando: boolean;
+    actualizandoDescripcion: boolean;
+    actualizandoFase: boolean;
 }
 
 export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     order, phases, effectiveRole, onVolver, onCancelar, onAprobar, onRevision, onPagoExitoso, cancelando,
+    onActualizarDescripcion, onActualizarFase, actualizandoDescripcion, actualizandoFase,
 }) => {
     const {
         checkout, menuAbierto, setMenuAbierto,
@@ -65,10 +81,6 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
         modalReportarAbierto, setModalReportarAbierto,
         confirmarCancelacion, abrirCheckout, cerrarCheckout,
     } = useOrdenDetalle(order, onCancelar);
-
-    /* [064A-31] Chat disponible cuando hay empleado asignado y la orden está activa
-     * [084A-2] Chat abierto por defecto. Se muestra debajo del historial. */
-    const [chatAbierto, setChatAbierto] = useState(true);
 
     /* [T-10] Toggle IA intermediaria: solo visible para admin/employee */
     const [intermediaryEnabled, setIntermediaryEnabled] = useState(order.ai_intermediary_enabled);
@@ -93,6 +105,8 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     const isPerPhasePayment = order.payment_mode === 'phased' || order.payment_mode === 'half_half';
     const isEmployee = effectiveRole === 'employee';
     const isClient = effectiveRole === 'client' || effectiveRole === 'admin';
+    const canEditDescription = isClient && order.status !== 'completed' && order.status !== 'cancelled';
+    const canDefinePhases = order.payment_mode === 'phased' && (isEmployee || effectiveRole === 'admin');
 
     /* [064A-31] Chat disponible cuando hay empleado asignado y la orden está activa */
     const canChat = !!order.assigned_employee_id
@@ -143,26 +157,15 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                             <label className={`ordenToggleIntermediary ${togglingIntermediary ? 'ordenToggleIntermediary--disabled' : ''}`}>
                                 <Bot size={14} />
                                 <span className="ordenToggleLabel">IA</span>
-                                <input
+                                <Input
                                     type="checkbox"
                                     checked={intermediaryEnabled}
-                                    onChange={handleToggleIntermediary}
+                                    onChange={() => void handleToggleIntermediary()}
                                     disabled={togglingIntermediary}
                                     className="ordenToggleInput"
                                 />
                                 <span className="ordenToggleSwitch" />
                             </label>
-                        )}
-                        {/* [064A-31] Botón de chat con freelancer */}
-                        {canChat && (
-                            <Button
-                                onClick={() => setChatAbierto(prev => !prev)}
-                                type="button"
-                                variante={chatAbierto ? 'primario' : 'outline'}
-                                tamano="pequeno"
-                            >
-                                <MessageCircle size={16} /> Chat
-                            </Button>
                         )}
                         {needsPayment && !isPerPhasePayment && (
                             <Button
@@ -227,6 +230,14 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                     </div>
                 </div>
 
+                <OrderProjectDescription
+                    orderId={order.id}
+                    projectDescription={order.project_description}
+                    canEdit={canEditDescription}
+                    isSaving={actualizandoDescripcion}
+                    onSave={onActualizarDescripcion}
+                />
+
                 {/* [T-10] Resumen IA del pedido — solo visible para admin/employee */}
                 {!isClient && order.ai_summary && (
                     <div className="ordenAiSummary">
@@ -238,52 +249,15 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                 )}
             </div>
 
-            {/* [064A-31] Chat movido debajo del historial — ver 084A-2 */}
-
-            {/* [064A-30] Modales */}
-            <Modal
-                abierto={modalCancelarAbierto}
-                onCerrar={() => {
-                    if (!cancelando) setModalCancelarAbierto(false);
-                }}
-                className="ordenDetalleModal"
-            >
-                <div className="ordenDetalleModalContenido">
-                    <h3 className="modalTitulo">Cancelar orden</h3>
-                    <p className="ordenDetalleModalTexto">
-                        Esta acción no se puede deshacer. La orden #{order.order_number} quedará cancelada.
-                    </p>
-                    <div className="modalAcciones">
-                        <Button variante="outline" tamano="pequeno" type="button"
-                            onClick={() => setModalCancelarAbierto(false)} disabled={cancelando}>
-                            Volver
-                        </Button>
-                        <Button variante="peligro" tamano="pequeno" type="button"
-                            onClick={confirmarCancelacion} disabled={cancelando}>
-                            {cancelando ? 'Cancelando...' : 'Sí, cancelar'}
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
-
-            <Modal
-                abierto={modalReportarAbierto}
-                onCerrar={() => setModalReportarAbierto(false)}
-                className="ordenDetalleModal"
-            >
-                <div className="ordenDetalleModalContenido">
-                    <h3 className="modalTitulo">Reportar problema</h3>
-                    <p className="ordenDetalleModalTexto">
-                        El equipo de soporte revisará tu caso y se comunicará contigo. Por ahora, contacta por chat.
-                    </p>
-                    <div className="modalAcciones">
-                        <Button variante="outline" tamano="pequeno" type="button"
-                            onClick={() => setModalReportarAbierto(false)}>
-                            Entendido
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
+            <OrderDetailModals
+                orderNumber={order.order_number}
+                modalCancelarAbierto={modalCancelarAbierto}
+                modalReportarAbierto={modalReportarAbierto}
+                cancelando={cancelando}
+                onCerrarCancelar={() => setModalCancelarAbierto(false)}
+                onConfirmarCancelacion={() => void confirmarCancelacion()}
+                onCerrarReportar={() => setModalReportarAbierto(false)}
+            />
 
             {checkout && (
                 <CheckoutModal
@@ -314,8 +288,11 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                                 isClient={isClient}
                                 isEmployee={isEmployee}
                                 isPhased={isPerPhasePayment}
+                                canDefinePhase={canDefinePhases}
+                                isUpdatingDefinition={actualizandoFase}
                                 onAprobar={onAprobar}
                                 onRevision={onRevision}
+                                onActualizarFase={onActualizarFase}
                                 onPagarFase={(pn, amount) => abrirCheckout(amount, pn)}
                             />
                         ))}
@@ -323,8 +300,8 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                 </div>
             )}
 
-            {/* [084A-2] Chat abierto por defecto, debajo del historial */}
-            {chatAbierto && canChat && (
+            {/* [084A-2] Chat siempre abierto, debajo del historial */}
+            {canChat && (
                 <OrderChat orderId={order.id} />
             )}
 

@@ -4,6 +4,7 @@
 import React, {useState} from 'react';
 import {Plus, Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
 import {Button} from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
 import type {AdminService} from '../../api/admin-services';
 import './ListaServicios.css';
@@ -84,7 +85,7 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
                         >
                             {svc.image_url && (
                                 <div className="listaServiciosImagen">
-                                    <img src={svc.image_url} alt={svc.title} loading="lazy" />
+                                    <OptimizedImage src={svc.image_url} alt={svc.title} loading="lazy" />
                                 </div>
                             )}
                             <div className="listaServiciosInfo">

@@ -1,6 +1,8 @@
 /* [104A-5] Componente de imagen optimizada con soporte WebP y responsive.
- * Usa el proxy /api/img/ para servir imágenes optimizadas on-demand.
+ * Usa el proxy /api/img/ para servir imágenes locales optimizadas on-demand.
  * Genera <picture> con source WebP + fallback <img>. */
+
+import type {SyntheticEvent} from 'react';
 
 import { generateSrcSet, generateWebPSrcSet, optimizedUrl } from '../../utils/imageUtils';
 
@@ -19,6 +21,7 @@ interface OptimizedImageProps {
     loading?: 'lazy' | 'eager';
     draggable?: boolean;
     onClick?: () => void;
+    onError?: (event: SyntheticEvent<HTMLImageElement>) => void;
 }
 
 export default function OptimizedImage({
@@ -33,12 +36,19 @@ export default function OptimizedImage({
     loading = 'lazy',
     draggable,
     onClick,
+    onError,
 }: OptimizedImageProps) {
     /* Si no hay src, no renderizar nada */
     if (!src) return null;
 
     /* Sin optimización: renderizar img simple */
-    if (noOptimize || src.startsWith('data:') || src.startsWith('http') || src.endsWith('.svg') || !src.startsWith('/uploads/')) {
+    if (
+        noOptimize
+        || src.startsWith('data:')
+        || src.startsWith('http')
+        || src.endsWith('.svg')
+        || (!src.startsWith('/uploads/') && !src.startsWith('/assets/'))
+    ) {
         return (
             <img
                 src={src}
@@ -49,6 +59,7 @@ export default function OptimizedImage({
                 loading={loading}
                 draggable={draggable}
                 onClick={onClick}
+                onError={onError}
             />
         );
     }
@@ -71,6 +82,7 @@ export default function OptimizedImage({
                 loading={loading}
                 draggable={draggable}
                 onClick={onClick}
+                onError={onError}
             />
         </picture>
     );

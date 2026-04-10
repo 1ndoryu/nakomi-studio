@@ -1,36 +1,37 @@
 /**
  * Componente: SeccionShowcase
  * Muestra proyectos destacados organizados por categoría.
- * [084A-11] Ahora consume API pública de proyectos, con fallback a datos estáticos. */
+ * [084A-11] Ahora consume API pública de proyectos.
+ * [094A-20] Sin fallback estático: la home debe reflejar el CMS real. */
 import {useMemo} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {useTranslation} from 'react-i18next';
 import {spaClick} from '../../navegacionSPA';
 import {SeccionHeader} from '../ui/SeccionHeader';
 import {Badge} from '../ui/Badge';
-import {CATEGORIAS_SHOWCASE, buildCategoriasShowcase, mapAdminProjectsToProyectos} from '../../data/showcase';
+import {buildCategoriasShowcase, mapAdminProjectsToProyectos} from '../../data/showcase';
 import {apiListPublicProjects} from '../../api/admin-projects';
 import OptimizedImage from '../ui/OptimizedImage';
 import './SeccionShowcase.css';
 
-export const SeccionShowcase = (): JSX.Element => {
+export const SeccionShowcase = (): JSX.Element | null => {
     const {t} = useTranslation();
 
-    /* [084A-11] Fetch proyectos publicados del API, fallback a datos estáticos
-     * [084A-30] isPending evita flash: no mostrar fallback mientras la API resuelve */
-    const {data: apiProjects, isPending} = useQuery({
+    /* [084A-11] Fetch proyectos publicados del API.
+     * [084A-30] Mientras carga no renderizamos contenido estático inventado. */
+    const {data: apiProjects} = useQuery({
         queryKey: ['public-projects-showcase'],
         queryFn: apiListPublicProjects,
         staleTime: 5 * 60 * 1000,
         retry: 1,
     });
 
-    const categorias = useMemo(() => {
-        if (isPending) return [];
-        if (!apiProjects || apiProjects.length === 0) return CATEGORIAS_SHOWCASE;
-        const proyectos = mapAdminProjectsToProyectos(apiProjects);
-        return proyectos.length > 0 ? buildCategoriasShowcase(proyectos) : CATEGORIAS_SHOWCASE;
-    }, [apiProjects, isPending]);
+    const categorias = useMemo(
+        () => buildCategoriasShowcase(mapAdminProjectsToProyectos(apiProjects || [])),
+        [apiProjects]
+    );
+
+    if (categorias.length === 0) return null;
 
     return (
         <section className="seccionShowcase">

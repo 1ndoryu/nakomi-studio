@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, client_notes, internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary\n             FROM orders ORDER BY created_at DESC",
+  "query": "UPDATE orders SET status = $2, updated_at = NOW() WHERE id = $1\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary",
   "describe": {
     "columns": [
       {
@@ -122,37 +122,61 @@
       },
       {
         "ordinal": 18,
-        "name": "client_notes",
+        "name": "project_description",
         "type_info": "Text"
       },
       {
         "ordinal": 19,
-        "name": "internal_notes",
+        "name": "client_notes",
         "type_info": "Text"
       },
       {
         "ordinal": 20,
+        "name": "internal_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 21,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 22,
+        "ordinal": 23,
         "name": "ai_intermediary_enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 23,
+        "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "order_status",
+            "kind": {
+              "Enum": [
+                "pending_payment",
+                "payment_held",
+                "awaiting_assignment",
+                "in_progress",
+                "under_review",
+                "completed",
+                "cancelled",
+                "disputed"
+              ]
+            }
+          }
+        }
+      ]
     },
     "nullable": [
       false,
@@ -175,11 +199,12 @@
       true,
       true,
       true,
+      true,
       false,
       false,
       false,
       true
     ]
   },
-  "hash": "f7fbad366dc7958d6cef8f6ab81f72679bc5dc06e6a238977b550cf83ca2c4f1"
+  "hash": "9b4d00547b23459ba87c330e2ee3233717f84d57ab4ac39e2e9872470c662c6f"
 }

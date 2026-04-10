@@ -59,6 +59,14 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos
 
-## Pendientes nuevas (por prioridad)
+## Pendientes 
 
-(sin tareas pendientes)
+- Sentinel-report.md hay violaciones sin resolver o falsos positivos sin resolver.
+
+##
+
+- No puedo borrar los blogs en el cms.
+- las imagenes parecen estar optmizandose pero no se optmizan automaticamente segun el tamaño en el que aparecen
+- En metodos de pagos agregar tarjeta no funciona.
+- regenera los datos de prueba
+- sigue el problema!!! DE orders.ts:140  POST http://localhost:3000/api/orders 404 (Not Found)

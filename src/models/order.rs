@@ -124,6 +124,7 @@ pub struct Order {
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
     pub cancelled_at: Option<DateTime<Utc>>,
+    pub project_description: Option<String>,
     pub client_notes: Option<String>,
     pub internal_notes: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -165,8 +166,25 @@ pub struct CreateOrderRequest {
     pub service_slug: String,
     pub plan_slug: String,
     pub payment_mode: PaymentMode,
+    #[validate(length(max = 4000))]
+    pub project_description: Option<String>,
     #[validate(length(max = 2000))]
     pub client_notes: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct UpdateOrderProjectDescriptionRequest {
+    #[validate(length(min = 10, max = 4000))]
+    pub project_description: String,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateOrderPhaseDefinitionRequest {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub price_cents: Option<i32>,
+    pub estimated_days: Option<i32>,
+    pub max_revisions: Option<i32>,
 }
 
 /// Request para cambiar el `active_role` del admin
@@ -204,6 +222,7 @@ pub struct OrderResponse {
     pub assigned_employee_name: Option<String>,
     pub current_phase: i32,
     pub total_phases: i32,
+    pub project_description: Option<String>,
     pub client_notes: Option<String>,
     pub started_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,

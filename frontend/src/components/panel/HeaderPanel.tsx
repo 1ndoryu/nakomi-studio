@@ -15,6 +15,7 @@ import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {Button} from '../ui/Button';
 import {MenuContextual} from '../ui/ContextMenu';
 import {Logo} from '../ui/Logo';
+import OptimizedImage from '../ui/OptimizedImage';
 import NotificationBell from './NotificationBell';
 import './HeaderPanel.css';
 import '../../styles/header.css';
@@ -60,7 +61,7 @@ export const HeaderPanel: React.FC = () => {
                         ariaLabel={t('accessibility.user_actions')}
                         className="perfilDropdownWrapper"
                         triggerClassName="perfilAvatarBtn"
-                        triggerContent={<img src={avatarUrl} alt={t('accessibility.profile_photo')} className="perfilAvatarImg" />}
+                        triggerContent={<OptimizedImage src={avatarUrl} alt={t('accessibility.profile_photo')} className="perfilAvatarImg" loading="eager" />}
                         items={[{
                             id: 'logout',
                             label: t('nav.logout'),

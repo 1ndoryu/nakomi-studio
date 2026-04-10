@@ -5,12 +5,26 @@
 /* Anchos predefinidos que coinciden con los permitidos en el backend */
 const ALLOWED_WIDTHS = [150, 300, 480, 640, 800, 1024, 1200, 1600, 2400] as const;
 
+const OPTIMIZABLE_PREFIXES = ['/uploads/', '/assets/'] as const;
+
 type AllowedWidth = typeof ALLOWED_WIDTHS[number];
 
 interface OptimizeOptions {
     width?: AllowedWidth | number;
     quality?: number;
     format?: 'webp' | 'jpeg' | 'png';
+}
+
+function isOptimizableSrc(src: string): boolean {
+    return OPTIMIZABLE_PREFIXES.some(prefix => src.startsWith(prefix));
+}
+
+function toProxyRelativePath(src: string): string {
+    if (src.startsWith('/uploads/')) {
+        return src.replace(/^\/uploads\//, '');
+    }
+
+    return src.replace(/^\//, '');
 }
 
 /* Genera la URL optimizada para una imagen.
@@ -24,8 +38,8 @@ export function optimizedUrl(src: string, options: OptimizeOptions = {}): string
         return src;
     }
 
-    /* Solo procesar imágenes de uploads/ */
-    if (!src.startsWith('/uploads/')) {
+    /* Solo procesar imágenes locales conocidas */
+    if (!isOptimizableSrc(src)) {
         return src;
     }
 
@@ -35,8 +49,8 @@ export function optimizedUrl(src: string, options: OptimizeOptions = {}): string
         return src;
     }
 
-    /* Construir ruta relativa sin el /uploads/ prefix */
-    const relativePath = src.replace(/^\/uploads\//, '');
+    /* Construir ruta relativa para el proxy */
+    const relativePath = toProxyRelativePath(src);
 
     /* Construir query params */
     const params = new URLSearchParams();
@@ -58,7 +72,7 @@ export function generateSrcSet(
         return '';
     }
 
-    if (!src.startsWith('/uploads/')) {
+    if (!isOptimizableSrc(src)) {
         return '';
     }
 

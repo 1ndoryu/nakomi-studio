@@ -84,7 +84,7 @@ export function HostingCard({
     return (
         <>
             <div className="hostingCard" role="button" tabIndex={0} onClick={onSelect} onKeyDown={e => { if (e.key === 'Enter') onSelect(); }}>
-                <div className="hostingCardIcono">
+                <div className="panelCardIcono">
                     <Server size={28} strokeWidth={1.4} />
                 </div>
                 <div className="hostingCardBody">

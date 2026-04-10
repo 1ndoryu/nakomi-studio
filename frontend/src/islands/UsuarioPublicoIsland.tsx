@@ -8,6 +8,8 @@ import {useParams} from 'react-router-dom';
 import {Star} from 'lucide-react';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
+import {Button} from '../components/ui/Button';
+import OptimizedImage from '../components/ui/OptimizedImage';
 import {usePublicProfile} from '../hooks/usePublicProfile';
 import type {ReviewTab} from '../hooks/usePublicProfile';
 import type {PublicReviewItem, RatingDistribution} from '../api/publicUsers';
@@ -65,7 +67,7 @@ function CardReview({review}: {review: PublicReviewItem}) {
             <div className="perfilCardReviewHeader">
                 <div className="perfilCardReviewAutor">
                     {review.author_avatar ? (
-                        <img src={review.author_avatar} alt="" className="perfilCardReviewAvatar" loading="lazy" />
+                        <OptimizedImage src={review.author_avatar} alt="" className="perfilCardReviewAvatar" loading="lazy" />
                     ) : (
                         <div className="perfilCardReviewAvatarPlaceholder">
                             {(review.author_name || '?')[0].toUpperCase()}
@@ -104,20 +106,24 @@ function TabsReviews({
 }) {
     return (
         <div className="perfilReviewTabs">
-            <button
+            <Button
                 type="button"
+                variante="texto"
+                tamano="pequeno"
                 className={`perfilReviewTab ${tab === 'received' ? 'perfilReviewTabActivo' : ''}`}
                 onClick={() => onCambiarTab('received')}
             >
                 Recibidas ({totalRecibidas})
-            </button>
-            <button
+            </Button>
+            <Button
                 type="button"
+                variante="texto"
+                tamano="pequeno"
                 className={`perfilReviewTab ${tab === 'given' ? 'perfilReviewTabActivo' : ''}`}
                 onClick={() => onCambiarTab('given')}
             >
                 Dadas ({totalDadas})
-            </button>
+            </Button>
         </div>
     );
 }
@@ -129,9 +135,9 @@ function Paginacion({page, total, perPage, onCambiar}: {
     if (totalPages <= 1) return null;
     return (
         <div className="perfilPaginacion">
-            <button type="button" disabled={page <= 1} onClick={() => onCambiar(page - 1)}>← Anterior</button>
+            <Button type="button" variante="outline" tamano="pequeno" className="perfilPaginacionBoton" disabled={page <= 1} onClick={() => onCambiar(page - 1)}>← Anterior</Button>
             <span>{page} / {totalPages}</span>
-            <button type="button" disabled={page >= totalPages} onClick={() => onCambiar(page + 1)}>Siguiente →</button>
+            <Button type="button" variante="outline" tamano="pequeno" className="perfilPaginacionBoton" disabled={page >= totalPages} onClick={() => onCambiar(page + 1)}>Siguiente →</Button>
         </div>
     );
 }
@@ -180,7 +186,7 @@ export function UsuarioPublicoIsland() {
                     <div className="perfilPublicoHeader">
                         <div className="perfilPublicoAvatarZona">
                             {profile.avatar_url ? (
-                                <img src={profile.avatar_url} alt={nombre} className="perfilPublicoAvatar" loading="lazy" />
+                                <OptimizedImage src={profile.avatar_url} alt={nombre} className="perfilPublicoAvatar" loading="lazy" />
                             ) : (
                                 <div className="perfilPublicoAvatarPlaceholder">
                                     {nombre[0].toUpperCase()}

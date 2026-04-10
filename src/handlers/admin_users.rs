@@ -4,7 +4,7 @@
 
 use axum::{
     extract::{Path, Query, State},
-    routing::{get, patch},
+    routing::{delete, get, patch},
     Json, Router,
 };
 use serde::Deserialize;
@@ -188,9 +188,75 @@ pub async fn change_status(
     Ok(Json(UserResponse::from(user)))
 }
 
+/* [094A-19] Borrado admin controlado: solo se permite si el usuario no arrastra
+ * pedidos, hosting, chats ni otras relaciones operativas. Si existen, el backend
+ * devuelve el detalle para que el panel sugiera suspender en vez de romper FKs. */
+/// Elimina un usuario si no tiene dependencias de negocio activas
+#[utoipa::path(
+    delete,
+    path = "/api/admin/users/{user_id}",
+    params(
+        ("user_id" = Uuid, Path, description = "ID del usuario")
+    ),
+    responses(
+        (status = 204, description = "Usuario eliminado"),
+        (status = 400, description = "El usuario tiene dependencias activas", body = crate::errors::ErrorResponse),
+        (status = 404, description = "Usuario no encontrado", body = crate::errors::ErrorResponse)
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn delete_user(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Path(user_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    if user_id == auth.user_id {
+        return Err(AppError::BadRequest(
+            "No puedes eliminar tu propio usuario".into(),
+        ));
+    }
+
+    let _existing: crate::models::User = UserRepository::find_by_id(&state.pool, user_id)
+        .await?
+        .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+
+    let blockers = UserRepository::delete_blockers(&state.pool, user_id).await?;
+    let blocking_references = blockers.blocking_references();
+    if !blocking_references.is_empty() {
+        return Err(AppError::BadRequest(format!(
+            "No se puede eliminar el usuario porque todavía tiene datos relacionados: {}. Suspéndelo o limpia esas relaciones primero.",
+            blocking_references.join(", ")
+        )));
+    }
+
+    UserRepository::hard_delete(&state.pool, user_id)
+        .await
+        .map_err(|err| match err {
+            sqlx::Error::RowNotFound => AppError::NotFound("Usuario no encontrado".into()),
+            sqlx::Error::Database(_) => AppError::BadRequest(
+                "No se pudo eliminar el usuario porque todavía tiene relaciones activas en el sistema".into(),
+            ),
+            other => AppError::Database(other),
+        })?;
+
+    AuditService::log(
+        &state.pool,
+        "user_delete",
+        Some(auth.user_id),
+        None,
+        serde_json::json!({"target_user": user_id}),
+    )
+    .await;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/admin/users", get(list_users))
         .route("/admin/users/:user_id/role", patch(change_role))
         .route("/admin/users/:user_id/status", patch(change_status))
+        .route("/admin/users/:user_id", delete(delete_user))
 }

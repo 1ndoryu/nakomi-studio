@@ -10,6 +10,7 @@
 }
 
 .perfilReviewTab {
+    min-height: auto;
     padding: var(--spacing-sm) var(--spacing-md);
     background: none;
     border: none;
@@ -140,7 +141,7 @@
     font-size: var(--text-sm);
 }
 
-.perfilPaginacion button {
+.perfilPaginacionBoton {
     background: none;
     border: 1px solid var(--border-default);
     padding: var(--spacing-xs) var(--spacing-md);
@@ -150,11 +151,11 @@
     transition: background var(--transicion-rapida);
 }
 
-.perfilPaginacion button:hover:not(:disabled) {
+.perfilPaginacionBoton:hover:not(:disabled) {
     background: var(--bg-item-hover);
 }
 
-.perfilPaginacion button:disabled {
+.perfilPaginacionBoton:disabled {
     opacity: 0.4;
     cursor: default;
 }

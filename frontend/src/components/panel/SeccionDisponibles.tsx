@@ -79,8 +79,10 @@ function OrdenDisponibleCard({
                     <span className="disponibleCardBadge">Disponible</span>
                 </div>
                 <span className="disponibleCardPlan">{orden.plan_name}</span>
-                {orden.client_notes && (
-                    <p className="disponibleCardNotas">{orden.client_notes}</p>
+                {(orden.project_description || orden.client_notes) && (
+                    <p className="disponibleCardNotas">
+                        {orden.project_description || orden.client_notes}
+                    </p>
                 )}
                 <div className="disponibleCardFooter">
                     <span className="disponibleCardPrecio">

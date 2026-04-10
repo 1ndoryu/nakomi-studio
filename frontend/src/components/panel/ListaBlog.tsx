@@ -3,6 +3,7 @@
 import React, {useState} from 'react';
 import {Plus, Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
 import {Button} from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
 import type {AdminBlogPost} from '../../api/admin-blog';
 import './ListaBlog.css';
@@ -92,7 +93,7 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
                         >
                             {post.featured_image && (
                                 <div className="listaBlogImagen">
-                                    <img src={post.featured_image} alt={post.title} loading="lazy" />
+                                    <OptimizedImage src={post.featured_image} alt={post.title} loading="lazy" />
                                 </div>
                             )}
                             <div className="listaBlogInfo">

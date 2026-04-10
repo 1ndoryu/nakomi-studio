@@ -8,42 +8,21 @@
  * que no son reutilizables; data ya está en useOrdenes.
  * sentinel-disable-file usestate-excesivo: 4 useState — tab, búsqueda, filtroEmpleado,
  * menuAbierto son estados UI independientes del componente lista. */
-import React, {useCallback, useMemo, useState} from 'react';
+import React from 'react';
 import {FolderOpen, Search, ChevronDown} from 'lucide-react';
-import {useAuthStore} from '../../stores/authStore';
-import {useOrdenes} from '../../hooks/useOrdenes';
+import {useSeccionProyectos} from '../../hooks/useSeccionProyectos';
 import {OrdenDetalle} from './OrdenDetalle';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
 import {MenuContextual} from '../ui/ContextMenu';
+import OptimizedImage from '../ui/OptimizedImage';
 import {
     ORDER_STATUS_LABELS,
     PAYMENT_MODE_LABELS,
     formatPrice,
     type OrderResponse,
-    type OrderStatus,
 } from '../../api/orders';
 import './SeccionProyectos.css';
-
-/* [064A-50] Prioridad de status para ordenar (menor = más arriba).
- * in_progress es lo más urgente, completed/cancelled al fondo. */
-const STATUS_PRIORITY: Record<string, number> = {
-    in_progress: 0,
-    under_review: 1,
-    awaiting_assignment: 2,
-    payment_held: 3,
-    pending_payment: 4,
-    disputed: 5,
-    completed: 6,
-    cancelled: 7,
-};
-
-/* Status que van al tab "Historial" */
-const HISTORY_STATUSES: Set<OrderStatus> = new Set(['completed', 'cancelled']);
-
-function sortByStatusPriority(a: OrderResponse, b: OrderResponse): number {
-    return (STATUS_PRIORITY[a.status] ?? 99) - (STATUS_PRIORITY[b.status] ?? 99);
-}
 
 /* Mapa status → clase CSS (evita inline style) */
 const STATUS_CLASS: Record<string, string> = {
@@ -58,66 +37,24 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 export const SeccionProyectos: React.FC = () => {
-    const effectiveRole = useAuthStore(s => s.user?.effectiveRole) || 'client';
-    const isAdmin = effectiveRole === 'admin';
-    const [tabActiva, setTabActiva] = useState<'activas' | 'historial'>('activas');
-    /* [084A-1] Búsqueda y filtro por empleado — solo admin */
-    const [busqueda, setBusqueda] = useState('');
-    const [filtroEmpleado, setFiltroEmpleado] = useState<string>('');
-    const [empleadoMenuAbierto, setEmpleadoMenuAbierto] = useState(false);
     const {
+        effectiveRole,
+        isAdmin,
+        tabActiva,
+        setTabActiva,
+        busqueda,
+        setBusqueda,
+        filtroEmpleado,
+        setFiltroEmpleado,
+        empleadoMenuAbierto,
+        setEmpleadoMenuAbierto,
         ordenes, cargando, detalle, cargandoDetalle,
         ordenSeleccionada, error, seleccionarOrden, recargar,
-        cancelarOrden, aprobarFase, solicitarRevision, cancelando,
-    } = useOrdenes();
-
-    const handleVolver = useCallback(() => seleccionarOrden(null), [seleccionarOrden]);
-    const handleCancelar = useCallback(async (orderId: string) => {
-        await cancelarOrden(orderId);
-    }, [cancelarOrden]);
-    const handleAprobar = useCallback(async (orderId: string, phase: number) => {
-        await aprobarFase({orderId, phase});
-    }, [aprobarFase]);
-    const handleRevision = useCallback(async (orderId: string, phase: number) => {
-        await solicitarRevision({orderId, phase});
-    }, [solicitarRevision]);
-
-    /* [064A-50] Filtrar y ordenar por tab — debe estar antes de early returns para cumplir Rules of Hooks */
-    const activas = useMemo(() =>
-        ordenes.filter(o => !HISTORY_STATUSES.has(o.status)).sort(sortByStatusPriority),
-        [ordenes]
-    );
-    const historial = useMemo(() =>
-        ordenes.filter(o => HISTORY_STATUSES.has(o.status)),
-        [ordenes]
-    );
-    const listaBase = tabActiva === 'activas' ? activas : historial;
-
-    /* [084A-1] Filtrado admin: búsqueda por título + filtro por empleado.
-     * [084A-4] Movido antes de early returns para cumplir Rules of Hooks. */
-    const empleadosUnicos = useMemo(() => {
-        if (!isAdmin) return [];
-        const mapa = new Map<string, string>();
-        for (const o of ordenes) {
-            if (o.assigned_employee_id && o.assigned_employee_name) {
-                mapa.set(o.assigned_employee_id, o.assigned_employee_name);
-            }
-        }
-        return Array.from(mapa, ([id, nombre]) => ({id, nombre}));
-    }, [isAdmin, ordenes]);
-
-    const listaActual = useMemo(() => {
-        if (!isAdmin) return listaBase;
-        let resultado = listaBase;
-        if (busqueda.trim()) {
-            const q = busqueda.toLowerCase();
-            resultado = resultado.filter(o => o.service_title.toLowerCase().includes(q));
-        }
-        if (filtroEmpleado) {
-            resultado = resultado.filter(o => o.assigned_employee_id === filtroEmpleado);
-        }
-        return resultado;
-    }, [isAdmin, listaBase, busqueda, filtroEmpleado]);
+        cancelando, actualizandoDescripcion, actualizandoFase,
+        activas, historial, empleadosUnicos, listaActual,
+        handleVolver, handleCancelar, handleAprobar, handleRevision,
+        handleActualizarDescripcion, handleActualizarFase,
+    } = useSeccionProyectos();
 
     if (cargando) {
         return <div className="proyectosLoading"><div className="proyectosSpinner" /><p>Cargando proyectos...</p></div>;
@@ -137,8 +74,12 @@ export const SeccionProyectos: React.FC = () => {
                 onCancelar={handleCancelar}
                 onAprobar={handleAprobar}
                 onRevision={handleRevision}
+                onActualizarDescripcion={handleActualizarDescripcion}
+                onActualizarFase={handleActualizarFase}
                 onPagoExitoso={recargar}
                 cancelando={cancelando}
+                actualizandoDescripcion={actualizandoDescripcion}
+                actualizandoFase={actualizandoFase}
             />
         );
     }
@@ -148,15 +89,7 @@ export const SeccionProyectos: React.FC = () => {
 
     /* Lista vacía (todas las órdenes, no solo la tab) */
     if (ordenes.length === 0) {
-        return (
-            <div className="proyectosVacio">
-                <FolderOpen size={48} className="proyectosVacioIcono" strokeWidth={1.2} />
-                <h3 className="proyectosVacioTitulo">Sin proyectos aún</h3>
-                <p className="proyectosVacioTexto">
-                    Cuando contrates un servicio, aparecerá aquí con seguimiento en tiempo real.
-                </p>
-            </div>
-        );
+        return <EstadoVacioProyectos variante="sinOrdenes" />;
     }
 
     /* Lista de órdenes con tabs */
@@ -218,13 +151,9 @@ export const SeccionProyectos: React.FC = () => {
             </div>
 
             {listaActual.length === 0 ? (
-                <div className="proyectosVacio">
-                    <p className="proyectosVacioTexto">
-                        {tabActiva === 'activas'
-                            ? 'No tienes proyectos activos en este momento.'
-                            : 'No tienes órdenes en el historial.'}
-                    </p>
-                </div>
+                <EstadoVacioProyectos
+                    variante={tabActiva === 'activas' ? 'sinActivas' : 'sinHistorial'}
+                />
             ) : (
                 <div className="proyectosLista">
                     {listaActual.map(orden => (
@@ -240,6 +169,33 @@ export const SeccionProyectos: React.FC = () => {
         </div>
     );
 };
+
+type EstadoVacioProyectosVariante = 'sinOrdenes' | 'sinActivas' | 'sinHistorial';
+
+function EstadoVacioProyectos({variante}: {variante: EstadoVacioProyectosVariante}) {
+    const contenido: Record<EstadoVacioProyectosVariante, {titulo: string; texto: string}> = {
+        sinOrdenes: {
+            titulo: 'Sin proyectos aún',
+            texto: 'Cuando contrates un servicio, aparecerá aquí con seguimiento en tiempo real.',
+        },
+        sinActivas: {
+            titulo: 'Sin proyectos activos',
+            texto: 'Cuando una orden avance más allá del historial, aparecerá aquí para que sigas su estado.',
+        },
+        sinHistorial: {
+            titulo: 'Sin historial todavía',
+            texto: 'Las órdenes completadas o canceladas aparecerán aquí cuando ya no estén activas.',
+        },
+    };
+
+    return (
+        <div className="proyectosVacio">
+            <FolderOpen size={48} className="proyectosVacioIcono" strokeWidth={1.2} />
+            <h3 className="proyectosVacioTitulo">{contenido[variante].titulo}</h3>
+            <p className="proyectosVacioTexto">{contenido[variante].texto}</p>
+        </div>
+    );
+}
 
 /* [054A-6] Mapa slug → imagen estática del servicio.
  * Los servicios sin imagen en /public/assets/Servicios/ usan un fallback genérico. */
@@ -261,7 +217,7 @@ function OrdenCard({orden, onClick, mostrarEmpleado}: {orden: OrderResponse; onC
 
     return (
         <Button className="ordenCard" onClick={onClick} type="button" variante="texto">
-            <img
+            <OptimizedImage
                 className="ordenCardImagen"
                 src={imgSrc}
                 alt={orden.service_title}

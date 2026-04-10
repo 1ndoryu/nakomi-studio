@@ -48,6 +48,25 @@
     width: 100%;
 }
 
+.modalCompraBrief {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    width: 100%;
+}
+
+.modalCompraBriefLabel {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--brand-black);
+    text-align: left;
+}
+
+.modalCompraBriefInput {
+    min-height: 116px;
+    resize: vertical;
+}
+
 .modalCompraAviso {
     font-size: var(--text-xs);
     color: var(--text-tertiary);

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE orders SET current_phase = $2, updated_at = NOW()\n             WHERE id = $1\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, client_notes, internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary",
+  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, project_description, client_notes,\n               internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary\n             FROM orders WHERE status = 'awaiting_assignment'\n             AND auto_assign_deadline IS NOT NULL AND auto_assign_deadline < NOW()\n             ORDER BY auto_assign_deadline ASC",
   "describe": {
     "columns": [
       {
@@ -122,40 +122,42 @@
       },
       {
         "ordinal": 18,
-        "name": "client_notes",
+        "name": "project_description",
         "type_info": "Text"
       },
       {
         "ordinal": 19,
-        "name": "internal_notes",
+        "name": "client_notes",
         "type_info": "Text"
       },
       {
         "ordinal": 20,
+        "name": "internal_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 21,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 22,
+        "ordinal": 23,
         "name": "ai_intermediary_enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 23,
+        "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Int4"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -178,11 +180,12 @@
       true,
       true,
       true,
+      true,
       false,
       false,
       false,
       true
     ]
   },
-  "hash": "e56e28003ffa7a449f5b06e9001634921f310decee3d64f7cabf76adde444fa1"
+  "hash": "6afa06eb39b9fa23d4331d9cb1db892a3256269c5e64d40373f28db1271b3845"
 }

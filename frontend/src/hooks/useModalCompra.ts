@@ -32,6 +32,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('full');
     /* [084A-28] Meses de pago para hosting (1-12). No aplica a servicios. */
     const [months, setMonths] = useState(1);
+    const [projectDescription, setProjectDescription] = useState('');
     const isHosting = !!plan.periodo;
 
     /* Crear orden y redirigir a pasarela de pago */
@@ -42,6 +43,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
                 service_slug: servicioSlug,
                 plan_slug: plan.id,
                 payment_mode: isHosting ? 'full' : paymentMode,
+                project_description: projectDescription.trim() || undefined,
                 client_notes: isHosting && months > 1 ? `Pago anticipado: ${months} meses` : undefined
             });
 
@@ -65,6 +67,12 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
 
     /* Paso 1: usuario confirma que quiere continuar */
     const handleContinuar = () => {
+        if (!isHosting && projectDescription.trim().length < 10) {
+            setErrorMsg('Describe tu proyecto con un poco más de detalle para crear la orden.');
+            return;
+        }
+
+        setErrorMsg('');
         if (logueado) {
             crearOrdenYPagar();
         } else {
@@ -132,6 +140,8 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         setPaymentMode,
         months,
         setMonths,
+        projectDescription,
+        setProjectDescription,
         isHosting,
         handleContinuar,
         handleAuth,

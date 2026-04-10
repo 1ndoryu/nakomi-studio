@@ -5,7 +5,7 @@
 
 ## Arquitectura
 
-Proxy on-demand estilo Jetpack Photon CDN. Las imágenes se procesan al vuelo al ser solicitadas, con cache en disco para evitar re-procesamiento.
+Proxy on-demand estilo Jetpack Photon CDN. Las imágenes se procesan al vuelo al ser solicitadas, con cache en disco para evitar re-procesamiento. A partir de 094A-13 cubre tanto imágenes de `uploads/` como assets locales servidos desde `assets/`.
 
 ## Backend
 
@@ -23,7 +23,7 @@ Proxy on-demand estilo Jetpack Photon CDN. Las imágenes se procesan al vuelo al
 **Seguridad:**
 - Path traversal: doble validación (contains("..") + canonicalize + starts_with(uploads_dir))
 - Whitelist de anchos previene cache flooding
-- Solo procesa imágenes de `uploads/` (jpg, jpeg, png, webp, gif)
+- Procesa imágenes locales de `uploads/` y `assets/` (jpg, jpeg, png, webp, gif)
 - No procesa SVGs (no son rasterizables de forma segura)
 
 **Cache:** `uploads/.cache/{w}_{q}_{fmt}/{relative_path}`
@@ -37,7 +37,7 @@ Proxy on-demand estilo Jetpack Photon CDN. Las imágenes se procesan al vuelo al
 ## Frontend
 
 ### `optimizedUrl(src, options)` — `utils/imageUtils.ts`
-Genera URL al proxy para imágenes de uploads/. No modifica data URIs, URLs externas ni SVGs.
+Genera URL al proxy para imágenes de `uploads/` y `assets/`. No modifica data URIs, URLs externas ni SVGs.
 
 ### `generateSrcSet(src, widths, options)` — `utils/imageUtils.ts`
 Genera string srcSet responsive con URLs al proxy.
@@ -50,9 +50,20 @@ Componente React que renderiza `<picture>` con source WebP + fallback. Props pri
 - `noOptimize` (deshabilitar optimización)
 - `loading` (default: "lazy")
 
-Para imágenes que NO vienen de uploads (data URIs, URLs externas, SVGs), renderiza un `<img>` simple sin proxy.
+Para imágenes que NO vienen de `uploads/` o `assets/` (data URIs, URLs externas, SVGs), renderiza un `<img>` simple sin proxy.
+
+## Cobertura actual
+
+Las vistas reales del sitio/panel ya migradas a `OptimizedImage` incluyen:
+- Blog individual y perfil público.
+- Hero de servicio, carrusel showcase, logos de clientes y fondos controlados por `RandomImage`.
+- Widget de chat, chat del panel y chat de órdenes.
+- Sidebar, headers, perfil y listados CMS/panel (servicios, proyectos, blog, equipo, usuarios, órdenes).
+
+Se dejan deliberadamente fuera del proxy los previews locales temporales usados antes de subir una imagen (`UploadImage`, `ModalTestimonio`), porque ahí todavía no existe una URL persistente del sistema.
 
 ## Limitaciones conocidas
 1. `image` crate 0.25 solo soporta WebP lossless (no lossy). Esto produce archivos WebP más grandes que lossy pero aún menores que PNG.
 2. El cache no tiene TTL ni limpieza automática. Para limpiar: `rm -rf uploads/.cache/`.
 3. No hay soporte para GIF animado (se procesa solo el primer frame).
+4. En desarrollo, los assets locales se resuelven desde `frontend/public`; en producción, desde `STATIC_DIR` si está configurado.

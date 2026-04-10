@@ -6,6 +6,7 @@ import {Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
 import {AdminTeamMember} from '../../api/admin-team';
 import {Badge} from '../ui/Badge';
 import {Button} from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
 import './ListaEquipo.css';
 
@@ -51,7 +52,7 @@ export const ListaEquipo: React.FC<ListaEquipoProps> = ({miembros, cargando, onE
                 return (
                     <article key={m.id} className="equipoListaCard" onClick={() => onEditar(m)}>
                         <div className="equipoListaAvatar">
-                            {m.avatar && <img src={m.avatar} alt={m.name} loading="lazy" />}
+                            {m.avatar && <OptimizedImage src={m.avatar} alt={m.name} loading="lazy" />}
                         </div>
                         <div className="equipoListaInfo">
                             <h4 className="equipoListaNombre">{m.name}</h4>

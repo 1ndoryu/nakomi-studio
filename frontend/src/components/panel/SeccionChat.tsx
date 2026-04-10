@@ -10,6 +10,7 @@ import {useSeccionChat} from '../../hooks/useSeccionChat';
 import {useAuthStore} from '../../stores/authStore';
 import {ChatInfoPanel} from './ChatInfoPanel';
 import {Button} from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import {Textarea} from '../ui/Textarea';
 import {DEFAULT_PROFILE_AVATAR} from '../../hooks/useCurrentProfile';
 import './SeccionChat.css';
@@ -247,7 +248,7 @@ function MessageBubble({message}: {message: ChatMessage}) {
         <div className={`chatBurbuja ${isOwn ? 'chatBurbujaPropia' : ''} ${isAi ? 'chatBurbujaIA' : ''}`}>
             <div className="chatBurbujaHeader">
                 {/* [074A-32] Avatar del sender — usa DEFAULT_PROFILE_AVATAR como fallback */}
-                <img
+                <OptimizedImage
                     className="chatBurbujaAvatar"
                     src={message.sender_avatar_url || DEFAULT_PROFILE_AVATAR}
                     alt={displayName}

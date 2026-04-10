@@ -3,6 +3,8 @@
  * Descripcion: Hero para la pagina individual de servicio.
  * [064A-47] Muestra imagen grande del servicio con proporción laptop (16:10).
  */
+import OptimizedImage from '../ui/OptimizedImage';
+
 import './SeccionHeroServicio.css';
 
 interface SeccionHeroServicioProps {
@@ -23,7 +25,7 @@ export const SeccionHeroServicio = ({titulo = 'Nombre del Servicio', descripcion
                 </div>
                 {imagen && (
                     <div className="heroServicioImagenWrapper">
-                        <img
+                        <OptimizedImage
                             className="heroServicioImagen"
                             src={imagen}
                             alt={titulo}

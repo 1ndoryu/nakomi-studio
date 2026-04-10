@@ -21,6 +21,7 @@ pub struct CreateOrderParams<'a> {
     pub base_price_cents: i32,
     pub discount_percent: i32,
     pub final_price_cents: i32,
+    pub project_description: Option<&'a str>,
     pub client_notes: Option<&'a str>,
 }
 
@@ -327,14 +328,15 @@ impl OrderRepository {
         sqlx::query_as!(
             Order,
             r#"INSERT INTO orders (client_id, service_id, plan_id, payment_mode,
-             base_price_cents, discount_percent, final_price_cents, client_notes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             base_price_cents, discount_percent, final_price_cents, project_description, client_notes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING id, order_number, client_id, service_id, plan_id,
                payment_mode as "payment_mode: PaymentMode",
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+               started_at, completed_at, cancelled_at, project_description, client_notes,
+               internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             params.client_id,
             params.service_id,
@@ -343,6 +345,7 @@ impl OrderRepository {
             params.base_price_cents,
             params.discount_percent,
             params.final_price_cents,
+            params.project_description,
             params.client_notes,
         )
         .fetch_one(pool)
@@ -360,7 +363,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE id = $1"#,
             order_id,
@@ -380,7 +384,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE client_id = $1 ORDER BY created_at DESC"#,
             client_id,
@@ -400,7 +405,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE assigned_employee_id = $1 ORDER BY created_at DESC"#,
             employee_id,
@@ -417,7 +423,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders ORDER BY created_at DESC"#,
         )
@@ -433,7 +440,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE status = 'awaiting_assignment' ORDER BY created_at ASC"#,
         )
@@ -454,7 +462,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
             status as OrderStatus,
@@ -478,7 +487,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
             employee_id,
@@ -645,9 +655,35 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+               started_at, completed_at, cancelled_at, project_description, client_notes,
+               internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    pub async fn update_project_description(
+        pool: &PgPool,
+        order_id: Uuid,
+        project_description: &str,
+    ) -> Result<Order, sqlx::Error> {
+        sqlx::query_as!(
+            Order,
+            r#"UPDATE orders
+               SET project_description = $2, updated_at = NOW()
+             WHERE id = $1
+             RETURNING id, order_number, client_id, service_id, plan_id,
+               payment_mode as "payment_mode: PaymentMode",
+               base_price_cents, discount_percent, final_price_cents, currency,
+               status as "status: OrderStatus",
+               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
+               started_at, completed_at, cancelled_at, project_description, client_notes,
+               internal_notes,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+            order_id,
+            project_description,
         )
         .fetch_one(pool)
         .await
@@ -668,7 +704,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
             phase_number,
@@ -691,7 +728,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
         )
@@ -779,7 +817,8 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+               started_at, completed_at, cancelled_at, project_description, client_notes,
+               internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
             order_id,
         )
@@ -796,13 +835,48 @@ impl OrderRepository {
                base_price_cents, discount_percent, final_price_cents, currency,
                status as "status: OrderStatus",
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
-               started_at, completed_at, cancelled_at, client_notes, internal_notes,
+               started_at, completed_at, cancelled_at, project_description, client_notes,
+               internal_notes,
                created_at, updated_at, ai_intermediary_enabled, ai_summary
              FROM orders WHERE status = 'awaiting_assignment'
              AND auto_assign_deadline IS NOT NULL AND auto_assign_deadline < NOW()
              ORDER BY auto_assign_deadline ASC"#,
         )
         .fetch_all(pool)
+        .await
+    }
+
+    pub async fn update_order_phase_definition(
+        pool: &PgPool,
+        phase_id: Uuid,
+        title: Option<&str>,
+        description: Option<&str>,
+        price_cents: Option<i32>,
+        estimated_days: Option<i32>,
+        max_revisions: Option<i32>,
+    ) -> Result<OrderPhase, sqlx::Error> {
+        sqlx::query_as!(
+            OrderPhase,
+            r#"UPDATE order_phases
+               SET title = COALESCE($2, title),
+                   description = COALESCE($3, description),
+                   price_cents = COALESCE($4, price_cents),
+                   estimated_days = COALESCE($5, estimated_days),
+                   max_revisions = COALESCE($6, max_revisions),
+                   updated_at = NOW()
+             WHERE id = $1
+             RETURNING id, order_id, phase_number, title, description, price_cents,
+               status as "status: PhaseStatus",
+               max_revisions, revisions_used, estimated_days,
+               started_at, delivered_at, approved_at, deadline, created_at, updated_at"#,
+            phase_id,
+            title,
+            description,
+            price_cents,
+            estimated_days,
+            max_revisions,
+        )
+        .fetch_one(pool)
         .await
     }
 
@@ -818,7 +892,7 @@ impl OrderRepository {
              RETURNING id, order_number, client_id, service_id, plan_id, \
              payment_mode, base_price_cents, discount_percent, final_price_cents, currency, \
              status, assigned_employee_id, assigned_at, auto_assign_deadline, current_phase, \
-             started_at, completed_at, cancelled_at, client_notes, internal_notes, \
+               started_at, completed_at, cancelled_at, project_description, client_notes, internal_notes, \
              created_at, updated_at, ai_intermediary_enabled, ai_summary",
         )
         .bind(order_id)
@@ -838,7 +912,7 @@ impl OrderRepository {
              RETURNING id, order_number, client_id, service_id, plan_id, \
              payment_mode, base_price_cents, discount_percent, final_price_cents, currency, \
              status, assigned_employee_id, assigned_at, auto_assign_deadline, current_phase, \
-             started_at, completed_at, cancelled_at, client_notes, internal_notes, \
+               started_at, completed_at, cancelled_at, project_description, client_notes, internal_notes, \
              created_at, updated_at, ai_intermediary_enabled, ai_summary",
         )
         .bind(order_id)

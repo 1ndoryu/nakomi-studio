@@ -102,17 +102,17 @@ const PROYECTOS_FALLBACK: Proyecto[] = [
 export const PROYECTOS_DATA: Proyecto[] = PROYECTOS_FALLBACK;
 
 /* [084A-11] Convierte AdminProject (API) → Proyecto (frontend).
- * Filtra solo proyectos publicados con imagen. */
+ * [094A-20] Usa el mismo mapeo para home y /proyectos para no divergir del CMS. */
 export function mapAdminProjectsToProyectos(projects: AdminProject[]): Proyecto[] {
     return projects
-        .filter(p => p.status === 'published' && p.featured_image)
+        .filter(p => p.status === 'published')
         .map(p => ({
-            id: p.id,
+            id: p.slug,
             adminId: p.id,
-            titulo: p.title.toUpperCase(),
+            titulo: p.title,
             cliente: p.client || '',
             categorias: p.categories,
-            imagen: p.featured_image!,
+            imagen: p.featured_image || '',
             descripcion: p.description,
             link: `/proyectos/${p.slug}`,
             skills: p.skills.map((s, i) => ({id: i + 1, titulo: s.titulo, descripcion: s.descripcion})),
@@ -129,9 +129,10 @@ export function mapAdminProjectsToProyectos(projects: AdminProject[]): Proyecto[
 /*
  * Agrupar proyectos en categorías para la sección showcase del home.
  * [084A-11] Ahora recibe datos opcionales para usar API cuando esté disponible.
+ * [094A-20] Un array vacío es un resultado válido del CMS y no debe caer al fallback.
  */
 export const buildCategoriasShowcase = (datos?: Proyecto[]): CategoriaShowcase[] => {
-    const fuente = datos && datos.length > 0 ? datos : PROYECTOS_DATA;
+    const fuente = datos ?? PROYECTOS_DATA;
     const usados = new Set<string | number>();
 
     const filtrarSinRepetir = (filtro: (cats: string[]) => boolean, max: number): Proyecto[] => {
@@ -157,7 +158,7 @@ export const buildCategoriasShowcase = (datos?: Proyecto[]): CategoriaShowcase[]
             titulo: 'Brand Identity & Strategy',
             proyectos: filtrarSinRepetir(cats => cats.includes('branding'), 3)
         }
-    ];
+    ].filter(categoria => categoria.proyectos.length > 0);
 };
 
 export const CATEGORIAS_SHOWCASE: CategoriaShowcase[] = buildCategoriasShowcase();

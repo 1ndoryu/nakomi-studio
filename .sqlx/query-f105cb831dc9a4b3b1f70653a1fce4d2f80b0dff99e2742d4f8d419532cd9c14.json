@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                (SELECT COUNT(*) FROM orders WHERE client_id = $1) as \"client_orders!\",\n                (SELECT COUNT(*) FROM orders WHERE assigned_employee_id = $1) as \"assigned_orders!\",\n                (SELECT COUNT(*) FROM order_reviews WHERE client_id = $1 OR employee_id = $1) as \"reviews!\",\n                (SELECT COUNT(*) FROM order_refunds WHERE requested_by = $1 OR reviewed_by = $1) as \"refunds!\",\n                (SELECT COUNT(*) FROM order_delegations WHERE from_employee_id = $1 OR to_employee_id = $1) as \"delegations!\",\n                (SELECT COUNT(*) FROM phase_deliverables WHERE uploaded_by = $1) as \"deliverables!\",\n                (SELECT COUNT(*) FROM hosting_subscriptions WHERE user_id = $1) as \"hosting_subscriptions!\",\n                (SELECT COUNT(*) FROM chat_sessions WHERE user_id = $1 OR assigned_staff_id = $1) as \"chat_sessions!\",\n                (SELECT COUNT(*) FROM blog_posts WHERE author_id = $1) as \"blog_posts!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "client_orders!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "assigned_orders!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "reviews!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "refunds!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "delegations!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "deliverables!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "hosting_subscriptions!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "chat_sessions!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "blog_posts!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f105cb831dc9a4b3b1f70653a1fce4d2f80b0dff99e2742d4f8d419532cd9c14"
+}

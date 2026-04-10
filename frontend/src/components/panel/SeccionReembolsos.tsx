@@ -87,7 +87,7 @@ export function SeccionReembolsos() {
 
                         {r.admin_response && (
                             <p className="reembolsoRespuesta">
-                                <strong>Respuesta:</strong> {r.admin_response}
+                                <span className="reembolsoRespuestaEtiqueta">Respuesta:</span> {r.admin_response}
                             </p>
                         )}
 
@@ -104,31 +104,32 @@ export function SeccionReembolsos() {
                                         />
                                         <div className="reembolsoBotonesRevision">
                                             <Button
-                                                variante="texto"
+                                                variante="exito"
                                                 tamano="pequeno"
-                                                className="reembolsoBotonAprobar"
                                                 type="button"
                                                 onClick={() => void handleRevisar('approve')}
                                                 disabled={accionEnCurso}
                                             >
-                                                <CheckCircle size={16} />
-                                                {accionEnCurso ? 'Procesando…' : 'Aprobar reembolso'}
+                                                <span className="reembolsoAccionContenido">
+                                                    <CheckCircle size={16} />
+                                                    {accionEnCurso ? 'Procesando…' : 'Aprobar reembolso'}
+                                                </span>
                                             </Button>
                                             <Button
-                                                variante="texto"
+                                                variante="peligro"
                                                 tamano="pequeno"
-                                                className="reembolsoBotonRechazar"
                                                 type="button"
                                                 onClick={() => void handleRevisar('reject')}
                                                 disabled={accionEnCurso}
                                             >
-                                                <XCircle size={16} />
-                                                Rechazar
+                                                <span className="reembolsoAccionContenido">
+                                                    <XCircle size={16} />
+                                                    Rechazar
+                                                </span>
                                             </Button>
                                             <Button
                                                 variante="outline"
                                                 tamano="pequeno"
-                                                className="reembolsoBotonCancelar"
                                                 type="button"
                                                 onClick={() => {
                                                     setRefundActivo(null);
@@ -142,9 +143,8 @@ export function SeccionReembolsos() {
                                     </div>
                                 ) : (
                                     <Button
-                                        variante="outline"
+                                        variante="info"
                                         tamano="pequeno"
-                                        className="reembolsoBotonRevisar"
                                         type="button"
                                         onClick={() => setRefundActivo(r)}
                                     >

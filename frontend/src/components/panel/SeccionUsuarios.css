@@ -31,6 +31,10 @@
     border-radius: var(--radius-md);
 }
 
+.usuariosError--modal {
+    margin-top: var(--spacing-sm);
+}
+
 /* Filtros */
 
 .usuariosFiltros {

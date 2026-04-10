@@ -46,6 +46,10 @@ export async function apiChangeStatus(userId: string, status: string): Promise<v
   await axiosInstance.patch(`/api/admin/users/${userId}/status`, { status });
 }
 
+export async function apiDeleteUser(userId: string): Promise<void> {
+  await axiosInstance.delete(`/api/admin/users/${userId}`);
+}
+
 /* Constantes de UI */
 
 export const ROLE_LABELS: Record<string, string> = {

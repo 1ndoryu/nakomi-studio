@@ -4,6 +4,7 @@
  * Datos desde backend (MARCAS_DATA) con fallback a import.meta.glob.
  */
 import React, {useState} from 'react';
+import OptimizedImage from '../ui/OptimizedImage';
 import {SeccionHeader} from '../ui/SeccionHeader';
 import {MARCAS_DATA} from '../../data/marcas';
 import './SeccionClientes.css';
@@ -17,7 +18,7 @@ const LogoMarca: React.FC<{nombre: string; logo?: string}> = ({nombre, logo}) =>
     }
 
     return (
-        <img
+        <OptimizedImage
             src={logo}
             alt={nombre}
             className="clienteLogoImg"

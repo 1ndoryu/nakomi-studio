@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, client_notes, internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary\n             FROM orders WHERE status = 'awaiting_assignment' ORDER BY created_at ASC",
+  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary\n             FROM orders WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -122,37 +122,44 @@
       },
       {
         "ordinal": 18,
-        "name": "client_notes",
+        "name": "project_description",
         "type_info": "Text"
       },
       {
         "ordinal": 19,
-        "name": "internal_notes",
+        "name": "client_notes",
         "type_info": "Text"
       },
       {
         "ordinal": 20,
+        "name": "internal_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 21,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 22,
+        "ordinal": 23,
         "name": "ai_intermediary_enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 23,
+        "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -175,11 +182,12 @@
       true,
       true,
       true,
+      true,
       false,
       false,
       false,
       true
     ]
   },
-  "hash": "ba1cf1585d6351f45717aa19096807ee93c5b4eab684386d5a7d17dee8a1236e"
+  "hash": "74f74d668b388d39ae9eaada16981fdfdaaef29b69627af553ad78a45d8492ac"
 }

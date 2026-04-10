@@ -21,6 +21,7 @@ use crate::services::{AiChatConfig, ChatHub, ChatTimingService, ContaboService, 
 pub struct AppState {
     pub pool: PgPool,
     pub jwt_secret: String,
+    pub static_dir: Option<String>,
     pub http_client: reqwest::Client,
     pub stripe_secret_key: Option<String>,
     pub stripe_webhook_secret: Option<String>,

@@ -13,6 +13,7 @@ import {useAuthStore} from '../../stores/authStore';
 import {apiSwitchRole} from '../../api/auth';
 import type {UserRole} from '../../api/auth';
 import {Button} from '../ui/Button';
+import OptimizedImage from '../ui/OptimizedImage';
 import './SidebarPanel.css';
 
 interface SidebarPanelProps {
@@ -86,9 +87,10 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
             {/* Info usuario */}
             <div className="sidebarUsuario">
                 <div className="sidebarAvatar">
-                    <img
+                    <OptimizedImage
                         src={avatarUrl}
                         alt="Avatar"
+                        loading="eager"
                     />
                 </div>
                 <div className="sidebarInfo">

@@ -73,7 +73,7 @@ export const BlogSingleIsland = ({
             {/* Imagen destacada */}
             <section className="blogSingleImagenSeccion">
                 <div className="blogSingleImagenWrapper">
-                    <img src={imagen} alt={titulo} className="blogSingleImagen" loading="eager" />
+                    <OptimizedImage src={imagen} alt={titulo} className="blogSingleImagen" loading="eager" />
                 </div>
             </section>
 

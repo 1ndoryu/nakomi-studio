@@ -5,6 +5,7 @@ import React, {useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
+import OptimizedImage from '../ui/OptimizedImage';
 import {Textarea} from '../ui/Textarea';
 import {usePerfil} from '../../hooks/usePerfil';
 import './SeccionPerfil.css';
@@ -40,9 +41,10 @@ export const SeccionPerfil: React.FC = () => {
                 {/* Avatar */}
                 <div className="perfilAvatarSeccion">
                     <div className="perfilAvatar">
-                        <img
+                        <OptimizedImage
                             src={avatarUrl}
                             alt={t('accessibility.profile_photo')}
+                            loading="eager"
                         />
                     </div>
                     <div className="perfilAvatarAcciones">

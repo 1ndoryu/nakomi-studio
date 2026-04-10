@@ -1,20 +1,13 @@
 /*
  * CSS: SeccionMetodosPago
  * Gestion de tarjetas y direccion de facturacion.
+ * [094A-15] Se removio la intro porque no aportaba jerarquia ni contexto util.
  * Reutiliza patron de formulario del panel.
  */
 .metodosPagoSeccion {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
-}
-
-.metodosPagoIntro {
-    font-family: var(--font-serif);
-    font-size: var(--text-base);
-    color: var(--text-muted);
-    line-height: 1.6;
-    margin: 0;
 }
 
 /* Tarjetas lista */
@@ -83,24 +76,6 @@
     font-size: var(--text-sm);
     font-weight: 500;
     color: var(--brand-black);
-}
-
-.metodosPagoInput {
-    font-family: var(--font-serif);
-    font-size: var(--text-base);
-    color: var(--brand-black);
-    background-color: var(--brand-white);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-sm) var(--spacing-md);
-    transition: border-color var(--transicion-rapida);
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.metodosPagoInput:focus {
-    border-color: var(--border-default);
 }
 
 /* Acciones */
