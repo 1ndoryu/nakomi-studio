@@ -24,8 +24,6 @@ Roadmap de tareas del proyecto: App/roadmap.md
 | State                | React Query + Zustand                          |
 | Codegen              | Orval 8 (reemplaza openapi-typescript-codegen) |
 
-## Pendientes
-
 # Nakomi Studio — Roadmap
 
 ## Contexto
@@ -61,7 +59,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Pendientes 
 
-- No puedo borrar los blogs en el cms.
 - las imagenes parecen estar optmizandose pero no se optmizan automaticamente segun el tamaño en el que aparecen
 - En metodos de pagos agregar tarjeta no funciona.
 - Cuando le doy a pagar una orden
