@@ -65,7 +65,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - HostingDetalle debe dejar de usar IP hardcodeada y mostrar VPS/IP reales desde backend.
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
 - Ejecutar Hosting Automation
-- El contador de mensajes nunca se actualiza, nunca se marcan las conversaciones como leida al abrir los mensajes.
 
 ## Tareas pendientes extraídas de planes activos (104A-26)
 
