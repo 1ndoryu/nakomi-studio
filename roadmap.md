@@ -88,7 +88,7 @@ js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2
 
 - https://pagespeed.web.dev/analysis/https-nakomi-studio/yh3fbg56c3?form_factor=mobile revisa, el rendimiento es horrible, hay que arreglar todo. → ✅ 154A-6
 
-- EL primer mensaje inicial al abrir el chat debe ser enviado automaticamente, este no necesita IA puede ser una plantilla pero claro la ia lo necesita en su contexto para no volver a darlo, puede ser algo como. "Hola! Estoy aquí para ayudarte, puedes preguntarme acerca de los servicios, resolver problemas, cualquier duda, etc" no se algo asi
+- EL primer mensaje inicial al abrir el chat debe ser enviado automaticamente, este no necesita IA puede ser una plantilla pero claro la ia lo necesita en su contexto para no volver a darlo, puede ser algo como. "Hola! Estoy aquí para ayudarte, puedes preguntarme acerca de los servicios, resolver problemas, cualquier duda, etc" no se algo asi → ✅ 154A-9
 
 - En el cms de los proyectos se olvido totalmente de la galería y de los iconos de enlace, debería poder elegirse con buscardor. y un pequeño menu de los iconos.
 
