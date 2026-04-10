@@ -939,6 +939,41 @@ async fn append_page_context(prompt: &mut String, pool: &PgPool, ctx: &str) {
                  Saluda al usuario y ofrece información relevante sobre {safe_page}.\n",
             );
         }
+        /* [104A-33] Reportar problema desde orden: el cliente abrió el chatbot
+         * directamente desde el botón "Reportar problema" de su pedido.
+         * La IA debe entender el contexto, preguntar por el problema y guiar al cliente. */
+        "problem" => {
+            if let Ok(uid) = Uuid::parse_str(parts[1]) {
+                if let Ok(Some(order)) = OrderRepository::find_order_by_id(pool, uid).await {
+                    let (svc_title, _, plan_name) =
+                        OrderRepository::get_order_display_info(pool, order.service_id, order.plan_id)
+                            .await
+                            .unwrap_or_else(|_| ("Servicio".to_string(), String::new(), "Plan".to_string()));
+                    prompt.push_str(
+                        "CONTEXTO CRÍTICO: El usuario abrió el chat desde el botón \
+                         'Reportar problema' de su pedido. Tiene un problema que necesita resolver.\n",
+                    );
+                    let _ = writeln!(
+                        prompt,
+                        "- Pedido #{}: {} ({})\n\
+                         - Estado: {:?} — Fase: {}\n",
+                        order.order_number, svc_title, plan_name,
+                        order.status, order.current_phase,
+                    );
+                    prompt.push_str(
+                        "INSTRUCCIONES:\n\
+                         1. Saluda brevemente y pregunta qué problema está experimentando con su pedido.\n\
+                         2. Escucha atentamente y haz preguntas específicas para entender el problema.\n\
+                         3. Problemas comunes: retrasos en entrega, calidad del trabajo insatisfactoria, \
+                            falta de comunicación con el empleado, cambios de alcance, problemas técnicos.\n\
+                         4. Si puedes resolver el problema (información, clarificación), hazlo.\n\
+                         5. Si el problema requiere intervención humana (reembolso, cambio de empleado, \
+                            escalación), usa request_human_assistance() explicando el problema al staff.\n\
+                         6. Sé empático y profesional. El cliente ya está frustrado si llegó a reportar.\n\n",
+                    );
+                }
+            }
+        }
         _ => {}
     }
 }

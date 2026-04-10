@@ -24,6 +24,7 @@ import {OrderChat} from './OrderChat';
 import {OrderDetailModals} from './OrderDetailModals';
 import {OrderProjectDescription} from './OrderProjectDescription';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
+import {useChatStore} from '../../stores/chatStore';
 import './OrdenDetalle.css';
 
 /* [104A-29] pending_payment ya no se usa a nivel de orden. payment_held es el estado inicial. */
@@ -132,12 +133,16 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
         });
     }
 
-    /* Reportar: disponible para cliente y empleado en órdenes activas con empleado asignado */
+    /* [104A-33] Reportar: clientes abren chatbot con contexto de problema,
+     * empleados usan el modal directo (reportan vía API). */
+    const abrirChat = useChatStore(s => s.abrir);
     if (order.assigned_employee_id && isActiveOrder) {
         menuItems.push({
             id: 'report-order',
             label: 'Reportar problema',
-            onSelect: () => setModalReportarAbierto(true),
+            onSelect: isClient
+                ? () => abrirChat('problem:' + order.id)
+                : () => setModalReportarAbierto(true),
             icon: <AlertTriangle size={16} />,
         });
     }
