@@ -90,7 +90,19 @@ js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2
 
 - EL primer mensaje inicial al abrir el chat debe ser enviado automaticamente, este no necesita IA puede ser una plantilla pero claro la ia lo necesita en su contexto para no volver a darlo, puede ser algo como. "Hola! Estoy aquí para ayudarte, puedes preguntarme acerca de los servicios, resolver problemas, cualquier duda, etc" no se algo asi → ✅ 154A-9
 
-- En el cms de los proyectos se olvido totalmente de la galería y de los iconos de enlace, debería poder elegirse con buscardor. y un pequeño menu de los iconos.
+- En el cms de los proyectos se olvido totalmente de la galería y de los iconos de enlace, debería poder elegirse con buscardor. y un pequeño menu de los iconos. → ✅ 154A-10
+
+## Delegacioens y pedidos
+
+- En los pedidos veo el boton de cancelar pedido en el usuario de empleado, pero, claro. ¿Que pasa despues? Claramente hace falta implementar como en fiverr algo mas robuzto, en el header del panel tiene que haber un monto en usd de dinero, igualmente para los empleados, si un pedido se cancela, el cliente tiene su dinero de vuelta pero lo tiene que gastar en la plataforma, y luego darle la posibilidad de retirarlo si quiere, asi se gestionara el dinero que ganan los empleados y clientes, esto requiere un plan, requiere planificar como se va retirar el dinero, requiere que todos los proyectos cancelados por el empleado primero reciban una solicitud que el cliente puede aceptar o rechazar en el historial con la explicación del empleado, si el cliente acepta recibe el dinero, si el cliente rachaza, el proyecto queda libre para ser atendido por otro usuario. Esto implica arreglar otra cosa que no he planteado, todos los proyectos nuevos tienen que estar visibles solamente para el admin. Esto implica la siguiente inconsistencia
+
+1. No hay forma de delegar un proyecto, o sea, como se delega? como el admin ve los proyectos sin delegar? claramente en el panel debe haber un tab para gestionar esto por el admin, con los empleados veo que hay un tab de disponible, hay que recordar que los proyetos quedan disponible si el admin no lo ha delegado durante 48 horas (pero eso es lo que falta, un sistema para delegar los proyectos nuevos y que el admin pueda elegir si tomarlo). En delegaciones y disponible hace faltan tab como lo tiene asignados. 
+
+2. Aclaracciones, el flujo que es espero es algo como, el cliente hace un pedido, el pedido queda pendiente de ser tomando alguien, pero por 48 horas queda solo visible por el admin. Hace falta varias cosas en este proceso.
+
+2.1 El cliente tiene que tener su pedido y recibir un mensaje en el chat del pedido, tu pedido será atentido pronto por los miembros de nuestro equipo, con una notificaciones felicidades, tu primer pedido será atendido pronto, recibir un correo bonito con la info del pedido y con el breve mensaje de que sera atendido dentro de las proximas 48 horas. 
+
+2.2 En 4
 
 ## Hosting
 
