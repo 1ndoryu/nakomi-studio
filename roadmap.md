@@ -66,7 +66,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
 - Ejecutar Hosting Automation
 - sentinel report md tiene muchos Warning, arreglarlos todos si son reales o corregir el falso positivo.
-- Resuelve los problemas de # Auditoría Completa del Sistema de Chatbot — 2026-04-10
 - Hay que hacer una auditoría completa al sistema de notificaciones, por ejemplo si un cliente recibe un mensaje en pedido se le debe notificar, igual al empleado/responsable que esta en un pedido.
 
 ## Tareas pendientes extraídas de planes activos (104A-26)
