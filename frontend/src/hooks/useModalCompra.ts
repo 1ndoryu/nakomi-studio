@@ -6,6 +6,7 @@ import {useState} from 'react';
 import {useAuthStore} from '../stores/authStore';
 import {apiQuickRegister, apiLogin} from '../api/auth';
 import {apiCreateOrder, type PaymentMode} from '../api/orders';
+import {apiSelfSubscribe} from '../api/hosting';
 import {apiInitiatePayment} from '../api/payments';
 import {PANEL_TAB_KEY} from '../data/panel';
 import {navegar} from '../navegacionSPA';
@@ -27,6 +28,10 @@ interface UseModalCompraParams {
     onClose: () => void;
 }
 
+function normalizeHostingPlanSlug(planId: string): string {
+    return planId.trim().toLowerCase().replace(/^hosting-/, '');
+}
+
 export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraParams) {
     const logueado = useAuthStore(s => s.logueado);
     const login = useAuthStore(s => s.login);
@@ -39,18 +44,38 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     const [errorMsg, setErrorMsg] = useState('');
     /* [064A-60] Modo de pago seleccionable: full (20% desc), half_half (10%), phased (0%) */
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('full');
-    /* [084A-28] Meses de pago para hosting (1-12). No aplica a servicios. */
-    const [months, setMonths] = useState(1);
+    /* [104A-16] Hosting ya no pasa por órdenes genéricas.
+     * El dominio opcional se envía al flujo self-service real de suscripciones. */
+    const [hostingDomain, setHostingDomain] = useState('');
     const [projectDescription, setProjectDescription] = useState('');
     const [checkoutPendiente, setCheckoutPendiente] = useState<CheckoutPendiente | null>(null);
-    const isHosting = !!plan.periodo;
+    const isHosting = servicioSlug === 'hosting';
 
     const navegarAlPanelPendiente = () => {
-        /* [104A-15] Forzar tab proyectos evita que el usuario aterrice en la
-         * ultima seccion persistida y pierda de vista la orden pendiente. */
-        sessionStorage.setItem(PANEL_TAB_KEY, 'proyectos');
+        /* [104A-15] Forzar la tab correcta evita que el usuario aterrice en la
+         * ultima seccion persistida y pierda de vista el flujo que acaba de iniciar.
+         * [104A-16] Hosting vuelve al panel de Hosting, no a Proyectos. */
+        sessionStorage.setItem(PANEL_TAB_KEY, isHosting ? 'hosting' : 'proyectos');
         navegar('/panel');
         onClose();
+    };
+
+    const crearHostingYRedirigir = async () => {
+        setPaso('procesando');
+        try {
+            const response = await apiSelfSubscribe({
+                plan: normalizeHostingPlanSlug(plan.id),
+                domain: hostingDomain.trim() || undefined,
+            });
+            sessionStorage.setItem(PANEL_TAB_KEY, 'hosting');
+            window.location.href = response.checkout_url;
+        } catch (err: unknown) {
+            setPaso('error');
+            const msg = err instanceof Error
+                ? err.message
+                : 'Error al iniciar el checkout de hosting.';
+            setErrorMsg(msg);
+        }
     };
 
     /* [104A-15] Crear la orden y abrir checkout inmediatamente con el
@@ -61,9 +86,9 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             const orden = await apiCreateOrder({
                 service_slug: servicioSlug,
                 plan_slug: plan.id,
-                payment_mode: isHosting ? 'full' : paymentMode,
+                payment_mode: paymentMode,
                 project_description: projectDescription.trim() || undefined,
-                client_notes: isHosting && months > 1 ? `Pago anticipado: ${months} meses` : undefined
+                client_notes: undefined,
             });
 
             /* Intentar iniciar pago Stripe */
@@ -94,6 +119,15 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         }
     };
 
+    const iniciarCompra = async () => {
+        if (isHosting) {
+            await crearHostingYRedirigir();
+            return;
+        }
+
+        await crearOrdenYPagar();
+    };
+
     /* Paso 1: usuario confirma que quiere continuar */
     const handleContinuar = () => {
         if (!isHosting && projectDescription.trim().length < 10) {
@@ -103,7 +137,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
 
         setErrorMsg('');
         if (logueado) {
-            crearOrdenYPagar();
+            void iniciarCompra();
         } else {
             setPaso('auth');
         }
@@ -120,7 +154,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             try {
                 const authResp = await apiLogin(email, password);
                 login(authResp.token, authResp.user_id, email, authResp.role, authResp.effective_role);
-                await crearOrdenYPagar();
+                await iniciarCompra();
             } catch (err: unknown) {
                 setPaso('auth');
                 const msg = err instanceof Error ? err.message : 'Credenciales inválidas.';
@@ -134,7 +168,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         try {
             const authResp = await apiQuickRegister(email);
             login(authResp.token, authResp.user_id, email, authResp.role, authResp.effective_role);
-            await crearOrdenYPagar();
+            await iniciarCompra();
         } catch (err: unknown) {
             /* 409 = email ya registrado → pedir password */
             const is409 = typeof err === 'object' && err !== null && 'response' in err
@@ -168,8 +202,8 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         errorMsg,
         paymentMode,
         setPaymentMode,
-        months,
-        setMonths,
+        hostingDomain,
+        setHostingDomain,
         projectDescription,
         setProjectDescription,
         checkoutPendiente,

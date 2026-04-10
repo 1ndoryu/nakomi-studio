@@ -54,20 +54,15 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
     const {
         paso, email, setEmail, password, setPassword,
         emailExiste, errorMsg, paymentMode, setPaymentMode,
-        months, setMonths, projectDescription, setProjectDescription, checkoutPendiente, isHosting,
+        hostingDomain, setHostingDomain, projectDescription, setProjectDescription, checkoutPendiente, isHosting,
         navegarAlPanelPendiente, handleContinuar, handleAuth, reintentar
     } = useModalCompra({plan, servicioSlug, onClose: onCerrar});
 
-    /* [084A-28] Descuento progresivo por meses para hosting: 0% (1m) → 33% (12m) */
-    const hostingDescuento = isHosting ? (months - 1) * 3 : 0;
-
     /* [084A-12] Precio dinámico según modo de pago o meses seleccionados */
     const baseCents = parsePrecioCents(plan.precio);
-    const descuento = isHosting ? hostingDescuento : PAYMENT_MODE_DISCOUNT[paymentMode];
+    const descuento = isHosting ? 0 : PAYMENT_MODE_DISCOUNT[paymentMode];
     const totalCents = baseCents != null
-        ? (isHosting
-            ? Math.round(baseCents * months * (1 - descuento / 100))
-            : Math.round(baseCents * (1 - descuento / 100)))
+        ? Math.round(baseCents * (1 - descuento / 100))
         : null;
     const precioFinal = totalCents != null ? formatPrecioDescontado(totalCents) : plan.precio;
     const tieneDescuento = baseCents != null && descuento > 0;
@@ -115,39 +110,22 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                         </label>
                     )}
 
-                    {/* [084A-28] Hosting: selector de meses con descuento progresivo */}
+                    {/* [104A-16] Hosting: el flujo publico usa la suscripcion real.
+                     * Pedimos dominio opcional y dejamos claro que el cobro es mensual recurrente. */}
                     {isHosting ? (
-                        <div className="modalCompraMeses">
-                            <p className="modalCompraMesesLabel">¿Cuántos meses quieres pagar?</p>
-                            <div className="modalCompraMesesStepper">
-                                <Button
-                                    variante="outline"
-                                    tamano="pequeno"
-                                    onClick={() => setMonths(Math.max(1, months - 1))}
-                                    disabled={months <= 1}
-                                    type="button"
-                                >−</Button>
-                                <span className="modalCompraMesesValor">{months}</span>
-                                <Button
-                                    variante="outline"
-                                    tamano="pequeno"
-                                    onClick={() => setMonths(Math.min(12, months + 1))}
-                                    disabled={months >= 12}
-                                    type="button"
-                                >+</Button>
-                            </div>
-                            {baseCents != null && (
-                                <div className="modalCompraMesesDetalle">
-                                    <span className="modalCompraMesesCalculo">
-                                        {plan.precio}/mes × {months} {months === 1 ? 'mes' : 'meses'}
-                                    </span>
-                                    {tieneDescuento && (
-                                        <span className="modalCompraMesesDescuento">
-                                            {descuento}% descuento
-                                        </span>
-                                    )}
-                                </div>
-                            )}
+                        <div className="modalCompraBrief">
+                            <span className="modalCompraBriefLabel">
+                                Dominio para tu hosting
+                            </span>
+                            <Input
+                                type="text"
+                                value={hostingDomain}
+                                onChange={e => setHostingDomain(e.target.value)}
+                                placeholder="ejemplo.com (opcional)"
+                            />
+                            <p className="modalCompraAviso">
+                                Stripe abrirá una suscripción mensual. Puedes dejar el dominio vacío y configurarlo después desde el panel.
+                            </p>
                         </div>
                     ) : (
                         /* [064A-60] Servicios: selector de modo de pago */
@@ -191,9 +169,15 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                     )}
                     {errorMsg && <p className="modalCompraErrorTexto">{errorMsg}</p>}
                     <Button variante="primario" tamano="mediano" onClick={handleContinuar}>
-                        {t('purchase.continue', 'Continuar')} ({precioFinal})
+                        {isHosting
+                            ? t('purchase.continue_pay', 'Continuar al checkout')
+                            : t('purchase.continue', 'Continuar')} ({precioFinal})
                     </Button>
-                    <p className="modalCompraAviso">{t('purchase.no_charge_yet', 'Aún no se te cobrará')}</p>
+                    <p className="modalCompraAviso">
+                        {isHosting
+                            ? 'El cargo se confirma dentro de Stripe Checkout.'
+                            : t('purchase.no_charge_yet', 'Aún no se te cobrará')}
+                    </p>
                 </div>
             )}
 
@@ -225,9 +209,15 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                         />
                     )}
                     <Button variante="primario" tamano="mediano" type="submit">
-                        {t('purchase.continue_pay', 'Continuar al pago')} ({precioFinal})
+                        {isHosting
+                            ? t('purchase.continue_pay', 'Continuar al checkout')
+                            : t('purchase.continue_pay', 'Continuar al pago')} ({precioFinal})
                     </Button>
-                    <p className="modalCompraAviso">{t('purchase.no_charge_yet', 'Aún no se te cobrará')}</p>
+                    <p className="modalCompraAviso">
+                        {isHosting
+                            ? 'El cargo se confirma dentro de Stripe Checkout.'
+                            : t('purchase.no_charge_yet', 'Aún no se te cobrará')}
+                    </p>
                 </form>
             )}
 
