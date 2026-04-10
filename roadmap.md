@@ -60,13 +60,13 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 ## Pendientes 
 
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
-- Al cancelar/suspender hosting notificar al cliente via email/notificación in-app
+- Al cancelar/suspender hosting notificar al cliente via email/notificación in-app → ✅ 154A-1
 
 - esto que dices de "El manager está haciendo un git pull dentro del contenedor (flujo WordPress), pero studio es template rust — la actualización debe ser un redeploy de Coolify para rebuild del Docker image. Dejo que termine y uso redeploy:" hay que arreglarlo para que no vuelva a suceder
 
 - Los despliegues en rust no debería dejar el sitio inservible mientras se hace build
 
-- Los menus contextuales en listaServiciosInfo se recortan al tamaño del a tarjeta y probablemente en los otras tarjetas del cms tambien pase.
+- Los menus contextuales en listaServiciosInfo se recortan al tamaño del a tarjeta y probablemente en los otras tarjetas del cms tambien pase. → ✅ 154A-4
 
 - Esto pasa en producción, al intentar crear una orden falla.
 
@@ -80,11 +80,11 @@ polyfill.js:496 Uncaught (in promise) Error: Could not establish connection. Rec
 js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2Fnakomi.studio%2F&title=Nakomi%20Studio&referrer=https%3A%2F%2Fnakomi.studio%2Fpanel&muid=30dba452-34e4-486e-b610-f9e433bb55348246bd&sid=6b64a63a-3acc-4ea1-8fed-769217c9c1be7ae1ef&version=6&preview=false&__shared_params__[version]=dahlia:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.Comprende este error
 /api/orders:1  Failed to load resource: the server responded with a status of 404 () 
 
-- Despues de editar un servicio en el cms las caracteristicas no aparecen y el al abrilo de nuevo en el modal esta en su estado inicial y no en su ultima modificación. 
+- Despues de editar un servicio en el cms las caracteristicas no aparecen y el al abrilo de nuevo en el modal esta en su estado inicial y no en su ultima modificación. → ✅ 154A-2
 
-- El chatbot al abrirlo a veces queda conectando... y solo funciona al recargar a veces.
+- El chatbot al abrirlo a veces queda conectando... y solo funciona al recargar a veces. → ✅ 154A-3
 
-- Veo que una vez que el usuario se registra al intentar crear una orden, en el panel debería haber una aviso para crear una contraseña, tampoco debería haber impedimiento que por ejemplo si intenta registrarse con el mismo correo y no tiene contraseña, pues, que le permita registrarse con esa contraseña. 
+- Veo que una vez que el usuario se registra al intentar crear una orden, en el panel debería haber una aviso para crear una contraseña, tampoco debería haber impedimiento que por ejemplo si intenta registrarse con el mismo correo y no tiene contraseña, pues, que le permita registrarse con esa contraseña. → ✅ 154A-5
 
 - https://pagespeed.web.dev/analysis/https-nakomi-studio/yh3fbg56c3?form_factor=mobile revisa, el rendimiento es horrible, hay que arreglar todo. 
 
