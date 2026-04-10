@@ -59,12 +59,48 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 ## Pendientes 
 
-- Necesito probar un hosting real, usar la segunda vps que maneja coolify para crear un hosting, emulando como si un usuario lo hubiera comprado, tiene que ser un hosting real, o sea un despliegue dentro de la vps.
-- Al completar el checkout de hosting se debe provisionar el sitio real en Coolify y guardar `coolify_site_name` + datos reales del servidor.
-- Cuando falle una renovación o se cancele la suscripción, hay que notificar al cliente y sincronizar suspensión/cancelación real en Coolify, no solo en base de datos.
-- HostingDetalle debe dejar de usar IP hardcodeada y mostrar VPS/IP reales desde backend.
 - Falta que el cliente pueda comprar y manejar dominios en nuestra plataforma. ¿Que es lo que falta?
-- Ejecutar Hosting Automation
+- Al cancelar/suspender hosting notificar al cliente via email/notificación in-app
+
+- esto que dices de "El manager está haciendo un git pull dentro del contenedor (flujo WordPress), pero studio es template rust — la actualización debe ser un redeploy de Coolify para rebuild del Docker image. Dejo que termine y uso redeploy:" hay que arreglarlo para que no vuelva a suceder
+
+- Los despliegues en rust no debería dejar el sitio inservible mientras se hace build
+
+- Los menus contextuales en listaServiciosInfo se recortan al tamaño del a tarjeta y probablemente en los otras tarjetas del cms tambien pase.
+
+- Esto pasa en producción, al intentar crear una orden falla.
+
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.Comprende este error
+diseno-web:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.Comprende este error
+m.stripe.network/inner.html#url=https%3A%2F%2Fnakomi.studio%2F&title=Nakomi%20Studio&referrer=https%3A%2F%2Fnakomi.studio%2Fpanel&muid=30dba452-34e4-486e-b610-f9e433bb55348246bd&sid=6b64a63a-3acc-4ea1-8fed-769217c9c1be7ae1ef&version=6&preview=false&__shared_params__[version]=dahlia:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.Comprende este error
+content.js:18 Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'useCache')
+    at le (content.js:18:432164)Comprende este error
+polyfill.js:496 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+    at wrappedSendMessageCallback (polyfill.js:496:18)Comprende este error
+js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2Fnakomi.studio%2F&title=Nakomi%20Studio&referrer=https%3A%2F%2Fnakomi.studio%2Fpanel&muid=30dba452-34e4-486e-b610-f9e433bb55348246bd&sid=6b64a63a-3acc-4ea1-8fed-769217c9c1be7ae1ef&version=6&preview=false&__shared_params__[version]=dahlia:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.Comprende este error
+/api/orders:1  Failed to load resource: the server responded with a status of 404 () 
+
+- Despues de editar un servicio en el cms las caracteristicas no aparecen y el al abrilo de nuevo en el modal esta en su estado inicial y no en su ultima modificación. 
+
+- El chatbot al abrirlo a veces queda conectando... y solo funciona al recargar a veces.
+
+- Veo que una vez que el usuario se registra al intentar crear una orden, en el panel debería haber una aviso para crear una contraseña, tampoco debería haber impedimiento que por ejemplo si intenta registrarse con el mismo correo y no tiene contraseña, pues, que le permita registrarse con esa contraseña. 
+
+- https://pagespeed.web.dev/analysis/https-nakomi-studio/yh3fbg56c3?form_factor=mobile revisa, el rendimiento es horrible, hay que arreglar todo. 
+
+- EL primer mensaje inicial al abrir el chat debe ser enviado automaticamente, este no necesita IA puede ser una plantilla pero claro la ia lo necesita en su contexto para no volver a darlo, puede ser algo como. "Hola! Estoy aquí para ayudarte, puedes preguntarme acerca de los servicios, resolver problemas, cualquier duda, etc" no se algo asi
+
+- En el cms de los proyectos se olvido totalmente de la galería y de los iconos de enlace, debería poder elegirse con buscardor. y un pequeño menu de los iconos.
+
+## Hosting
+
+- Lo explique antes, lo solicite antes, pero claramente no se me entiendo, necesito un hosting real para probar en el panel de admin, que sea real, sin wordpress ni nada, quiero ver como se vería un hosting real comprado por el cliente, en este caso yo como el admin sería el cliente y el hosting que tendría en mi panel sería mío, necesito la implementación real para ver las limitaciones y que falta por hacer
+
+
+## Hosting Automation — ✅ Fases 1-3 completadas (104A-42)
+
+> Commit 2114c91 — provisioning real Coolify post-checkout, cancelación sync, IP/VPS reales en panel
+> Fase 4 (dominios y DNS) bloqueada → ver sección Bloqueado
 
 ## Tareas pendientes extraídas de planes activos (104A-26)
 
@@ -83,18 +119,15 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Fase 3: Pre-rendering para crawlers
 
 ### Hosting Automation (`plan-hosting-automation-2026-04-10.md`)
-- Fase 1: Provisioning real post-checkout (endpoint + invocar Coolify)
-- Fase 2: Sync cobro (webhooks Stripe + BD)
-- Fase 3: Datos reales en panel (IP, VPS, estado)
-- Fase 4: Dominios y DNS
+- ✅ Fase 1: Provisioning real post-checkout (104A-42)
+- ✅ Fase 2: Sync cancelación → delete Coolify (104A-42)  
+- ✅ Fase 3: Datos reales en panel — IP/VPS desde backend (104A-42)
+- Fase 4: Dominios y DNS — bloqueado (ver sección Bloqueado)
 
-## Bloqueado — requiere acción del usuario
+## Notas de infraestructura
 
-- **Dominios** (`plan-dominios-2026-04-07.md`): ¿Qué proveedor DNS? (Cloudflare Registrar, Contabo DNS, Namecheap). Necesito API keys. RESPUESTA; PUES YA TENEMOS LA API DE CONTABO
-- **VPS2 Coolify**: Falta `apiToken`, `serverUuid`, `projectUuid` para provisioning real. REPUESTA; NO ENTIENDO PORQUE NO PEUDES CONSEGUIR ESA INFORMACION CON LA API.
-- **Contabo DNS API**: Credenciales no validadas. (LA DE LA VPS1 LAS HA PROBADO ANTES Y FUNCIONAN)
-- **Google Drive OAuth**: Necesita `auth-drive` manual para backups. (LOS BACKUP AHORA SE HACEN LA VPS2)
-
-## Ultima tarea
-
-Sube los cambios a nakomi.studio
+- **✅ nakomi.studio**: Desplegado y healthy (104A-42, build completo ~12min primer deploy)
+- **✅ 104A-46**: Fix coolify-manager deploy --update para rust template → redirige a redeploy Coolify
+- **✅ VPS2 Coolify**: Configurado completamente en settings.json (apiToken, serverUuid, projectUuid) — ver 104A-45 en completados
+- **Backups VPS2**: Google Drive OAuth no aplica — backups se realizan en VPS2 directamente
+- **Dominios**: Proveedor = Contabo DNS. API keys disponibles (validadas en VPS1). Plan: `Agente/planes/plan-dominios-2026-04-07.md`
