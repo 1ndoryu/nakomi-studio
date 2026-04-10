@@ -15,8 +15,8 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     ChatMessage, ChatMessageResponse, ChatSessionNote, ChatSessionResponse,
-    CreateChatSessionRequest, CreateSessionNoteRequest, SendMessageRequest,
-    UpdateVisitorNameRequest,
+    CreateChatSessionRequest, CreateNotification, CreateSessionNoteRequest, SendMessageRequest,
+    UpdateVisitorNameRequest, NOTIF_NEW_MESSAGE,
 };
 use crate::services::AiChatService;
 use crate::AppState;
@@ -159,6 +159,7 @@ pub async fn create_session(
     security(("bearer_auth" = [])),
     tag = "chat"
 )]
+#[allow(clippy::too_many_lines)]
 pub async fn send_message(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -186,6 +187,37 @@ pub async fn send_message(
         .chat_hub
         .send_message(session_id, sender_type, Some(&auth.user_id.to_string()), &req.content)
         .await?;
+
+    /* [104A-38] Notificar al otro participante del chat (solo sesiones de orden).
+     * Cliente envía → notificar staff asignado. Staff/admin envía → notificar cliente. */
+    if let Ok(Some(session)) =
+        crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
+    {
+        let recipient_id = if sender_type == "client" {
+            session.assigned_staff_id
+        } else if let Some(oid) = session.order_id {
+            sqlx::query_scalar::<_, Uuid>("SELECT client_id FROM orders WHERE id = $1")
+                .bind(oid)
+                .fetch_optional(&state.pool)
+                .await
+                .ok()
+                .flatten()
+        } else {
+            None
+        };
+        if let Some(rid) = recipient_id {
+            let preview: String = req.content.chars().take(80).collect();
+            let _ = state.notification_hub.notify(CreateNotification {
+                user_id: rid,
+                notification_type: NOTIF_NEW_MESSAGE.to_string(),
+                title: "Nuevo mensaje en el chat".to_string(),
+                body: Some(preview),
+                link: Some(format!("/panel/chat?session={session_id}")),
+                reference_type: Some("chat_session".to_string()),
+                reference_id: Some(session_id),
+            }).await;
+        }
+    }
 
     /* Si IA habilitada y sender es client, generar respuesta */
     if sender_type == "client" {

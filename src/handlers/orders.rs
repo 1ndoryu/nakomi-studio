@@ -5,15 +5,18 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, patch, post, put};
 use axum::{Json, Router};
+use sqlx;
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateOrderRequest, OrderResponse, OrderStatus, SwitchRoleRequest,
+    CreateNotification, CreateOrderRequest, OrderResponse, OrderStatus, SwitchRoleRequest,
     ToggleAiIntermediaryRequest, UpdateOrderPhaseDefinitionRequest,
     UpdateOrderProjectDescriptionRequest, UserRole,
+    NOTIF_NEW_ORDER, NOTIF_ORDER_ASSIGNED, NOTIF_ORDER_CANCELLED,
+    NOTIF_ORDER_COMPLETED, NOTIF_REVISION_REQUESTED,
 };
 use crate::repositories::{OrderRepository, UserRepository};
 use crate::services::{AuthService, OrderService, PaymentService};
@@ -47,6 +50,25 @@ pub async fn create_order(
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let order = OrderService::create_order(&state.pool, auth.user_id, req).await?;
+
+    /* [104A-38] Notificar a admins sobre nueva orden */
+    let admins = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM users WHERE role = 'admin' AND is_active = true",
+    )
+    .fetch_all(&state.pool)
+    .await
+    .unwrap_or_default();
+    let base = CreateNotification {
+        user_id: Uuid::nil(),
+        notification_type: NOTIF_NEW_ORDER.to_string(),
+        title: format!("Nueva orden #{}", order.order_number),
+        body: Some(format!("{} — {}", order.service_title, order.plan_name)),
+        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+        reference_type: Some("order".to_string()),
+        reference_id: Some(order.id),
+    };
+    let _ = state.notification_hub.notify_many(&admins, &base).await;
+
     Ok((StatusCode::CREATED, Json(order)))
 }
 
@@ -215,6 +237,18 @@ pub async fn assign_order(
     auth.require_role(&[UserRole::Admin])?;
 
     let order = OrderService::assign_order(&state.pool, order_id, employee_id).await?;
+
+    /* [104A-38] Notificar al empleado asignado */
+    let _ = state.notification_hub.notify(CreateNotification {
+        user_id: employee_id,
+        notification_type: NOTIF_ORDER_ASSIGNED.to_string(),
+        title: format!("Te asignaron la orden #{}", order.order_number),
+        body: None,
+        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+        reference_type: Some("order".to_string()),
+        reference_id: Some(order.id),
+    }).await;
+
     Ok(Json(serde_json::json!({ "status": order.status, "assigned_employee_id": order.assigned_employee_id })))
 }
 
@@ -320,6 +354,28 @@ pub async fn cancel_order_handler(
     let order = OrderService::cancel_order(
         &state.pool, order_id, auth.user_id, auth.effective_role, reason.as_deref(),
     ).await?;
+
+    /* [104A-38] Notificar a las partes afectadas por la cancelación */
+    let mut recipients = Vec::new();
+    if auth.user_id != order.client_id {
+        recipients.push(order.client_id);
+    }
+    if let Some(emp) = order.assigned_employee_id {
+        if emp != auth.user_id {
+            recipients.push(emp);
+        }
+    }
+    let base = CreateNotification {
+        user_id: Uuid::nil(),
+        notification_type: NOTIF_ORDER_CANCELLED.to_string(),
+        title: format!("Orden #{} cancelada", order.order_number),
+        body: reason.as_deref().map(|r| r.chars().take(100).collect()),
+        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+        reference_type: Some("order".to_string()),
+        reference_id: Some(order.id),
+    };
+    let _ = state.notification_hub.notify_many(&recipients, &base).await;
+
     Ok(Json(serde_json::json!({ "status": order.status })))
 }
 
@@ -354,6 +410,22 @@ pub async fn approve_phase(
     /* [044A-38 Fase 3] Si la orden se completó, capturar los pagos retenidos en Stripe */
     if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
         if order.status == OrderStatus::Completed {
+            /* [104A-38] Notificar cliente y empleado sobre orden completada */
+            let mut recipients = vec![order.client_id];
+            if let Some(emp) = order.assigned_employee_id {
+                recipients.push(emp);
+            }
+            let base = CreateNotification {
+                user_id: Uuid::nil(),
+                notification_type: NOTIF_ORDER_COMPLETED.to_string(),
+                title: format!("Orden #{} completada", order.order_number),
+                body: Some("Todas las fases han sido aprobadas".to_string()),
+                link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                reference_type: Some("order".to_string()),
+                reference_id: Some(order.id),
+            };
+            let _ = state.notification_hub.notify_many(&recipients, &base).await;
+
             if let Some(ref stripe_key) = state.stripe_secret_key {
                 if let Err(e) = PaymentService::capture_held_payments(
                     &state.pool,
@@ -396,6 +468,22 @@ pub async fn request_revision(
 ) -> Result<Json<crate::models::OrderPhaseResponse>, AppError> {
     auth.require_role(&[UserRole::Client, UserRole::Admin])?;
     let phase = OrderService::request_revision(&state.pool, order_id, phase_number, auth.user_id).await?;
+
+    /* [104A-38] Notificar al empleado asignado sobre la revisión solicitada */
+    if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
+        if let Some(emp) = order.assigned_employee_id {
+            let _ = state.notification_hub.notify(CreateNotification {
+                user_id: emp,
+                notification_type: NOTIF_REVISION_REQUESTED.to_string(),
+                title: format!("Revisión solicitada — Orden #{}, Fase {}", order.order_number, phase_number),
+                body: Some("El cliente solicitó cambios en la entrega".to_string()),
+                link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                reference_type: Some("order".to_string()),
+                reference_id: Some(order.id),
+            }).await;
+        }
+    }
+
     Ok(Json(crate::models::OrderPhaseResponse::from(phase)))
 }
 

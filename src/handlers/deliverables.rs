@@ -16,8 +16,9 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    DeliverPhaseResponse, OrderStatus, PhaseDeliverablesResponse, PhaseStatus, UserRole,
-    ALLOWED_MIME_TYPES, MAX_FILES_PER_DELIVERY, MAX_FILE_SIZE,
+    CreateNotification, DeliverPhaseResponse, OrderStatus, PhaseDeliverablesResponse,
+    PhaseStatus, UserRole, ALLOWED_MIME_TYPES, MAX_FILES_PER_DELIVERY, MAX_FILE_SIZE,
+    NOTIF_PHASE_DELIVERED,
 };
 use crate::repositories::{CreateDeliverableParams, DeliverableRepository, OrderRepository};
 use crate::AppState;
@@ -109,6 +110,17 @@ pub async fn deliver_phase_with_files(
 
     /* Marcar fase como entregada */
     OrderRepository::deliver_phase(&state.pool, phase.id).await?;
+
+    /* [104A-38] Notificar al cliente que la fase fue entregada */
+    let _ = state.notification_hub.notify(CreateNotification {
+        user_id: order.client_id,
+        notification_type: NOTIF_PHASE_DELIVERED.to_string(),
+        title: format!("Entrega lista — Orden #{}, Fase {}", order.order_number, phase_number),
+        body: Some("Revisa los archivos entregados y aprueba o solicita revisión".to_string()),
+        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+        reference_type: Some("order".to_string()),
+        reference_id: Some(order.id),
+    }).await;
 
     /* Actualizar estado de orden si estaba en InProgress */
     if order.status == OrderStatus::InProgress {

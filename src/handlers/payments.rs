@@ -12,8 +12,11 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
-use crate::models::{InitiatePaymentRequest, PaymentIntentResponse, PaymentResponse, UserRole};
-use crate::repositories::{OrderRepository, UserRepository};
+use crate::models::{
+    CreateNotification, InitiatePaymentRequest, PaymentIntentResponse, PaymentResponse, UserRole,
+    NOTIF_PAYMENT_RECEIVED,
+};
+use crate::repositories::{OrderRepository, PaymentRepository, UserRepository};
 use crate::services::{AuditService, HostingStripeService, PaymentService};
 use crate::AppState;
 
@@ -133,6 +136,31 @@ pub async fn stripe_webhook(
     }
 
     PaymentService::handle_webhook(&state.pool, event_type, &event["data"]).await?;
+
+    /* [104A-38] Notificar al cliente cuando su pago se procesa exitosamente.
+     * Buscamos el payment por stripe_intent → order → client_id. */
+    if event_type == "payment_intent.succeeded" {
+        if let Some(pi_id) = event["data"]["object"]["id"].as_str() {
+            if let Ok(Some(payment)) =
+                PaymentRepository::find_by_stripe_intent(&state.pool, pi_id).await
+            {
+                if let Ok(Some(order)) =
+                    OrderRepository::find_order_by_id(&state.pool, payment.order_id).await
+                {
+                    let amount_display = format!("${:.2}", f64::from(payment.amount_cents) / 100.0);
+                    let _ = state.notification_hub.notify(CreateNotification {
+                        user_id: order.client_id,
+                        notification_type: NOTIF_PAYMENT_RECEIVED.to_string(),
+                        title: format!("Pago recibido — Orden #{}", order.order_number),
+                        body: Some(format!("Tu pago de {amount_display} fue procesado exitosamente")),
+                        link: Some(format!("/panel/orders/{}", order.id)),
+                        reference_type: Some("order".to_string()),
+                        reference_id: Some(order.id),
+                    }).await;
+                }
+            }
+        }
+    }
 
     /* [084A-24] Hosting subscriptions: procesar eventos de checkout.session.completed,
      * invoice.paid, invoice.payment_failed, customer.subscription.deleted.

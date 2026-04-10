@@ -15,7 +15,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateReviewBody, OrderStatus, RespondReviewBody, ReviewResponse, UserRole,
+    CreateNotification, CreateReviewBody, OrderStatus, RespondReviewBody, ReviewResponse, UserRole,
+    NOTIF_NEW_REVIEW, NOTIF_REVIEW_RESPONSE,
 };
 use crate::repositories::{OrderRepository, ReviewRepository};
 use crate::AppState;
@@ -78,6 +79,17 @@ pub async fn create_review(
     /* Actualizar average_rating del empleado */
     ReviewRepository::update_employee_average(&state.pool, employee_id).await?;
 
+    /* [104A-38] Notificar al empleado que recibió una review */
+    let _ = state.notification_hub.notify(CreateNotification {
+        user_id: employee_id,
+        notification_type: NOTIF_NEW_REVIEW.to_string(),
+        title: format!("Nueva review en orden #{}", order.order_number),
+        body: Some(format!("Rating: {}/5", body.rating)),
+        link: Some(format!("/panel/orders/{order_id}")),
+        reference_type: Some("order".to_string()),
+        reference_id: Some(order_id),
+    }).await;
+
     Ok((StatusCode::CREATED, Json(ReviewResponse::from(review))))
 }
 
@@ -135,6 +147,18 @@ pub async fn respond_review(
     }
 
     let updated = ReviewRepository::respond(&state.pool, review_id, &body.response).await?;
+
+    /* [104A-38] Notificar al cliente que el empleado respondió su review */
+    let _ = state.notification_hub.notify(CreateNotification {
+        user_id: review.client_id,
+        notification_type: NOTIF_REVIEW_RESPONSE.to_string(),
+        title: "Respuesta a tu review".to_string(),
+        body: Some(body.response.chars().take(100).collect::<String>()),
+        link: Some(format!("/panel/orders/{}", review.order_id)),
+        reference_type: Some("order".to_string()),
+        reference_id: Some(review.order_id),
+    }).await;
+
     Ok(Json(ReviewResponse::from(updated)))
 }
 

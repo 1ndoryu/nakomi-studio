@@ -9,13 +9,15 @@ use axum::{
     routing::{get, patch, post},
     Json, Router,
 };
+use sqlx;
 use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    OrderStatus, PaymentStatus, RefundResponse, RefundStatus, RequestRefundBody,
-    ReviewAction, ReviewRefundBody, UserRole,
+    CreateNotification, OrderStatus, PaymentStatus, RefundResponse, RefundStatus,
+    RequestRefundBody, ReviewAction, ReviewRefundBody, UserRole,
+    NOTIF_REFUND_REQUESTED, NOTIF_REFUND_RESOLVED,
 };
 use crate::repositories::{OrderRepository, PaymentRepository, RefundRepository};
 use crate::services::PaymentService;
@@ -82,6 +84,24 @@ pub async fn request_refund(
         &body.reason,
     )
     .await?;
+
+    /* [104A-38] Notificar a admins sobre solicitud de reembolso */
+    let admins = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM users WHERE role = 'admin' AND is_active = true",
+    )
+    .fetch_all(&state.pool)
+    .await
+    .unwrap_or_default();
+    let base = CreateNotification {
+        user_id: Uuid::nil(),
+        notification_type: NOTIF_REFUND_REQUESTED.to_string(),
+        title: format!("Reembolso solicitado — Orden #{}", order.order_number),
+        body: Some(body.reason.chars().take(100).collect()),
+        link: Some(format!("/panel?seccion=reembolsos&id={}", refund.id)),
+        reference_type: Some("refund".to_string()),
+        reference_id: Some(refund.id),
+    };
+    let _ = state.notification_hub.notify_many(&admins, &base).await;
 
     Ok((StatusCode::CREATED, Json(RefundResponse::from(refund))))
 }
@@ -183,6 +203,17 @@ pub async fn review_refund(
             )
             .await?;
 
+            /* [104A-38] Notificar al cliente que su reembolso fue aprobado */
+            let _ = state.notification_hub.notify(CreateNotification {
+                user_id: refund.requested_by,
+                notification_type: NOTIF_REFUND_RESOLVED.to_string(),
+                title: "Reembolso aprobado".to_string(),
+                body: Some("Tu solicitud de reembolso ha sido procesada".to_string()),
+                link: Some(format!("/panel?seccion=ordenes&id={}", refund.order_id)),
+                reference_type: Some("refund".to_string()),
+                reference_id: Some(refund.id),
+            }).await;
+
             Ok(Json(RefundResponse::from(completed)))
         }
         ReviewAction::Reject => {
@@ -193,6 +224,18 @@ pub async fn review_refund(
                 body.admin_response.as_deref(),
             )
             .await?;
+
+            /* [104A-38] Notificar al cliente que su reembolso fue rechazado */
+            let _ = state.notification_hub.notify(CreateNotification {
+                user_id: refund.requested_by,
+                notification_type: NOTIF_REFUND_RESOLVED.to_string(),
+                title: "Reembolso rechazado".to_string(),
+                body: body.admin_response.as_deref().map(|r| r.chars().take(100).collect()),
+                link: Some(format!("/panel?seccion=ordenes&id={}", refund.order_id)),
+                reference_type: Some("refund".to_string()),
+                reference_id: Some(refund.id),
+            }).await;
+
             Ok(Json(RefundResponse::from(rejected)))
         }
     }

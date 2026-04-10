@@ -12,8 +12,9 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateDelegationRequest, DelegationResponse, EmployeeListItem, OrderResponse,
-    RespondDelegationRequest, UserRole,
+    CreateDelegationRequest, CreateNotification, DelegationResponse, EmployeeListItem,
+    OrderResponse, RespondDelegationRequest, UserRole,
+    NOTIF_ORDER_ASSIGNED, NOTIF_DELEGATION_RECEIVED, NOTIF_DELEGATION_RESOLVED,
 };
 use crate::services::AssignmentService;
 use crate::AppState;
@@ -43,6 +44,18 @@ pub async fn take_order(
 ) -> Result<Json<OrderResponse>, AppError> {
     auth.require_role(&[UserRole::Employee, UserRole::Admin])?;
     let order = AssignmentService::take_order(&state.pool, order_id, auth.user_id).await?;
+
+    /* [104A-38] Notificar al cliente que su orden fue tomada */
+    let _ = state.notification_hub.notify(CreateNotification {
+        user_id: order.client_id,
+        notification_type: NOTIF_ORDER_ASSIGNED.to_string(),
+        title: format!("Orden #{} asignada", order.order_number),
+        body: Some("Un empleado ha tomado tu orden".to_string()),
+        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+        reference_type: Some("order".to_string()),
+        reference_id: Some(order.id),
+    }).await;
+
     Ok(Json(order))
 }
 
@@ -127,6 +140,20 @@ pub async fn create_delegation(
         "delegate",
     )
     .await?;
+
+    /* [104A-38] Notificar al empleado destino sobre delegación */
+    if let Some(to_id) = d.to_employee_id {
+        let _ = state.notification_hub.notify(CreateNotification {
+            user_id: to_id,
+            notification_type: NOTIF_DELEGATION_RECEIVED.to_string(),
+            title: format!("Solicitud de delegación — Orden #{}", d.order_number),
+            body: Some(d.reason.chars().take(100).collect()),
+            link: Some(format!("/panel?seccion=delegaciones&id={}", d.id)),
+            reference_type: Some("delegation".to_string()),
+            reference_id: Some(d.id),
+        }).await;
+    }
+
     Ok((StatusCode::CREATED, Json(d)))
 }
 
@@ -162,6 +189,20 @@ pub async fn create_help_request(
         "help_request",
     )
     .await?;
+
+    /* [104A-38] Notificar al empleado destino sobre solicitud de ayuda */
+    if let Some(to_id) = d.to_employee_id {
+        let _ = state.notification_hub.notify(CreateNotification {
+            user_id: to_id,
+            notification_type: NOTIF_DELEGATION_RECEIVED.to_string(),
+            title: format!("Solicitud de ayuda — Orden #{}", d.order_number),
+            body: Some(d.reason.chars().take(100).collect()),
+            link: Some(format!("/panel?seccion=delegaciones&id={}", d.id)),
+            reference_type: Some("delegation".to_string()),
+            reference_id: Some(d.id),
+        }).await;
+    }
+
     Ok((StatusCode::CREATED, Json(d)))
 }
 
@@ -193,6 +234,19 @@ pub async fn respond_delegation(
         req.accept,
     )
     .await?;
+
+    /* [104A-38] Notificar al empleado original sobre la respuesta */
+    let action = if req.accept { "aceptada" } else { "rechazada" };
+    let _ = state.notification_hub.notify(CreateNotification {
+        user_id: d.from_employee_id,
+        notification_type: NOTIF_DELEGATION_RESOLVED.to_string(),
+        title: format!("Delegación {} — Orden #{}", action, d.order_number),
+        body: None,
+        link: Some(format!("/panel?seccion=delegaciones&id={}", d.id)),
+        reference_type: Some("delegation".to_string()),
+        reference_id: Some(d.id),
+    }).await;
+
     Ok(Json(d))
 }
 

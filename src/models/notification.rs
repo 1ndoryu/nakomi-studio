@@ -11,42 +11,27 @@ use uuid::Uuid;
 use validator::Validate;
 
 /* Tipos de notificación soportados.
- * Se usan progresivamente a medida que cada handler integre notificaciones.
- * allow(dead_code) se elimina cuando estén todos integrados. */
-#[allow(dead_code)]
+ * [104A-38] Todos integrados en sus respectivos handlers.
+ * NOTIF_PAYMENT_RELEASED y NOTIF_PHASE_APPROVED pendientes de integrar. */
 pub const NOTIF_NEW_ORDER: &str = "new_order";
-#[allow(dead_code)]
 pub const NOTIF_ORDER_ASSIGNED: &str = "order_assigned";
-#[allow(dead_code)]
 pub const NOTIF_ORDER_COMPLETED: &str = "order_completed";
-#[allow(dead_code)]
 pub const NOTIF_ORDER_CANCELLED: &str = "order_cancelled";
-#[allow(dead_code)]
 pub const NOTIF_PAYMENT_RECEIVED: &str = "payment_received";
 #[allow(dead_code)]
 pub const NOTIF_PAYMENT_RELEASED: &str = "payment_released";
-#[allow(dead_code)]
 pub const NOTIF_PHASE_DELIVERED: &str = "phase_delivered";
 #[allow(dead_code)]
 pub const NOTIF_PHASE_APPROVED: &str = "phase_approved";
-#[allow(dead_code)]
 pub const NOTIF_REVISION_REQUESTED: &str = "revision_requested";
-#[allow(dead_code)]
 pub const NOTIF_REFUND_REQUESTED: &str = "refund_requested";
-#[allow(dead_code)]
 pub const NOTIF_REFUND_RESOLVED: &str = "refund_resolved";
-#[allow(dead_code)]
 pub const NOTIF_NEW_REVIEW: &str = "new_review";
-#[allow(dead_code)]
 pub const NOTIF_REVIEW_RESPONSE: &str = "review_response";
-#[allow(dead_code)]
 pub const NOTIF_DELEGATION_RECEIVED: &str = "delegation_received";
-#[allow(dead_code)]
 pub const NOTIF_DELEGATION_RESOLVED: &str = "delegation_resolved";
-#[allow(dead_code)]
 pub const NOTIF_NEW_MESSAGE: &str = "new_message";
 /* [T-6] Notificación de escalación: la IA detectó que se necesita intervención humana */
-#[allow(dead_code)]
 pub const NOTIF_ESCALATION_NEEDED: &str = "escalation_needed";
 
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
