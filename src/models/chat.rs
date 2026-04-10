@@ -30,6 +30,10 @@ pub struct ChatSession {
     pub visitor_ip: Option<String>,
     #[sqlx(default)]
     pub visitor_user_agent: Option<String>,
+    /* [104A-39] Cuándo el staff vio los mensajes por última vez. Default para
+     * queries que no seleccionan esta columna (sesiones visitante, etc.). */
+    #[sqlx(default)]
+    pub last_viewed_at: Option<DateTime<Utc>>,
 }
 
 /* [P-2] Perfil de visitante — memoria persistente entre sesiones.
@@ -129,6 +133,8 @@ pub struct ChatSessionResponse {
     pub visitor_name: Option<String>,
     pub visitor_ip: Option<String>,
     pub visitor_user_agent: Option<String>,
+    /* [104A-39] Cuándo se vio por última vez esta sesión (para badge unread) */
+    pub last_viewed_at: Option<DateTime<Utc>>,
 }
 
 /* [064A-72] Modelo de notas de sesión de chat */

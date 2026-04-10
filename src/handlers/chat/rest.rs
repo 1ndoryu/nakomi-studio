@@ -142,6 +142,7 @@ pub async fn create_session(
         visitor_name: session.visitor_name,
         visitor_ip: session.visitor_ip,
         visitor_user_agent: session.visitor_user_agent,
+        last_viewed_at: session.last_viewed_at,
     };
     Ok((StatusCode::CREATED, Json(response)))
 }
@@ -370,6 +371,20 @@ pub async fn close_session(
 ) -> Result<StatusCode, AppError> {
     auth.require_role(&[crate::models::UserRole::Admin, crate::models::UserRole::Employee])?;
     state.chat_hub.close_session(session_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/* [104A-39] Marcar sesión como vista — actualiza last_viewed_at para el cálculo del badge.
+ * Llamado por el frontend al abrir/seleccionar una sesión en el panel.
+ * Solo staff puede marcar como visto (clientes no tienen panel). */
+pub async fn mark_session_viewed(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    auth.require_role(&[crate::models::UserRole::Admin, crate::models::UserRole::Employee])?;
+    crate::repositories::ChatRepository::mark_session_viewed(&state.pool, session_id).await
+        .map_err(AppError::Database)?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -846,6 +861,10 @@ pub fn rest_routes() -> Router<AppState> {
         .route(
             "/chat/sessions/:session_id/close",
             axum::routing::post(close_session),
+        )
+        .route(
+            "/chat/sessions/:session_id/mark-viewed",
+            axum::routing::patch(mark_session_viewed),
         )
         .route(
             "/chat/sessions/:session_id/notes",

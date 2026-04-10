@@ -19,6 +19,8 @@ export interface ChatSession {
     visitor_name: string | null;
     visitor_ip: string | null;
     visitor_user_agent: string | null;
+    /* [104A-39] Cuándo se vio por última vez (para badge unread) */
+    last_viewed_at: string | null;
 }
 
 export interface ChatMessage {
@@ -100,6 +102,11 @@ export async function apiSendMessage(
 /* [054A-9] Cerrar sesión de chat (staff/admin) */
 export async function apiCloseSession(sessionId: string): Promise<void> {
     await axiosInstance.post(`/api/chat/sessions/${sessionId}/close`);
+}
+
+/* [104A-39] Marcar sesión como vista — limpia badge de ChatBell */
+export async function apiMarkSessionViewed(sessionId: string): Promise<void> {
+    await axiosInstance.patch(`/api/chat/sessions/${sessionId}/mark-viewed`);
 }
 
 /* [T-5] Upload de archivo en chat (imágenes, audio, PDF) */

@@ -5,7 +5,7 @@
 import {useCallback, useEffect, useRef, useState, type KeyboardEvent} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 
-import {apiCloseSession} from '../api/chat';
+import {apiCloseSession, apiMarkSessionViewed} from '../api/chat';
 import {useChat} from './useChat';
 import {useChatWs} from './useChatWs';
 import {toast} from '../stores/toastStore';
@@ -103,6 +103,8 @@ export function useSeccionChat() {
     const selectSession = useCallback((sessionId: string) => {
         setActiveSessionId(sessionId);
         setMessageLimit(100);
+        /* [104A-39] Marcar como vista para limpiar el badge del ChatBell */
+        void apiMarkSessionViewed(sessionId).catch(() => { /* silenciar — no crítico */ });
     }, []);
 
     const clearActiveSession = useCallback(() => {

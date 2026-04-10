@@ -26,6 +26,14 @@ export default function ChatBell() {
         })
         .slice(0, 15);
 
+    /* [104A-39] Badge = sesiones con mensajes no leídos (last_message_at > last_viewed_at).
+     * Si nunca se vio (last_viewed_at null) y tiene mensajes, cuenta como no leída. */
+    const unreadCount = activeSessions.filter(s => {
+        if (!s.last_message_at) return false;
+        if (!s.last_viewed_at) return true;
+        return new Date(s.last_message_at) > new Date(s.last_viewed_at);
+    }).length;
+
     const activeCount = activeSessions.length;
 
     const toggleDropdown = useCallback(() => {
@@ -68,9 +76,9 @@ export default function ChatBell() {
             triggerContent={(
                 <>
                     <MessageSquare size={20} />
-                    {activeCount > 0 && (
+                    {unreadCount > 0 && (
                         <span className="chatBell__badge">
-                            {activeCount > 99 ? '99+' : activeCount}
+                            {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                     )}
                 </>

@@ -398,6 +398,7 @@ impl ChatHub {
                     visitor_name: s.visitor_name,
                     visitor_ip: s.visitor_ip,
                     visitor_user_agent: s.visitor_user_agent,
+                    last_viewed_at: s.last_viewed_at,
                 }
             })
             .collect())
