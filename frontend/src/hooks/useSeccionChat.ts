@@ -22,17 +22,6 @@ export function useSeccionChat() {
         useChat(activeSessionId ?? undefined, messageLimit);
     const ws = useChatWs();
 
-    /* [104A-34] Si hay un chat target pendiente en sessionStorage (e.g. desde ChatBell),
-     * auto-seleccionarlo una vez que las sesiones estén cargadas. */
-    useEffect(() => {
-        const target = sessionStorage.getItem('PANEL_CHAT_TARGET');
-        if (target && sessions.length > 0) {
-            sessionStorage.removeItem('PANEL_CHAT_TARGET');
-            const exists = sessions.some(s => s.id === target);
-            if (exists) setActiveSessionId(target);
-        }
-    }, [sessions]);
-
     /* [064A-68] Cuando WS recibe nuevos mensajes, invalidar cache REST para refrescar
      * la UI instantáneamente en vez de esperar el polling de 5s/15s. */
     useEffect(() => {
@@ -110,6 +99,18 @@ export function useSeccionChat() {
             .then(() => queryClient.invalidateQueries({queryKey: ['chat-sessions']}))
             .catch(() => { /* silenciar — no crítico */ });
     }, [queryClient]);
+
+    /* [154A-12] FIX: Auto-select desde ChatBell ahora usa selectSession (que llama
+     * apiMarkSessionViewed + invalidateQueries). Antes usaba setActiveSessionId directo
+     * y la sesión nunca se marcaba como leída → badge nunca bajaba. */
+    useEffect(() => {
+        const target = sessionStorage.getItem('PANEL_CHAT_TARGET');
+        if (target && sessions.length > 0) {
+            sessionStorage.removeItem('PANEL_CHAT_TARGET');
+            const exists = sessions.some(s => s.id === target);
+            if (exists) selectSession(target);
+        }
+    }, [sessions, selectSession]);
 
     const clearActiveSession = useCallback(() => {
         setActiveSessionId(null);

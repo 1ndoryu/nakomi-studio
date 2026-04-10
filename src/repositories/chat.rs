@@ -60,10 +60,13 @@ impl ChatRepository {
         pool: &PgPool,
         user_id: Uuid,
     ) -> Result<Vec<ChatSession>, sqlx::Error> {
-        /* [074A-30] Filtrar sesiones sin mensajes */
+        /* [074A-30] Filtrar sesiones sin mensajes
+         * [154A-12] FIX: Agregar last_viewed_at y visitor_last_connected_at para que
+         * el frontend pueda calcular correctamente qué sesiones tienen mensajes sin leer. */
         sqlx::query_as::<_, ChatSession>(
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
-               assigned_staff_id, ai_enabled, created_at, updated_at \
+               assigned_staff_id, ai_enabled, created_at, updated_at, \
+               last_viewed_at, visitor_last_connected_at \
              FROM chat_sessions \
              WHERE (user_id = $1 OR assigned_staff_id = $1) \
              AND status != 'closed' \
@@ -82,7 +85,8 @@ impl ChatRepository {
     ) -> Result<Option<ChatSession>, sqlx::Error> {
         sqlx::query_as::<_, ChatSession>(
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
-               assigned_staff_id, ai_enabled, created_at, updated_at \
+               assigned_staff_id, ai_enabled, created_at, updated_at, \
+               last_viewed_at, visitor_last_connected_at \
              FROM chat_sessions \
              WHERE order_id = $1 AND status != 'closed' \
              ORDER BY created_at DESC LIMIT 1",
@@ -100,7 +104,7 @@ impl ChatRepository {
         sqlx::query_as::<_, ChatSession>(
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
-               visitor_ip, visitor_user_agent \
+               visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at \
              FROM chat_sessions \
              WHERE visitor_id = $1 AND status != 'closed' \
              ORDER BY created_at DESC LIMIT 1",
@@ -139,7 +143,8 @@ impl ChatRepository {
              status = 'staff_handling', ai_enabled = false, \
              updated_at = NOW() WHERE id = $1 \
              RETURNING id, visitor_id, visitor_name, user_id, order_id, status, \
-               assigned_staff_id, ai_enabled, created_at, updated_at",
+               assigned_staff_id, ai_enabled, created_at, updated_at, \
+               visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at",
         )
         .bind(session_id)
         .bind(staff_id)
@@ -158,7 +163,8 @@ impl ChatRepository {
             "UPDATE chat_sessions SET ai_enabled = $2, status = $3, \
              updated_at = NOW() WHERE id = $1 \
              RETURNING id, visitor_id, visitor_name, user_id, order_id, status, \
-               assigned_staff_id, ai_enabled, created_at, updated_at",
+               assigned_staff_id, ai_enabled, created_at, updated_at, \
+               visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at",
         )
         .bind(session_id)
         .bind(enabled)
@@ -176,7 +182,8 @@ impl ChatRepository {
             "UPDATE chat_sessions SET status = 'closed', \
              updated_at = NOW() WHERE id = $1 \
              RETURNING id, visitor_id, visitor_name, user_id, order_id, status, \
-               assigned_staff_id, ai_enabled, created_at, updated_at",
+               assigned_staff_id, ai_enabled, created_at, updated_at, \
+               visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at",
         )
         .bind(session_id)
         .fetch_one(pool)
