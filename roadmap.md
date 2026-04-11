@@ -38,7 +38,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Planes activos: chatbot v2, SEO, seed system, SSH/SFTP seguro
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 
-- Hosting/Recursos y SSH seguro: Plan creado en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fase 2 completada (openssh-server + resource limits + wp-cli + hardening + plan configs admin). Pendiente: Fase 1 (verificación VFS disco), Fase 3 (panel recursos frontend), Fase 4 (migración existentes).
+- Hosting/Recursos y SSH seguro: Plan en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fases 2+4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops), Fase 3 (panel recursos frontend + SSH stats backend).
 - Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.
 - Hay que adaptar el servicio de hosting para que sea un servicio especializado en wordpress, hosting wordpress y que se entienda eso.
 - Glory Sentinel no tiene mecanismo para hacer respetar principios solid en el codigo de Rust, tenemos que planificar algo, no se como, limite de lineas, y otras cosas que puedan servir. 
@@ -55,6 +55,20 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Sobre la Rotacion de api, podemos desactivar la rotacion? Y que en configuraciones del panel se pueda activar, y muestre el status, necesito eso.
 - En movil serviciosContenedor el padding debe pasar de lg a md
 - La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.
+
+- Si sale este error significa que los backup no funcionan?
+
+PS C:\Users\Owner\OneDrive\Documentos\glory-rust-template> cd "c:\Users\Owner\OneDrive\Documentos\WP\app\public\wp-content\themes\glorytemplate\.agent\coolify-manager-rs" ; .\target\release\coolify-manager.exe deploy --name studio --update 
+Sitio 'studio' es template Rust — usando deploy-service zero-downtime (build paralelo + swap)...
+[pre] Verificando estado de sitios en Coolify...
+[pre] Creando backup pre-deploy de 'studio'...
+2026-04-11T16:01:42.187855Z  INFO Backup server-side '20260411_120142-pre_deploy_service' para 'studio' (staging: VPS1:/tmp/cm-staging-20260411_120142-pre_deploy_service)
+ERROR: Backup pre-deploy fallo: Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion
+Abortando deploy. Usa --skip-backup para omitir.
+2026-04-11T16:01:47.644036Z ERROR Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion
+Error: Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion
+
+hay que arreglarlo para todos los sitios, los backup son importantes. Tambien hay revisar que haya un limite pre desploy para no llenar la memoria.
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos

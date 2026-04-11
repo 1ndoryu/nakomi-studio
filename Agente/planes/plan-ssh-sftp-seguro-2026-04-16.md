@@ -1,8 +1,8 @@
 # Plan: SSH/SFTP Seguro por Despliegue de Hosting
 
 > Creado: 2026-04-16
-> Estado: **En progreso** — Fase 2 completada (openssh-server + resource limits + wp-cli + hardening + plan configs admin). Pendiente: Fase 1 (verificación VFS), Fase 3 (panel recursos), Fase 4 (migración existentes).
-> Contexto: Cada hosting usa `linuxserver/openssh-server` con SSH+SFTP. Recursos configurables por plan desde BD.
+> Estado: **En progreso** — Fases 2 y 4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops), Fase 3 (panel recursos frontend + SSH stats backend).
+> Contexto: Cada hosting usa `linuxserver/openssh-server` con SSH+SFTP. Recursos configurables por plan desde BD. Refresh endpoint disponible para migrar existentes.
 
 ---
 

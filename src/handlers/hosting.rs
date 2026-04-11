@@ -1152,6 +1152,72 @@ pub async fn update_plan_config(
     Ok(Json(updated))
 }
 
+/* [114A-4] Refresh: regenera compose con plan config actual y redeploya en Coolify.
+ * Usado para migrar hostings existentes cuando se cambian limits/features del plan.
+ * Solo funciona en hostings provisionados (con server_uuid y sftp_user). */
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/refresh",
+    params(("id" = Uuid, Path, description = "ID suscripción")),
+    responses(
+        (status = 200, description = "Hosting redeployado con config actual"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "Suscripción no encontrada"),
+        (status = 503, description = "Coolify no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn refresh_hosting(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    let server_uuid = sub.server_uuid.as_ref().ok_or_else(|| {
+        AppError::Validation("Hosting no provisionado — no se puede refrescar".into())
+    })?;
+    let sftp_user = sub.sftp_user.as_ref().ok_or_else(|| {
+        AppError::Internal("SFTP user ausente en suscripción provisionada".into())
+    })?;
+    let sftp_password = sub.sftp_password.as_ref().ok_or_else(|| {
+        AppError::Internal("SFTP password ausente en suscripción provisionada".into())
+    })?;
+    let sftp_port = sub.sftp_port.ok_or_else(|| {
+        AppError::Internal("SFTP port ausente en suscripción provisionada".into())
+    })?;
+
+    let coolify = state.coolify_config.as_ref().ok_or_else(|| {
+        AppError::ServiceUnavailable("Coolify no configurado".into())
+    })?;
+
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &sub.plan)
+        .await?
+        .ok_or_else(|| AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan)))?;
+
+    CoolifyService::update_compose_and_restart(
+        &state.http_client, coolify, server_uuid,
+        sftp_user, sftp_password, sftp_port, &plan_config,
+    ).await?;
+
+    if let Err(e) = HostingRepository::add_event(
+        &state.pool, id, "refreshed",
+        Some(serde_json::json!({"by": auth.user_id.to_string(), "plan": sub.plan})),
+    ).await {
+        tracing::warn!("Error registrando evento refreshed para {id}: {e}");
+    }
+
+    Ok(Json(serde_json::json!({
+        "message": "Hosting redeployado con configuración actual",
+        "plan": sub.plan,
+    })))
+}
+
 pub fn hosting_routes() -> Router<AppState> {
     /* [174A-17] Rate limits específicos para endpoints de pago de hosting.
      * subscribe: máx 3 por hora por IP (evita abuso de checkouts).
@@ -1233,6 +1299,11 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/plan-configs/:plan",
             axum::routing::put(update_plan_config),
+        )
+        /* [114A-4] Refresh: regenera compose con plan config actual */
+        .route(
+            "/hosting/subscriptions/:id/refresh",
+            axum::routing::post(refresh_hosting),
         )
 }
 
