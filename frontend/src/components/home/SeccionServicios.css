@@ -117,6 +117,11 @@
 }
 
 @media (max-width: 768px) {
+    /* [114A-11] Padding reducido en móvil para serviciosContenedor */
+    .serviciosContenedor {
+        padding: 0 var(--spacing-md);
+    }
+
     .servicioTitulo {
         font-size: var(--text-xl);
     }

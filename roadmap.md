@@ -50,10 +50,10 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Resuelve todo lo que dice # Auditoría Completa del Sistema de Chat/Chatbot, 
 - ~~Elimina menuMovilSeparador, es innecesario.~~ (164A-15)
 - ~~Borra las tareas completadas del roadmap.~~ (164A-15) 
-- No se porque cuando se abre un modal a veces, lo que esta de fondo desaparece, es mmolesto.
+- ~~No se porque cuando se abre un modal a veces, lo que esta de fondo desaparece, es mmolesto.~~ (114A-10)
 - Necesitamos testear que todo lo relacionado con el servicio de hosting funcione, necesitamos test completos para asegurarnos de que todo funcione.
 - Sobre la Rotacion de api, podemos desactivar la rotacion? Y que en configuraciones del panel se pueda activar, y muestre el status, necesito eso.
-- En movil serviciosContenedor el padding debe pasar de lg a md
+- ~~En movil serviciosContenedor el padding debe pasar de lg a md~~ (114A-11)
 - La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.
 
 - Si sale este error significa que los backup no funcionan?
