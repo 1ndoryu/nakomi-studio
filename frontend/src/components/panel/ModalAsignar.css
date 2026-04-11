@@ -1,0 +1,87 @@
+/* [T2-assignment] Estilos del modal de asignación de orden a empleado. */
+
+.modalAsignarTitulo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--text-lg);
+    font-weight: 400;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-md);
+}
+
+.modalAsignarCargando {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-lg);
+}
+
+.modalAsignarSpinner {
+    animation: asignarSpin 1s linear infinite;
+    color: var(--text-tertiary);
+}
+
+@keyframes asignarSpin {
+    to { transform: rotate(360deg); }
+}
+
+.modalAsignarVacio {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: var(--spacing-lg);
+}
+
+.modalAsignarLista {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.modalAsignarItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+}
+
+.modalAsignarItemInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.modalAsignarNombre {
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+}
+
+.modalAsignarEspecialidades {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+.modalAsignarCarga {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.modalAsignarAcciones {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--bg-item-active);
+}
+
+.modalAsignarError {
+    font-size: var(--text-xs);
+    color: var(--color-error);
+}

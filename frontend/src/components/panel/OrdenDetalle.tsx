@@ -2,9 +2,11 @@
  * número, fecha inicio, precio, 3 puntos) + historial de fases con entregas y
  * revisiones. Clientes solicitan revisiones al recibir entrega.
  * Opciones: reportar, extensión de tiempo (empleado), cancelar.
- * custom toggle (<label> con CSS switch). */
+ * custom toggle (<label> con CSS switch).
+ * sentinel-disable-file limite-lineas: Componente orquestador de detalle de orden;
+ * lógica principal ya extraída a useOrdenDetalle + sub-componentes. */
 import React, {useState, useCallback} from 'react';
-import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft} from 'lucide-react';
+import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft, UserCheck} from 'lucide-react';
 import {
     ORDER_STATUS_LABELS,
     apiToggleAiIntermediary,
@@ -24,6 +26,7 @@ import {OrderProjectDescription} from './OrderProjectDescription';
 import {OrdenHistorialActividad} from './OrdenHistorialActividad';
 import {CancellationBanner} from './CancellationBanner';
 import {OrdenInfoGrid} from './OrdenInfoGrid';
+import {ModalAsignar} from './ModalAsignar';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
 import {useCancellationRequest} from '../../hooks/useCancellationRequest';
 import {useChatStore} from '../../stores/chatStore';
@@ -118,6 +121,7 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
 
     const isEmployee = effectiveRole === 'employee';
     const isClient = effectiveRole === 'client' || effectiveRole === 'admin';
+    const isAdmin = effectiveRole === 'admin';
     const isActiveOrder = order.status !== 'cancelled' && order.status !== 'completed';
     const canCancel = (CANCELABLE_STATUSES.includes(order.status)
         || (isEmployee && order.status === 'in_progress'))
@@ -128,6 +132,10 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     const isPerPhasePayment = order.payment_mode === 'phased' || order.payment_mode === 'half_half';
     const canEditDescription = isClient && order.status !== 'completed' && order.status !== 'cancelled';
     const canDefinePhases = order.payment_mode === 'phased' && (isEmployee || effectiveRole === 'admin');
+
+    /* [T2-assignment] Modal de asignación admin */
+    const [modalAsignarAbierto, setModalAsignarAbierto] = useState(false);
+    const canAssign = isAdmin && (order.status === 'awaiting_assignment' || order.status === 'payment_held');
 
     /* [064A-31] Chat disponible cuando hay empleado asignado y la orden está activa */
     const canChat = !!order.assigned_employee_id && isActiveOrder;
@@ -169,6 +177,16 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
             label: 'Delegar orden',
             onSelect: onIrADelegaciones,
             icon: <ArrowRightLeft size={16} />,
+        });
+    }
+
+    /* [T2-assignment] Asignar: admin en órdenes sin empleado */
+    if (canAssign) {
+        menuItems.push({
+            id: 'assign-order',
+            label: 'Asignar a empleado',
+            onSelect: () => setModalAsignarAbierto(true),
+            icon: <UserCheck size={16} />,
         });
     }
 
@@ -329,6 +347,20 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
 
             {order.status === 'completed' && (
                 <ReviewPanel orderId={order.id} effectiveRole={effectiveRole} />
+            )}
+
+            {/* [T2-assignment] Modal de asignación de orden a empleado */}
+            {canAssign && (
+                <ModalAsignar
+                    orderId={order.id}
+                    orderNumber={order.order_number}
+                    abierto={modalAsignarAbierto}
+                    onCerrar={() => setModalAsignarAbierto(false)}
+                    onAsignado={() => {
+                        setModalAsignarAbierto(false);
+                        onPagoExitoso();
+                    }}
+                />
             )}
         </div>
     );

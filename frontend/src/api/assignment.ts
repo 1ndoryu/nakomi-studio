@@ -1,5 +1,6 @@
 /* [044A-38 Fase 4] API client para asignación, delegación y gestión de empleados.
- * Conecta con /api/orders/unassigned, /api/orders/:id/take, /api/delegations, /api/admin/employees. */
+ * Conecta con /api/orders/unassigned, /api/orders/:id/take, /api/delegations, /api/admin/employees.
+ * [T2-assignment] Añadido apiAssignOrder para asignación admin. */
 import instance from './axios-instance';
 import type {OrderResponse} from './orders';
 
@@ -54,6 +55,14 @@ export async function apiTakeOrder(orderId: string): Promise<OrderResponse> {
 
 export async function apiListEmployees(): Promise<EmployeeListItem[]> {
     const {data} = await instance.get<EmployeeListItem[]>('/api/admin/employees');
+    return data;
+}
+
+/* [T2-assignment] PUT /api/orders/:orderId/assign/:employeeId — admin asigna orden a empleado */
+export async function apiAssignOrder(orderId: string, employeeId: string): Promise<{ status: string; assigned_employee_id: string }> {
+    const {data} = await instance.put<{ status: string; assigned_employee_id: string }>(
+        `/api/orders/${orderId}/assign/${employeeId}`,
+    );
     return data;
 }
 
