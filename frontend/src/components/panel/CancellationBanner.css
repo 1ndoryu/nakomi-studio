@@ -1,0 +1,49 @@
+/* [164A-9] Estilos del banner de solicitud de cancelación */
+.cancelBanner {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: var(--color-warning-bg);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.cancelBannerIcono {
+    flex-shrink: 0;
+    color: var(--color-warning-text);
+    padding-top: 2px;
+}
+
+.cancelBannerContenido {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.cancelBannerTitulo {
+    margin: 0;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--color-warning-text);
+}
+
+.cancelBannerRazon {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.cancelBannerAcciones {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+}
+
+.cancelBannerEstado {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-style: italic;
+}

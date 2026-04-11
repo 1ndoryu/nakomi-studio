@@ -369,6 +369,57 @@ async fn handle_cancellation_rejected(
 }
 
 /* ============================================================
+   GET /api/orders/:order_id/cancel-request — Lista solicitudes de cancelación
+   ============================================================ */
+
+#[utoipa::path(
+    get,
+    path = "/api/orders/{order_id}/cancel-request",
+    responses(
+        (status = 200, description = "Solicitudes de cancelación", body = Vec<CancellationRequestResponse>),
+        (status = 403, description = "Sin permiso"),
+        (status = 404, description = "Orden no encontrada"),
+    ),
+    params(("order_id" = Uuid, Path, description = "ID de la orden")),
+    security(("bearer" = []))
+)]
+pub async fn list_cancellation_requests(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(order_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let order = OrderRepository::find_order_by_id(&state.pool, order_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
+
+    /* Solo cliente, empleado asignado o admin pueden ver solicitudes */
+    let is_involved = order.client_id == auth.user_id
+        || order.assigned_employee_id == Some(auth.user_id)
+        || auth.effective_role == crate::models::UserRole::Admin;
+    if !is_involved {
+        return Err(AppError::Forbidden("Sin permiso para ver solicitudes".into()));
+    }
+
+    let requests = CancellationRequestRepository::list_by_order(&state.pool, order_id).await?;
+    let resp: Vec<CancellationRequestResponse> = requests
+        .into_iter()
+        .map(|r| CancellationRequestResponse {
+            id: r.id,
+            order_id: r.order_id,
+            order_number: Some(order.order_number),
+            requested_by: r.requested_by,
+            requester_name: None,
+            reason: r.reason,
+            status: r.status,
+            resolved_by: r.resolved_by,
+            resolved_at: r.resolved_at.map(|t| t.to_rfc3339()),
+            created_at: r.created_at.to_rfc3339(),
+        })
+        .collect();
+    Ok(Json(resp))
+}
+
+/* ============================================================
    ROUTES
    ============================================================ */
 
@@ -382,7 +433,7 @@ pub fn cancellation_routes() -> Router<AppState> {
     Router::new()
         .route(
             "/orders/{order_id}/cancel-request",
-            post(create_cancellation_request),
+            get(list_cancellation_requests).post(create_cancellation_request),
         )
         .route(
             "/orders/{order_id}/cancel-request/{request_id}/respond",

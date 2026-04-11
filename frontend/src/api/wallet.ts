@@ -1,6 +1,7 @@
 /* [154A-15a] API client para wallet y solicitudes de cancelación.
  * GET /api/wallet — saldo actual
  * GET /api/wallet/transactions — historial paginado
+ * GET /api/orders/:id/cancel-request — listar solicitudes de cancelación
  * POST /api/orders/:id/cancel-request — crear solicitud de cancelación
  * POST /api/orders/:id/cancel-request/:reqId/respond — aceptar/rechazar */
 import instance from './axios-instance';
@@ -80,6 +81,16 @@ export async function apiCreateCancellationRequest(
     const { data } = await instance.post<CancellationRequestResponse>(
         `/api/orders/${orderId}/cancel-request`,
         { reason }
+    );
+    return data;
+}
+
+/* GET /api/orders/:orderId/cancel-request — solicitudes pendientes */
+export async function apiGetCancellationRequests(
+    orderId: string
+): Promise<CancellationRequestResponse[]> {
+    const { data } = await instance.get<CancellationRequestResponse[]>(
+        `/api/orders/${orderId}/cancel-request`
     );
     return data;
 }

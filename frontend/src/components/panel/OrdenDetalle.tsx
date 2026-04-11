@@ -4,11 +4,9 @@
  * Opciones: reportar, extensión de tiempo (empleado), cancelar.
  * custom toggle (<label> con CSS switch). */
 import React, {useState, useCallback} from 'react';
-import {CreditCard, XCircle, ArrowLeft, AlertTriangle, User, Bot, ArrowRightLeft} from 'lucide-react';
+import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft} from 'lucide-react';
 import {
     ORDER_STATUS_LABELS,
-    PAYMENT_MODE_LABELS,
-    formatPrice,
     apiToggleAiIntermediary,
     type OrderResponse,
     type OrderPhaseResponse,
@@ -24,7 +22,10 @@ import {OrderChat} from './OrderChat';
 import {OrderDetailModals} from './OrderDetailModals';
 import {OrderProjectDescription} from './OrderProjectDescription';
 import {OrdenHistorialActividad} from './OrdenHistorialActividad';
+import {CancellationBanner} from './CancellationBanner';
+import {OrdenInfoGrid} from './OrdenInfoGrid';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
+import {useCancellationRequest} from '../../hooks/useCancellationRequest';
 import {useChatStore} from '../../stores/chatStore';
 import './OrdenDetalle.css';
 
@@ -41,12 +42,6 @@ const STATUS_CLASS: Record<OrderStatus, string> = {
     cancelled: 'ordenBadge--cancelled',
     disputed: 'ordenBadge--disputed',
 };
-
-/* [064A-30] Formatea fecha ISO a "DD mes YYYY" legible */
-function formatFecha(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleDateString('es-ES', {day: 'numeric', month: 'short', year: 'numeric'});
-}
 
 interface OrdenDetalleProps {
     order: OrderResponse;
@@ -87,6 +82,23 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
         cerrarReportar, abrirCheckout, cerrarCheckout,
     } = useOrdenDetalle(order, onCancelar);
 
+    /* [164A-9] Solicitud de cancelación: empleados crean, clientes aceptan/rechazan */
+    const {
+        pendingRequest,
+        creating: creandoSolicitud,
+        responding: respondiendoSolicitud,
+        createRequest,
+        respond: respondRequest,
+    } = useCancellationRequest(order.id);
+
+    /* [164A-9] Empleado: crea solicitud en vez de cancelar directo.
+     * Cliente/admin: usa cancel directo (con wallet credit). */
+    const handleEmployeeCancelRequest = useCallback(async (reason?: string) => {
+        if (!reason || reason.trim().length < 5) return;
+        await createRequest(reason);
+        setModalCancelarAbierto(false);
+    }, [createRequest, setModalCancelarAbierto]);
+
     /* [T-10] Toggle IA intermediaria: solo visible para admin/employee */
     const [intermediaryEnabled, setIntermediaryEnabled] = useState(order.ai_intermediary_enabled);
     const [togglingIntermediary, setTogglingIntermediary] = useState(false);
@@ -107,8 +119,9 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     const isEmployee = effectiveRole === 'employee';
     const isClient = effectiveRole === 'client' || effectiveRole === 'admin';
     const isActiveOrder = order.status !== 'cancelled' && order.status !== 'completed';
-    const canCancel = CANCELABLE_STATUSES.includes(order.status)
-        || (isEmployee && order.status === 'in_progress');
+    const canCancel = (CANCELABLE_STATUSES.includes(order.status)
+        || (isEmployee && order.status === 'in_progress'))
+        && !pendingRequest;
     /* [104A-29] payment_held es el estado inicial — el botón de pago aparece aquí */
     const needsPayment = order.status === 'payment_held';
     /* [064A-60] Tanto phased como half_half usan pagos por fase individuales */
@@ -122,13 +135,14 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     /* [104A-28] Menú contextual con acciones según rol */
     const menuItems: MenuContextualItem[] = [];
 
-    /* Cancelar: cliente (estados iniciales) o empleado (con razón, incluyendo in_progress) */
+    /* Cancelar: cliente (estados iniciales) o empleado (solicitud, si no hay pendiente) */
     if (canCancel) {
+        const isBusy = isEmployee ? creandoSolicitud : cancelando;
         menuItems.push({
             id: 'cancel-order',
-            label: cancelando ? 'Cancelando...' : 'Cancelar orden',
+            label: isBusy ? 'Cancelando...' : (isEmployee ? 'Solicitar cancelación' : 'Cancelar orden'),
             onSelect: () => setModalCancelarAbierto(true),
-            disabled: cancelando,
+            disabled: isBusy,
             danger: true,
             icon: <XCircle size={16} />,
         });
@@ -211,45 +225,7 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                     </div>
                 </div>
 
-                <div className="ordenInfoGrid">
-                    <div className="ordenInfoItem">
-                        <span className="ordenInfoLabel">Servicio</span>
-                        <span className="ordenInfoValue">{order.service_title}</span>
-                    </div>
-                    <div className="ordenInfoItem">
-                        <span className="ordenInfoLabel">Plan</span>
-                        <span className="ordenInfoValue">{order.plan_name}</span>
-                    </div>
-                    <div className="ordenInfoItem">
-                        <span className="ordenInfoLabel">Número de orden</span>
-                        <span className="ordenInfoValue">#{order.order_number}</span>
-                    </div>
-                    <div className="ordenInfoItem">
-                        <span className="ordenInfoLabel">Freelancer</span>
-                        <span className="ordenInfoValue ordenInfoFreelancer">
-                            <User size={14} />
-                            {order.assigned_employee_name ?? 'Sin asignar'}
-                        </span>
-                    </div>
-                    <div className="ordenInfoItem">
-                        <span className="ordenInfoLabel">
-                            {order.started_at ? 'Fecha de inicio' : 'Fecha de creación'}
-                        </span>
-                        <span className="ordenInfoValue">
-                            {formatFecha(order.started_at ?? order.created_at)}
-                        </span>
-                    </div>
-                    <div className="ordenInfoItem">
-                        <span className="ordenInfoLabel">Precio</span>
-                        <span className="ordenInfoValue ordenInfoPrecio">
-                            {formatPrice(order.final_price_cents, order.currency)}
-                        </span>
-                    </div>
-                    <div className="ordenInfoItem">
-                        <span className="ordenInfoLabel">Modo de pago</span>
-                        <span className="ordenInfoValue">{PAYMENT_MODE_LABELS[order.payment_mode]}</span>
-                    </div>
-                </div>
+                <OrdenInfoGrid order={order} />
 
                 <OrderProjectDescription
                     orderId={order.id}
@@ -270,17 +246,34 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                 )}
             </div>
 
+            {/* [164A-9] Banner de solicitud de cancelación pendiente */}
+            {pendingRequest && (
+                <CancellationBanner
+                    request={pendingRequest}
+                    isClient={isClient}
+                    responding={respondiendoSolicitud}
+                    onAccept={() => void respondRequest(pendingRequest.id, true)}
+                    onReject={() => void respondRequest(pendingRequest.id, false)}
+                />
+            )}
+
             <OrderDetailModals
                 orderNumber={order.order_number}
                 isEmployee={isEmployee}
                 modalCancelarAbierto={modalCancelarAbierto}
                 modalReportarAbierto={modalReportarAbierto}
-                cancelando={cancelando}
+                cancelando={isEmployee ? creandoSolicitud : cancelando}
                 reportando={reportando}
                 reportError={reportError}
                 reportExito={reportExito}
                 onCerrarCancelar={() => setModalCancelarAbierto(false)}
-                onConfirmarCancelacion={(reason) => void confirmarCancelacion(reason)}
+                onConfirmarCancelacion={(reason) => {
+                    if (isEmployee) {
+                        void handleEmployeeCancelRequest(reason);
+                    } else {
+                        void confirmarCancelacion(reason);
+                    }
+                }}
                 onCerrarReportar={cerrarReportar}
                 onEnviarReporte={(reason) => void enviarReporte(reason)}
             />
