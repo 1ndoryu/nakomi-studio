@@ -37,7 +37,7 @@
     margin: 0;
     font-family: var(--font-serif);
     font-size: var(--text-sm);
-    color: var(--text-secondary);
+    color: var(--text-muted);
     line-height: 1.6;
 }
 
@@ -131,7 +131,7 @@
     display: inline-flex;
     align-items: center;
     padding: var(--spacing-2xs) var(--spacing-sm);
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     background-color: var(--bg-item-active);
     color: var(--brand-black);
     font-family: var(--font-primary);
@@ -146,8 +146,7 @@
     font-weight: 500;
     color: var(--brand-black);
     margin: 0;
-    padding-top: var(--spacing-sm);
-    border-top: 1px solid var(--bg-item-active);
+
 }
 
 /* Responsive */
