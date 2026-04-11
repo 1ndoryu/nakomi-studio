@@ -440,3 +440,298 @@ impl CoolifyService {
         Ok(())
     }
 }
+
+/* ============================================================
+   TESTS — [114A-14] Tests completos del servicio de hosting
+   ============================================================ */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+    use chrono::Utc;
+
+    fn test_plan_config(plan_name: &str) -> HostingPlanConfig {
+        HostingPlanConfig {
+            id: Uuid::new_v4(),
+            plan_name: plan_name.to_string(),
+            monthly_price_cents: 500,
+            wp_cpu_millicores: 500,
+            wp_memory_mb: 256,
+            db_cpu_millicores: 500,
+            db_memory_mb: 512,
+            ssh_cpu_millicores: 250,
+            ssh_memory_mb: 128,
+            storage_limit_mb: 5120,
+            bandwidth_limit_gb: 50,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    /* --- millicores_to_cpu --- */
+
+    #[test]
+    fn millicores_to_cpu_standard_values() {
+        assert_eq!(millicores_to_cpu(1000), "1.00");
+        assert_eq!(millicores_to_cpu(500), "0.50");
+        assert_eq!(millicores_to_cpu(250), "0.25");
+        assert_eq!(millicores_to_cpu(1500), "1.50");
+    }
+
+    #[test]
+    fn millicores_to_cpu_edge_cases() {
+        assert_eq!(millicores_to_cpu(0), "0.00");
+        assert_eq!(millicores_to_cpu(1), "0.00");
+        assert_eq!(millicores_to_cpu(10), "0.01");
+        assert_eq!(millicores_to_cpu(100), "0.10");
+        assert_eq!(millicores_to_cpu(4000), "4.00");
+    }
+
+    /* --- service_name_for --- */
+
+    #[test]
+    fn service_name_for_uses_first_8_chars() {
+        let id = Uuid::parse_str("abcdef01-2345-6789-abcd-ef0123456789").unwrap();
+        assert_eq!(CoolifyService::service_name_for(&id), "hosting-abcdef01");
+    }
+
+    #[test]
+    fn service_name_for_different_uuids_are_unique() {
+        let id1 = Uuid::new_v4();
+        let id2 = Uuid::new_v4();
+        assert_ne!(
+            CoolifyService::service_name_for(&id1),
+            CoolifyService::service_name_for(&id2),
+        );
+    }
+
+    #[test]
+    fn service_name_for_starts_with_hosting_prefix() {
+        let id = Uuid::new_v4();
+        let name = CoolifyService::service_name_for(&id);
+        assert!(name.starts_with("hosting-"));
+        assert_eq!(name.len(), 16); /* "hosting-" (8) + 8 chars UUID */
+    }
+
+    /* --- build_hosting_compose (estructura general) --- */
+
+    #[test]
+    fn compose_contains_all_required_services() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("testuser", "testpass", 10001, &config);
+
+        assert!(compose.contains("wordpress:"), "Debe contener servicio WordPress");
+        assert!(compose.contains("mariadb:"), "Debe contener servicio MariaDB");
+        assert!(compose.contains("ssh:"), "Debe contener servicio SSH");
+    }
+
+    #[test]
+    fn compose_contains_required_networks() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("testuser", "testpass", 10001, &config);
+
+        assert!(compose.contains("frontend_net:"));
+        assert!(compose.contains("backend_net:"));
+        assert!(compose.contains("ssh_net:"));
+        assert!(compose.contains("internal: true"), "backend_net debe ser internal");
+    }
+
+    #[test]
+    fn compose_contains_required_volumes() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("testuser", "testpass", 10001, &config);
+
+        assert!(compose.contains("wordpress-data:"));
+        assert!(compose.contains("mariadb-data:"));
+    }
+
+    /* --- Compose: credenciales SSH/SFTP --- */
+
+    #[test]
+    fn compose_uses_provided_sftp_credentials() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("myuser", "s3cur3P@ss", 12345, &config);
+
+        assert!(compose.contains("USER_NAME=myuser"));
+        assert!(compose.contains("USER_PASSWORD=s3cur3P@ss"));
+        assert!(compose.contains("12345:2222"), "Puerto SSH debe mapearse correctamente");
+    }
+
+    #[test]
+    fn compose_ssh_volume_maps_to_user_home() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("webmaster", "pass", 10001, &config);
+
+        assert!(compose.contains("wordpress-data:/home/webmaster/html"));
+    }
+
+    /* --- Compose: seguridad (hardening) --- */
+
+    #[test]
+    fn compose_has_security_restrictions() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        /* cap_drop: ALL en todos los contenedores */
+        let cap_drop_count = compose.matches("cap_drop:").count();
+        assert!(cap_drop_count >= 3, "wp, mariadb y ssh deben tener cap_drop: {cap_drop_count}");
+
+        /* no-new-privileges */
+        let nnp_count = compose.matches("no-new-privileges:true").count();
+        assert!(nnp_count >= 3, "wp, mariadb y ssh deben tener no-new-privileges: {nnp_count}");
+
+        /* pids_limit */
+        assert!(compose.contains("pids_limit: 200"), "WordPress pids_limit");
+        assert!(compose.contains("pids_limit: 150"), "MariaDB pids_limit");
+        assert!(compose.contains("pids_limit: 100"), "SSH pids_limit");
+    }
+
+    #[test]
+    fn compose_ssh_has_sudo_disabled() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        assert!(compose.contains("SUDO_ACCESS=false"));
+    }
+
+    #[test]
+    fn compose_ssh_has_sshd_hardening_script() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        assert!(compose.contains("AllowTcpForwarding no"));
+        assert!(compose.contains("X11Forwarding no"));
+        assert!(compose.contains("PermitTunnel no"));
+        assert!(compose.contains("GatewayPorts no"));
+    }
+
+    #[test]
+    fn compose_wp_disables_file_editing() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        assert!(compose.contains("DISALLOW_FILE_EDIT"));
+    }
+
+    /* --- Compose: recursos dinámicos --- */
+
+    #[test]
+    fn compose_applies_dynamic_resource_limits() {
+        let mut config = test_plan_config("pro");
+        config.wp_cpu_millicores = 1000;
+        config.wp_memory_mb = 512;
+        config.db_cpu_millicores = 750;
+        config.db_memory_mb = 256;
+        config.ssh_cpu_millicores = 500;
+        config.ssh_memory_mb = 128;
+
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        /* WordPress: 1.0 CPU, 512M */
+        assert!(compose.contains("cpus: '1.00'"), "WP CPU debe ser 1.00");
+        assert!(compose.contains("memory: 512M"), "WP memory debe ser 512M");
+        /* DB: 0.75 CPU, 256M */
+        assert!(compose.contains("cpus: '0.75'"), "DB CPU debe ser 0.75");
+        assert!(compose.contains("memory: 256M"), "DB memory debe ser 256M");
+        /* SSH: 0.50 CPU, 128M */
+        assert!(compose.contains("cpus: '0.50'"), "SSH CPU debe ser 0.50");
+        assert!(compose.contains("memory: 128M"), "SSH memory debe ser 128M");
+    }
+
+    /* --- Compose: backup sidecar (solo ecommerce) --- */
+
+    #[test]
+    fn compose_ecommerce_includes_backup_sidecar() {
+        let config = test_plan_config("ecommerce");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        assert!(compose.contains("backup:"), "Ecommerce debe incluir sidecar backup");
+        assert!(compose.contains("backup-data:"), "Ecommerce debe incluir volumen backup");
+        assert!(compose.contains("mysqldump"), "Backup debe usar mysqldump");
+    }
+
+    #[test]
+    fn compose_basico_excludes_backup_sidecar() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        assert!(!compose.contains("backup:"), "Basico no debe incluir sidecar backup");
+        assert!(!compose.contains("backup-data:"), "Basico no debe incluir volumen backup");
+    }
+
+    #[test]
+    fn compose_pro_excludes_backup_sidecar() {
+        let config = test_plan_config("pro");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        assert!(!compose.contains("backup:"), "Pro no debe incluir sidecar backup");
+    }
+
+    #[test]
+    fn compose_backup_retention_policy() {
+        let config = test_plan_config("ecommerce");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        /* 3 días de backups diarios */
+        assert!(compose.contains("-mtime +3 -delete"), "Retención diaria: 3 días");
+        /* 14 días (2 semanas) de backups semanales */
+        assert!(compose.contains("-mtime +14 -delete"), "Retención semanal: 14 días");
+    }
+
+    #[test]
+    fn compose_backup_runs_on_sundays_only() {
+        let config = test_plan_config("ecommerce");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        /* DOW = 7 es domingo */
+        assert!(compose.contains("DOW = 7"), "Backup semanal solo domingos");
+    }
+
+    /* --- Compose: isolation de red --- */
+
+    #[test]
+    fn compose_wordpress_connects_to_frontend_and_backend() {
+        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M");
+
+        /* WordPress debe estar en frontend (sirve tráfico) y backend (habla con DB) */
+        assert!(compose.contains("frontend_net"));
+        assert!(compose.contains("backend_net"));
+    }
+
+    #[test]
+    fn compose_mariadb_only_on_backend() {
+        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M");
+
+        /* MariaDB aparece como servicio "  mariadb:\n". Su sección debe contener
+         * backend_net pero NO frontend_net. Extraer desde la definición del servicio. */
+        let mariadb_start = compose.find("  mariadb:\n").expect("mariadb service");
+        let mariadb_section = &compose[mariadb_start..];
+        assert!(mariadb_section.contains("backend_net"));
+        assert!(!mariadb_section.contains("frontend_net"), "MariaDB no debe estar en frontend_net");
+    }
+
+    #[test]
+    fn compose_ssh_on_ssh_net_and_backend() {
+        let compose = build_compose_ssh("user", "pass", 10001, "0.25", "128M");
+
+        assert!(compose.contains("ssh_net"));
+        assert!(compose.contains("backend_net"));
+        /* SSH no debe estar en frontend_net */
+        assert!(!compose.contains("frontend_net"), "SSH no debe estar en frontend_net");
+    }
+
+    /* --- CoolifyConfig::from_env --- */
+
+    #[test]
+    fn coolify_config_requires_all_env_vars() {
+        /* Sin ninguna variable = None */
+        std::env::remove_var("COOLIFY_BASE_URL");
+        std::env::remove_var("COOLIFY_API_TOKEN");
+        std::env::remove_var("COOLIFY_SERVER_UUID");
+        std::env::remove_var("COOLIFY_PROJECT_UUID");
+        std::env::remove_var("COOLIFY_SERVER_IP");
+        let config = CoolifyConfig::from_env();
+        assert!(config.is_none());
+    }
+}

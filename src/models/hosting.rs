@@ -225,6 +225,7 @@ pub struct HostingStatsResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use validator::Validate;
 
     /* --- Domain regex --- */
 
@@ -264,7 +265,7 @@ mod tests {
         }
     }
 
-    /* --- Validator integration: domain field --- */
+    /* --- Validator integration: SelfSubscribeRequest --- */
 
     #[test]
     fn self_subscribe_request_valid_domain() {
@@ -300,5 +301,167 @@ mod tests {
             domain: None,
         };
         assert!(req.validate().is_err());
+    }
+
+    /* --- [114A-14] Tests adicionales: CreateHostingRequest --- */
+
+    #[test]
+    fn create_request_valid_all_fields() {
+        let req = CreateHostingRequest {
+            client_name: "Juan García".to_string(),
+            client_email: "juan@example.com".to_string(),
+            plan: "pro".to_string(),
+            domain: Some("nakomi.studio".to_string()),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn create_request_empty_name_rejected() {
+        let req = CreateHostingRequest {
+            client_name: String::new(),
+            client_email: "test@test.com".to_string(),
+            plan: "basico".to_string(),
+            domain: None,
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn create_request_invalid_email_rejected() {
+        let req = CreateHostingRequest {
+            client_name: "Test".to_string(),
+            client_email: "not-an-email".to_string(),
+            plan: "basico".to_string(),
+            domain: None,
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn create_request_sql_injection_in_domain_rejected() {
+        let req = CreateHostingRequest {
+            client_name: "Test".to_string(),
+            client_email: "test@test.com".to_string(),
+            plan: "basico".to_string(),
+            domain: Some("' OR 1=1; --".to_string()),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn create_request_xss_in_domain_rejected() {
+        let req = CreateHostingRequest {
+            client_name: "Test".to_string(),
+            client_email: "test@test.com".to_string(),
+            plan: "basico".to_string(),
+            domain: Some("<script>alert(1)</script>.com".to_string()),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    /* --- [114A-14] UpdateHostingRequest --- */
+
+    #[test]
+    fn update_request_valid() {
+        let req = UpdateHostingRequest {
+            plan: "ecommerce".to_string(),
+            domain: Some("new-domain.com".to_string()),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn update_request_empty_plan_rejected() {
+        let req = UpdateHostingRequest {
+            plan: String::new(),
+            domain: None,
+        };
+        assert!(req.validate().is_err());
+    }
+
+    /* --- [114A-14] UpdateHostingStatusRequest --- */
+
+    #[test]
+    fn status_request_valid() {
+        let req = UpdateHostingStatusRequest {
+            status: "active".to_string(),
+            reason: Some("Payment received".to_string()),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn status_request_empty_status_rejected() {
+        let req = UpdateHostingStatusRequest {
+            status: String::new(),
+            reason: None,
+        };
+        assert!(req.validate().is_err());
+    }
+
+    /* --- [114A-14] Domain edge cases --- */
+
+    #[test]
+    fn domain_regex_max_label_length_63() {
+        /* Cada label en un dominio puede tener max 63 chars */
+        let long_label = "a".repeat(63);
+        let domain = format!("{long_label}.com");
+        assert!(DOMAIN_REGEX.is_match(&domain), "63 char label debería ser válido");
+
+        let too_long = "a".repeat(64);
+        let domain = format!("{too_long}.com");
+        assert!(!DOMAIN_REGEX.is_match(&domain), "64 char label debería ser inválido");
+    }
+
+    #[test]
+    fn domain_regex_accepts_numeric_tld() {
+        assert!(DOMAIN_REGEX.is_match("12345.678"));
+    }
+
+    #[test]
+    fn domain_regex_rejects_trailing_dot() {
+        assert!(!DOMAIN_REGEX.is_match("example.com."));
+    }
+
+    /* --- [114A-14] HostingSubscriptionResponse::from --- */
+
+    #[test]
+    fn subscription_response_preserves_all_fields() {
+        let now = Utc::now();
+        let id = Uuid::new_v4();
+        let user_id = Uuid::new_v4();
+        let sub = HostingSubscription {
+            id,
+            user_id: Some(user_id),
+            client_name: "Test Client".to_string(),
+            client_email: "test@test.com".to_string(),
+            plan: "pro".to_string(),
+            domain: Some("test.com".to_string()),
+            coolify_site_name: Some("hosting-abc123".to_string()),
+            status: "active".to_string(),
+            stripe_subscription_id: Some("sub_123".to_string()),
+            monthly_price_cents: 1000,
+            storage_limit_mb: 20480,
+            server_uuid: Some("uuid-123".to_string()),
+            server_ip: Some("1.2.3.4".to_string()),
+            sftp_user: Some("user".to_string()),
+            sftp_password: Some("pass".to_string()),
+            sftp_port: Some(10001),
+            created_at: now,
+            updated_at: now,
+        };
+
+        let resp = HostingSubscriptionResponse::from(sub);
+        assert_eq!(resp.id, id);
+        assert_eq!(resp.user_id, Some(user_id));
+        assert_eq!(resp.plan, "pro");
+        assert_eq!(resp.domain.as_deref(), Some("test.com"));
+        assert_eq!(resp.status, "active");
+        assert_eq!(resp.monthly_price_cents, 1000);
+        assert_eq!(resp.storage_limit_mb, 20480);
+        assert_eq!(resp.server_ip.as_deref(), Some("1.2.3.4"));
+        assert_eq!(resp.sftp_user.as_deref(), Some("user"));
+        assert_eq!(resp.sftp_port, Some(10001));
     }
 }
