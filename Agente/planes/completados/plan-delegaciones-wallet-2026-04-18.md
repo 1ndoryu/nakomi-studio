@@ -1,7 +1,7 @@
 # Plan: Delegaciones y Pedidos — Wallet + Admin Assignment + Withdrawal
 
 **Fecha:** 2026-04-18
-**Estado:** En progreso
+**Estado:** Completado (T1, T2, T3 terminadas)
 
 ## Análisis previo
 
@@ -17,9 +17,9 @@ La mayoría del sistema ya está implementado:
 | Delegaciones entre empleados | ✅ Completo |
 | SeccionDelegaciones + SeccionDisponibles UI | ✅ Completo |
 | Notificaciones REST + WebSocket | ✅ Completo |
-| **Wallet balance en header panel** | ❌ Falta |
-| **Admin UI para asignar órdenes a empleados** | ❌ API ok, UI falta |
-| **Withdrawal (retiro de saldo)** | ❌ Falta backend + frontend |
+| **Wallet balance en header panel** | ✅ Completo (T3-wallet-header) |
+| **Admin UI para asignar órdenes a empleados** | ✅ Completo (T2-assignment) |
+| **Withdrawal (retiro de saldo)** | ✅ Completo (T1-withdrawal) |
 
 ## Tareas (3 tasks, por complejidad descendente)
 
