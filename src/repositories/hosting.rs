@@ -7,6 +7,17 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::models::{HostingEvent, HostingSubscription};
 
+/* [164A-6] Struct para agrupar datos del servidor tras provisioning.
+ * Evita pasar 8 argumentos sueltos a update_server_info (clippy::too_many_arguments). */
+pub struct ServerInfo<'a> {
+    pub coolify_site_name: &'a str,
+    pub server_uuid: &'a str,
+    pub server_ip: &'a str,
+    pub sftp_user: &'a str,
+    pub sftp_password: &'a str,
+    pub sftp_port: i32,
+}
+
 pub struct HostingRepository;
 
 /* [054A-2] Parámetros agrupados para crear suscripción (evita clippy::too_many_arguments) */
@@ -237,24 +248,19 @@ impl HostingRepository {
     pub async fn update_server_info(
         pool: &PgPool,
         id: Uuid,
-        coolify_site_name: &str,
-        server_uuid: &str,
-        server_ip: &str,
-        sftp_user: &str,
-        sftp_password: &str,
-        sftp_port: i32,
+        info: &ServerInfo<'_>,
     ) -> Result<(), AppError> {
         sqlx::query!(
             "UPDATE hosting_subscriptions
              SET coolify_site_name = $1, server_uuid = $2, server_ip = $3,
                  sftp_user = $4, sftp_password = $5, sftp_port = $6, updated_at = NOW()
              WHERE id = $7",
-            coolify_site_name,
-            server_uuid,
-            server_ip,
-            sftp_user,
-            sftp_password,
-            sftp_port,
+            info.coolify_site_name,
+            info.server_uuid,
+            info.server_ip,
+            info.sftp_user,
+            info.sftp_password,
+            info.sftp_port,
             id
         )
         .execute(pool)

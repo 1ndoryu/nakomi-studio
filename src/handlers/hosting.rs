@@ -18,7 +18,7 @@ use crate::models::{
     SelfSubscribeRequest, SelfSubscribeResponse,
     UpdateHostingRequest, UpdateHostingStatusRequest, UserRole,
 };
-use crate::repositories::{CreateHostingParams, HostingRepository, UserRepository};
+use crate::repositories::{CreateHostingParams, HostingRepository, ServerInfo, UserRepository};
 use crate::services::CoolifyService;
 use crate::AppState;
 
@@ -890,12 +890,14 @@ pub async fn provision_subscription(
     HostingRepository::update_server_info(
         &state.pool,
         id,
-        &service_name,
-        &result.service_uuid,
-        &result.server_ip,
-        &result.sftp_user,
-        &result.sftp_password,
-        result.sftp_port,
+        &ServerInfo {
+            coolify_site_name: &service_name,
+            server_uuid: &result.service_uuid,
+            server_ip: &result.server_ip,
+            sftp_user: &result.sftp_user,
+            sftp_password: &result.sftp_password,
+            sftp_port: result.sftp_port,
+        },
     )
     .await?;
 

@@ -23,7 +23,7 @@ pub use chat::ChatRepository;
 pub use dashboard::DashboardRepository;
 pub use delegation::{DelegationRepository, EmployeeListItemRow};
 pub use deliverable::{CreateDeliverableParams, DeliverableRepository};
-pub use hosting::{CreateHostingParams, HostingRepository};
+pub use hosting::{CreateHostingParams, HostingRepository, ServerInfo};
 pub use note::NoteRepository;
 pub use notification::NotificationRepository;
 pub use order::{OrderRepository, CreateOrderParams, CreatePhaseParams};

@@ -306,17 +306,17 @@ export function TabAcceso({sshInfo, sub}: {
                     </a>
                 </div>
 
-                <h3 className="hostingDetalleSectionTitle">Acceso SFTP</h3>
+                <h3 className="hostingDetalleSectionTitle">Acceso SSH / SFTP</h3>
                 {hasSftp ? (
                     <>
                         <p className="hostingDetalleSectionDesc">
-                            Usa estas credenciales con FileZilla, Cyberduck o cualquier cliente SFTP para acceder a los archivos de tu sitio.
+                            Usa estas credenciales con cualquier cliente SSH/SFTP (FileZilla, Cyberduck, terminal) para acceder a los archivos de tu sitio o ejecutar comandos.
                         </p>
                         <div className="hostingDetalleInfoGrid">
                             <InfoRow label="Host" value={sub.server_ip!} copyable />
                             <InfoRow label="Puerto" value={String(sub.sftp_port!)} copyable />
                             <InfoRow label="Usuario" value={sub.sftp_user!} copyable />
-                            <InfoRow label="Protocolo" value="SFTP (SSH File Transfer Protocol)" />
+                            <InfoRow label="Protocolo" value="SSH + SFTP" />
                             <InfoRow
                                 label="Contraseña"
                                 value={showPassword ? sub.sftp_password! : '••••••••••••••••'}
@@ -336,12 +336,14 @@ export function TabAcceso({sshInfo, sub}: {
 
                         <h4 className="hostingDetalleSubTitle">Conectar por terminal</h4>
                         <div className="hostingDetalleCodeBlock">
+                            <code>{`ssh -p ${sub.sftp_port} ${sub.sftp_user}@${sub.server_ip}`}</code>
+                            <CopyButton text={`ssh -p ${sub.sftp_port} ${sub.sftp_user}@${sub.server_ip}`} />
+                        </div>
+                        <h4 className="hostingDetalleSubTitle">Transferir archivos (SFTP)</h4>
+                        <div className="hostingDetalleCodeBlock">
                             <code>{`sftp -P ${sub.sftp_port} ${sub.sftp_user}@${sub.server_ip}`}</code>
                             <CopyButton text={`sftp -P ${sub.sftp_port} ${sub.sftp_user}@${sub.server_ip}`} />
                         </div>
-                        <p className="hostingDetalleSectionDesc">
-                            El acceso es SFTP (transferencia de archivos), no SSH interactivo. Para gestión avanzada del servidor, usa el panel WordPress o contacta soporte.
-                        </p>
                     </>
                 ) : (
                     <p className="hostingDetalleSectionDesc">

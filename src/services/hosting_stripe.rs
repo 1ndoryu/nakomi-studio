@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::{CreateNotification, NOTIF_HOSTING_CANCELLED, NOTIF_HOSTING_SUSPENDED};
-use crate::repositories::{HostingRepository, NotificationRepository};
+use crate::repositories::{HostingRepository, NotificationRepository, ServerInfo};
 use crate::services::coolify::{CoolifyConfig, CoolifyService};
 
 /* Mapeo plan → Stripe Price ID (cargados desde env) */
@@ -235,12 +235,14 @@ impl HostingStripeService {
                     if let Err(e) = HostingRepository::update_server_info(
                         pool,
                         hosting_id,
-                        &service_name,
-                        &result.service_uuid,
-                        &result.server_ip,
-                        &result.sftp_user,
-                        &result.sftp_password,
-                        result.sftp_port,
+                        &ServerInfo {
+                            coolify_site_name: &service_name,
+                            server_uuid: &result.service_uuid,
+                            server_ip: &result.server_ip,
+                            sftp_user: &result.sftp_user,
+                            sftp_password: &result.sftp_password,
+                            sftp_port: result.sftp_port,
+                        },
                     )
                     .await
                     {
