@@ -90,8 +90,7 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 - ~~los clientes tambien pueden solicitar cancelar el pedido.~~ (204A-13)
 - ~~los retiros de dinero, mejor dicho las ganancias solo deben poder retirarse a los 7 días.~~ (204A-11)
 - ~~Comisiones, los proyectos atendido por los empleados deben generar 10% de comisión a Nakomi.~~ (204A-12)
-- tal vez esta tarea se borro n ose si ya se soluciono, el punto es que a veces la pagina queda en blanco y no carga completa, o carga a la mitad y hay que recargar para que se vea completa. (ACTUALIZACION; EL ERROR ES OTRO SUCEDE LO QUE SIGUIENTE: el body o html se quedan arriba cubriendo la parte arriba con scroll y luego hay otro scroll que al bajar es el div root vacío, he probrado poner     overflow: unset; en el html y se soluciona al parecer, puede que [204A-5] era innecesario)
-- Cuando intento subir imagen a un proyecto sucede
-index-BXPlPWYr.js:119  POST https://nakomi.studio/api/admin/uploads 400 (Bad Request)
-
-con un proyecto no sucedía pero con otro si
+- ~~tal vez esta tarea se borro n ose si ya se soluciono, el punto es que a veces la pagina queda en blanco y no carga completa, o carga a la mitad y hay que recargar para que se vea completa. (ACTUALIZACION; EL ERROR ES OTRO SUCEDE LO QUE SIGUIENTE: el body o html se quedan arriba cubriendo la parte arriba con scroll y luego hay otro scroll que al bajar es el div root vacío, he probrado poner     overflow: unset; en el html y se soluciona al parecer, puede que [204A-5] era innecesario)~~ (204A-14)
+- ~~Cuando intento subir imagen a un proyecto sucede POST /api/admin/uploads 400 (Bad Request) con un proyecto no sucedía pero con otro si~~ (204A-15)
+- ~~con panelSidebar debería estar abajo en la parte inferior movil, el boton 3 puntos alli debería ser una hamburgueza, a demás, no funciona ese boton, en movil panelUsuario no necesita padding, panelContenido tampoco necesita padding en movil~~ (204A-16)
+- ~~retiroAdminContenedor se ve mal, no tiene la estructura de los otros paneles, presiento.~~ (204A-17)
