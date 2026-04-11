@@ -5,7 +5,7 @@
  * Botón "Solicitar reembolso" movido al modal de detalle. */
 
 import { useState, useMemo } from 'react';
-import { Loader2, CreditCard, AlertCircle, RotateCcw } from 'lucide-react';
+import { Loader2, CreditCard, AlertCircle, RotateCcw, Package } from 'lucide-react';
 import { useOrdenes } from '../../hooks/useOrdenes';
 import { usePagos } from '../../hooks/usePagos';
 import { useRefundModal } from '../../hooks/useRefundModal';
@@ -71,7 +71,10 @@ export function SeccionPagos() {
             {/* [084A-44] Selector de orden como tabla profesional */}
             <div className="pagosOrdenesWrapper">
                 {ordenes.length === 0 ? (
-                    <p className="pagosVacioTexto">No tienes órdenes</p>
+                    <div className="pagosVacioDetalle">
+                        <Package size={32} />
+                        <p>No tienes órdenes con historial de pago</p>
+                    </div>
                 ) : (
                     <table className="pagosOrdenesTabla">
                         <thead>
