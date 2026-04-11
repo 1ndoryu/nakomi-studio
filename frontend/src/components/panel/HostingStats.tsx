@@ -86,6 +86,23 @@ export function HostingStats({sub}: {sub: HostingSubscription}) {
 
     return (
         <div className="hostingStats">
+            {/* [114A-15+] CPU y RAM reales obtenidos via Docker stats SSH */}
+            {stats.cpu_percent !== null && (
+                <ResourceBar
+                    label="CPU"
+                    used={stats.cpu_percent}
+                    total={100}
+                    unit="%"
+                />
+            )}
+            {stats.ram_used_mb !== null && stats.ram_limit_mb !== null && (
+                <ResourceBar
+                    label="Memoria RAM"
+                    used={stats.ram_used_mb}
+                    total={stats.ram_limit_mb}
+                    unit="MB"
+                />
+            )}
             <ResourceBar
                 label="Almacenamiento"
                 used={stats.storage_used_mb}

@@ -359,6 +359,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         hosting_stripe_config,
         coolify_config,
         email_config,
+        docker_stats_cache: crate::services::docker_stats::DockerStatsCache::new(),
     };
 
     /* [064A-73] CORS: restringir orígenes en producción. Si GLORY_ALLOWED_ORIGINS vacío, allow all (dev). */

@@ -1,7 +1,7 @@
 # Plan: SSH/SFTP Seguro por Despliegue de Hosting
 
 > Creado: 2026-04-16
-> Estado: **En progreso** — Fases 2 y 4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops), Fase 3 (panel recursos frontend + SSH stats backend).
+> Estado: **Casi completo** — Fases 2, 3 y 4 completadas. Pendiente solo: Fase 1 (verificación VFS disco — ops en VPS2).
 > Contexto: Cada hosting usa `linuxserver/openssh-server` con SSH+SFTP. Recursos configurables por plan desde BD. Refresh endpoint disponible para migrar existentes.
 
 ---

@@ -15,6 +15,7 @@ pub mod services;
 use sqlx::PgPool;
 
 use crate::services::{AiChatConfig, ChatHub, ChatTimingService, ContaboService, CoolifyConfig, EmailConfig, HostingStripeConfig, NotificationHub};
+use crate::services::docker_stats::DockerStatsCache;
 
 /// Estado compartido de la aplicación — accesible desde handlers y middleware
 #[derive(Clone)]
@@ -35,4 +36,6 @@ pub struct AppState {
     pub coolify_config: Option<CoolifyConfig>,
     /// [154A-15c] Config de SMTP para emails transaccionales
     pub email_config: Option<EmailConfig>,
+    /// [114A-15+] Cache de stats de contenedores Docker (30s TTL)
+    pub docker_stats_cache: DockerStatsCache,
 }

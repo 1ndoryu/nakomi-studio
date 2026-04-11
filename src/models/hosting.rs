@@ -199,7 +199,7 @@ pub struct UpdatePlanConfigRequest {
 
 /* [094A-8] Estadísticas reales de una suscripción de hosting.
  * Uptime se calcula desde el historial de eventos (status_change).
- * Storage/bandwidth son límites del plan; uso real requiere monitoreo futuro (Coolify/cAdvisor). */
+ * [114A-15+] CPU y RAM reales obtenidos via docker stats SSH. */
 #[derive(Debug, Serialize, ToSchema)]
 pub struct HostingStatsResponse {
     pub storage_limit_mb: i32,
@@ -216,6 +216,14 @@ pub struct HostingStatsResponse {
     pub last_event_at: Option<DateTime<Utc>>,
     /// true si hay agente de monitoreo configurado (`coolify_site_name` != null)
     pub monitoring_available: bool,
+    /// [114A-15+] CPU % combinado de todos los contenedores (null si SSH no disponible)
+    pub cpu_percent: Option<f64>,
+    /// [114A-15+] RAM usada en MB combinada (null si SSH no disponible)
+    pub ram_used_mb: Option<f64>,
+    /// [114A-15+] RAM límite en MB combinada (null si SSH no disponible)
+    pub ram_limit_mb: Option<f64>,
+    /// [114A-15+] Stats por contenedor individual
+    pub containers: Option<Vec<crate::services::docker_stats::ContainerStats>>,
 }
 
 /* ============================================================

@@ -223,6 +223,16 @@ export const HOSTING_PLANS: HostingPlanInfo[] = [
 /* [084A-24] VPS stats — proxy a Contabo API (admin only) */
 
 /* [094A-8] Stats reales de una suscripción de hosting */
+/* [114A-15+] Añadidos campos de CPU/RAM y stats por contenedor */
+export interface ContainerStatsData {
+    name: string;
+    cpu_percent: number;
+    mem_used_mb: number;
+    mem_limit_mb: number;
+    net_input_mb: number;
+    net_output_mb: number;
+}
+
 export interface HostingStatsData {
     storage_limit_mb: number;
     storage_used_mb: number | null;
@@ -233,6 +243,10 @@ export interface HostingStatsData {
     total_events: number;
     last_event_at: string | null;
     monitoring_available: boolean;
+    cpu_percent: number | null;
+    ram_used_mb: number | null;
+    ram_limit_mb: number | null;
+    containers: ContainerStatsData[] | null;
 }
 
 export async function apiGetHostingStats(id: string): Promise<HostingStatsData> {

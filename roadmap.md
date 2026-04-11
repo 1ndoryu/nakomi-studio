@@ -38,8 +38,8 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Planes activos: chatbot v2, SEO, seed system, SSH/SFTP seguro
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 
-- Hosting/Recursos y SSH seguro: Plan en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fases 2+4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops), Fase 3 (panel recursos frontend + SSH stats backend).
-- Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.
+- ~~Hosting/Recursos y SSH seguro: Plan en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fases 2+4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops), Fase 3 (panel recursos frontend + SSH stats backend).~~ Fase 3 completada (114A-16). Pendiente solo Fase 1 (ops: verificación VFS disco en VPS2).
+- ~~Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.~~ Fases 2, 3, 4 completadas. Solo queda Fase 1 (ops).
 - ~~Hay que adaptar el servicio de hosting para que sea un servicio especializado en wordpress, hosting wordpress y que se entienda eso.~~ (114A-5)
 - ~~Glory Sentinel no tiene mecanismo para hacer respetar principios solid en el codigo de Rust, tenemos que planificar algo, no se como, limite de lineas, y otras cosas que puedan servir.~~ (114A-6)
 - ~~(en planificación) Tampoco hay un mecanismo para el orden las carpetas, a veces veo que una sola carpeta tiene mas de 10 archivos lo cual complica a veces encontrar los archivos correcto, no se si limitar a 10 archivos por carpeta este bien porque habrán casos es lo que es legitimo, asi que habría que agregar algo para poner excepciones, esto con la intención de organizar mejor los archivos y no dejarlos tirados todo dentro de una sola carpeta,~~ (114A-7)
@@ -54,7 +54,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~Necesitamos testear que todo lo relacionado con el servicio de hosting funcione, necesitamos test completos para asegurarnos de que todo funcione.~~ (114A-14)
 - ~~Sobre la Rotacion de api, podemos desactivar la rotacion? Y que en configuraciones del panel se pueda activar, y muestre el status, necesito eso.~~ (114A-12)
 - ~~En movil serviciosContenedor el padding debe pasar de lg a md~~ (114A-11)
-- ~~La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.~~ (114A-15)
+- ~~La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.~~ (114A-15) 
+- :3000/api/admin/configuracion/rotacion:1  Failed to load resource: the server responded with a status of 404 (Not Found)Comprende este error
+:3000/api/admin/configuracion/rotacion:1  Failed to load resource: the server responded with a status of 404 (Not Found)
 
 - Si sale este error significa que los backup no funcionan?
 

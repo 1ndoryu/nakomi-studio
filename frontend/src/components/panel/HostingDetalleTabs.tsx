@@ -106,22 +106,14 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
 
 /* ── Tab: Recursos ───────────────────────── */
 export function TabRecursos({sub}: {sub: Subscription}) {
-    /* Hostings provisionados en Docker (Coolify) no exponen métricas de uso todavía.
-     * Solo mostramos el límite del plan; uso real requiere integración con Coolify metrics API. */
-    const isDockerHosting = sub.coolify_site_name?.startsWith('hosting-');
+    /* [114A-15+] Docker hostings ahora muestran CPU/RAM reales via Docker stats SSH.
+     * HostingStats maneja ambos casos (Docker y no-Docker) con los mismos ResourceBars. */
     return (
         <div className="hostingDetalleSection">
             <h3 className="hostingDetalleSectionTitle">Uso de recursos</h3>
             {(sub.status === 'active' || sub.status === 'provisioning') ? (
                 <div className="hostingDetalleRecursos">
-                    {isDockerHosting ? (
-                        <div className="hostingDetalleInfoGrid">
-                            <InfoRow label="Almacenamiento incluido" value={`${(sub.storage_limit_mb / 1024).toFixed(0)} GB`} />
-                            <InfoRow label="Monitoreo en tiempo real" value="Próximamente" />
-                        </div>
-                    ) : (
-                        <HostingStats sub={sub} />
-                    )}
+                    <HostingStats sub={sub} />
                     <p className="hostingDetalleRecursosNota">
                         Los datos de uso se actualizan periódicamente. Los valores mostrados son aproximados.
                     </p>

@@ -27,6 +27,8 @@ pub struct CoolifyConfig {
     pub project_uuid: String,
     /// IP pública del servidor Coolify (usada como `server_ip` de las suscripciones)
     pub server_ip: String,
+    /// [114A-15+] Ruta a la clave SSH para acceso al VPS (docker stats, monitoreo)
+    pub ssh_key_path: Option<String>,
 }
 
 impl CoolifyConfig {
@@ -44,12 +46,16 @@ impl CoolifyConfig {
             return None;
         }
 
+        /* [114A-15+] SSH key opcional para docker stats / monitoreo */
+        let ssh_key_path = std::env::var("COOLIFY_SSH_KEY_PATH").ok().filter(|s| !s.is_empty());
+
         Some(Self {
             base_url,
             api_token,
             server_uuid,
             project_uuid,
             server_ip,
+            ssh_key_path,
         })
     }
 }

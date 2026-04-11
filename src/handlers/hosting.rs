@@ -633,7 +633,62 @@ pub async fn create_checkout(
 /* ============================================================
    HOSTING STATS — Estadísticas reales de una suscripción
    [094A-8] Calcula uptime desde eventos, muestra límites reales del plan.
+   [114A-15+] Docker stats reales via SSH para CPU/RAM.
    ============================================================ */
+
+/* [114A-15+] Obtiene estadísticas de contenedores Docker via SSH.
+ * Usa cache de 30s para evitar SSH en cada request.
+ * Retorna (cpu_percent, ram_used, ram_limit, containers) — todo None si SSH no disponible. */
+async fn fetch_container_resources(
+    state: &AppState,
+    sub: &crate::models::HostingSubscription,
+) -> (
+    Option<f64>,
+    Option<f64>,
+    Option<f64>,
+    Option<Vec<crate::services::docker_stats::ContainerStats>>,
+) {
+    let coolify_name = match &sub.coolify_site_name {
+        Some(name) if !name.is_empty() => name,
+        _ => return (None, None, None, None),
+    };
+    let server_ip = match &sub.server_ip {
+        Some(ip) if !ip.is_empty() => ip,
+        _ => return (None, None, None, None),
+    };
+    let Some(ssh_key) = state.coolify_config.as_ref().and_then(|c| c.ssh_key_path.as_ref()) else {
+        return (None, None, None, None);
+    };
+
+    /* Cache check */
+    let cache_key = format!("{server_ip}:{coolify_name}");
+    if let Some(cached) = state.docker_stats_cache.get(&cache_key).await {
+        return (
+            Some(cached.total_cpu_percent),
+            Some(cached.total_ram_used_mb),
+            Some(cached.total_ram_limit_mb),
+            Some(cached.containers),
+        );
+    }
+
+    /* Fetch via SSH */
+    match crate::services::docker_stats::fetch_docker_stats(server_ip, ssh_key, coolify_name).await {
+        Ok(resource_stats) => {
+            let result = (
+                Some(resource_stats.total_cpu_percent),
+                Some(resource_stats.total_ram_used_mb),
+                Some(resource_stats.total_ram_limit_mb),
+                Some(resource_stats.containers.clone()),
+            );
+            state.docker_stats_cache.set(cache_key, resource_stats).await;
+            result
+        }
+        Err(e) => {
+            tracing::warn!("Docker stats fallo para {coolify_name}@{server_ip}: {e}");
+            (None, None, None, None)
+        }
+    }
+}
 
 /* Límite de ancho de banda por plan en GB */
 fn plan_bandwidth_gb(plan: &str) -> i32 {
@@ -753,6 +808,10 @@ pub async fn get_hosting_stats(
         _ => plan_bandwidth_gb(&sub.plan),
     };
 
+    /* [114A-15+] Docker stats reales via SSH si está configurado */
+    let (cpu_percent, ram_used_mb, ram_limit_mb, containers) =
+        fetch_container_resources(&state, &sub).await;
+
     Ok(Json(HostingStatsResponse {
         storage_limit_mb: sub.storage_limit_mb,
         storage_used_mb: None,
@@ -763,6 +822,10 @@ pub async fn get_hosting_stats(
         total_events,
         last_event_at,
         monitoring_available,
+        cpu_percent,
+        ram_used_mb,
+        ram_limit_mb,
+        containers,
     }))
 }
 
