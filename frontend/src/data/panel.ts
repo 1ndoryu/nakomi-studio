@@ -8,7 +8,7 @@ import type {UserRole} from '../api/auth';
 /* [064A-34] Eliminados: servicios, empleados, config-servicios (páginas innecesarias).
  * [064A-62] Añadido 'configuracion' para tab admin de herramientas dev. */
 export type SeccionPanel =
-    | 'proyectos' | 'pagos' | 'perfil' | 'metodos-pago' | 'mensajes'
+    | 'proyectos' | 'pagos' | 'perfil' | 'metodos-pago' | 'mensajes' | 'wallet'
     | 'asignados' | 'disponibles' | 'delegaciones'
     | 'todos-ordenes' | 'reembolsos' | 'usuarios' | 'hosting' | 'configuracion'
     | 'contenido' | 'problemas';
@@ -36,6 +36,12 @@ const TABS_CLIENT: TabConfig[] = [
         id: 'pagos',
         label: 'Historial de Pagos',
         descripcion: 'Historial completo de pagos realizados. Facturas, recibos y metodos de pago asociados a tu cuenta.'
+    },
+    /* [154A-15a] Wallet: saldo virtual del usuario, reembolsos acreditados */
+    {
+        id: 'wallet',
+        label: 'Mi Saldo',
+        descripcion: 'Saldo disponible en tu cuenta y registro de movimientos: reembolsos, bonificaciones y ajustes.'
     },
     {
         id: 'perfil',
@@ -81,6 +87,12 @@ const TABS_EMPLOYEE: TabConfig[] = [
         id: 'mensajes',
         label: 'Mensajes',
         descripcion: 'Conversaciones con clientes, delegaciones y chat de soporte en tiempo real.'
+    },
+    /* [154A-15a] Wallet para empleados */
+    {
+        id: 'wallet',
+        label: 'Mi Saldo',
+        descripcion: 'Saldo disponible en tu cuenta y registro de movimientos.'
     },
     {
         id: 'perfil',

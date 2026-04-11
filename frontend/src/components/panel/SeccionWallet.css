@@ -1,0 +1,208 @@
+/* [154A-15a] Estilos de la sección Wallet en el panel.
+ * Tarjeta de saldo + tabla de transacciones paginada. */
+
+.walletContenedor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* Tarjeta de saldo */
+.walletSaldoTarjeta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: var(--bg-accent);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+}
+
+.walletSaldoIcono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: var(--bg-warm);
+    color: var(--text-primary);
+}
+
+.walletSaldoInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.walletSaldoLabel {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+.walletSaldoValor {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+/* Historial */
+.walletHistorial {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.walletHistorialTitulo {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* Tabla */
+.walletTablaWrapper {
+    overflow-x: auto;
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-md);
+}
+
+.walletTabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.walletHead {
+    text-align: left;
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--bg-item-active);
+    background: var(--bg-accent);
+    white-space: nowrap;
+}
+
+.walletFila:not(:last-child) .walletCelda {
+    border-bottom: 1px solid var(--bg-item-active);
+}
+
+.walletCelda {
+    padding: var(--spacing-xs) var(--spacing-md);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.walletDescripcion {
+    white-space: normal;
+    max-width: 300px;
+    color: var(--text-muted);
+}
+
+.walletIconoTipo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-full);
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.walletIngreso {
+    color: var(--success-color);
+}
+
+.walletIngreso.walletIconoTipo {
+    background: rgba(22, 163, 74, 0.1);
+}
+
+.walletEgreso {
+    color: var(--color-error);
+}
+
+.walletEgreso.walletIconoTipo {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.walletMonto {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    text-align: right;
+}
+
+.walletSaldoDespues {
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    text-align: right;
+}
+
+.walletFecha {
+    color: var(--text-tertiary);
+    text-align: right;
+}
+
+/* Paginación */
+.walletPaginacion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    padding-top: var(--spacing-md);
+}
+
+.walletPaginaInfo {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+/* Estados vacíos / carga */
+.walletVacio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+}
+
+.walletSpinner {
+    animation: walletSpin 1s linear infinite;
+    color: var(--text-tertiary);
+}
+
+@keyframes walletSpin {
+    to { transform: rotate(360deg); }
+}
+
+.walletVacioTexto {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: var(--spacing-xl);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .walletSaldoTarjeta {
+        padding: var(--spacing-md);
+    }
+    
+    .walletSaldoValor {
+        font-size: var(--text-lg);
+    }
+
+    .walletCelda {
+        padding: var(--spacing-xs) 6px;
+        font-size: var(--text-xs);
+    }
+
+    .walletHead {
+        padding: var(--spacing-xs) 6px;
+    }
+
+    .walletDescripcion {
+        max-width: 140px;
+    }
+}
