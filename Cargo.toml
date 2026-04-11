@@ -68,6 +68,9 @@ pdf-extract = "0.7"
 # Base64 encoding (T-5 Groq Vision)
 base64 = "0.22"
 
+# Random generation (SFTP credentials)
+rand = "0.8"
+
 # Image processing (104A-5)
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 

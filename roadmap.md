@@ -39,7 +39,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 
 - Dominios: verificación DNS implementada (154A-16). Falta: compra de dominios (requiere registrar API), gestión registros DNS via Contabo API, auto-SSL.
-- No me aparece ningun hosting real, y tambien aparece "Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas." 
+- Hosting/Contabo: el error "Contabo rechazó autenticación" ocurre en la tab "Servidores" (solo admin) porque las variables CONTABO_* no están configuradas en el servidor (.env). Poner las credenciales reales de Contabo en las env vars del servicio Coolify resuelve la tab de servidores. Las suscripciones de hosting son independientes de Contabo (vienen de BD) — si no aparece ninguna, es porque ningún cliente ha comprado hosting aún (los datos seed de prueba se crean con `/api/admin/seed`).
 
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
@@ -78,4 +78,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - **nakomi.studio**: Desplegado y healthy en VPS1 (66.94.100.241), Coolify service `do8k4w8swccwwogoc0os0ck0`
 - **VPS2 Coolify**: Configurado en settings.json (apiToken, serverUuid, projectUuid)
+- **COOLIFY_PROJECT_UUID**: Actualizado a `p8zxtfmipwch1b14kfqnroh0` (project "hosting-test"). El .env local ya tiene esto. **PENDIENTE: actualizar también en prod** (env vars del servicio Coolify de nakomi.studio).
+- **WordPress real provisionado**: `blog-demo.nakomi.dev` → `http://wordpress-vpag09kzdkfax34h4ttxukqq.173.249.50.44.sslip.io/wp-admin/install.php`
+- **Nota Traefik VPS2**: El `coolify-proxy` se cae por un bug de Docker Compose con IPv6 Gateway. Si vuelve a caer, usar: `ssh -i coolify_key root@173.249.50.44 "docker run -d --name coolify-proxy --restart unless-stopped --network coolify -p 80:80 -p 443:443 --add-host=host.docker.internal:host-gateway -v /var/run/docker.sock:/var/run/docker.sock:ro -v /data/coolify/proxy/:/traefik -l coolify.managed=true -l coolify.proxy=true traefik:v3.6 [flags]"`
 - **Dominios**: Proveedor = Contabo DNS. API keys disponibles. Plan: `Agente/planes/plan-dominios-2026-04-07.md`

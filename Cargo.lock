@@ -893,6 +893,7 @@ dependencies = [
  "jsonwebtoken",
  "lettre",
  "pdf-extract",
+ "rand 0.8.5",
  "regex",
  "reqwest",
  "serde",
