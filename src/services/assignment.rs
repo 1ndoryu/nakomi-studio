@@ -8,9 +8,10 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::{
-    DelegationResponse, DelegationStatus, EmployeeListItem, OrderResponse, OrderStatus, UserRole,
+    CreateNotification, DelegationResponse, DelegationStatus, EmployeeListItem, OrderResponse,
+    OrderStatus, UserRole,
 };
-use crate::repositories::{DelegationRepository, OrderRepository};
+use crate::repositories::{DelegationRepository, NotificationRepository, OrderRepository};
 
 pub struct AssignmentService;
 
@@ -385,6 +386,30 @@ impl AssignmentService {
                         "Overdue: orden #{} marcada como open_to_employees",
                         order.order_number
                     );
+
+                    /* [164A-10] Notificar a empleados disponibles que hay una nueva orden */
+                    let employees = sqlx::query_scalar!(
+                        "SELECT user_id FROM employee_profiles WHERE availability = 'available'"
+                    )
+                    .fetch_all(pool)
+                    .await
+                    .unwrap_or_default();
+
+                    for emp_id in employees {
+                        let notif = CreateNotification {
+                            user_id: emp_id,
+                            notification_type: "order_available".to_string(),
+                            title: format!("Nueva orden disponible — #{}", order.order_number),
+                            body: Some(
+                                "Una orden ha quedado disponible. Puedes tomarla desde Disponibles."
+                                    .into(),
+                            ),
+                            link: Some("/panel?seccion=disponibles".into()),
+                            reference_type: Some("order".into()),
+                            reference_id: Some(order.id),
+                        };
+                        let _ = NotificationRepository::create(pool, &notif).await;
+                    }
                 }
                 Err(e) => {
                     tracing::warn!(

@@ -46,6 +46,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Hay que hacer otro plan super profundo para la seguridad respecto # Plan: SSH/SFTP Seguro por Despliegue de Hosting, y al servicio de hosting en general. 
 - Necesitamos una auditoría completa al chatbot, necesito ver como se comporta con los usuarios deslogeados, y como lo hace con los logeado, necesito ver como se comporta en cada escenario, para los empleados, para el admin y para los clientes, pues tiene que adaptarse a esos usuarios, tambien tiene que adaptarse cuando se abre el chat desde un intento de reporte por ejemplo. 
 - Hay que adaptar el servicio de hosting para que sea un servicio especializado en wordpress, hosting wordpress y que se entienda eso.
+- Revisa que el "disponiblesVacio" este para cuando no haya historial de pago, y revisa donde mas puede faltar.
+- Glory Sentinel no tiene mecanismo para hacer respetar principios solid en el codigo de Rust, tenemos que planificar algo, no se como, limite de lineas, y otras cosas que puedan servir. 
+- (en planificación) Tampoco hay un mecanismo para el orden las carpetas, a veces veo que una sola carpeta tiene mas de 10 archivos lo cual complica a veces encontrar los archivos correcto, no se si limitar a 10 archivos por carpeta este bien porque habrán casos es lo que es legitimo, asi que habría que agregar algo para poner excepciones, esto con la intención de organizar mejor los archivos y no dejarlos tirados todo dentro de una sola carpeta, 
 
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
