@@ -101,7 +101,15 @@ pub async fn image_proxy(
     /* Verificar que el archivo existe y está dentro de la raíz permitida */
     let canonical = original_path
         .canonicalize()
-        .map_err(|_| AppError::NotFound("Imagen no encontrada".into()))?;
+        .map_err(|e| {
+            tracing::warn!(
+                path = %path,
+                resolved = %original_path.display(),
+                error = %e,
+                "Imagen no encontrada en disco"
+            );
+            AppError::NotFound("Imagen no encontrada".into())
+        })?;
 
     let source_root = source_root
         .canonicalize()

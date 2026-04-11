@@ -436,6 +436,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
  * Esto mejora PageSpeed: evita re-descargar 5+ MB de JS/CSS en visitas repetidas. */
 pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Router {
     let static_dir = config.static_dir.clone();
+    let pool_for_prerender = pool.clone();
     let router = create_router(pool, config);
 
     if let Some(dir) = static_dir {
@@ -455,12 +456,20 @@ pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Route
          * Otros archivos sin hash (favicon, fonts) obtienen 1 día de cache. */
         let spa_serve = ServeDir::new(&dir).not_found_service(ServeFile::new(&index_path));
 
-        /* [114A-SEO3] Middleware de pre-rendering: intercepta crawlers ANTES del SPA fallback.
-         * Si existe HTML pre-renderizado para la ruta, lo sirve. Si no, cae al SPA normal. */
+        /* [214A-2] Middleware SEO dinámico: inyecta meta tags desde BD para crawlers.
+         * Reemplaza el enfoque estático de 114A-SEO3 (Puppeteer) que no soportaba CMS editable. */
+        let prerender_state = crate::middleware::prerender::PrerenderState {
+            pool: pool_for_prerender,
+            static_dir: dir.clone(),
+            app_url: std::env::var("APP_URL")
+                .unwrap_or_else(|_| "http://localhost:5173".into()),
+        };
+
         router
             .nest_service("/assets", asset_service)
             .fallback_service(spa_serve)
-            .layer(axum::middleware::from_fn(
+            .layer(axum::middleware::from_fn_with_state(
+                prerender_state,
                 crate::middleware::prerender::prerender,
             ))
     } else {
