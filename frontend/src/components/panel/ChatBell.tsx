@@ -4,8 +4,10 @@
 
 import {useCallback, useState} from 'react';
 import {MessageSquare, Bot, User} from 'lucide-react';
+import {useQueryClient} from '@tanstack/react-query';
 
 import {useChat} from '../../hooks/useChat';
+import {apiMarkSessionViewed} from '../../api/chat';
 import {useAuthStore} from '../../stores/authStore';
 import {Button} from '../ui/Button';
 import {MenuContextual} from '../ui/ContextMenu';
@@ -15,6 +17,7 @@ const PANEL_CHAT_TARGET = 'PANEL_CHAT_TARGET';
 
 export default function ChatBell() {
     const {sessions, cargandoSesiones} = useChat();
+    const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
     /* [154A-14] Rol del usuario para resolver títulos de sesión */
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole);
@@ -48,12 +51,17 @@ export default function ChatBell() {
         setOpen(false);
     }, []);
 
-    /* Navegar al panel → sección mensajes → chat seleccionado */
+    /* [164A-2] Navegar al panel → sección mensajes → chat seleccionado.
+     * Marca la sesión como vista DIRECTAMENTE aquí para actualizar el badge inmediatamente,
+     * sin depender del roundtrip vía SeccionChat que fallaba por timing. */
     const handleSelectSession = useCallback((sessionId: string) => {
         sessionStorage.setItem(PANEL_CHAT_TARGET, sessionId);
         window.dispatchEvent(new CustomEvent('panel-cambiar-tab', {detail: 'mensajes'}));
         setOpen(false);
-    }, []);
+        void apiMarkSessionViewed(sessionId)
+            .then(() => queryClient.invalidateQueries({queryKey: ['chat-sessions']}))
+            .catch(() => { /* no bloquear navegación si falla el mark-viewed */ });
+    }, [queryClient]);
 
     /* Formatear fecha relativa */
     const formatTime = (iso: string | null): string => {
