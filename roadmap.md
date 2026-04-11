@@ -87,8 +87,4 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 
 ## Tareas pendientes (usuario)
 
-- Rendimiento PageSpeed: https://pagespeed.web.dev/analysis/https-nakomi-studio/00l5vl5znd?form_factor=mobile
-- Bug producción: primera carga en blanco, funciona tras recargar.
-- Inconsistencia UI: botón 3 puntos en serviciosContenedor vs CMS (el de CMS es mejor; no debe aparecer en serviciosContenedor). Botón "Eliminar imagen" en CMS tiene fondo negro y no se ve.
-- Inconsistencia visual entre página de servicio y página de proyecto.
-- walletSaldoTarjeta debería estar estirado.
+(sin tareas pendientes)
