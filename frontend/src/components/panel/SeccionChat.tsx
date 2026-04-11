@@ -17,14 +17,16 @@ import './ChatBurbujas.css';
 
 /* [154A-14] Resuelve el título de una sesión de chat mostrando el nombre del
  * otro participante en vez de "Orden #N". Staff ve el nombre del cliente,
- * clientes ven el nombre del empleado. Fallback a order_number si no hay nombre. */
+ * clientes ven el nombre del empleado. Fallback a order_number si no hay nombre.
+ * [164A-13] Chat general → Visitante #{id} para diferenciar anónimos. */
 function resolveSessionTitle(s: ChatSession, isStaff: boolean): string {
     if (s.order_id) {
         const name = isStaff ? s.client_name : s.employee_name;
         if (name) return name;
         return `Orden #${s.order_number ?? '...'}`;
     }
-    return s.visitor_name || 'Chat general';
+    if (s.visitor_name) return s.visitor_name;
+    return `Visitante #${s.id.slice(-4).toUpperCase()}`;
 }
 
 export const SeccionChat: React.FC = () => {
@@ -111,7 +113,7 @@ export const SeccionChat: React.FC = () => {
                             <span className="chatAreaTitulo">
                                 {activeSession
                                     ? resolveSessionTitle(activeSession, isStaff)
-                                    : 'Chat general'}
+                                    : 'Seleccionar chat'}
                             </span>
                             {/* [104A-40] Indicador de presencia del visitante (staff only) */}
                             {isStaff && visitorStatus && (

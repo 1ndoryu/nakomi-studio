@@ -122,7 +122,7 @@ export default function ChatBell() {
                                     {/* [154A-14] Mostrar nombre del participante en vez de "Orden #N" */}
                                     {s.order_id
                                         ? (isStaff ? s.client_name : s.employee_name) || (s.order_number ? `Orden #${s.order_number}` : 'Chat')
-                                        : s.visitor_name ?? 'Chat general'}
+                                        : s.visitor_name || `Visitante #${s.id.slice(-4).toUpperCase()}`}
                                 </span>
                                 {s.last_message && (
                                     <span className="chatBell__itemPreview">{s.last_message}</span>

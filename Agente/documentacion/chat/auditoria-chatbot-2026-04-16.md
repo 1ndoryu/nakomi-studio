@@ -135,11 +135,11 @@ return s.visitor_name || 'Chat general';
 
 **Impacto:** Staff no puede distinguir entre sesiones de visitantes diferentes.
 
-**Solución propuesta:**
+**Solución propuesta:** → **RESUELTO (164A-13)**: Fallback cambiado a `Visitante #${id.slice(-4).toUpperCase()}`
 
-1. Fallback a visitor_id parcial: `'Visitante #' + visitor_id.substring(0, 6)`
-2. Mostrar email si se capturó (`visitor_profile.email`)
-3. Mostrar contexto: "Visitante (hosting)", "Visitante (diseño web)" según `session.context`
+1. ~~Fallback a visitor_id parcial~~ → Implementado con últimos 4 chars del session ID
+2. Mostrar email si se capturó (`visitor_profile.email`) — pendiente
+3. Mostrar contexto: "Visitante (hosting)", "Visitante (diseño web)" según `session.context` — pendiente
 4. Mostrar foto de perfil del otro participante en la lista (ya tienen avatar para usuarios logueados, falta para anónimos — usar iniciales o avatar genérico numerado)
 
 ---
@@ -150,9 +150,9 @@ return s.visitor_name || 'Chat general';
 
 | #   | Problema                                                                                                        | Ubicación                         | Impacto                                                                                                           |
 | --- | --------------------------------------------------------------------------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 1   | **Rich messages no renderizan en panel staff** — invoices, service_cards, order_cards solo muestran texto plano | `SeccionChat.tsx` (MessageBubble) | Toda la funcionalidad visual de tool use está rota para staff. El widget de visitante SÍ renderiza correctamente. |
-| 2   | **Sin rate limit en REST** — `POST /sessions/{id}/messages` no llama `check_rate()`                             | `rest.rs`                         | Cliente puede spam ilimitadamente vía API REST                                                                    |
-| 3   | **Info panel solo visible para admin** — `showInfoPanel = effectiveRole === 'admin'` debería ser `isStaff`      | `SeccionChat.tsx`                 | Empleados no ven IP, email, historial del visitante                                                               |
+| 1   | ~~Rich messages no renderizan en panel staff~~ | `ChatBurbujaMessage.tsx` | **YA RESUELTO** (104A-32) |
+| 2   | ~~Sin rate limit en REST~~ | `rest.rs` | **YA RESUELTO** (104A-36) |
+| 3   | ~~Info panel solo visible para admin~~ | `SeccionChat.tsx` | **YA RESUELTO** (104A-36) |
 
 ### 🟡 Altos
 
