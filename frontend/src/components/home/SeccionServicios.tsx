@@ -52,7 +52,7 @@ export const SeccionServicios: React.FC = () => {
                 <SeccionHeader titulo={t('sections.services')} />
                 <div className="serviciosLista">
                     {servicios.map(servicio => (
-                        <ServiceCard key={servicio.id} servicio={servicio} variant="simple" />
+                        <ServiceCard key={servicio.id} servicio={servicio} variant="simple" noOverlay />
                     ))}
                 </div>
             </div>

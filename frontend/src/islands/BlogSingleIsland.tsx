@@ -73,7 +73,7 @@ export const BlogSingleIsland = ({
             {/* Imagen destacada */}
             <section className="blogSingleImagenSeccion">
                 <div className="blogSingleImagenWrapper">
-                    <OptimizedImage src={imagen} alt={titulo} className="blogSingleImagen" loading="eager" />
+                    <OptimizedImage src={imagen} alt={titulo} className="blogSingleImagen" width={1200} height={675} sizes="100vw" loading="eager" />
                 </div>
             </section>
 
@@ -109,7 +109,7 @@ export const BlogSingleIsland = ({
                             }).slice(0, 2).map(post => (
                                 <a key={post.id} href={post.link} className="blogSingleRelacionadoCard" onClick={e => { if (post.link) spaClick(e, post.link); }}>
                                     <div className="blogSingleRelacionadoImagen">
-                                        <OptimizedImage src={post.imagen || obtenerImagenBlog(post.id)} alt={post.titulo} sizes="(max-width: 768px) 100vw, 50vw" />
+                                        <OptimizedImage src={post.imagen || obtenerImagenBlog(post.id)} alt={post.titulo} width={480} height={640} sizes="(max-width: 768px) 100vw, 50vw" />
                                     </div>
                                     <div className="blogSingleRelacionadoInfo">
                                         <span className="blogSingleRelacionadoCategoria">{post.categoria}</span>

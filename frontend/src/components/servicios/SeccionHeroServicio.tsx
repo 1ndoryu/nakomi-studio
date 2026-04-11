@@ -29,6 +29,9 @@ export const SeccionHeroServicio = ({titulo = 'Nombre del Servicio', descripcion
                             className="heroServicioImagen"
                             src={imagen}
                             alt={titulo}
+                            width={1200}
+                            height={750}
+                            sizes="100vw"
                             loading="eager"
                         />
                     </div>

@@ -37,7 +37,7 @@ const TarjetaProyecto: React.FC<{proyecto: Proyecto; indice: number}> = ({proyec
         <AdminOverlay contentType="project" itemId={proyecto.adminId || String(proyecto.id)}>
             <a href={proyecto.link || '#'} className="tarjetaProyecto" onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
                 <div className="tarjetaProyectoImagen">
-                    <OptimizedImage src={imagenSrc} alt={proyecto.titulo} sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" />
+                    <OptimizedImage src={imagenSrc} alt={proyecto.titulo} width={640} height={480} sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" />
                 </div>
                 <div className="tarjetaProyectoInfo">
                     <h3 className="tarjetaProyectoTitulo">{proyecto.titulo}</h3>

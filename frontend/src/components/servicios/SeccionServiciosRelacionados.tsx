@@ -67,7 +67,7 @@ export const SeccionServiciosRelacionados: React.FC<SeccionServiciosRelacionados
 
                 <div className="relacionadosLista">
                     {servicios.map(servicio => (
-                        <ServiceCard key={servicio.id} servicio={servicio} variant="simple" />
+                        <ServiceCard key={servicio.id} servicio={servicio} variant="simple" noOverlay />
                     ))}
                 </div>
             </div>

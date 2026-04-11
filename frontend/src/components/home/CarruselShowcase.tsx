@@ -73,6 +73,9 @@ export const CarruselShowcase: React.FC = () => {
                                         src={proyecto.imagen}
                                         alt={proyecto.titulo}
                                         className="carruselImagen"
+                                        width={450}
+                                        height={600}
+                                        sizes="300px"
                                         draggable={false}
                                     />
                                 )}

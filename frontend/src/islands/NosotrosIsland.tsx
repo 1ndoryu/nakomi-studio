@@ -29,7 +29,7 @@ const TarjetaMiembro: React.FC<{miembro: Miembro}> = ({miembro}) => {
     <AdminOverlay contentType="team" itemId={miembro.adminId || miembro.id}>
         <article className="tarjetaMiembro">
             <div className="miembroAvatar">
-                <OptimizedImage src={miembro.avatar} alt={miembro.nombre} sizes="150px" />
+                <OptimizedImage src={miembro.avatar} alt={miembro.nombre} width={150} height={150} sizes="150px" />
             </div>
             <div className="miembroInfo">
                 <h3 className="miembroNombre">{miembro.nombre}</h3>

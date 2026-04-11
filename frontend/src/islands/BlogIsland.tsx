@@ -29,7 +29,7 @@ const TarjetaArticulo: React.FC<{post: PostBlog; destacado?: boolean}> = ({post,
     return (
         <AdminOverlay contentType="blog" itemId={post.adminId || String(post.id)}>
             <a href={post.link || '#'} onClick={(e) => { e.preventDefault(); if (post.link) navegar(post.link); }} className={`tarjetaArticulo ${destacado ? 'tarjetaArticuloDestacado' : ''}`}>
-                <OptimizedImage src={imagenFinal} alt={post.titulo} className="articuloImagen" sizes="(max-width: 768px) 100vw, 50vw" />
+                <OptimizedImage src={imagenFinal} alt={post.titulo} className="articuloImagen" width={480} height={640} sizes="(max-width: 768px) 100vw, 50vw" />
                 <div className="articuloOverlay">
                     <span className="articuloCategoria">{post.categoria}</span>
                     <h3 className="articuloTitulo">{post.titulo}</h3>

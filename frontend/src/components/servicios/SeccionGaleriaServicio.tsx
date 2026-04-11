@@ -47,7 +47,7 @@ export const SeccionGaleriaServicio: React.FC<SeccionGaleriaServicioProps> = ({i
                     {itemsTotales.map((src, index) => (
                         <div key={`img-${index}`} className="galeriaItem">
                             <div className="galeriaImagenWrapper">
-                                <OptimizedImage src={src} alt={`Galeria servicio ${index + 1}`} className="galeriaImagen" draggable={false} sizes="(max-width: 768px) 80vw, 40vw" />
+                                <OptimizedImage src={src} alt={`Galeria servicio ${index + 1}`} className="galeriaImagen" width={640} height={480} draggable={false} sizes="(max-width: 768px) 80vw, 40vw" />
                             </div>
                         </div>
                     ))}

@@ -81,8 +81,8 @@
     height: 28px;
     border: none;
     border-radius: 50%;
-    background: var(--brand-black);
-    color: var(--bg-primary);
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
     font-size: 1rem;
     cursor: pointer;
     display: flex;
@@ -94,6 +94,7 @@
 
 .uploadImagenEliminar:hover {
     opacity: 1;
+    background: rgba(220, 38, 38, 0.9);
 }
 
 .uploadImagenInput {
