@@ -61,16 +61,16 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 
 ### Chatbot v2 (`plan-chatbot-v2-2026-04-10.md`)
 - ~~P-1: Refactorizar `chat.rs` (660 líneas → modular)~~ (204A-3)
-- ~~P-2: Migración BD para archivos, perfiles, mensajes especiales~~ (ya implementada: migración 20260413, modelos, repositorios completos)
-- Fase I (8 tareas): anti-spam, generación pedidos, memoria, sync, archivos, escalación, branding
-- Fase II (3 tareas): clientes registrados, IA intermediaria en pedidos
+- ~~P-2: Migración BD para archivos, perfiles, mensajes especiales~~ (ya implementada)
+- ~~Fase I (8 tareas): anti-spam, generación pedidos, memoria, sync, archivos, escalación, branding~~ (ya implementada: T-1 rate limiting + timing, T-2 tool use + facturas Stripe, T-3 visitor_profiles + context summary, T-4 cross-device BroadcastChannel, T-5 upload archivos + AI vision/whisper/PDF, T-6 escalación + notificaciones + email, T-7 branding "Claudia" + no disclosure)
+- ~~Fase II (3 tareas): clientes registrados, IA intermediaria en pedidos~~ (ya implementada: JWT auth en WS, registered_client_context, toggle ai_intermediary_enabled por orden)
 - Testing e2e: 8 smoke tests + tests unitarios (`plan-testing-chatbot-e2e-2026-04-10.md`)
 
 ### Seed system (`plan-glory-rs-seed-system-2026-04-07.md`)
 - Fase 5: Migrar órdenes, chat, reviews, activity log, notifications de Rust a TOML
 
 ### SEO (`plan-seo-completo-2026-04-04.md`)
-- Fase 2 pendiente: conversión WebP + srcset + width/height explícitos en imágenes
+- ~~Fase 2: width/height explícitos en imágenes~~ (204A-4). Pendiente: conversión WebP server-side (el proxy /api/img/ ya convierte on-the-fly)
 - Fase 3: Pre-rendering para crawlers
 
 ### Hosting Automation (`plan-hosting-automation-2026-04-10.md`)
@@ -87,4 +87,6 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 
 ## Tareas pendientes (usuario)
 
-(sin tareas pendientes)
+- los clientes tambien pueden solicitar cancelar el pedido.
+- los retiros de dinero, mejor dicho las ganancias solo deben poder retirarse a los 7 días. 
+- Comisiones, los proyectos atendido por los empleados deben generar 10% de comisión a Nakomi. 
