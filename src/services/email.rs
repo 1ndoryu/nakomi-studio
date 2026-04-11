@@ -134,3 +134,59 @@ fn html_escape(s: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
 }
+
+/* [114A-8] Envía email de escalación a todos los admins activos.
+ * Se dispara cuando la IA detecta que un visitante necesita asistencia humana.
+ * Non-fatal: si SMTP no está configurado o falla, solo se loguea. */
+impl EmailService {
+    pub async fn send_escalation_emails(
+        config: &EmailConfig,
+        admin_emails: &[String],
+        visitor_name: &str,
+        session_id: uuid::Uuid,
+        site_url: &str,
+    ) {
+        let subject = format!("⚠ Escalación: {visitor_name} necesita ayuda — Nakomi Studio");
+        let panel_link = format!("{site_url}/panel/chat?session={session_id}");
+        let escaped_name = html_escape(visitor_name);
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#b91c1c;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">⚠ Escalación de Chat</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      La IA detectó que <strong>{escaped_name}</strong> necesita asistencia humana.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 24px;">
+      Por favor, revisa la sesión de chat lo antes posible para atender al visitante.
+    </p>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Abrir sesión de chat
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de escalación</p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        for email in admin_emails {
+            if let Err(e) = Self::send(config, email, &subject, &html).await {
+                tracing::error!("Error enviando email escalación a {email}: {e}");
+            }
+        }
+        if !admin_emails.is_empty() {
+            tracing::info!(
+                "Email de escalación enviado a {} admins para sesión {session_id}",
+                admin_emails.len()
+            );
+        }
+    }
+}

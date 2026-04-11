@@ -382,6 +382,16 @@ impl UserRepository {
         Ok(rows)
     }
 
+    /* [114A-8] Emails de todos los admins activos para email de escalación */
+    pub async fn admin_emails(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
+        let rows = sqlx::query_scalar!(
+            r#"SELECT email FROM users WHERE role = 'admin' AND status = 'active'"#
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
     /* [154A-5] Actualiza la contraseña de un usuario y marca password_set = true.
      * Usado cuando un usuario de quick_register establece su propia contraseña,
      * o cuando usa el endpoint explícito de set-password. */

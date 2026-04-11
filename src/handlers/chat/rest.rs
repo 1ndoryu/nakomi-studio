@@ -312,13 +312,14 @@ pub async fn send_message(
                     .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
                     .await;
 
-                /* [T-6] Escalación: notificar admins si la IA lo señala */
+                /* [T-6] [114A-8] Escalación: notificar admins + enviar email */
                 if ai_resp.needs_escalation {
+                    let visitor = s.visitor_name.as_deref().unwrap_or("Visitante");
+
                     if let Ok(admin_ids) =
                         crate::repositories::UserRepository::admin_ids(&state.pool).await
                     {
                         if !admin_ids.is_empty() {
-                            let visitor = s.visitor_name.as_deref().unwrap_or("Visitante");
                             let base = crate::models::CreateNotification {
                                 user_id: uuid::Uuid::nil(),
                                 notification_type: crate::models::NOTIF_ESCALATION_NEEDED
@@ -333,6 +334,22 @@ pub async fn send_message(
                                 reference_id: Some(session_id),
                             };
                             let _ = state.notification_hub.notify_many(&admin_ids, &base).await;
+                        }
+                    }
+
+                    /* [114A-8] Email de escalación a admins */
+                    if let Some(ref email_cfg) = state.email_config {
+                        if let Ok(emails) =
+                            crate::repositories::UserRepository::admin_emails(&state.pool).await
+                        {
+                            if !emails.is_empty() {
+                                let site_url = std::env::var("SITE_URL")
+                                    .unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                                crate::services::EmailService::send_escalation_emails(
+                                    email_cfg, &emails, visitor, session_id, &site_url,
+                                )
+                                .await;
+                            }
                         }
                     }
                 }

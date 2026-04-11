@@ -41,6 +41,8 @@ pub struct TimingSessionDeps {
     pub user_id: Option<uuid::Uuid>,
     /* [084A-28] Contexto de origen: "hosting:{uuid}", "service:{slug}", etc. */
     pub context: Option<String>,
+    /* [114A-8] Config SMTP para email de escalación (None si SMTP no configurado) */
+    pub email_config: Option<crate::services::EmailConfig>,
 }
 
 /* Constantes de timing configurables */
@@ -281,6 +283,7 @@ impl ChatTimingService {
             deps.visitor_id,
             deps.user_id,
             deps.context,
+            deps.email_config,
         ));
 
         tx
@@ -322,6 +325,7 @@ async fn session_timing_loop(
     visitor_id: String,
     user_id: Option<Uuid>,
     page_ctx: Option<String>,
+    email_config: Option<crate::services::EmailConfig>,
 ) {
     let mut buffer: Vec<String> = Vec::new();
     let mut is_typing = false;
@@ -374,6 +378,7 @@ async fn session_timing_loop(
             &notification_hub,
             &http_client,
             stripe_key.as_deref(),
+            email_config.as_ref(),
         )
         .await;
     }
@@ -469,6 +474,7 @@ async fn generate_ai_response(
     notification_hub: &NotificationHub,
     http_client: &reqwest::Client,
     stripe_key: Option<&str>,
+    email_config: Option<&crate::services::EmailConfig>,
 ) -> u32 {
     /* Verificar que la sesión sigue con IA activa */
     let session_ok = match crate::repositories::ChatRepository::find_session_by_id(
@@ -534,7 +540,7 @@ async fn generate_ai_response(
         .await;
 
     if ai_resp.needs_escalation {
-        send_escalation(pool, notification_hub, session_id, visitor_name).await;
+        send_escalation(pool, notification_hub, session_id, visitor_name, email_config).await;
     }
 
     irrelevant_count
@@ -619,12 +625,13 @@ async fn check_relevance(
     Ok(answer.contains("sí") || answer.contains("si") || answer.contains("yes"))
 }
 
-/* Reutilizable: enviar notificación de escalación a todos los admins */
+/* [114A-8] Reutilizable: enviar notificación + email de escalación a todos los admins */
 async fn send_escalation(
     pool: &PgPool,
     notification_hub: &NotificationHub,
     session_id: Uuid,
     visitor_name: Option<&str>,
+    email_config: Option<&crate::services::EmailConfig>,
 ) {
     let name = visitor_name.unwrap_or("Visitante");
     if let Ok(admin_ids) = UserRepository::admin_ids(pool).await {
@@ -643,6 +650,20 @@ async fn send_escalation(
             };
             let _ = notification_hub.notify_many(&admin_ids, &base).await;
             tracing::info!("Escalación enviada a {} admins para sesión {session_id}", admin_ids.len());
+        }
+    }
+
+    /* [114A-8] Email de escalación a admins */
+    if let Some(cfg) = email_config {
+        if let Ok(emails) = UserRepository::admin_emails(pool).await {
+            if !emails.is_empty() {
+                let site_url = std::env::var("SITE_URL")
+                    .unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                crate::services::EmailService::send_escalation_emails(
+                    cfg, &emails, name, session_id, &site_url,
+                )
+                .await;
+            }
         }
     }
 }

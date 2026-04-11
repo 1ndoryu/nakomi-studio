@@ -193,6 +193,7 @@ async fn handle_visitor_ws(
             visitor_id: params.visitor_id.clone(),
             user_id,
             context: params.context.clone(),
+            email_config: state.email_config.clone(),
         },
     );
 
