@@ -166,6 +166,22 @@
     margin-left: auto;
 }
 
+.hostingCardSiteLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-xs);
+    color: var(--accent-primary);
+    text-decoration: none;
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    transition: opacity 0.15s;
+}
+
+.hostingCardSiteLink:hover {
+    opacity: 0.75;
+}
+
 /* [084A-13] Modal de cambio de estado */
 .hostingStatusModalSub {
     font-size: var(--text-sm);

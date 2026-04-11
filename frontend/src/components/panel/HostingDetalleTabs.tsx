@@ -29,6 +29,10 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
     provisionLoading?: boolean;
 }) {
     const sitioUrl = sub.domain ? `https://${sub.domain}` : null;
+    /* URL real del WordPress provisionado en Coolify: patrón wordpress-{service_uuid}.{ip}.sslip.io */
+    const coolifyUrl = (sub.server_uuid && sub.server_ip)
+        ? `http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io`
+        : null;
     /* [154A-11] Provisioning disponible para admin cuando el hosting está pendiente */
     const canProvision = isAdmin && (sub.status === 'pending' || sub.status === 'provisioning') && onProvision;
 
@@ -45,6 +49,9 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
                 )}
                 {sub.server_ip && (
                     <InfoRow label="IP servidor" value={sub.server_ip} copyable />
+                )}
+                {coolifyUrl && (
+                    <InfoRow label="URL del sitio" value={coolifyUrl} copyable link={coolifyUrl} />
                 )}
                 {sub.coolify_site_name && (
                     <InfoRow label="Servicio" value={sub.coolify_site_name} copyable />
@@ -78,7 +85,14 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
                         )}
                     </Button>
                 )}
-                {sitioUrl && (
+                {coolifyUrl && (
+                    <a href={coolifyUrl} target="_blank" rel="noopener noreferrer" className="hostingDetalleAccionLink">
+                        <Button type="button" variante="primario" tamano="pequeno">
+                            <ExternalLink size={14} /> Abrir WordPress
+                        </Button>
+                    </a>
+                )}
+                {sitioUrl && !coolifyUrl && (
                     <a href={sitioUrl} target="_blank" rel="noopener noreferrer" className="hostingDetalleAccionLink">
                         <Button type="button" variante="outline" tamano="pequeno">
                             <ExternalLink size={14} /> Visitar sitio

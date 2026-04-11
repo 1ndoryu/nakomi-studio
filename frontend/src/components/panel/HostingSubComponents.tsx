@@ -4,7 +4,7 @@
 
 import React, {useState, useCallback} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {Server} from 'lucide-react';
+import {Server, ExternalLink} from 'lucide-react';
 import {
     apiListHostingEvents,
     HOSTING_PLAN_LABELS,
@@ -113,6 +113,19 @@ export function HostingCard({
                             <span className="hostingCardRecurso">
                                 {sub.domain}
                             </span>
+                        )}
+                        {/* Enlace rápido al WordPress real si el hosting está activo y provisionado */}
+                        {(sub.server_uuid && sub.server_ip && sub.status === 'active') && (
+                            <a
+                                href={`http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hostingCardSiteLink"
+                                onClick={e => e.stopPropagation()}
+                                title="Abrir WordPress"
+                            >
+                                <ExternalLink size={13} /> Ver sitio
+                            </a>
                         )}
                         {/* [094A-2] stopPropagation evita navegar al detalle al usar acciones */}
                         <div className="hostingCardAcciones" onClick={e => e.stopPropagation()}>
