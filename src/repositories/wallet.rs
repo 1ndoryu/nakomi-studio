@@ -40,6 +40,36 @@ impl WalletRepository {
         Ok(wallet)
     }
 
+    /* [204A-11] Saldo disponible para retiro: solo créditos con más de 7 días.
+     * Fórmula: SUM(créditos con created_at <= NOW()-7d) + SUM(débitos).
+     * Esto garantiza que las ganancias recientes no se puedan retirar. */
+    pub async fn get_withdrawable_balance(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<i32, AppError> {
+        let result: (i64,) = sqlx::query_as(
+            r"
+            SELECT COALESCE(
+                (SELECT COALESCE(SUM(amount_cents), 0)
+                 FROM wallet_transactions
+                 WHERE user_id = $1 AND amount_cents > 0
+                   AND created_at <= NOW() - INTERVAL '7 days')
+                +
+                (SELECT COALESCE(SUM(amount_cents), 0)
+                 FROM wallet_transactions
+                 WHERE user_id = $1 AND amount_cents < 0),
+                0
+            )
+            ",
+        )
+        .bind(user_id)
+        .fetch_one(pool)
+        .await?;
+        /* No permitir negativo */
+        #[allow(clippy::cast_possible_truncation)]
+        Ok(result.0.max(0) as i32)
+    }
+
     /* Creditar saldo (ingreso). Retorna la transacción creada.
      * Usa subconsulta atómica para evitar race conditions. */
     pub async fn credit(

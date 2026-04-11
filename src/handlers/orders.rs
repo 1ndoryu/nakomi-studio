@@ -18,7 +18,7 @@ use crate::models::{
     NOTIF_NEW_ORDER, NOTIF_ORDER_ASSIGNED, NOTIF_ORDER_CANCELLED,
     NOTIF_ORDER_COMPLETED, NOTIF_REVISION_REQUESTED,
 };
-use crate::repositories::{OrderRepository, UserRepository};
+use crate::repositories::{OrderRepository, UserRepository, WalletRepository};
 use crate::services::{AuthService, OrderService, PaymentService};
 use crate::AppState;
 
@@ -555,6 +555,16 @@ pub async fn approve_phase(
                     tracing::error!("Error capturando pagos de orden {order_id}: {e}");
                 }
             }
+
+            /* [204A-12] Comisiones: 90% al empleado, 10% a Nakomi (primer admin).
+             * Solo aplica si hay empleado asignado y precio final > 0. */
+            if let Some(emp_id) = order.assigned_employee_id {
+                if order.final_price_cents > 0 {
+                    credit_employee_and_commission(
+                        &state, &order, emp_id, order_id,
+                    ).await;
+                }
+            }
         }
     }
 
@@ -776,4 +786,53 @@ struct ActivityRow {
     action: String,
     details: Option<serde_json::Value>,
     created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/* [204A-12] Comisiones: al completar orden, 90% al empleado y 10% a Nakomi.
+ * Nakomi = primer usuario con role 'admin'. Si no hay admin, se loguea error.
+ * El crédito al wallet es atómico (cada credit usa FOR UPDATE en la BD). */
+async fn credit_employee_and_commission(
+    state: &AppState,
+    order: &crate::models::Order,
+    employee_id: Uuid,
+    order_id: Uuid,
+) {
+    let total = order.final_price_cents;
+    let commission_cents = total / 10; /* 10% para Nakomi */
+    let employee_cents = total - commission_cents; /* 90% para empleado */
+
+    /* Pagar al empleado */
+    if let Err(e) = WalletRepository::credit(
+        &state.pool, employee_id, employee_cents,
+        "order_payment", Some("order"), Some(order_id),
+        Some(&format!("Pago por orden #{} (90%)", order.order_number)),
+    ).await {
+        tracing::error!("Error acreditando wallet empleado {employee_id}: {e}");
+    }
+
+    /* Comisión a Nakomi (primer admin activo) */
+    let admin_id = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM users WHERE role = 'admin' AND is_active = true \
+         ORDER BY created_at ASC LIMIT 1",
+    )
+    .fetch_optional(&state.pool)
+    .await;
+
+    match admin_id {
+        Ok(Some(nakomi_id)) => {
+            if let Err(e) = WalletRepository::credit(
+                &state.pool, nakomi_id, commission_cents,
+                "commission", Some("order"), Some(order_id),
+                Some(&format!("Comisión 10% orden #{}", order.order_number)),
+            ).await {
+                tracing::error!("Error acreditando comisión a Nakomi: {e}");
+            }
+        }
+        Ok(None) => {
+            tracing::error!("No se encontró admin activo para comisión de orden {order_id}");
+        }
+        Err(e) => {
+            tracing::error!("Error buscando admin para comisión: {e}");
+        }
+    }
 }

@@ -122,6 +122,8 @@ pub struct WalletResponse {
     pub id: Uuid,
     pub user_id: Uuid,
     pub balance_cents: i32,
+    /// [204A-11] Saldo disponible para retiro (créditos con >7 días - débitos)
+    pub withdrawable_cents: i32,
     pub currency: String,
     pub created_at: String,
     pub updated_at: String,
@@ -179,12 +181,15 @@ pub struct RespondCancellationRequest {
    CONVERSIONS
    ============================================================ */
 
-impl From<&UserWallet> for WalletResponse {
-    fn from(w: &UserWallet) -> Self {
+impl WalletResponse {
+    /* [204A-11] Constructor que incluye withdrawable_cents */
+    #[must_use]
+    pub fn from_wallet(w: &UserWallet, withdrawable_cents: i32) -> Self {
         Self {
             id: w.id,
             user_id: w.user_id,
             balance_cents: w.balance_cents,
+            withdrawable_cents,
             currency: w.currency.clone(),
             created_at: w.created_at.to_rfc3339(),
             updated_at: w.updated_at.to_rfc3339(),

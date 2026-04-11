@@ -89,7 +89,8 @@ pub async fn list_transactions(
 }
 
 /* ============================================================
-   POST /api/orders/:order_id/cancel-request — Empleado solicita cancelación
+   POST /api/orders/:order_id/cancel-request — Cliente o empleado solicita cancelación
+   [204A-13] Ambas partes pueden solicitar. La otra parte responde.
    ============================================================ */
 
 #[utoipa::path(
@@ -99,7 +100,7 @@ pub async fn list_transactions(
     responses(
         (status = 201, description = "Solicitud de cancelación creada", body = CancellationRequestResponse),
         (status = 400, description = "Ya existe solicitud pendiente"),
-        (status = 403, description = "Solo el responsable puede solicitar cancelación"),
+        (status = 403, description = "Solo cliente o responsable pueden solicitar"),
         (status = 404, description = "Orden no encontrada"),
     ),
     params(("order_id" = Uuid, Path, description = "ID de la orden")),
@@ -115,10 +116,13 @@ pub async fn create_cancellation_request(
         .await?
         .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
-    /* Solo el empleado asignado puede solicitar cancelación (admin usa cancel directo) */
-    if order.assigned_employee_id != Some(auth.user_id) {
+    /* [204A-13] Cliente o empleado asignado pueden solicitar cancelación.
+     * Admin usa cancel directo. Cada parte notifica a la otra. */
+    let is_employee = order.assigned_employee_id == Some(auth.user_id);
+    let is_client = order.client_id == auth.user_id;
+    if !is_employee && !is_client {
         return Err(AppError::Forbidden(
-            "Solo el responsable puede solicitar cancelación".into(),
+            "Solo el cliente o el responsable pueden solicitar cancelación".into(),
         ));
     }
 
@@ -136,20 +140,31 @@ pub async fn create_cancellation_request(
         CancellationRequestRepository::create(&state.pool, order_id, auth.user_id, &body.reason)
             .await?;
 
-    /* Notificar al cliente */
-    let notif = CreateNotification {
-        user_id: order.client_id,
-        notification_type: "cancellation_requested".to_string(),
-        title: format!("Solicitud de cancelación — Orden #{}", order.order_number),
-        body: Some(format!(
+    /* [204A-13] Notificar a la otra parte (cliente→empleado o empleado→cliente) */
+    let (notify_id, notify_body) = if is_client {
+        let emp = order.assigned_employee_id.unwrap_or(Uuid::nil());
+        (emp, format!(
+            "El cliente solicita cancelar tu orden. Motivo: {}",
+            truncate_str(&body.reason, 120)
+        ))
+    } else {
+        (order.client_id, format!(
             "El responsable solicita cancelar tu orden. Motivo: {}",
             truncate_str(&body.reason, 120)
-        )),
-        link: Some(format!("/panel?seccion=proyectos&orden={order_id}")),
-        reference_type: Some("order".to_string()),
-        reference_id: Some(order_id),
+        ))
     };
-    let _ = state.notification_hub.notify(notif).await;
+    if notify_id != Uuid::nil() {
+        let notif = CreateNotification {
+            user_id: notify_id,
+            notification_type: "cancellation_requested".to_string(),
+            title: format!("Solicitud de cancelación — Orden #{}", order.order_number),
+            body: Some(notify_body),
+            link: Some(format!("/panel?seccion=proyectos&orden={order_id}")),
+            reference_type: Some("order".to_string()),
+            reference_id: Some(order_id),
+        };
+        let _ = state.notification_hub.notify(notif).await;
+    }
 
     /* Registrar en activity_log */
     let _ = sqlx::query!(
@@ -179,7 +194,7 @@ pub async fn create_cancellation_request(
 
 /* ============================================================
    POST /api/orders/:order_id/cancel-request/:request_id/respond
-   — Cliente acepta o rechaza cancelación
+   — La parte opuesta acepta o rechaza cancelación
    ============================================================ */
 
 #[utoipa::path(
@@ -188,7 +203,7 @@ pub async fn create_cancellation_request(
     request_body = RespondCancellationRequest,
     responses(
         (status = 200, description = "Respuesta procesada", body = CancellationRequestResponse),
-        (status = 403, description = "Solo el cliente puede responder"),
+        (status = 403, description = "Solo la otra parte puede responder"),
         (status = 404, description = "Solicitud no encontrada"),
     ),
     params(
@@ -207,16 +222,28 @@ pub async fn respond_cancellation_request(
         .await?
         .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
-    /* Solo el cliente dueño de la orden puede responder */
-    if order.client_id != auth.user_id {
-        return Err(AppError::Forbidden(
-            "Solo el cliente puede responder a esta solicitud".into(),
-        ));
-    }
-
+    /* [204A-13] La parte opuesta al solicitante puede responder.
+     * Si el empleado solicitó → responde el cliente.
+     * Si el cliente solicitó → responde el empleado asignado.
+     * Admin siempre puede responder. */
     let req = CancellationRequestRepository::find_by_id(&state.pool, request_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Solicitud no encontrada".into()))?;
+
+    let is_admin = auth.effective_role == UserRole::Admin;
+    let is_opposing_party = if req.requested_by == order.client_id {
+        /* Cliente solicitó → empleado responde */
+        order.assigned_employee_id == Some(auth.user_id)
+    } else {
+        /* Empleado solicitó → cliente responde */
+        order.client_id == auth.user_id
+    };
+
+    if !is_opposing_party && !is_admin {
+        return Err(AppError::Forbidden(
+            "Solo la otra parte o un administrador puede responder".into(),
+        ));
+    }
 
     if req.status != "pending" {
         return Err(AppError::BadRequest(
@@ -452,10 +479,18 @@ pub async fn create_withdrawal(
         return Err(AppError::BadRequest("El monto debe ser mayor a 0".into()));
     }
 
-    /* Verificar fondos disponibles */
-    let wallet = WalletRepository::get_or_create(&state.pool, auth.user_id).await?;
-    if wallet.balance_cents < body.amount_cents {
-        return Err(AppError::BadRequest("Fondos insuficientes".into()));
+    /* [204A-11] Verificar saldo disponible para retiro (créditos con >7 días).
+     * Las ganancias recientes no son retirables hasta cumplir 7 días. */
+    let withdrawable = WalletRepository::get_withdrawable_balance(
+        &state.pool, auth.user_id,
+    ).await?;
+    if withdrawable < body.amount_cents {
+        return Err(AppError::BadRequest(
+            format!(
+                "Fondos disponibles para retiro insuficientes. Disponible: ${:.2} (las ganancias tardan 7 días en ser retirables)",
+                f64::from(withdrawable) / 100.0
+            ),
+        ));
     }
 
     /* Solo una solicitud pendiente a la vez */

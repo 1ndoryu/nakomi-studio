@@ -17,7 +17,9 @@ pub struct WalletService;
 impl WalletService {
     pub async fn get_balance(pool: &PgPool, user_id: Uuid) -> Result<WalletResponse, AppError> {
         let wallet = WalletRepository::get_or_create(pool, user_id).await?;
-        Ok(WalletResponse::from(&wallet))
+        /* [204A-11] Incluir saldo retirable (créditos >7 días) */
+        let withdrawable = WalletRepository::get_withdrawable_balance(pool, user_id).await?;
+        Ok(WalletResponse::from_wallet(&wallet, withdrawable))
     }
 
     pub async fn credit(
