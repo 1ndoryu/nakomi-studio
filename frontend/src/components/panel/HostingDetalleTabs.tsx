@@ -29,8 +29,10 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
     provisionLoading?: boolean;
 }) {
     const sitioUrl = sub.domain ? `https://${sub.domain}` : null;
-    /* URL real del WordPress provisionado en Coolify: patrón wordpress-{service_uuid}.{ip}.sslip.io */
-    const coolifyUrl = (sub.server_uuid && sub.server_ip)
+    /* URL real del WordPress: solo para hostings provisionados por nuestro sistema (coolify_site_name empieza con 'hosting-').
+     * Los fixtures demo tienen server_ip pero no son WordPress reales. */
+    const isRealProvisioned = sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip;
+    const coolifyUrl = isRealProvisioned
         ? `http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io`
         : null;
     /* [154A-11] Provisioning disponible para admin cuando el hosting está pendiente */
@@ -106,12 +108,22 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
 
 /* ── Tab: Recursos ───────────────────────── */
 export function TabRecursos({sub}: {sub: Subscription}) {
+    /* Hostings provisionados en Docker (Coolify) no exponen métricas de uso todavía.
+     * Solo mostramos el límite del plan; uso real requiere integración con Coolify metrics API. */
+    const isDockerHosting = sub.coolify_site_name?.startsWith('hosting-');
     return (
         <div className="hostingDetalleSection">
             <h3 className="hostingDetalleSectionTitle">Uso de recursos</h3>
             {(sub.status === 'active' || sub.status === 'provisioning') ? (
                 <div className="hostingDetalleRecursos">
-                    <HostingStats sub={sub} />
+                    {isDockerHosting ? (
+                        <div className="hostingDetalleInfoGrid">
+                            <InfoRow label="Almacenamiento incluido" value={`${(sub.storage_limit_mb / 1024).toFixed(0)} GB`} />
+                            <InfoRow label="Monitoreo en tiempo real" value="Próximamente" />
+                        </div>
+                    ) : (
+                        <HostingStats sub={sub} />
+                    )}
                     <p className="hostingDetalleRecursosNota">
                         Los datos de uso se actualizan periódicamente. Los valores mostrados son aproximados.
                     </p>
@@ -265,11 +277,42 @@ export function TabDominio({domainInfo, subscriptionId}: {
 }
 
 /* ── Tab: Acceso SSH/SFTP ────────────────── */
-/* [094A-5] Muestra info SSH del contenedor si existe, o acceso base al VPS si no.
- * PuTTY + terminal instructions para ambos casos. */
-export function TabAcceso({sshInfo}: {
+/* [094A-5] Para hostings Docker (Coolify): muestra panel WP admin + phpMyAdmin.
+ * SSH directo al contenedor no está disponible para clientes — acceso vía WP admin. */
+export function TabAcceso({sshInfo, sub}: {
     sshInfo: ReturnType<typeof useHostingDetalle>['sshInfo'];
+    sub: Subscription;
 }) {
+    const isDockerHosting = sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip;
+    const wpAdminUrl = isDockerHosting
+        ? `http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io/wp-admin`
+        : null;
+
+    if (isDockerHosting) {
+        return (
+            <div className="hostingDetalleSection">
+                <h3 className="hostingDetalleSectionTitle">Acceso al panel</h3>
+                <p className="hostingDetalleSectionDesc">
+                    Tu hosting WordPress incluye panel de administración web. No requiere SSH.
+                </p>
+                <div className="hostingDetalleInfoGrid">
+                    <InfoRow label="Panel WordPress" value={wpAdminUrl!} copyable link={wpAdminUrl!} />
+                </div>
+                <div className="hostingDetalleAcciones">
+                    <a href={wpAdminUrl!} target="_blank" rel="noopener noreferrer" className="hostingDetalleAccionLink">
+                        <Button type="button" variante="primario" tamano="pequeno">
+                            <ExternalLink size={14} /> Abrir panel WordPress
+                        </Button>
+                    </a>
+                </div>
+                <h4 className="hostingDetalleSubTitle">¿Necesitas acceso avanzado?</h4>
+                <p className="hostingDetalleSectionDesc">
+                    Si necesitas acceso FTP/SFTP o a la base de datos, contacta soporte y lo configuramos.
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="hostingDetalleSection">
             <h3 className="hostingDetalleSectionTitle">Acceso SSH</h3>
@@ -287,16 +330,6 @@ export function TabAcceso({sshInfo}: {
                         <CopyButton text={sshInfo.command} />
                     </div>
 
-                    <h4 className="hostingDetalleSubTitle">Conexión con PuTTY (Windows)</h4>
-                    <div className="hostingDetalleInfoGrid">
-                        <InfoRow label="Host Name" value={sshInfo.host} copyable />
-                        <InfoRow label="Port" value={String(sshInfo.port)} />
-                        <InfoRow label="Connection type" value="SSH" />
-                    </div>
-                    <p className="hostingDetalleSectionDesc">
-                        Ingresa estos datos en PuTTY y haz clic en "Open". Se te pedirá el usuario y contraseña.
-                    </p>
-
                     <h4 className="hostingDetalleSubTitle">Conexión SFTP</h4>
                     <div className="hostingDetalleInfoGrid">
                         <InfoRow label="Protocolo" value="SFTP" />
@@ -304,18 +337,11 @@ export function TabAcceso({sshInfo}: {
                         <InfoRow label="Puerto" value={String(sshInfo.port)} />
                         <InfoRow label="Usuario" value={sshInfo.user} copyable />
                     </div>
-                    <p className="hostingDetalleSectionDesc">
-                        Usa FileZilla, WinSCP o cualquier cliente SFTP para transferir archivos.
-                    </p>
                 </>
             ) : (
                 <div className="hostingDetalleAccesoInactivo">
                     <Terminal size={32} strokeWidth={1.2} />
                     <p>El acceso SSH estará disponible una vez que el hosting esté provisionado en el servidor.</p>
-                    <p className="hostingDetalleSectionDesc">
-                        Una vez activo, aquí verás las credenciales SSH y SFTP para acceder a tu hosting
-                        desde terminal (Linux/Mac), PuTTY (Windows) o clientes SFTP como FileZilla.
-                    </p>
                 </div>
             )}
         </div>

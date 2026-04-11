@@ -184,7 +184,7 @@ export function HostingDetalle({
                 )}
                 {tabActiva === 'recursos' && <TabRecursos sub={sub} />}
                 {tabActiva === 'dominio' && <TabDominio domainInfo={domainInfo} subscriptionId={sub.id} />}
-                {tabActiva === 'acceso' && <TabAcceso sshInfo={sshInfo} />}
+                {tabActiva === 'acceso' && <TabAcceso sshInfo={sshInfo} sub={sub} />}
                 {tabActiva === 'facturacion' && (
                     <TabFacturacion
                         sub={sub}

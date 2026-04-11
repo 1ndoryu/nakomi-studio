@@ -114,8 +114,8 @@ export function HostingCard({
                                 {sub.domain}
                             </span>
                         )}
-                        {/* Enlace rápido al WordPress real si el hosting está activo y provisionado */}
-                        {(sub.server_uuid && sub.server_ip && sub.status === 'active') && (
+                        {/* Enlace rápido al WordPress real — solo para hostings provisionados por nuestro sistema */}
+                        {(sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip && sub.status === 'active') && (
                             <a
                                 href={`http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io`}
                                 target="_blank"
