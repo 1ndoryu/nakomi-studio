@@ -1,17 +1,12 @@
 /* [T1-withdrawal] Estilos de la sección admin de retiros.
  * Tabla de solicitudes pendientes con acciones aprobar/rechazar. */
 
+/* [204A-17] gap reducido a --spacing-md para igualar patrón de otras secciones admin.
+ * retiroAdminTitulo eliminado — el título viene del panelContenidoCabecera del layout. */
 .retiroAdminContenedor {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
-}
-
-.retiroAdminTitulo {
-    font-size: var(--text-lg);
-    font-weight: 400;
-    color: var(--text-primary);
-    margin: 0;
+    gap: var(--spacing-md);
 }
 
 .retiroAdminTablaWrapper {

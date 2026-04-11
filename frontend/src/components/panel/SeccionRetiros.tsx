@@ -86,8 +86,6 @@ export function SeccionRetiros() {
 
     return (
         <div className="retiroAdminContenedor">
-            <h2 className="retiroAdminTitulo">Solicitudes de retiro pendientes</h2>
-
             {solicitudes.length === 0 ? (
                 <p className="retiroAdminVacioTexto">No hay solicitudes pendientes</p>
             ) : (
