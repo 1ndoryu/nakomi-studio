@@ -71,6 +71,9 @@ base64 = "0.22"
 # Image processing (104A-5)
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 
+# Email (154A-15c)
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
+
 # Glory framework
 glory-rs = { path = "glory-rs/backend" }
 

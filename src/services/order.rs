@@ -746,3 +746,10 @@ impl OrderService {
         )
     }
 }
+
+/* [154A-15c] Formato de precio en centavos → string legible para emails */
+#[must_use]
+pub fn format_price_cents(cents: i32, currency: &str) -> String {
+    let dollars = f64::from(cents) / 100.0;
+    format!("${dollars:.2} {currency}")
+}

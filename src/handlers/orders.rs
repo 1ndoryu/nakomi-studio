@@ -84,6 +84,63 @@ pub async fn create_order(
     .execute(&state.pool)
     .await;
 
+    /* [154A-15c] Crear chat session + mensaje de bienvenida automático */
+    {
+        let chat_hub = &state.chat_hub;
+        match chat_hub.get_or_create_order_session(order.id, auth.user_id).await {
+            Ok(session) => {
+                let greeting = format!(
+                    "¡Felicidades! Tu pedido #{} ha sido recibido. \
+                     Será atendido dentro de las próximas 48 horas por nuestro equipo. \
+                     Puedes usar este chat para cualquier duda sobre tu pedido.",
+                    order.order_number,
+                );
+                let _ = chat_hub
+                    .send_message(session.id, "system", None, &greeting)
+                    .await;
+            }
+            Err(e) => tracing::error!("Error creando chat session para orden {}: {e}", order.id),
+        }
+    }
+
+    /* [154A-15c] Email de confirmación al cliente (non-fatal) */
+    if let Some(ref email_cfg) = state.email_config {
+        let client_email: Option<String> = sqlx::query_scalar(
+            "SELECT email FROM users WHERE id = $1",
+        )
+        .bind(auth.user_id)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+
+        let client_name: Option<String> = sqlx::query_scalar(
+            "SELECT name FROM users WHERE id = $1",
+        )
+        .bind(auth.user_id)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+
+        if let Some(email) = client_email {
+            let cfg = email_cfg.clone();
+            let name = client_name.unwrap_or_else(|| "Cliente".to_string());
+            let svc = order.service_title.clone();
+            let plan = order.plan_name.clone();
+            let price = crate::services::format_price_cents(
+                order.final_price_cents,
+                &order.currency,
+            );
+            let order_num = order.order_number;
+            tokio::spawn(async move {
+                crate::services::EmailService::send_order_confirmation(
+                    &cfg, &email, &name, order_num, &svc, &plan, &price,
+                ).await;
+            });
+        }
+    }
+
     Ok((StatusCode::CREATED, Json(order)))
 }
 

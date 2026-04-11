@@ -305,6 +305,14 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         tracing::warn!("Coolify NO configurado — provisioning de hosting desactivado (faltan vars COOLIFY_*)");
     }
 
+    /* [154A-15c] Email SMTP config */
+    let email_config = crate::services::EmailConfig::from_env();
+    if email_config.is_some() {
+        tracing::info!("Email SMTP configurado");
+    } else {
+        tracing::warn!("Email SMTP NO configurado (faltan vars SMTP_*) — emails desactivados");
+    }
+
     let state = AppState {
         pool,
         jwt_secret: config.jwt_secret,
@@ -319,6 +327,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         contabo_service,
         hosting_stripe_config,
         coolify_config,
+        email_config,
     };
 
     /* [064A-73] CORS: restringir orígenes en producción. Si GLORY_ALLOWED_ORIGINS vacío, allow all (dev). */

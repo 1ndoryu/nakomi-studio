@@ -14,7 +14,7 @@ pub mod services;
 
 use sqlx::PgPool;
 
-use crate::services::{AiChatConfig, ChatHub, ChatTimingService, ContaboService, CoolifyConfig, HostingStripeConfig, NotificationHub};
+use crate::services::{AiChatConfig, ChatHub, ChatTimingService, ContaboService, CoolifyConfig, EmailConfig, HostingStripeConfig, NotificationHub};
 
 /// Estado compartido de la aplicación — accesible desde handlers y middleware
 #[derive(Clone)]
@@ -33,4 +33,6 @@ pub struct AppState {
     pub hosting_stripe_config: Option<HostingStripeConfig>,
     /// [104A-42] Config de Coolify para provisioning automático de hostings
     pub coolify_config: Option<CoolifyConfig>,
+    /// [154A-15c] Config de SMTP para emails transaccionales
+    pub email_config: Option<EmailConfig>,
 }
