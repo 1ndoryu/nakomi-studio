@@ -81,7 +81,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - ~~(desactiva esto ## 114A-20 — Investigación: datos CMS se restauran tras deploy, que no suceda, que los datos de prueba no se ejecuten al deploy en producción)~~ (204A-1: FIXTURES_SYNC env var)
 
-- Continua con Pendiente: reducir index.css, SSR/streaming para FCP, imágenes en producción)
+- ~~Continua con Pendiente: reducir index.css, SSR/streaming para FCP, imágenes en producción)~~ (204A-2: index.css reducido 47% via lazy loading. Imágenes ya optimizadas on-demand via /api/img/ proxy. SSR/streaming depriorizados — el impacto de lazy loading es más inmediato.)
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos
