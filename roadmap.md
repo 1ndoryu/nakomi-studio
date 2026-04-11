@@ -43,10 +43,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Hosting/Recursos y SSH seguro: Plan creado en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fase 2 completada (openssh-server + resource limits). Pendiente: Fases 1/3/4. Decisiones pendientes: shell vs SFTP-only, quota disco, límites por plan.
 - en chatListaSesiones chatListaOculta, aparece chat general, esto es un problema porque por cada usuario se va a crear un chat general, esto tiene que actualizarse cuando la ia consiga el nombre del usuario pero inicialmente tiene que diferenciarse con algun numero o algo porque si todos los nombres son iguales es comlpicado, y en la lista tiene que verse la foto de perfil de con quien se habla.
 - Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.
-- walletHistorialTitulo no necesita estar en negrita.
-- .metodosPagoSubtitulo sin padding top ni borde ni tampoco los numeros en las ordenes "pagosOrdenesCelda pagosOrdenesNumero"
 - Hay que hacer otro plan super profundo para la seguridad respecto # Plan: SSH/SFTP Seguro por Despliegue de Hosting, y al servicio de hosting en general. 
 - Necesitamos una auditoría completa al chatbot, necesito ver como se comporta con los usuarios deslogeados, y como lo hace con los logeado, necesito ver como se comporta en cada escenario, para los empleados, para el admin y para los clientes, pues tiene que adaptarse a esos usuarios, tambien tiene que adaptarse cuando se abre el chat desde un intento de reporte por ejemplo. 
+- Hay que adaptar el servicio de hosting para que sea un servicio especializado en wordpress, hosting wordpress y que se entienda eso.
 
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
