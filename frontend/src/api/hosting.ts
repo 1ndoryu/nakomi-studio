@@ -186,7 +186,8 @@ export const HOSTING_STATUS_CLASS: Record<string, string> = {
     cancelled: 'hostingStatus--cancelled',
 };
 
-/* [094A-3] Info de planes para el selector de contratación self-service */
+/* [094A-3] Info de planes para el selector de contratación self-service
+ * [114A-5] Especialización WordPress: features WP-CLI, WordPress pre-instalado */
 export interface HostingPlanInfo {
     id: string;
     label: string;
@@ -201,21 +202,21 @@ export const HOSTING_PLANS: HostingPlanInfo[] = [
         label: 'Básico',
         priceCents: 500,
         storageMb: 5120,
-        features: ['5 GB almacenamiento', 'SSL gratuito', '1 dominio', 'Soporte por email'],
+        features: ['WordPress pre-instalado', '5 GB almacenamiento', 'SSL gratuito', '1 dominio', 'WP-CLI vía SSH'],
     },
     {
         id: 'pro',
         label: 'Profesional',
         priceCents: 1000,
         storageMb: 20480,
-        features: ['20 GB almacenamiento', 'SSL gratuito', '3 dominios', 'Soporte prioritario', 'Backups diarios'],
+        features: ['WordPress pre-instalado', '20 GB almacenamiento', 'SSL gratuito', '3 dominios', 'WP-CLI vía SSH', 'Backups diarios'],
     },
     {
         id: 'ecommerce',
         label: 'E-commerce',
         priceCents: 1500,
         storageMb: 51200,
-        features: ['50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'Soporte 24/7', 'Backups diarios', 'CDN incluido'],
+        features: ['WordPress + WooCommerce', '50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'WP-CLI vía SSH', 'Backups diarios', 'Caché avanzada'],
     },
 ];
 

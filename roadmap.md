@@ -40,7 +40,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - Hosting/Recursos y SSH seguro: Plan en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fases 2+4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops), Fase 3 (panel recursos frontend + SSH stats backend).
 - Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.
-- Hay que adaptar el servicio de hosting para que sea un servicio especializado en wordpress, hosting wordpress y que se entienda eso.
+- ~~Hay que adaptar el servicio de hosting para que sea un servicio especializado en wordpress, hosting wordpress y que se entienda eso.~~ (114A-5)
 - Glory Sentinel no tiene mecanismo para hacer respetar principios solid en el codigo de Rust, tenemos que planificar algo, no se como, limite de lineas, y otras cosas que puedan servir. 
 - (en planificación) Tampoco hay un mecanismo para el orden las carpetas, a veces veo que una sola carpeta tiene mas de 10 archivos lo cual complica a veces encontrar los archivos correcto, no se si limitar a 10 archivos por carpeta este bien porque habrán casos es lo que es legitimo, asi que habría que agregar algo para poner excepciones, esto con la intención de organizar mejor los archivos y no dejarlos tirados todo dentro de una sola carpeta, 
 - Revisar que cuando el chatbot necesite asistencia humana, llegue una notificación y un correo a la cuenta de admin.

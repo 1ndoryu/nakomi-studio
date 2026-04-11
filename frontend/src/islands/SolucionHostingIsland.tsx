@@ -1,5 +1,6 @@
-/* [064A-32] Página de Hosting Administrado.
+/* [064A-32] Página de WordPress Hosting.
  * [084A-20] CTA de planes ahora abre ModalCompra en vez de chat.
+ * [114A-5] Especialización WordPress: branding, features WP-CLI, WooCommerce.
  * "Conversar" sigue abriendo el chat. */
 
 import {useState} from 'react';
@@ -18,12 +19,12 @@ import '../components/servicios/SeccionPlanesServicio.css';
 import './SolucionHostingIsland.css';
 
 const FEATURES_FALLBACK = [
-    {icono: Zap, titulo: 'Alto Rendimiento', desc: 'Servidores SSD con última generación de hardware para tiempos de carga mínimos.'},
-    {icono: Shield, titulo: 'Seguridad Incluida', desc: 'SSL gratuito, firewall, backups automáticos y monitoreo 24/7.'},
+    {icono: Zap, titulo: 'WordPress Optimizado', desc: 'Servidores SSD configurados específicamente para WordPress con caché y PHP optimizado.'},
+    {icono: Shield, titulo: 'Seguridad WordPress', desc: 'SSL gratuito, firewall, backups automáticos, hardening SSH y monitoreo 24/7.'},
     {icono: Clock, titulo: '99.9% Uptime', desc: 'Infraestructura redundante con failover automático para máxima disponibilidad.'},
     {icono: Globe, titulo: 'CDN Global', desc: 'Red de distribución de contenido para velocidad óptima desde cualquier ubicación.'},
-    {icono: Server, titulo: 'Administrado', desc: 'Actualizaciones, parches y optimizaciones sin que toques un servidor.'},
-    {icono: Headphones, titulo: 'Soporte Experto', desc: 'Equipo técnico disponible para resolver cualquier incidencia rápidamente.'},
+    {icono: Server, titulo: 'WordPress Administrado', desc: 'Actualizaciones de WordPress, plugins, parches de seguridad y optimizaciones sin que toques un servidor.'},
+    {icono: Headphones, titulo: 'WP-CLI & Soporte', desc: 'Acceso SSH con WP-CLI incluido y equipo técnico experto en WordPress.'},
 ];
 
 /* [064A-64] Features del hosting traducidos via content.solutions.hosting.
@@ -45,20 +46,20 @@ export const SolucionHostingIsland = (): JSX.Element => {
     return (
         <LayoutPagina className="hostingPaginaMain">
             <SEOHead
-                title="Hosting Administrado"
-                description="Hosting de alto rendimiento con soporte experto. Planes desde $15/mes con SSL, backups y CDN incluidos."
+                title="WordPress Hosting"
+                description="WordPress hosting optimizado con WP-CLI, backups automáticos y soporte experto. Planes desde $5/mes con SSL, WordPress pre-instalado y acceso SSH."
                 path="/soluciones/hosting"
             />
 
             {/* Hero */}
             <section className="hostingHero">
                 <div className="hostingHeroContenido">
-                    <span className="hostingHeroEtiqueta">{t('content.solutions.hosting.titulo', 'Hosting Administrado')}</span>
+                    <span className="hostingHeroEtiqueta">{t('content.solutions.hosting.titulo', 'WordPress Hosting')}</span>
                     <h1 className="hostingHeroTitulo">
-                        {t('hosting_page.hero_title', 'Infraestructura que escala contigo')}
+                        {t('hosting_page.hero_title', 'WordPress que escala contigo')}
                     </h1>
                     <p className="hostingHeroDesc">
-                        {t('hosting_page.hero_desc', 'Olvídate de la administración de servidores. Nos encargamos de todo: rendimiento, seguridad, backups y actualizaciones.')}
+                        {t('hosting_page.hero_desc', 'Olvídate de la administración de servidores. WordPress pre-instalado, WP-CLI, backups automáticos y rendimiento optimizado.')}
                     </p>
                     <div className="hostingHeroBotones">
                         <Button variante="primario" onClick={() => {
@@ -96,7 +97,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
             <section id="planesHosting" className="planesSeccion">
                 <div className="planesContenedor">
                     <div className="planesCabecera">
-                        <h2 className="planesTitulo">{t('hosting_page.plans_title', 'Planes de Hosting')}</h2>
+                        <h2 className="planesTitulo">{t('hosting_page.plans_title', 'Planes de WordPress Hosting')}</h2>
                         <p className="planesSubtitulo">{t('hosting_page.plans_subtitle', 'Elige el plan que mejor se adapte a tu proyecto')}</p>
                     </div>
                     <div className="planesGrid">

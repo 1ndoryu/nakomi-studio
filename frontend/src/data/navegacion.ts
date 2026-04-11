@@ -16,7 +16,7 @@ export const ENLACES_HEADER: EnlaceNavegacion[] = [
         href: '/soluciones/',
         hasDropdown: true,
         subEnlaces: [
-            {label: 'Hosting', href: '/soluciones/hosting/'}
+            {label: 'WordPress Hosting', href: '/soluciones/hosting/'}
             /* [044A-7] VPS y Agentes de IA ocultos temporalmente.
              * Reactivar cuando las páginas estén listas. */
         ]

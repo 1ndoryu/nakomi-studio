@@ -70,7 +70,7 @@ export const SeccionHosting: React.FC = () => {
     return (
         <div className="hostingContenedor">
             <div className="hostingHeader">
-                <h2>Hosting</h2>
+                <h2>WordPress Hosting</h2>
                 {isAdmin ? (
                     <Button
                         variante="primario"
@@ -89,7 +89,7 @@ export const SeccionHosting: React.FC = () => {
                         onClick={() => setShowCreateModal(true)}
                         type="button"
                     >
-                        <Plus size={16} /> Contratar hosting
+                        <Plus size={16} /> Contratar WordPress Hosting
                     </Button>
                 )}
             </div>
@@ -132,7 +132,7 @@ export const SeccionHosting: React.FC = () => {
             ) : subscriptions.length === 0 ? (
                 <div className="hostingVacio">
                     <Server size={48} strokeWidth={1.2} />
-                    <p>Sin suscripciones de hosting</p>
+                    <p>Sin suscripciones de WordPress hosting</p>
                 </div>
             ) : listaActual.length === 0 ? (
                 <div className="hostingVacio">

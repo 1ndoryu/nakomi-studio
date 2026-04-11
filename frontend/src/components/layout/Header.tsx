@@ -34,7 +34,7 @@ const NAV_KEYS: Record<string, string> = {
     'Nosotros': 'nav.about',
     'Blog': 'nav.blog',
     'Soluciones': 'nav.solutions',
-    'Hosting': 'nav.hosting',
+    'WordPress Hosting': 'nav.hosting',
 };
 
 export const Header: React.FC = () => {

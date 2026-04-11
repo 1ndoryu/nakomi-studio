@@ -242,7 +242,7 @@ export function CreateHostingForm({
 
     return (
         <form className="hostingFormCrear" onSubmit={handleSubmit}>
-            <h3>Nueva suscripción de hosting</h3>
+            <h3>Nueva suscripción de WordPress hosting</h3>
             <Input
                 type="text"
                 placeholder="Nombre del cliente"
@@ -272,7 +272,7 @@ export function CreateHostingForm({
                 onChange={e => setForm(prev => ({...prev, domain: e.target.value}))}
             />
             <Button type="submit" className="hostingBtnSubmit" disabled={submitting}>
-                {submitting ? 'Creando...' : 'Crear suscripción'}
+                {submitting ? 'Creando...' : 'Crear suscripción WordPress'}
             </Button>
         </form>
     );

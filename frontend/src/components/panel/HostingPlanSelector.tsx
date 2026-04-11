@@ -1,4 +1,5 @@
-/* [094A-3] Selector de planes de hosting para self-service.
+/* [094A-3] Selector de planes de WordPress hosting para self-service.
+ * [114A-5] Especialización WordPress.
  * Muestra 3 cards (Básico, Pro, E-commerce) con features y precio.
  * Al seleccionar, opcionalmente pide dominio, y redirige a Stripe Checkout. */
 
@@ -36,7 +37,7 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
         const plan = HOSTING_PLANS.find(p => p.id === selectedPlan);
         return (
             <div className="planSelectorDomain">
-                <h3>Dominio para tu hosting {plan?.label}</h3>
+                <h3>Dominio para tu WordPress hosting {plan?.label}</h3>
                 <p className="planSelectorDomainHint">
                     Si ya tienes un dominio, ingrésalo abajo. Si no, puedes dejarlo vacío y configurarlo después.
                 </p>
@@ -69,7 +70,7 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
 
     return (
         <div className="planSelectorGrid">
-            <h3 className="planSelectorTitulo">Elige tu plan de hosting</h3>
+            <h3 className="planSelectorTitulo">Elige tu plan de WordPress hosting</h3>
             <div className="planSelectorCards">
                 {HOSTING_PLANS.map(plan => (
                     <div
