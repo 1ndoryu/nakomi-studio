@@ -53,14 +53,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
      * Es no-op si ya se ejecutó antes o no hay datos legacy. */
     cleanup_legacy_seed(&pool).await;
 
-    match fixture_manager.sync_all().await {
-        Ok(report) => {
-            tracing::info!("[fixtures] {}", report.summary());
-            for err in &report.errors {
-                tracing::error!("[fixtures] {err}");
+    /* [204A-1] Sync de fixtures controlado por FIXTURES_SYNC.
+     * En producción (FIXTURES_SYNC=false o no definido) no se ejecuta,
+     * evitando que datos de prueba sobreescriban datos reales.
+     * En desarrollo: FIXTURES_SYNC=true en .env para sincronizar content/ TOMLs. */
+    let fixtures_sync = std::env::var("FIXTURES_SYNC")
+        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
+        .unwrap_or(false);
+
+    if fixtures_sync {
+        match fixture_manager.sync_all().await {
+            Ok(report) => {
+                tracing::info!("[fixtures] {}", report.summary());
+                for err in &report.errors {
+                    tracing::error!("[fixtures] {err}");
+                }
             }
+            Err(e) => tracing::error!("[fixtures] Error syncing: {e}"),
         }
-        Err(e) => tracing::error!("[fixtures] Error syncing: {e}"),
+    } else {
+        tracing::info!("[fixtures] Sync desactivado (FIXTURES_SYNC != true)");
     }
 
     /* [044A-38 Fase 4] Background task: auto-asigna órdenes sin empleado tras 24h */
