@@ -4,7 +4,7 @@
  * detección de extensión doble. */
 
 use axum::body::Body;
-use axum::extract::{Multipart, Path, State};
+use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::{header, StatusCode};
 use axum::response::Response;
 use axum::routing::{get, post};
@@ -264,6 +264,9 @@ pub async fn download_deliverable(
    RUTAS
    ============================================================ */
 
+/* [204A-15] DefaultBodyLimit para que axum no rechace antes del handler.
+ * MAX_FILE_SIZE = 10 MB × MAX_FILES_PER_DELIVERY = 5 → hasta 50 MB por request. */
+#[allow(clippy::cast_possible_truncation)] /* 50 MB: safe on 64-bit systems */
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
@@ -278,6 +281,9 @@ pub fn routes() -> Router<AppState> {
             "/deliverables/:deliverable_id/download",
             get(download_deliverable),
         )
+        .layer(DefaultBodyLimit::max(
+            (MAX_FILE_SIZE * MAX_FILES_PER_DELIVERY as u64) as usize,
+        ))
 }
 
 /* ============================================================

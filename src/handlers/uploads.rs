@@ -2,7 +2,7 @@
  * Guarda archivos en uploads/content/ con nombre hasheado.
  * Solo admin. Whitelist MIME para imágenes. Max 5 MB. */
 
-use axum::extract::{Multipart, State};
+use axum::extract::{DefaultBodyLimit, Multipart, State};
 use axum::routing::post;
 use axum::{Json, Router};
 use std::path::PathBuf;
@@ -115,6 +115,11 @@ pub async fn upload_image(
     }))
 }
 
+/* [204A-15] DefaultBodyLimit de 5 MB para que axum no rechace antes del handler.
+ * Sin esto, axum limita a 2 MB por defecto y devuelve 400 silencioso. */
+#[allow(clippy::cast_possible_truncation)] /* 5 MB: safe on all platforms */
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/admin/uploads", post(upload_image))
+    Router::new()
+        .route("/admin/uploads", post(upload_image))
+        .layer(DefaultBodyLimit::max(MAX_IMAGE_SIZE as usize))
 }

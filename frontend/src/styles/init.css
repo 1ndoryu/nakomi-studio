@@ -134,13 +134,13 @@ body {
     color: var(--text-primary);
     background-color: var(--bg-primary);
     -webkit-font-smoothing: antialiased;
-    /* [114A-10] Movido de html a body: overflow-x en html interfiere
-     * con position:fixed del modal y causa desaparición del fondo */
-    overflow-x: hidden;
 }
 
-html {
-    /* [114A-10] overflow-x: hidden movido a body — ver arriba */
+body {
+    /* [204A-14] overflow-x solo en body. En html crea un segundo scroll context
+     * que causa la página en blanco / scroll doble reportado por el usuario.
+     * [114A-10] Original: overflow-x en html interferira con modales fixed. */
+    overflow-x: hidden;
 }
 
 /* SPA Loader Overlay */
