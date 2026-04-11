@@ -5,12 +5,15 @@
  * [094A-5] TabAcceso mejorada: info SSH incluso sin coolify_site_name.
  * [094A-6] TabFacturacion extraída a TabFacturacion.tsx por límite de líneas. */
 
-import {Server, Shield, Terminal, ExternalLink, Loader} from 'lucide-react';
+import {useState} from 'react';
+import {Server, Shield, Terminal, ExternalLink, Loader, CheckCircle, XCircle, AlertCircle} from 'lucide-react';
 import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
 import {
     HOSTING_PLAN_LABELS,
     HOSTING_STATUS_LABELS,
+    apiDnsCheck,
 } from '../../api/hosting';
+import type {DnsCheckResult} from '../../api/hosting';
 import {Button} from '../ui/Button';
 import {HostingStats} from './HostingStats';
 import {EventsPanel} from './HostingSubComponents';
@@ -110,10 +113,26 @@ export function TabRecursos({sub}: {sub: Subscription}) {
 }
 
 /* ── Tab: Dominio & SSL ──────────────────── */
-/* [094A-4] Instrucciones DNS claras: registros A/CNAME, propagación, SSL auto. */
-export function TabDominio({domainInfo}: {
+/* [094A-4] Instrucciones DNS claras: registros A/CNAME, propagación, SSL auto.
+ * [154A-16] Verificación DNS interactiva: resuelve dominio y compara con server_ip. */
+export function TabDominio({domainInfo, subscriptionId}: {
     domainInfo: ReturnType<typeof useHostingDetalle>['domainInfo'];
+    subscriptionId: string;
 }) {
+    const [dnsResult, setDnsResult] = useState<DnsCheckResult | null>(null);
+    const [checking, setChecking] = useState(false);
+
+    const handleDnsCheck = async () => {
+        setChecking(true);
+        try {
+            const result = await apiDnsCheck(subscriptionId);
+            setDnsResult(result);
+        } catch {
+            setDnsResult({configured: false, message: 'Error al verificar DNS'});
+        } finally {
+            setChecking(false);
+        }
+    };
     return (
         <div className="hostingDetalleSection">
             <h3 className="hostingDetalleSectionTitle">Dominio</h3>
@@ -174,6 +193,43 @@ export function TabDominio({domainInfo}: {
             <p className="hostingDetalleDnsPropagation">
                 Los cambios DNS pueden tardar entre 15 minutos y 48 horas en propagarse globalmente.
             </p>
+
+            {/* [154A-16] Verificación DNS interactiva */}
+            {domainInfo.domain && (
+                <div className="hostingDetalleDnsCheck">
+                    <h4 className="hostingDetalleSubTitle">Verificación DNS</h4>
+                    <Button
+                        type="button"
+                        variante="outline"
+                        tamano="pequeno"
+                        onClick={handleDnsCheck}
+                        disabled={checking}
+                    >
+                        {checking ? (
+                            <><Loader size={14} className="hostingSpinner" /> Verificando…</>
+                        ) : (
+                            'Verificar DNS'
+                        )}
+                    </Button>
+                    {dnsResult && (
+                        <div className={`hostingDetalleDnsResult ${
+                            dnsResult.points_to_server ? 'hostingDetalleDnsResult--ok' :
+                            dnsResult.resolved ? 'hostingDetalleDnsResult--warn' :
+                            'hostingDetalleDnsResult--error'
+                        }`}>
+                            {dnsResult.points_to_server ? (
+                                <><CheckCircle size={16} /> DNS configurado correctamente. El dominio apunta a tu servidor.</>
+                            ) : dnsResult.resolved ? (
+                                <><AlertCircle size={16} /> El dominio resuelve a {dnsResult.resolved_ips?.join(', ')} pero se esperaba {dnsResult.expected_ip}.</>
+                            ) : dnsResult.error ? (
+                                <><XCircle size={16} /> {dnsResult.error}</>
+                            ) : (
+                                <><XCircle size={16} /> {dnsResult.message}</>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <h3 className="hostingDetalleSectionTitle">
                 <Shield size={16} /> Certificado SSL

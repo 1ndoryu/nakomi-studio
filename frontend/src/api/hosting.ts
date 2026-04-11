@@ -99,6 +99,26 @@ export async function apiProvisionHosting(id: string): Promise<HostingSubscripti
     return data;
 }
 
+/* [154A-16] Verificación DNS: comprueba si el dominio apunta al servidor correcto. */
+export interface DnsCheckResult {
+    configured: boolean;
+    domain?: string;
+    resolved?: boolean;
+    resolved_ips?: string[];
+    expected_ip?: string;
+    points_to_server?: boolean;
+    ssl_provider?: string;
+    error?: string;
+    message?: string;
+}
+
+export async function apiDnsCheck(id: string): Promise<DnsCheckResult> {
+    const {data} = await axiosInstance.get<DnsCheckResult>(
+        `/api/hosting/subscriptions/${id}/dns-check`,
+    );
+    return data;
+}
+
 /* [084A-24] Iniciar checkout Stripe para suscripción de hosting.
  * Retorna la URL de Stripe Checkout a la que redirigir al cliente. */
 export async function apiCreateHostingCheckout(id: string): Promise<string> {

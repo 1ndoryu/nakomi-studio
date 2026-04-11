@@ -924,6 +924,77 @@ pub async fn provision_subscription(
     Ok(Json(updated.into()))
 }
 
+/* [154A-16] Verificación DNS: resuelve el dominio y compara con server_ip.
+ * Retorna qué IPs apuntan al dominio y si coinciden con el servidor. */
+#[utoipa::path(
+    get,
+    path = "/api/hosting/subscriptions/{id}/dns-check",
+    params(("id" = Uuid, Path, description = "ID suscripción")),
+    responses(
+        (status = 200, description = "Resultado verificación DNS", body = serde_json::Value),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+async fn dns_check(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    /* Solo el dueño o admin pueden verificar DNS */
+    if auth.effective_role != UserRole::Admin && sub.user_id != Some(auth.user_id) {
+        return Err(AppError::Forbidden("Sin permisos".into()));
+    }
+
+    let domain = match &sub.domain {
+        Some(d) if !d.is_empty() => d.clone(),
+        _ => {
+            return Ok(Json(serde_json::json!({
+                "configured": false,
+                "message": "No hay dominio configurado"
+            })));
+        }
+    };
+
+    let server_ip = sub.server_ip.clone().unwrap_or_default();
+
+    /* Resolver DNS usando tokio (no bloquea el runtime) */
+    let lookup_target = format!("{domain}:80");
+    let resolved_ips: Vec<String> = match tokio::net::lookup_host(&lookup_target).await {
+        Ok(addrs) => addrs.map(|a| a.ip().to_string()).collect(),
+        Err(e) => {
+            return Ok(Json(serde_json::json!({
+                "configured": true,
+                "domain": domain,
+                "resolved": false,
+                "error": format!("No se pudo resolver el dominio: {e}"),
+                "expected_ip": server_ip,
+            })));
+        }
+    };
+
+    /* Deduplicar IPs */
+    let mut unique_ips: Vec<String> = resolved_ips.clone();
+    unique_ips.sort();
+    unique_ips.dedup();
+
+    let points_to_server = !server_ip.is_empty() && unique_ips.contains(&server_ip);
+
+    Ok(Json(serde_json::json!({
+        "configured": true,
+        "domain": domain,
+        "resolved": true,
+        "resolved_ips": unique_ips,
+        "expected_ip": server_ip,
+        "points_to_server": points_to_server,
+        "ssl_provider": "Let's Encrypt (automático vía Coolify)",
+    })))
+}
+
 pub fn hosting_routes() -> Router<AppState> {
     Router::new()
         .route(
@@ -970,6 +1041,11 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/subscriptions/:id/provision",
             axum::routing::post(provision_subscription),
+        )
+        /* [154A-16] Verificación DNS de un dominio */
+        .route(
+            "/hosting/subscriptions/:id/dns-check",
+            get(dns_check),
         )
 }
 

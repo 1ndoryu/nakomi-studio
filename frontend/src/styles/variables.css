@@ -75,6 +75,8 @@
     --border-hover: rgba(0, 0, 0, 0.2);
     --border-hover-strong: rgba(0, 0, 0, 0.3);
     --success-color: #16a34a;
+    --warning-color: #eab308;
+    --error-color: #ef4444;
 
     /* [084A-3] Scrollbar */
     --scrollbar-thumb: rgba(0, 0, 0, 0.15);

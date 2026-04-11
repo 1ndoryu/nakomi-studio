@@ -478,6 +478,41 @@
     margin: var(--spacing-sm) 0 0;
 }
 
+/* [154A-16] Verificación DNS */
+.hostingDetalleDnsCheck {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.hostingDetalleDnsResult {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+}
+
+.hostingDetalleDnsResult--ok {
+    background: color-mix(in srgb, var(--success-color) 10%, transparent);
+    color: var(--success-color);
+    border: 1px solid color-mix(in srgb, var(--success-color) 20%, transparent);
+}
+
+.hostingDetalleDnsResult--warn {
+    background: color-mix(in srgb, var(--warning-color) 10%, transparent);
+    color: var(--warning-color);
+    border: 1px solid color-mix(in srgb, var(--warning-color) 20%, transparent);
+}
+
+.hostingDetalleDnsResult--error {
+    background: color-mix(in srgb, var(--error-color) 10%, transparent);
+    color: var(--error-color);
+    border: 1px solid color-mix(in srgb, var(--error-color) 20%, transparent);
+}
+
 /* ── Acciones rápidas ────────────────────── */
 
 .hostingDetalleAcciones {
