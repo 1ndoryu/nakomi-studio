@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE orders\n               SET project_description = $2, updated_at = NOW()\n             WHERE id = $1\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, project_description, client_notes,\n               internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary",
+  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees\n             FROM orders ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -154,13 +154,15 @@
         "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
+        "name": "open_to_employees",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -187,8 +189,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "d1fcf3856fff7461574ccd54dbe5035fc601f616414be038246f27172442b83e"
+  "hash": "7af53ed460137fede5ef7a7af0131590a2389f8a9938152367138f5eb78e336d"
 }

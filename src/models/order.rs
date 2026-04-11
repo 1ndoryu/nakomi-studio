@@ -136,6 +136,9 @@ pub struct Order {
     pub ai_intermediary_enabled: Option<bool>,
     #[sqlx(default)]
     pub ai_summary: Option<String>,
+    /* [154A-15b] Indica si la orden está abierta para que empleados la tomen */
+    #[sqlx(default)]
+    pub open_to_employees: Option<bool>,
 }
 
 #[derive(Debug, Clone, FromRow)]

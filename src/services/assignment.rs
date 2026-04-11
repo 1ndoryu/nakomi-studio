@@ -93,9 +93,14 @@ impl AssignmentService {
         })
     }
 
-    /// Lista órdenes sin asignar (admin y empleados, tab "disponibles")
-    pub async fn list_unassigned(pool: &PgPool) -> Result<Vec<OrderResponse>, AppError> {
-        let orders = OrderRepository::list_unassigned_orders(pool).await?;
+    /* [154A-15b] Admin ve todas las órdenes sin asignar; empleados solo las marcadas open_to_employees */
+    pub async fn list_unassigned(pool: &PgPool, is_admin: bool) -> Result<Vec<OrderResponse>, AppError> {
+        let all_orders = OrderRepository::list_unassigned_orders(pool).await?;
+        let orders: Vec<_> = if is_admin {
+            all_orders
+        } else {
+            all_orders.into_iter().filter(|o| o.open_to_employees.unwrap_or(false)).collect()
+        };
         let mut result = Vec::with_capacity(orders.len());
 
         for order in orders {
@@ -346,7 +351,10 @@ impl AssignmentService {
         }
     }
 
-    /// Revisa órdenes con deadline vencido y asigna al empleado más apto disponible
+    /* [154A-15b] Tras 48h sin tomar, marcar orden como open_to_employees para que cualquier
+     * empleado la pueda tomar desde la sección "Disponibles".
+     * Anteriormente auto-asignaba a 24h; ahora se da visibilidad y se deja que los empleados
+     * la tomen voluntariamente. */
     async fn check_and_auto_assign(pool: &PgPool) -> Result<(), AppError> {
         let overdue = OrderRepository::list_overdue_unassigned(pool).await?;
         if overdue.is_empty() {
@@ -354,39 +362,36 @@ impl AssignmentService {
         }
 
         tracing::info!(
-            "Auto-assign: {} órdenes vencidas encontradas",
+            "Overdue check: {} órdenes pasaron deadline de 48h",
             overdue.len()
         );
 
         for order in overdue {
-            let service = OrderRepository::find_service_by_id(pool, order.service_id).await?;
-            let slug = service.map_or_else(|| "general".to_string(), |s| s.slug);
+            let already_open = order.open_to_employees.unwrap_or(false);
+            if already_open {
+                continue;
+            }
 
-            let candidates = DelegationRepository::find_available_employees(pool, &slug)
-                .await
-                .map_err(|e| AppError::Internal(format!("Error buscando empleados: {e}")))?;
+            let res = sqlx::query!(
+                "UPDATE orders SET open_to_employees = true, updated_at = NOW() WHERE id = $1",
+                order.id
+            )
+            .execute(pool)
+            .await;
 
-            if let Some(best) = candidates.first() {
-                match OrderRepository::assign_order(pool, order.id, best.user_id).await {
-                    Ok(_) => {
-                        tracing::info!(
-                            "Auto-assign: orden #{} asignada a empleado {}",
-                            order.order_number,
-                            best.user_id
-                        );
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            "Auto-assign: error asignando orden #{}: {e}",
-                            order.order_number
-                        );
-                    }
+            match res {
+                Ok(_) => {
+                    tracing::info!(
+                        "Overdue: orden #{} marcada como open_to_employees",
+                        order.order_number
+                    );
                 }
-            } else {
-                tracing::warn!(
-                    "Auto-assign: no hay empleados disponibles para orden #{}",
-                    order.order_number
-                );
+                Err(e) => {
+                    tracing::warn!(
+                        "Overdue: error marcando orden #{}: {e}",
+                        order.order_number
+                    );
+                }
             }
         }
 

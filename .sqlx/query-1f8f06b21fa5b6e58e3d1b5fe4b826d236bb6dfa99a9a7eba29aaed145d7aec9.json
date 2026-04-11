@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE orders SET assigned_employee_id = $2, assigned_at = NOW(),\n             status = 'in_progress', started_at = COALESCE(started_at, NOW()), updated_at = NOW()\n             WHERE id = $1\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary",
+  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees\n             FROM orders WHERE client_id = $1 ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -154,11 +154,15 @@
         "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
+        "name": "open_to_employees",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -187,8 +191,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "32bb2bd4a4fdb7bfac3ebbb5cfc8b2c4e84c3655cb1e5938f9cb33ae359cf7d9"
+  "hash": "1f8f06b21fa5b6e58e3d1b5fe4b826d236bb6dfa99a9a7eba29aaed145d7aec9"
 }

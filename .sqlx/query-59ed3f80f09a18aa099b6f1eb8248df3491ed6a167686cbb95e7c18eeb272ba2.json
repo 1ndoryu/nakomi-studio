@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary\n             FROM orders WHERE assigned_employee_id = $1 ORDER BY created_at DESC",
+  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, project_description, client_notes,\n               internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees\n             FROM orders WHERE status = 'awaiting_assignment'\n             AND auto_assign_deadline IS NOT NULL AND auto_assign_deadline < NOW()\n             ORDER BY auto_assign_deadline ASC",
   "describe": {
     "columns": [
       {
@@ -154,12 +154,15 @@
         "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
+        "name": "open_to_employees",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -186,8 +189,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "410524e8d44bc855a396fe26d6a4e7cd0f7aabac3e97d8f8aa1ec3a41d18cd28"
+  "hash": "59ed3f80f09a18aa099b6f1eb8248df3491ed6a167686cbb95e7c18eeb272ba2"
 }

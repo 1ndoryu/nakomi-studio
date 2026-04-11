@@ -75,7 +75,8 @@ pub async fn list_unassigned(
     auth: AuthUser,
 ) -> Result<Json<Vec<OrderResponse>>, AppError> {
     auth.require_role(&[UserRole::Employee, UserRole::Admin])?;
-    let orders = AssignmentService::list_unassigned(&state.pool).await?;
+    let is_admin = auth.role == UserRole::Admin;
+    let orders = AssignmentService::list_unassigned(&state.pool, is_admin).await?;
     Ok(Json(orders))
 }
 

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary\n             FROM orders WHERE status = 'awaiting_assignment' ORDER BY created_at ASC",
+  "query": "SELECT id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees\n             FROM orders WHERE status = 'awaiting_assignment' ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -154,6 +154,11 @@
         "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
+        "name": "open_to_employees",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -184,8 +189,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "17fdada2cd5d228aa6aed6bad3a7c5eddd9d94ec2707548487a774bd1fc17b20"
+  "hash": "ba5348a086b05b82c014bba0f8ec2cf7f5298811c97c90acc12567f69c6417d4"
 }

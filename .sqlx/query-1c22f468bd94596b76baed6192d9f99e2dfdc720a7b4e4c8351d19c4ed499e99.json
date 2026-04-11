@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE orders SET status = 'awaiting_assignment',\n             auto_assign_deadline = NOW() + INTERVAL '24 hours',\n             updated_at = NOW() WHERE id = $1\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n               started_at, completed_at, cancelled_at, project_description, client_notes,\n               internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary",
+  "query": "UPDATE orders SET status = $2, updated_at = NOW() WHERE id = $1\n             RETURNING id, order_number, client_id, service_id, plan_id,\n               payment_mode as \"payment_mode: PaymentMode\",\n               base_price_cents, discount_percent, final_price_cents, currency,\n               status as \"status: OrderStatus\",\n               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,\n                    started_at, completed_at, cancelled_at, project_description, client_notes,\n                    internal_notes,\n               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees",
   "describe": {
     "columns": [
       {
@@ -154,11 +154,33 @@
         "ordinal": 24,
         "name": "ai_summary",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
+        "name": "open_to_employees",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        {
+          "Custom": {
+            "name": "order_status",
+            "kind": {
+              "Enum": [
+                "pending_payment",
+                "payment_held",
+                "awaiting_assignment",
+                "in_progress",
+                "under_review",
+                "completed",
+                "cancelled",
+                "disputed"
+              ]
+            }
+          }
+        }
       ]
     },
     "nullable": [
@@ -186,8 +208,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "caabb1c121e41b63d520927638ad2a00fcdddcf0773552dff21d01f76038c60f"
+  "hash": "1c22f468bd94596b76baed6192d9f99e2dfdc720a7b4e4c8351d19c4ed499e99"
 }

@@ -337,7 +337,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, project_description, client_notes,
                internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
             params.client_id,
             params.service_id,
             params.plan_id,
@@ -365,7 +365,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees
              FROM orders WHERE id = $1"#,
             order_id,
         )
@@ -386,7 +386,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees
              FROM orders WHERE client_id = $1 ORDER BY created_at DESC"#,
             client_id,
         )
@@ -407,7 +407,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees
              FROM orders WHERE assigned_employee_id = $1 ORDER BY created_at DESC"#,
             employee_id,
         )
@@ -425,7 +425,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees
              FROM orders ORDER BY created_at DESC"#,
         )
         .fetch_all(pool)
@@ -442,7 +442,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees
              FROM orders WHERE status = 'awaiting_assignment' ORDER BY created_at ASC"#,
         )
         .fetch_all(pool)
@@ -464,7 +464,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
             order_id,
             status as OrderStatus,
         )
@@ -489,7 +489,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
             order_id,
             employee_id,
         )
@@ -657,7 +657,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, project_description, client_notes,
                internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
             order_id,
         )
         .fetch_one(pool)
@@ -681,7 +681,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, project_description, client_notes,
                internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
             order_id,
             project_description,
         )
@@ -706,7 +706,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
             order_id,
             phase_number,
         )
@@ -730,7 +730,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                     started_at, completed_at, cancelled_at, project_description, client_notes,
                     internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
             order_id,
         )
         .fetch_one(pool)
@@ -802,7 +802,7 @@ impl OrderRepository {
        [044A-38 Fase 4] ASIGNACIÓN Y AUTO-ASIGNACIÓN
        ============================================================ */
 
-    /// Transiciona orden a `awaiting_assignment` y establece deadline de 24h para auto-asignación
+    /// Transiciona orden a `awaiting_assignment` y establece deadline de 48h para que empleados la tomen
     pub async fn set_awaiting_assignment(
         pool: &PgPool,
         order_id: Uuid,
@@ -810,7 +810,7 @@ impl OrderRepository {
         sqlx::query_as!(
             Order,
             r#"UPDATE orders SET status = 'awaiting_assignment',
-             auto_assign_deadline = NOW() + INTERVAL '24 hours',
+             auto_assign_deadline = NOW() + INTERVAL '48 hours',
              updated_at = NOW() WHERE id = $1
              RETURNING id, order_number, client_id, service_id, plan_id,
                payment_mode as "payment_mode: PaymentMode",
@@ -819,7 +819,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, project_description, client_notes,
                internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary"#,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
             order_id,
         )
         .fetch_one(pool)
@@ -837,7 +837,7 @@ impl OrderRepository {
                assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
                started_at, completed_at, cancelled_at, project_description, client_notes,
                internal_notes,
-               created_at, updated_at, ai_intermediary_enabled, ai_summary
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees
              FROM orders WHERE status = 'awaiting_assignment'
              AND auto_assign_deadline IS NOT NULL AND auto_assign_deadline < NOW()
              ORDER BY auto_assign_deadline ASC"#,
@@ -893,7 +893,7 @@ impl OrderRepository {
              payment_mode, base_price_cents, discount_percent, final_price_cents, currency, \
              status, assigned_employee_id, assigned_at, auto_assign_deadline, current_phase, \
                started_at, completed_at, cancelled_at, project_description, client_notes, internal_notes, \
-             created_at, updated_at, ai_intermediary_enabled, ai_summary",
+             created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees",
         )
         .bind(order_id)
         .bind(enabled)
@@ -913,7 +913,7 @@ impl OrderRepository {
              payment_mode, base_price_cents, discount_percent, final_price_cents, currency, \
              status, assigned_employee_id, assigned_at, auto_assign_deadline, current_phase, \
                started_at, completed_at, cancelled_at, project_description, client_notes, internal_notes, \
-             created_at, updated_at, ai_intermediary_enabled, ai_summary",
+             created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees",
         )
         .bind(order_id)
         .bind(summary)
