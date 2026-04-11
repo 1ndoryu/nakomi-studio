@@ -41,7 +41,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Hosting/Recursos y SSH seguro: Plan en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fases 2+4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops), Fase 3 (panel recursos frontend + SSH stats backend).
 - Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.
 - ~~Hay que adaptar el servicio de hosting para que sea un servicio especializado en wordpress, hosting wordpress y que se entienda eso.~~ (114A-5)
-- Glory Sentinel no tiene mecanismo para hacer respetar principios solid en el codigo de Rust, tenemos que planificar algo, no se como, limite de lineas, y otras cosas que puedan servir. 
+- ~~Glory Sentinel no tiene mecanismo para hacer respetar principios solid en el codigo de Rust, tenemos que planificar algo, no se como, limite de lineas, y otras cosas que puedan servir.~~ (114A-6)
 - (en planificación) Tampoco hay un mecanismo para el orden las carpetas, a veces veo que una sola carpeta tiene mas de 10 archivos lo cual complica a veces encontrar los archivos correcto, no se si limitar a 10 archivos por carpeta este bien porque habrán casos es lo que es legitimo, asi que habría que agregar algo para poner excepciones, esto con la intención de organizar mejor los archivos y no dejarlos tirados todo dentro de una sola carpeta, 
 - Revisar que cuando el chatbot necesite asistencia humana, llegue una notificación y un correo a la cuenta de admin.
 - El panel se ve mu mal en la versión movil, tenemos que hacer que el sidebar en movil y tablet, sean botones inferiores y un boton de hamburgueza por claro, no caben todos, dejalos en un nav inferior movil solo con el icono.
@@ -69,6 +69,11 @@ Abortando deploy. Usa --skip-backup para omitir.
 Error: Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion
 
 hay que arreglarlo para todos los sitios, los backup son importantes. Tambien hay revisar que haya un limite pre desploy para no llenar la memoria.
+- Necesito que leas lo que hay en https://pagespeed.web.dev/analysis/https-nakomi-studio/cp2d4up7on?form_factor=mobile y resuelvas todos los problemas
+- cuando hice cd "c:\Users\Owner\OneDrive\Documentos\WP\app\public\wp-content\themes\glorytemplate\.agent\coolify-manager-rs" ; .\target\release\coolify-manager.exe deploy --name studio --update --skip-backup, los datos del cms no se preservaron, lo que habia el cms, porque o sea habia borrado algunas cosas y volvieron aparecer, por que? se sincroniza el cms local con el cms de prduccion? no digo que haya que ajustarlo necesito saber que es lo que pasa.
+
+- la imagen de perifl en el panel no carga a pesar de que en el nav si se ve d422903d-c11d-483b-b6a5-369b2646304f-1775854233668.jpg:1  Failed to load resource: the server responded with a status of 404 ()Comprende este error
+panel/:1  Failed to load resource: the server responded with a status of 404 ()
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos
