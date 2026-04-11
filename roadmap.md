@@ -42,7 +42,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Seguridad hosting: Casi completo (10/11 áreas). Pendiente: Fase 4.1 DNS ownership, Fase 5 monitoreo — depriorizados.
 - Segunda auditoría profunda de seguridad al sistema de hosting (después de completar seguridad hosting).
 - Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas.
-- Hay que revisar que haya un limite pre deploy en coolify-manager para no llenar la memoria.
+- ~~Hay que revisar que haya un limite pre deploy en coolify-manager para no llenar la memoria.~~ (214A-4: check RAM≥512MB + disco≥3GB antes de build)
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos
