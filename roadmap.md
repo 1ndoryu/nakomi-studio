@@ -118,17 +118,17 @@ Caused by:
 
 2. Aclaracciones, el flujo que es espero es algo como, el cliente hace un pedido, el pedido queda pendiente de ser tomando alguien, pero por 48 horas queda solo visible por el admin. Hace falta varias cosas en este proceso.
 
-2.1 El cliente tiene que tener su pedido y recibir un mensaje en el chat del pedido, tu pedido será atentido pronto por los miembros de nuestro equipo, con una notificaciones felicidades, tu primer pedido será atendido pronto, recibir un correo bonito con la info del pedido y con el breve mensaje de que sera atendido dentro de las proximas 48 horas. 
+2.1 El cliente tiene que tener su pedido y recibir un mensaje en el chat del pedido, tu pedido será atentido pronto por los miembros de nuestro equipo, con una notificaciones felicidades, tu primer pedido será atendido pronto, recibir un correo bonito con la info del pedido y con el breve mensaje de que sera atendido dentro de las proximas 48 horas. → ✅ 154A-15c (chat greeting + email confirmación SMTP)
 
 2.2 En 48 horas si no fue revisado por el admin, delegado o tomado por el entonces todos los empleados reciben una notificación de un nuevo pedido, y en el panel pueden decidir si tomarlo o no, y en se momento ellos seran los responsables. 
 
-2.3 El admmin ve todos los pedidos, tiene la opción de cambiar el responsable, hacerse responsable, cancelar pedido, etc. En el chat, si el admin no es responsable no puede enviar mensajes, las conversaciones deben ser solo entre 2 personas. 
+2.3 El admmin ve todos los pedidos, tiene la opción de cambiar el responsable, hacerse responsable, cancelar pedido, etc. En el chat, si el admin no es responsable no puede enviar mensajes, las conversaciones deben ser solo entre 2 personas. → ✅ 154A-15e (restricción chat 2 personas)
 
-2.4 Hay que hacer una auditoría detallada y completa al sistema de historial de los pedidos, cuando se cambia el resposable, cuando se cancela, cuando se entrega y finaliza todo esto debe generar un historial claro para que el cliente lo pueda leer. 
+2.4 Hay que hacer una auditoría detallada y completa al sistema de historial de los pedidos, cuando se cambia el resposable, cuando se cancela, cuando se entrega y finaliza todo esto debe generar un historial claro para que el cliente lo pueda leer. → ✅ 154A-15d (activity_log inserts + timeline frontend)
 
-2.5 orderChatMensajes, o sea en el chat dentro de los pedidos no veo que salga el nombre de los participantes, hay que revisar que la imagen de perfil realmente salga. 
+2.5 orderChatMensajes, o sea en el chat dentro de los pedidos no veo que salga el nombre de los participantes, hay que revisar que la imagen de perfil realmente salga. → ✅ 154A-14 (títulos + avatares)
 
-2.6 La opción de IA tiene que estar desactivada por defecto dentro de los pedidos y desactivarse automaticamente cuando el resposable responde, tampoco veo que esto este funcionando. 
+2.6 La opción de IA tiene que estar desactivada por defecto dentro de los pedidos y desactivarse automaticamente cuando el resposable responde, tampoco veo que esto este funcionando. → ✅ 154A-15e (auto-disable IA + default false en migración)
 
 ## Hosting
 

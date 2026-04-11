@@ -189,6 +189,47 @@ pub async fn send_message(
         crate::models::UserRole::Client => "client",
     };
 
+    /* [154A-15e] Restricción de chat de orden: solo 2 personas (cliente + empleado asignado).
+     * Admin solo puede enviar si es el empleado asignado. Si no es sesión de orden, sin restricción. */
+    if let Ok(Some(sess)) =
+        crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
+    {
+        if let Some(order_id) = sess.order_id {
+            #[derive(sqlx::FromRow)]
+            struct OrderParticipants {
+                client_id: Uuid,
+                assigned_employee_id: Option<Uuid>,
+            }
+            let participants = sqlx::query_as::<_, OrderParticipants>(
+                "SELECT client_id, assigned_employee_id FROM orders WHERE id = $1",
+            )
+            .bind(order_id)
+            .fetch_optional(&state.pool)
+            .await
+            .ok()
+            .flatten();
+
+            if let Some(p) = &participants {
+                let is_client = auth.user_id == p.client_id;
+                let is_assigned = p.assigned_employee_id == Some(auth.user_id);
+                if !is_client && !is_assigned {
+                    return Err(AppError::Forbidden(
+                        "Solo el cliente y el empleado asignado pueden enviar mensajes en este chat."
+                            .to_string(),
+                    ));
+                }
+
+                /* [154A-15e] Auto-desactivar IA cuando el empleado asignado responde */
+                if is_assigned {
+                    let _ = crate::repositories::OrderRepository::toggle_ai_intermediary(
+                        &state.pool, order_id, false,
+                    )
+                    .await;
+                }
+            }
+        }
+    }
+
     let msg = state
         .chat_hub
         .send_message(session_id, sender_type, Some(&auth.user_id.to_string()), &req.content)
