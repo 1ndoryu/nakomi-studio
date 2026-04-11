@@ -168,7 +168,6 @@ export const Header: React.FC = () => {
                             ))}
 
                             {/* Acciones de usuario dentro del menú móvil */}
-                            <div className="menuMovilSeparador" />
                             {logueado ? (
                                 <>
                                     {/* [074A-25] Solo navegación en mobile, logout via avatar dropdown */}

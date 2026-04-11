@@ -276,12 +276,6 @@
     color: var(--text-primary);
 }
 
-.menuMovilSeparador {
-    height: 1px;
-    background: var(--border-default, var(--bg-item-active));
-    margin: var(--spacing-xs) 0;
-}
-
 .menuMovilVolver {
     display: flex;
     align-items: center;
