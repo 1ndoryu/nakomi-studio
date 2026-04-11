@@ -59,6 +59,28 @@
     color: var(--brand-black);
 }
 
+/* [T3-wallet-header] Mini saldo en header — navega a SeccionWallet al hacer clic */
+.headerPanelSaldo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: none;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-family: var(--font-mono, var(--font-primary));
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: background var(--transicion-rapida), border-color var(--transicion-rapida);
+}
+
+.headerPanelSaldo:hover {
+    background: var(--bg-accent);
+    border-color: var(--text-dark);
+}
+
 /* Avatar del usuario */
 /* [064A-53] 2px mas pequeño per indicación del usuario */
 /* [074A-45] Avatar ahora es un button con submenú dropdown */
@@ -92,7 +114,7 @@
     min-width: 140px;
     background: var(--bg-primary);
     border: 1px solid var(--border-default);
-    border-radius: var(--border-radius-md);
+    border-radius: var(--radius-md);
     padding: var(--spacing-xs) 0;
     z-index: 100;
 }

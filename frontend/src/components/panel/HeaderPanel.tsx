@@ -4,15 +4,18 @@
  * Solo muestra: logo, "Chat", "Inicio" (ir a landing), y foto de usuario con submenú.
  * [044A-38 Fase 1] Logout real conectado a authStore.
  * [074A-45] "Salir" → "Inicio" navega sin desloguear. Avatar abre submenú con logout.
- */
+ * [T3-wallet-header] Añadido saldo mini junto a notificaciones. */
 import React, {useCallback, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useNavigate} from 'react-router-dom';
-import {LogOut} from 'lucide-react';
+import {LogOut, Wallet} from 'lucide-react';
 import {GloryLink} from '../../core/router';
 import {useAuthStore} from '../../stores/authStore';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
+import {useWallet} from '../../hooks/useWallet';
+import {formatBalance} from '../../api/wallet';
 import {MenuContextual} from '../ui/ContextMenu';
+import {Button} from '../ui/Button';
 import {Logo} from '../ui/Logo';
 import OptimizedImage from '../ui/OptimizedImage';
 import NotificationBell from './NotificationBell';
@@ -26,6 +29,7 @@ export const HeaderPanel: React.FC = () => {
     const logout = useAuthStore(s => s.logout);
     const navigate = useNavigate();
     const [menuAbierto, setMenuAbierto] = useState(false);
+    const {wallet} = useWallet();
 
     const handleLogout = useCallback(() => {
         setMenuAbierto(false);
@@ -43,6 +47,17 @@ export const HeaderPanel: React.FC = () => {
 
                 {/* Acciones: Chat, Notificaciones, Inicio, Avatar con submenú */}
                 <div className="headerPanelAcciones">
+                    {/* [T3-wallet-header] Saldo mini: clic dispara custom event para ir a wallet */}
+                    <Button
+                        variante="texto"
+                        className="headerPanelSaldo"
+                        type="button"
+                        onClick={() => window.dispatchEvent(new CustomEvent('panel-cambiar-tab', {detail: 'wallet'}))}
+                        title={t('panel.wallet', 'Mi saldo')}
+                    >
+                        <Wallet size={16} />
+                        <span>{formatBalance(wallet?.balance_cents ?? 0, wallet?.currency)}</span>
+                    </Button>
                     <ChatBell />
                     <NotificationBell />
                     {/* [074A-45] Ir a inicio sin desloguear */}
