@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use tracing;
 
 use crate::errors::AppError;
+use crate::models::HostingPlanConfig;
 
 /* ============================================================
    CONFIGURACIÓN
@@ -100,21 +101,94 @@ pub struct CoolifyService;
 /* [164A-6] Genera el compose YAML para un hosting WordPress + MariaDB + SSH/SFTP.
  * [164A-16] Hardening: imágenes pineadas, network isolation, cap_drop ALL,
  * no-new-privileges, pids_limit, WP file editing deshabilitado.
- * [174A-17] Plan ecommerce incluye sidecar de backup automático (3 daily + 2 weekly). */
-fn build_hosting_compose(sftp_user: &str, sftp_password: &str, sftp_port: i32, plan: &str) -> String {
-    let wp_db = build_compose_wp_db();
-    let ssh = build_compose_ssh(sftp_user, sftp_password, sftp_port);
-    let backup = if plan == "ecommerce" { build_compose_backup() } else { String::new() };
-    let backup_vol = if plan == "ecommerce" { "  backup-data:\n" } else { "" };
+ * [174A-17] Plan ecommerce incluye sidecar de backup automático (3 daily + 2 weekly).
+ * [114A-3] Límites de CPU/RAM dinámicos desde HostingPlanConfig (admin-configurable). */
+fn build_hosting_compose(sftp_user: &str, sftp_password: &str, sftp_port: i32, config: &HostingPlanConfig) -> String {
+    let wp_cpu = millicores_to_cpu(config.wp_cpu_millicores);
+    let wp_mem = format!("{}M", config.wp_memory_mb);
+    let db_cpu = millicores_to_cpu(config.db_cpu_millicores);
+    let db_mem = format!("{}M", config.db_memory_mb);
+    let ssh_cpu = millicores_to_cpu(config.ssh_cpu_millicores);
+    let ssh_mem = format!("{}M", config.ssh_memory_mb);
+
+    let wp_db = build_compose_wp_db(&wp_cpu, &wp_mem, &db_cpu, &db_mem);
+    let ssh = build_compose_ssh(sftp_user, sftp_password, sftp_port, &ssh_cpu, &ssh_mem);
+    let backup = if config.plan_name == "ecommerce" { build_compose_backup() } else { String::new() };
+    let backup_vol = if config.plan_name == "ecommerce" { "  backup-data:\n" } else { "" };
     format!("services:\n{wp_db}{ssh}{backup}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n{backup_vol}")
 }
 
-fn build_compose_wp_db() -> String {
-    "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '1.0'\n          memory: 512M\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '0.5'\n          memory: 512M\n        reservations:\n          memory: 128M\n".to_string()
+/* [114A-3] Convierte millicores a string de CPU para Docker Compose (ej: 1000 → "1.00") */
+#[allow(clippy::cast_precision_loss)]
+fn millicores_to_cpu(millicores: i32) -> String {
+    format!("{:.2}", f64::from(millicores) / 1000.0)
 }
 
-fn build_compose_ssh(sftp_user: &str, sftp_password: &str, sftp_port: i32) -> String {
-    format!("  ssh:\n    image: 'lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190'\n    environment:\n      - PUID=33\n      - PGID=33\n      - TZ=UTC\n      - USER_NAME={sftp_user}\n      - USER_PASSWORD={sftp_password}\n      - PASSWORD_ACCESS=true\n      - SUDO_ACCESS=false\n      - LOG_STDOUT=true\n    volumes:\n      - 'wordpress-data:/home/{sftp_user}/html'\n    ports:\n      - '{sftp_port}:2222'\n    restart: unless-stopped\n    networks:\n      - ssh_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 100\n    deploy:\n      resources:\n        limits:\n          cpus: '0.5'\n          memory: 256M\n        reservations:\n          memory: 64M\n")
+/* [114A-3] Límites dinámicos por plan. WP reserva 25% de su límite, DB reserva 25% también. */
+fn build_compose_wp_db(wp_cpu: &str, wp_mem: &str, db_cpu: &str, db_mem: &str) -> String {
+    format!("  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n")
+}
+
+/* [114A-3] SSH container con wp-cli vía dockerfile_inline + hardening sshd.
+ * - PHP + wp-cli instalados para gestión WordPress vía shell.
+ * - backend_net añadida para que wp-cli pueda conectar a MariaDB.
+ * - sshd hardening: AllowTcpForwarding=no, X11Forwarding=no, PermitTunnel=no, GatewayPorts=no
+ *   aplicados idempotentemente vía custom-cont-init.d script.
+ * - Límites de CPU/RAM dinámicos desde plan config. */
+fn build_compose_ssh(sftp_user: &str, sftp_password: &str, sftp_port: i32, ssh_cpu: &str, ssh_mem: &str) -> String {
+    format!("\
+  ssh:\n\
+    build:\n\
+      dockerfile_inline: |\n\
+        FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190\n\
+        RUN apk add --no-cache php83-cli php83-phar php83-json php83-mbstring php83-curl php83-mysqli php83-xml php83-tokenizer bash coreutils \\\n\
+            && ln -sf /usr/bin/php83 /usr/bin/php \\\n\
+            && curl -sSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /usr/local/bin/wp \\\n\
+            && chmod +x /usr/local/bin/wp\n\
+        RUN mkdir -p /custom-cont-init.d && \\\n\
+            echo '#!/bin/bash' > /custom-cont-init.d/10-harden-ssh && \\\n\
+            echo 'grep -q \"AllowTcpForwarding no\" /config/sshd/sshd_config 2>/dev/null || {{' >> /custom-cont-init.d/10-harden-ssh && \\\n\
+            echo '  echo \"AllowTcpForwarding no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n\
+            echo '  echo \"X11Forwarding no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n\
+            echo '  echo \"PermitTunnel no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n\
+            echo '  echo \"GatewayPorts no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n\
+            echo '}}' >> /custom-cont-init.d/10-harden-ssh && \\\n\
+            chmod +x /custom-cont-init.d/10-harden-ssh\n\
+    environment:\n\
+      - PUID=33\n\
+      - PGID=33\n\
+      - TZ=UTC\n\
+      - USER_NAME={sftp_user}\n\
+      - USER_PASSWORD={sftp_password}\n\
+      - PASSWORD_ACCESS=true\n\
+      - SUDO_ACCESS=false\n\
+      - LOG_STDOUT=true\n\
+    volumes:\n\
+      - 'wordpress-data:/home/{sftp_user}/html'\n\
+    ports:\n\
+      - '{sftp_port}:2222'\n\
+    restart: unless-stopped\n\
+    networks:\n\
+      - ssh_net\n\
+      - backend_net\n\
+    cap_drop:\n\
+      - ALL\n\
+    cap_add:\n\
+      - CHOWN\n\
+      - SETUID\n\
+      - SETGID\n\
+      - DAC_OVERRIDE\n\
+      - NET_BIND_SERVICE\n\
+    security_opt:\n\
+      - no-new-privileges:true\n\
+    pids_limit: 100\n\
+    deploy:\n\
+      resources:\n\
+        limits:\n\
+          cpus: '{ssh_cpu}'\n\
+          memory: {ssh_mem}\n\
+        reservations:\n\
+          memory: 64M\n")
 }
 
 /* [174A-17] Sidecar de backup automático para plan ecommerce.
@@ -131,7 +205,7 @@ impl CoolifyService {
     /// Usa `docker_compose_raw` con `WordPress` + `MariaDB` + SSH/SFTP.
     /// El nombre de servicio garantiza idempotencia (Coolify rechaza duplicados).
     /// `sftp_port` debe generarse externamente con `HostingRepository::find_available_sftp_port`.
-    /// `plan` determina features extra (ej: backup sidecar para ecommerce).
+    /// `plan_config` determina límites de recursos y features extra (backup sidecar para ecommerce).
     ///
     /// # Errors
     /// Retorna `AppError` si la API falla o el JSON no parsea.
@@ -140,7 +214,7 @@ impl CoolifyService {
         config: &CoolifyConfig,
         service_name: &str,
         sftp_port: i32,
-        plan: &str,
+        plan_config: &HostingPlanConfig,
     ) -> Result<CoolifyProvisionResult, AppError> {
         /* Generar credenciales SSH/SFTP únicas para este hosting */
         let sftp_user: String = rand::thread_rng()
@@ -156,7 +230,7 @@ impl CoolifyService {
             .map(char::from)
             .collect();
 
-        let compose_yaml = build_hosting_compose(&sftp_user, &sftp_password, sftp_port, plan);
+        let compose_yaml = build_hosting_compose(&sftp_user, &sftp_password, sftp_port, plan_config);
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose_yaml);
 
         /* Paso 1: Crear el servicio */
@@ -311,7 +385,8 @@ impl CoolifyService {
 
     /* [114A-1] Actualiza el compose YAML de un servicio y lo reinicia.
      * Usado para rotación de credenciales SFTP: el compose se regenera con la nueva
-     * contraseña, se sube vía PATCH y se reinicia el servicio (stop+start). */
+     * contraseña, se sube vía PATCH y se reinicia el servicio (stop+start).
+     * [114A-3] Ahora usa HostingPlanConfig para límites dinámicos. */
     pub async fn update_compose_and_restart(
         http_client: &Client,
         config: &CoolifyConfig,
@@ -319,9 +394,9 @@ impl CoolifyService {
         sftp_user: &str,
         sftp_password: &str,
         sftp_port: i32,
-        plan: &str,
+        plan_config: &HostingPlanConfig,
     ) -> Result<(), AppError> {
-        let compose = build_hosting_compose(sftp_user, sftp_password, sftp_port, plan);
+        let compose = build_hosting_compose(sftp_user, sftp_password, sftp_port, plan_config);
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose);
 
         /* PATCH: actualizar docker_compose_raw en Coolify */

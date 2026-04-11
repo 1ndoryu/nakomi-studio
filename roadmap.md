@@ -38,20 +38,23 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Planes activos: chatbot v2, SEO, seed system, SSH/SFTP seguro
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 
-- Hosting/Recursos y SSH seguro: Plan creado en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fase 2 completada (openssh-server + resource limits). Pendiente: Fases 1/3/4. Decisiones pendientes: shell vs SFTP-only, quota disco, límites por plan.
+- Hosting/Recursos y SSH seguro: Plan creado en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fase 2 completada (openssh-server + resource limits + wp-cli + hardening + plan configs admin). Pendiente: Fase 1 (verificación VFS disco), Fase 3 (panel recursos frontend), Fase 4 (migración existentes).
 - Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.
 - Hay que adaptar el servicio de hosting para que sea un servicio especializado en wordpress, hosting wordpress y que se entienda eso.
 - Glory Sentinel no tiene mecanismo para hacer respetar principios solid en el codigo de Rust, tenemos que planificar algo, no se como, limite de lineas, y otras cosas que puedan servir. 
 - (en planificación) Tampoco hay un mecanismo para el orden las carpetas, a veces veo que una sola carpeta tiene mas de 10 archivos lo cual complica a veces encontrar los archivos correcto, no se si limitar a 10 archivos por carpeta este bien porque habrán casos es lo que es legitimo, asi que habría que agregar algo para poner excepciones, esto con la intención de organizar mejor los archivos y no dejarlos tirados todo dentro de una sola carpeta, 
 - Revisar que cuando el chatbot necesite asistencia humana, llegue una notificación y un correo a la cuenta de admin.
 - El panel se ve mu mal en la versión movil, tenemos que hacer que el sidebar en movil y tablet, sean botones inferiores y un boton de hamburgueza por claro, no caben todos, dejalos en un nav inferior movil solo con el icono.
-- Ejecuta # Plan: Seguridad Integral del Servicio de Hosting, no te preocupes por los hosting actuales, no hay (no tocar nada de la vps1, estamos usando vps2 de prueba), el plan basico no debe contener copias de seguridad ni el medio. las copias de seguridad deben 3 maxima diara y 2 maximas semanal, es decir, se mantienen solo las de los 3 ultimos dias, y la de las 2 ultimas semanas. *(En progreso: Fases 1.2/2.3/2-3/4.2 completadas. Pendiente: Fase 1.1 secrets docs, Fase 4.1 DNS ownership, Fase 5 monitoreo)*
+- Ejecuta # Plan: Seguridad Integral del Servicio de Hosting, no te preocupes por los hosting actuales, no hay (no tocar nada de la vps1, estamos usando vps2 de prueba), el plan basico no debe contener copias de seguridad ni el medio. las copias de seguridad deben 3 maxima diara y 2 maximas semanal, es decir, se mantienen solo las de los 3 ultimos dias, y la de las 2 ultimas semanas. *(Casi completo: 10/11 áreas resueltas. Pendiente: Fase 4.1 DNS ownership, Fase 5 monitoreo — depriorizados)*
 - despues de terminar # Plan: Seguridad Integral del Servicio de Hosting, hacer una segunda auditoría profunda de seguridad a todo el sistmea de hosting. 
 - Resuelve todo lo que dice # Auditoría Completa del Sistema de Chat/Chatbot, 
 - ~~Elimina menuMovilSeparador, es innecesario.~~ (164A-15)
 - ~~Borra las tareas completadas del roadmap.~~ (164A-15) 
 - No se porque cuando se abre un modal a veces, lo que esta de fondo desaparece, es mmolesto.
 - Necesitamos testear que todo lo relacionado con el servicio de hosting funcione, necesitamos test completos para asegurarnos de que todo funcione.
+- Sobre la Rotacion de api, podemos desactivar la rotacion? Y que en configuraciones del panel se pueda activar, y muestre el status, necesito eso.
+- En movil serviciosContenedor el padding debe pasar de lg a md
+- La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos

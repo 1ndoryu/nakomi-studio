@@ -231,7 +231,19 @@ impl HostingStripeService {
                     return Ok(true);
                 }
             };
-            match CoolifyService::provision_hosting(http_client, config, &service_name, sftp_port, &existing.plan).await {
+            /* [114A-3] Obtener config del plan para límites dinámicos */
+            let plan_config = match HostingRepository::get_plan_config(pool, &existing.plan).await {
+                Ok(Some(cfg)) => cfg,
+                Ok(None) => {
+                    tracing::warn!("Plan config '{}' no encontrado para hosting {hosting_id}", existing.plan);
+                    return Ok(true);
+                }
+                Err(e) => {
+                    tracing::warn!("Error obteniendo plan config para {hosting_id}: {e}");
+                    return Ok(true);
+                }
+            };
+            match CoolifyService::provision_hosting(http_client, config, &service_name, sftp_port, &plan_config).await {
                 Ok(result) => {
                     tracing::info!(
                         "Hosting {} provisionado en Coolify: uuid={}, domain={}, ip={}",

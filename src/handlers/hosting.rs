@@ -16,9 +16,9 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateHostingRequest, HostingEvent, HostingStatsResponse, HostingSubscriptionResponse,
-    SelfSubscribeRequest, SelfSubscribeResponse,
-    UpdateHostingRequest, UpdateHostingStatusRequest, UserRole,
+    CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    HostingSubscriptionResponse, SelfSubscribeRequest, SelfSubscribeResponse,
+    UpdateHostingRequest, UpdateHostingStatusRequest, UpdatePlanConfigRequest, UserRole,
 };
 use crate::repositories::{CreateHostingParams, HostingRepository, ServerInfo, UserRepository};
 use crate::services::CoolifyService;
@@ -135,10 +135,14 @@ pub async fn create_subscription(
 ) -> Result<(StatusCode, Json<HostingSubscriptionResponse>), AppError> {
     req.validate().map_err(|e| AppError::Validation(e.to_string()))?;
 
-    let price = plan_price_cents(&req.plan).ok_or_else(|| {
-        AppError::Validation(format!("Plan inválido: {}. Opciones: basico, pro, ecommerce, custom", req.plan))
-    })?;
-    let storage = plan_storage_mb(&req.plan);
+    /* [114A-3] Precios y límites desde BD (admin-configurable) */
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &req.plan)
+        .await?
+        .ok_or_else(|| {
+            AppError::Validation(format!("Plan inválido: {}. Opciones disponibles en /hosting/plan-configs", req.plan))
+        })?;
+    let price = plan_config.monthly_price_cents;
+    let storage = plan_config.storage_limit_mb;
 
     let sub = HostingRepository::create(
         &state.pool,
@@ -192,13 +196,17 @@ pub async fn subscribe_self(
 ) -> Result<(StatusCode, Json<SelfSubscribeResponse>), AppError> {
     req.validate().map_err(|e| AppError::Validation(e.to_string()))?;
 
-    let price = plan_price_cents(&req.plan).ok_or_else(|| {
-        AppError::Validation(format!(
-            "Plan inválido: {}. Opciones: basico, pro, ecommerce",
-            req.plan
-        ))
-    })?;
-    let storage = plan_storage_mb(&req.plan);
+    /* [114A-3] Precios y límites desde BD (admin-configurable) */
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &req.plan)
+        .await?
+        .ok_or_else(|| {
+            AppError::Validation(format!(
+                "Plan inválido: {}. Opciones disponibles en /hosting/plan-configs",
+                req.plan
+            ))
+        })?;
+    let price = plan_config.monthly_price_cents;
+    let storage = plan_config.storage_limit_mb;
 
     /* Obtener nombre y email del perfil del usuario autenticado */
     let user = UserRepository::find_by_id(&state.pool, auth.user_id)
@@ -739,10 +747,16 @@ pub async fn get_hosting_stats(
     let last_event_at = events.first().map(|e| e.created_at);
     let monitoring_available = sub.coolify_site_name.is_some();
 
+    /* [114A-3] Bandwidth desde plan config (admin-configurable), fallback al hardcoded */
+    let bandwidth = match HostingRepository::get_plan_config(&state.pool, &sub.plan).await {
+        Ok(Some(cfg)) => cfg.bandwidth_limit_gb,
+        _ => plan_bandwidth_gb(&sub.plan),
+    };
+
     Ok(Json(HostingStatsResponse {
         storage_limit_mb: sub.storage_limit_mb,
         storage_used_mb: None,
-        bandwidth_limit_gb: plan_bandwidth_gb(&sub.plan),
+        bandwidth_limit_gb: bandwidth,
         bandwidth_used_gb: None,
         uptime_percent,
         active_since,
@@ -881,7 +895,12 @@ pub async fn provision_subscription(
     /* [164A-16] Generar puerto SFTP único con verificación en BD */
     let sftp_port = HostingRepository::find_available_sftp_port(&state.pool).await?;
 
-    let result = match CoolifyService::provision_hosting(&state.http_client, config, &service_name, sftp_port, &sub.plan).await {
+    /* [114A-3] Obtener config del plan para límites dinámicos */
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &sub.plan)
+        .await?
+        .ok_or_else(|| AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan)))?;
+
+    let result = match CoolifyService::provision_hosting(&state.http_client, config, &service_name, sftp_port, &plan_config).await {
         Ok(r) => r,
         Err(e) => {
             /* Revertir a pending si Coolify falla —  admin puede reintentar */
@@ -1057,10 +1076,15 @@ pub async fn rotate_credentials(
     /* Actualizar en BD primero (si Coolify falla, la BD queda con la nueva y se reintenta) */
     HostingRepository::update_sftp_password(&state.pool, id, &new_password).await?;
 
+    /* [114A-3] Obtener config del plan para límites dinámicos en el compose regenerado */
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &sub.plan)
+        .await?
+        .ok_or_else(|| AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan)))?;
+
     /* Regenerar compose con nueva contraseña y aplicar en Coolify */
     CoolifyService::update_compose_and_restart(
         &state.http_client, config, server_uuid,
-        sftp_user, &new_password, sftp_port, &sub.plan,
+        sftp_user, &new_password, sftp_port, &plan_config,
     ).await?;
 
     if let Err(e) = HostingRepository::add_event(
@@ -1075,6 +1099,57 @@ pub async fn rotate_credentials(
         "sftp_password": new_password,
         "sftp_port": sftp_port,
     })))
+}
+
+/* ============================================================
+   PLAN CONFIGS — Configuración de recursos por plan (admin)
+   [114A-3] Centraliza precios y límites; admin puede ajustarlos sin redeploy.
+   ============================================================ */
+
+/// Listar todas las configuraciones de planes de hosting (admin)
+#[utoipa::path(
+    get,
+    path = "/api/hosting/plan-configs",
+    responses(
+        (status = 200, description = "Configuraciones de planes", body = Vec<HostingPlanConfig>),
+        (status = 403, description = "Sin permisos"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn list_plan_configs(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<Vec<HostingPlanConfig>>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+    let configs = HostingRepository::list_plan_configs(&state.pool).await?;
+    Ok(Json(configs))
+}
+
+/// Actualizar configuración de un plan (admin). Campos opcionales: solo se actualizan los enviados.
+#[utoipa::path(
+    put,
+    path = "/api/hosting/plan-configs/{plan}",
+    params(("plan" = String, Path, description = "Nombre del plan (basico, pro, ecommerce)")),
+    request_body = UpdatePlanConfigRequest,
+    responses(
+        (status = 200, description = "Config actualizada", body = HostingPlanConfig),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "Plan no encontrado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn update_plan_config(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(plan): Path<String>,
+    Json(req): Json<UpdatePlanConfigRequest>,
+) -> Result<Json<HostingPlanConfig>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+    req.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+    let updated = HostingRepository::update_plan_config(&state.pool, &plan, &req).await?;
+    Ok(Json(updated))
 }
 
 pub fn hosting_routes() -> Router<AppState> {
@@ -1149,6 +1224,15 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/subscriptions/:id/dns-check",
             get(dns_check),
+        )
+        /* [114A-3] Plan configs: admin gestiona precios y límites de recursos */
+        .route(
+            "/hosting/plan-configs",
+            get(list_plan_configs),
+        )
+        .route(
+            "/hosting/plan-configs/:plan",
+            axum::routing::put(update_plan_config),
         )
 }
 

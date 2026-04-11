@@ -1,8 +1,8 @@
 # Plan: SSH/SFTP Seguro por Despliegue de Hosting
 
 > Creado: 2026-04-16
-> Estado: **Planificación** (no implementar hasta instrucción del usuario)
-> Contexto: Actualmente cada hosting usa `atmoz/sftp` para SFTP. Se requiere SSH shell restringido + SFTP + límites de recursos.
+> Estado: **En progreso** — Fase 2 completada (openssh-server + resource limits + wp-cli + hardening + plan configs admin). Pendiente: Fase 1 (verificación VFS), Fase 3 (panel recursos), Fase 4 (migración existentes).
+> Contexto: Cada hosting usa `linuxserver/openssh-server` con SSH+SFTP. Recursos configurables por plan desde BD.
 
 ---
 
@@ -12,12 +12,15 @@ Dar a cada cliente de hosting acceso SSH shell + SFTP enjaulado en su volumen Wo
 
 ---
 
-## Estado actual
+## Estado actual (post 114A-3)
 
-- **SFTP funciona**: `atmoz/sftp:latest` en compose, credenciales en BD (`sftp_user`, `sftp_password`, `sftp_port`)
-- **No hay SSH shell**: el cliente solo puede transferir archivos, no ejecutar comandos (wp-cli, etc.)
-- **Sin límites de recursos**: los contenedores no tienen caps de CPU/RAM/disco
-- **Sin monitoreo**: no hay visibilidad del uso real de recursos en el panel
+- **SSH + SFTP funciona**: `linuxserver/openssh-server` con `dockerfile_inline` (PHP + wp-cli + sshd hardening)
+- **wp-cli disponible**: PHP 8.3 + wp-cli instalados en el contenedor SSH vía dockerfile_inline
+- **SSH hardening**: AllowTcpForwarding=no, X11Forwarding=no, PermitTunnel=no, GatewayPorts=no (custom-cont-init.d)
+- **Límites de recursos**: Dinámicos desde `hosting_plan_configs` (admin-configurable vía API)
+- **backend_net**: SSH container en backend_net para wp-cli → MariaDB
+- **Panel recursos**: Pendiente (Fase 3)
+- **Disk quota**: Pendiente (requiere verificación VFS en VPS2)
 
 ---
 

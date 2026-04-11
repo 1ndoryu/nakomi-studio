@@ -83,9 +83,10 @@ pub use user::{
     UpdateProfileRequest, User, UserResponse, UserRole,
 };
 pub use hosting::{
-    CreateHostingRequest, HostingEvent, HostingStatsResponse, HostingSubscription,
-    HostingSubscriptionResponse, SelfSubscribeRequest, SelfSubscribeResponse,
-    UpdateHostingRequest, UpdateHostingStatusRequest,
+    CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    HostingSubscription, HostingSubscriptionResponse, SelfSubscribeRequest,
+    SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
+    UpdatePlanConfigRequest,
 };
 pub use public_profile::{
     GivenReviewRow, PaginatedPublicReviews, PublicProfileRow, PublicReviewItem,

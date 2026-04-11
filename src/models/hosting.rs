@@ -163,6 +163,40 @@ pub struct SelfSubscribeResponse {
     pub checkout_url: String,
 }
 
+/* [114A-3] Configuración de recursos por plan de hosting.
+ * Centraliza precios y límites de CPU/RAM/storage/bandwidth.
+ * Millicores: 1000 = 1.0 CPU. Admin modifica vía API; compose los usa al provisionar. */
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct HostingPlanConfig {
+    pub id: Uuid,
+    pub plan_name: String,
+    pub monthly_price_cents: i32,
+    pub wp_cpu_millicores: i32,
+    pub wp_memory_mb: i32,
+    pub db_cpu_millicores: i32,
+    pub db_memory_mb: i32,
+    pub ssh_cpu_millicores: i32,
+    pub ssh_memory_mb: i32,
+    pub storage_limit_mb: i32,
+    pub bandwidth_limit_gb: i32,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/* [114A-3] Request para actualizar configuración de un plan (todos los campos opcionales). */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct UpdatePlanConfigRequest {
+    pub monthly_price_cents: Option<i32>,
+    pub wp_cpu_millicores: Option<i32>,
+    pub wp_memory_mb: Option<i32>,
+    pub db_cpu_millicores: Option<i32>,
+    pub db_memory_mb: Option<i32>,
+    pub ssh_cpu_millicores: Option<i32>,
+    pub ssh_memory_mb: Option<i32>,
+    pub storage_limit_mb: Option<i32>,
+    pub bandwidth_limit_gb: Option<i32>,
+}
+
 /* [094A-8] Estadísticas reales de una suscripción de hosting.
  * Uptime se calcula desde el historial de eventos (status_change).
  * Storage/bandwidth son límites del plan; uso real requiere monitoreo futuro (Coolify/cAdvisor). */
