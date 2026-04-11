@@ -56,8 +56,16 @@ export const PanelIsland: React.FC = () => {
         }
     }, [logueado, navigate]);
 
-    /* [044A-38 Fase 1] Cuando cambia el rol efectivo, resetear a la primera tab del nuevo rol */
+    /* [044A-38 Fase 1] Cuando cambia el rol efectivo, solo resetear si el tab guardado no es
+     * válido para el nuevo rol. Antes reseteaba incondicionalmente y destruía la persistencia
+     * en cada recarga — el bug reportado de "tabs siempre regresan a la primera". [164A-1] */
     useEffect(() => {
+        const stored = localStorage.getItem(PANEL_TAB_KEY) as SeccionPanel | null;
+        const tabsRol = obtenerTabsPorRol(effectiveRole);
+        if (stored && tabsRol.some(t => t.id === stored)) {
+            setSeccionActiva(stored);
+            return;
+        }
         const inicial = seccionInicialPorRol(effectiveRole);
         localStorage.setItem(PANEL_TAB_KEY, inicial);
         setSeccionActiva(inicial);
