@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE hosting_subscriptions\n             SET sftp_password = $1, sftp_credentials_rotated_at = NOW(), updated_at = NOW()\n             WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cbae4cc48407c515f5f208e1f1cb1cd06846e6134899e83adb90082fa3f213c2"
+}

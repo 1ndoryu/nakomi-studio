@@ -289,4 +289,24 @@ impl HostingRepository {
             "No se pudo encontrar un puerto SFTP disponible tras 10 intentos".into(),
         ))
     }
+
+    /* [114A-1] Rotación de credenciales SFTP: actualiza contraseña y timestamp.
+     * No toca el usuario ni el puerto — solo la contraseña.
+     * El caller debe también actualizar el compose en Coolify para que surta efecto. */
+    pub async fn update_sftp_password(
+        pool: &PgPool,
+        id: Uuid,
+        new_password: &str,
+    ) -> Result<(), AppError> {
+        sqlx::query!(
+            "UPDATE hosting_subscriptions
+             SET sftp_password = $1, sftp_credentials_rotated_at = NOW(), updated_at = NOW()
+             WHERE id = $2",
+            new_password,
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
 }

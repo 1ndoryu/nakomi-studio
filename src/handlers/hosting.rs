@@ -8,6 +8,8 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
+use rand::Rng;
+use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -879,7 +881,7 @@ pub async fn provision_subscription(
     /* [164A-16] Generar puerto SFTP único con verificación en BD */
     let sftp_port = HostingRepository::find_available_sftp_port(&state.pool).await?;
 
-    let result = match CoolifyService::provision_hosting(&state.http_client, config, &service_name, sftp_port).await {
+    let result = match CoolifyService::provision_hosting(&state.http_client, config, &service_name, sftp_port, &sub.plan).await {
         Ok(r) => r,
         Err(e) => {
             /* Revertir a pending si Coolify falla —  admin puede reintentar */
@@ -1003,7 +1005,93 @@ async fn dns_check(
     })))
 }
 
+/* [114A-1] Rotación de credenciales SFTP: genera nueva contraseña, actualiza BD y
+ * compose en Coolify, reinicia servicio SSH para que tome efecto.
+ * Solo admin. El hosting debe estar provisionado (server_uuid presente). */
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/rotate-credentials",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "Credenciales rotadas"),
+        (status = 400, description = "Hosting no provisionado"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+        (status = 503, description = "Coolify no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn rotate_credentials(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    let server_uuid = sub.server_uuid.as_ref().ok_or_else(|| {
+        AppError::Validation("Hosting no provisionado — no se pueden rotar credenciales".into())
+    })?;
+    let sftp_user = sub.sftp_user.as_ref().ok_or_else(|| {
+        AppError::Internal("SFTP user ausente en suscripción provisionada".into())
+    })?;
+    let sftp_port = sub.sftp_port.ok_or_else(|| {
+        AppError::Internal("SFTP port ausente en suscripción provisionada".into())
+    })?;
+
+    let config = state.coolify_config.as_ref().ok_or_else(|| {
+        AppError::ServiceUnavailable("Coolify no configurado".into())
+    })?;
+
+    /* Generar contraseña nueva (20 chars alfanumeric) */
+    let new_password: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(20)
+        .map(char::from)
+        .collect();
+
+    /* Actualizar en BD primero (si Coolify falla, la BD queda con la nueva y se reintenta) */
+    HostingRepository::update_sftp_password(&state.pool, id, &new_password).await?;
+
+    /* Regenerar compose con nueva contraseña y aplicar en Coolify */
+    CoolifyService::update_compose_and_restart(
+        &state.http_client, config, server_uuid,
+        sftp_user, &new_password, sftp_port, &sub.plan,
+    ).await?;
+
+    if let Err(e) = HostingRepository::add_event(
+        &state.pool, id, "credentials_rotated",
+        Some(serde_json::json!({"by": auth.user_id.to_string()})),
+    ).await {
+        tracing::warn!("Error registrando evento credentials_rotated para {id}: {e}");
+    }
+
+    Ok(Json(serde_json::json!({
+        "sftp_user": sftp_user,
+        "sftp_password": new_password,
+        "sftp_port": sftp_port,
+    })))
+}
+
 pub fn hosting_routes() -> Router<AppState> {
+    /* [174A-17] Rate limits específicos para endpoints de pago de hosting.
+     * subscribe: máx 3 por hora por IP (evita abuso de checkouts).
+     * checkout: máx 5 por hora por IP. */
+    let subscribe_gov = GovernorConfigBuilder::default()
+        .per_second(1200)
+        .burst_size(3)
+        .finish()
+        .expect("subscribe rate limit config");
+    let checkout_gov = GovernorConfigBuilder::default()
+        .per_second(720)
+        .burst_size(5)
+        .finish()
+        .expect("checkout rate limit config");
+
     Router::new()
         .route(
             "/hosting/subscriptions",
@@ -1032,15 +1120,17 @@ pub fn hosting_routes() -> Router<AppState> {
             "/hosting/subscriptions/:id/cancel",
             axum::routing::post(request_cancel),
         )
-        /* [084A-24] Stripe checkout para hosting */
+        /* [084A-24] Stripe checkout para hosting — rate limited */
         .route(
             "/hosting/subscriptions/:id/checkout",
-            axum::routing::post(create_checkout),
+            axum::routing::post(create_checkout)
+                .layer(GovernorLayer { config: std::sync::Arc::new(checkout_gov) }),
         )
-        /* [094A-3] Self-service: cliente contrata + paga en un solo paso */
+        /* [094A-3] Self-service: cliente contrata + paga — rate limited */
         .route(
             "/hosting/subscribe",
-            axum::routing::post(subscribe_self),
+            axum::routing::post(subscribe_self)
+                .layer(GovernorLayer { config: std::sync::Arc::new(subscribe_gov) }),
         )
         /* [084A-24] VPS stats: proxy a Contabo API */
         .route("/hosting/vps", get(list_vps))
@@ -1049,6 +1139,11 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/subscriptions/:id/provision",
             axum::routing::post(provision_subscription),
+        )
+        /* [114A-1] Rotación de credenciales SFTP */
+        .route(
+            "/hosting/subscriptions/:id/rotate-credentials",
+            axum::routing::post(rotate_credentials),
         )
         /* [154A-16] Verificación DNS de un dominio */
         .route(

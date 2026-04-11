@@ -1,7 +1,7 @@
 # Plan: Seguridad Integral del Servicio de Hosting
 
-> **Fecha:** 2026-04-17 (actualizado)
-> **Estado:** En progreso — Fases 2-3 completadas (164A-16)
+> **Fecha:** 2026-04-11 (actualizado)
+> **Estado:** En progreso — Fases 1.2/2.3/2-3/4.2 completadas
 > **Prioridad:** Crítica — varias vulnerabilidades de nivel alto detectadas
 > **Contexto:** Auditoría de seguridad del servicio de hosting WordPress administrado (Coolify + Docker Compose)
 
@@ -11,16 +11,16 @@
 
 | Área                | Riesgo     | Estado                                                           |
 | ------------------- | ---------- | ---------------------------------------------------------------- |
-| Secrets management  | 🔴 Crítico | .env en .gitignore ✅ — rotación pendiente                       |
-| Backups             | 🔴 Crítico | Solo plan ecommerce (3 daily + 2 weekly) — pendiente implementar |
-| SFTP credentials    | 🟡 Medio   | Generación fuerte, sin rotación — PENDIENTE                      |
+| Secrets management  | � Medio   | .env en .gitignore ✅ — documentación rotación pendiente         |
+| Backups             | ✅ Resuelto | Sidecar mariadb backup en plan ecommerce (3 daily + 2 weekly) (114A-1) |
+| SFTP credentials    | ✅ Resuelto | Endpoint rotate-credentials + Coolify compose update (114A-1)    |
 | Container isolation | ✅ Resuelto | Network isolation + cap_drop ALL + no-new-privileges (164A-16)  |
 | Resource limits     | ✅ Resuelto | CPU/mem/pids_limit/reservations (164A-16)                        |
 | Port collisions     | ✅ Resuelto | UNIQUE constraint + retry loop 10000-49151 (164A-16)            |
 | WordPress hardening | ✅ Resuelto | Imágenes pineadas, DISALLOW_FILE_EDIT (164A-16)                 |
 | DB isolation        | ✅ Resuelto | MariaDB en backend_net internal only (164A-16)                   |
 | DNS/Domain          | 🟡 Medio   | Sin validación de ownership de dominios custom — PENDIENTE       |
-| API authorization   | 🟢 Bajo    | Role-based checks + Referrer-Policy/Permissions-Policy (164A-16)|
+| API authorization   | ✅ Resuelto | Role-based + rate limit subscribe 3/hr + checkout 5/hr (114A-1) |
 | Security headers    | ✅ Resuelto | HSTS + nosniff + DENY + referrer-policy + permissions (164A-16) |
 
 ---

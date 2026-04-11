@@ -231,7 +231,7 @@ impl HostingStripeService {
                     return Ok(true);
                 }
             };
-            match CoolifyService::provision_hosting(http_client, config, &service_name, sftp_port).await {
+            match CoolifyService::provision_hosting(http_client, config, &service_name, sftp_port, &existing.plan).await {
                 Ok(result) => {
                     tracing::info!(
                         "Hosting {} provisionado en Coolify: uuid={}, domain={}, ip={}",

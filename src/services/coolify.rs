@@ -99,11 +99,14 @@ pub struct CoolifyService;
 
 /* [164A-6] Genera el compose YAML para un hosting WordPress + MariaDB + SSH/SFTP.
  * [164A-16] Hardening: imágenes pineadas, network isolation, cap_drop ALL,
- * no-new-privileges, pids_limit, WP file editing deshabilitado. */
-fn build_hosting_compose(sftp_user: &str, sftp_password: &str, sftp_port: i32) -> String {
+ * no-new-privileges, pids_limit, WP file editing deshabilitado.
+ * [174A-17] Plan ecommerce incluye sidecar de backup automático (3 daily + 2 weekly). */
+fn build_hosting_compose(sftp_user: &str, sftp_password: &str, sftp_port: i32, plan: &str) -> String {
     let wp_db = build_compose_wp_db();
     let ssh = build_compose_ssh(sftp_user, sftp_password, sftp_port);
-    format!("services:\n{wp_db}{ssh}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n")
+    let backup = if plan == "ecommerce" { build_compose_backup() } else { String::new() };
+    let backup_vol = if plan == "ecommerce" { "  backup-data:\n" } else { "" };
+    format!("services:\n{wp_db}{ssh}{backup}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n{backup_vol}")
 }
 
 fn build_compose_wp_db() -> String {
@@ -114,11 +117,21 @@ fn build_compose_ssh(sftp_user: &str, sftp_password: &str, sftp_port: i32) -> St
     format!("  ssh:\n    image: 'lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190'\n    environment:\n      - PUID=33\n      - PGID=33\n      - TZ=UTC\n      - USER_NAME={sftp_user}\n      - USER_PASSWORD={sftp_password}\n      - PASSWORD_ACCESS=true\n      - SUDO_ACCESS=false\n      - LOG_STDOUT=true\n    volumes:\n      - 'wordpress-data:/home/{sftp_user}/html'\n    ports:\n      - '{sftp_port}:2222'\n    restart: unless-stopped\n    networks:\n      - ssh_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 100\n    deploy:\n      resources:\n        limits:\n          cpus: '0.5'\n          memory: 256M\n        reservations:\n          memory: 64M\n")
 }
 
+/* [174A-17] Sidecar de backup automático para plan ecommerce.
+ * Retention: 3 copias diarias + 2 semanales (domingos).
+ * MYSQL_PWD es leído automáticamente por mysqldump — no se pasa en CLI.
+ * Sleep inicial de 60s da tiempo a MariaDB para arrancar completamente.
+ * Solo se incluye en compose cuando plan == "ecommerce". */
+fn build_compose_backup() -> String {
+    "  backup:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_PWD=SERVICE_PASSWORD_DB\n    command:\n      - sh\n      - -c\n      - 'sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); mysqldump -h mariadb -u wordpress wordpress > /backups/daily_$$DT.sql 2>&1; tar czf /backups/daily_wp_$$DT.tar.gz -C /wp-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_$$DT.sql /backups/weekly_$$DT.sql; cp /backups/daily_wp_$$DT.tar.gz /backups/weekly_wp_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done'\n    volumes:\n      - 'wordpress-data:/wp-html:ro'\n      - 'backup-data:/backups'\n    networks:\n      - backend_net\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 50\n    deploy:\n      resources:\n        limits:\n          cpus: '0.25'\n          memory: 256M\n        reservations:\n          memory: 64M\n".to_string()
+}
+
 impl CoolifyService {
     /// Provision completo: crea servicio `WordPress` en Coolify y lo arranca.
     /// Usa `docker_compose_raw` con `WordPress` + `MariaDB` + SSH/SFTP.
     /// El nombre de servicio garantiza idempotencia (Coolify rechaza duplicados).
     /// `sftp_port` debe generarse externamente con `HostingRepository::find_available_sftp_port`.
+    /// `plan` determina features extra (ej: backup sidecar para ecommerce).
     ///
     /// # Errors
     /// Retorna `AppError` si la API falla o el JSON no parsea.
@@ -127,6 +140,7 @@ impl CoolifyService {
         config: &CoolifyConfig,
         service_name: &str,
         sftp_port: i32,
+        plan: &str,
     ) -> Result<CoolifyProvisionResult, AppError> {
         /* Generar credenciales SSH/SFTP únicas para este hosting */
         let sftp_user: String = rand::thread_rng()
@@ -142,7 +156,7 @@ impl CoolifyService {
             .map(char::from)
             .collect();
 
-        let compose_yaml = build_hosting_compose(&sftp_user, &sftp_password, sftp_port);
+        let compose_yaml = build_hosting_compose(&sftp_user, &sftp_password, sftp_port, plan);
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose_yaml);
 
         /* Paso 1: Crear el servicio */
@@ -293,5 +307,61 @@ impl CoolifyService {
         let id_str = subscription_id.to_string();
         let short = &id_str[..8];
         format!("hosting-{short}")
+    }
+
+    /* [114A-1] Actualiza el compose YAML de un servicio y lo reinicia.
+     * Usado para rotación de credenciales SFTP: el compose se regenera con la nueva
+     * contraseña, se sube vía PATCH y se reinicia el servicio (stop+start). */
+    pub async fn update_compose_and_restart(
+        http_client: &Client,
+        config: &CoolifyConfig,
+        service_uuid: &str,
+        sftp_user: &str,
+        sftp_password: &str,
+        sftp_port: i32,
+        plan: &str,
+    ) -> Result<(), AppError> {
+        let compose = build_hosting_compose(sftp_user, sftp_password, sftp_port, plan);
+        let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose);
+
+        /* PATCH: actualizar docker_compose_raw en Coolify */
+        let patch_url = format!("{}/api/v1/services/{}", config.base_url, service_uuid);
+        let patch_resp = http_client
+            .patch(&patch_url)
+            .bearer_auth(&config.api_token)
+            .json(&serde_json::json!({ "docker_compose_raw": compose_b64 }))
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Coolify PATCH compose failed: {e}")))?;
+
+        if !patch_resp.status().is_success() {
+            let status = patch_resp.status();
+            let body = patch_resp.text().await.unwrap_or_default();
+            return Err(AppError::Internal(format!(
+                "Coolify PATCH compose failed: {status} — {body}"
+            )));
+        }
+
+        /* Restart: stop + start para aplicar nuevo compose */
+        let stop_url = format!("{}/api/v1/services/{}/stop", config.base_url, service_uuid);
+        if let Err(e) = http_client.post(&stop_url).bearer_auth(&config.api_token).send().await {
+            tracing::warn!("[Coolify] Error deteniendo servicio {service_uuid}: {e}");
+        }
+        let start_url = format!("{}/api/v1/services/{}/start", config.base_url, service_uuid);
+        let start_resp = http_client
+            .post(&start_url)
+            .bearer_auth(&config.api_token)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Coolify restart failed: {e}")))?;
+
+        if start_resp.status().is_success() {
+            tracing::info!("[Coolify] Servicio {} reiniciado con credenciales actualizadas.", service_uuid);
+        } else {
+            let status = start_resp.status();
+            tracing::warn!("[Coolify] Compose actualizado pero restart falló para {service_uuid}: {status}");
+        }
+
+        Ok(())
     }
 }
