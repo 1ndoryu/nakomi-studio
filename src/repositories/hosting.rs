@@ -27,7 +27,7 @@ impl HostingRepository {
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
-                    server_uuid, server_ip, created_at, updated_at
+                    server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
              FROM hosting_subscriptions
              ORDER BY created_at DESC"
         )
@@ -46,7 +46,7 @@ impl HostingRepository {
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
-                    server_uuid, server_ip, created_at, updated_at
+                    server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
              FROM hosting_subscriptions
              WHERE user_id = $1
              ORDER BY created_at DESC",
@@ -66,7 +66,7 @@ impl HostingRepository {
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
-                    server_uuid, server_ip, created_at, updated_at
+                    server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
              FROM hosting_subscriptions
              WHERE id = $1",
             id
@@ -87,7 +87,7 @@ impl HostingRepository {
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
-                       server_uuid, server_ip, created_at, updated_at",
+                       server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
             params.user_id,
             params.client_name,
             params.client_email,
@@ -133,7 +133,7 @@ impl HostingRepository {
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
-                       server_uuid, server_ip, created_at, updated_at",
+                       server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
             plan,
             domain,
             monthly_price_cents,
@@ -206,7 +206,7 @@ impl HostingRepository {
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
-                    server_uuid, server_ip, created_at, updated_at
+                    server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
              FROM hosting_subscriptions
              WHERE stripe_subscription_id = $1",
             stripe_sub_id
@@ -233,21 +233,28 @@ impl HostingRepository {
     }
 
     /* [104A-42] Guardar datos del servidor Coolify tras provisioning exitoso.
-     * coolify_site_name = nombre del servicio, server_uuid = UUID en Coolify, server_ip = IP del VPS. */
+     * [104A-18] También guarda credenciales SFTP generadas al provisionar. */
     pub async fn update_server_info(
         pool: &PgPool,
         id: Uuid,
         coolify_site_name: &str,
         server_uuid: &str,
         server_ip: &str,
+        sftp_user: &str,
+        sftp_password: &str,
+        sftp_port: i32,
     ) -> Result<(), AppError> {
         sqlx::query!(
             "UPDATE hosting_subscriptions
-             SET coolify_site_name = $1, server_uuid = $2, server_ip = $3, updated_at = NOW()
-             WHERE id = $4",
+             SET coolify_site_name = $1, server_uuid = $2, server_ip = $3,
+                 sftp_user = $4, sftp_password = $5, sftp_port = $6, updated_at = NOW()
+             WHERE id = $7",
             coolify_site_name,
             server_uuid,
             server_ip,
+            sftp_user,
+            sftp_password,
+            sftp_port,
             id
         )
         .execute(pool)

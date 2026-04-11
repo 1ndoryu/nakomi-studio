@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE hosting_subscriptions\n             SET plan = $1, domain = $2, monthly_price_cents = $3, storage_limit_mb = $4, updated_at = NOW()\n             WHERE id = $5\n             RETURNING id, user_id, client_name, client_email, plan, domain,\n                       coolify_site_name, status, stripe_subscription_id,\n                       monthly_price_cents, storage_limit_mb,\n                       server_uuid, server_ip, created_at, updated_at",
+  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb,\n                    server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at\n             FROM hosting_subscriptions\n             ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -70,23 +70,32 @@
       },
       {
         "ordinal": 13,
+        "name": "sftp_user",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "sftp_password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "sftp_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 17,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Varchar",
-        "Varchar",
-        "Int4",
-        "Int4",
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -102,9 +111,12 @@
       false,
       true,
       true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "86fdfda35a339d2eb97c72c5cff41e9acdfb240ab94992a17e8c8737c92306d1"
+  "hash": "f0558d868e62e6cbac2154f84fe19362ef7d7bad5f7d77cc93710f61135b3800"
 }

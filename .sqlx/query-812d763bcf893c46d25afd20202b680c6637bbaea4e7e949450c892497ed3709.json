@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE hosting_subscriptions\n             SET coolify_site_name = $1, server_uuid = $2, server_ip = $3,\n                 sftp_user = $4, sftp_password = $5, sftp_port = $6, updated_at = NOW()\n             WHERE id = $7",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "812d763bcf893c46d25afd20202b680c6637bbaea4e7e949450c892497ed3709"
+}

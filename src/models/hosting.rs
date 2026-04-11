@@ -42,6 +42,14 @@ pub struct HostingSubscription {
     pub server_uuid: Option<String>,
     #[sqlx(default)]
     pub server_ip: Option<String>,
+    /* [104A-18] Credenciales SFTP generadas al provisionar (contenedor atmoz/sftp) */
+    #[sqlx(default)]
+    pub sftp_user: Option<String>,
+    #[sqlx(default)]
+    pub sftp_password: Option<String>,
+    /* [104A-18] Puerto SFTP único por hosting (range 10000-65000), mapeado en compose */
+    #[sqlx(default)]
+    pub sftp_port: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -116,6 +124,10 @@ pub struct HostingSubscriptionResponse {
     /* [104A-42] IP y UUID de Coolify expuestos al frontend para datos reales del servidor */
     pub server_uuid: Option<String>,
     pub server_ip: Option<String>,
+    /* [104A-18] Credenciales SFTP para acceso a archivos WordPress */
+    pub sftp_user: Option<String>,
+    pub sftp_password: Option<String>,
+    pub sftp_port: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -135,6 +147,9 @@ impl From<HostingSubscription> for HostingSubscriptionResponse {
             storage_limit_mb: s.storage_limit_mb,
             server_uuid: s.server_uuid,
             server_ip: s.server_ip,
+            sftp_user: s.sftp_user,
+            sftp_password: s.sftp_password,
+            sftp_port: s.sftp_port,
             created_at: s.created_at,
             updated_at: s.updated_at,
         }

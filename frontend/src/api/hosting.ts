@@ -19,6 +19,10 @@ export interface HostingSubscription {
     /* [104A-42] Datos reales del servidor Coolify */
     server_uuid: string | null;
     server_ip: string | null;
+    /* [104A-18] Credenciales SFTP generadas al provisionar */
+    sftp_user: string | null;
+    sftp_password: string | null;
+    sftp_port: number | null;
     created_at: string;
     updated_at: string;
 }

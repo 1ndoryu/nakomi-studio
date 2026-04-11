@@ -277,26 +277,26 @@ export function TabDominio({domainInfo, subscriptionId}: {
 }
 
 /* ── Tab: Acceso SSH/SFTP ────────────────── */
-/* [094A-5] Para hostings Docker (Coolify): muestra panel WP admin + phpMyAdmin.
- * SSH directo al contenedor no está disponible para clientes — acceso vía WP admin. */
+/* [094A-5] Para hostings Docker (Coolify): muestra panel WP admin + credenciales SFTP reales.
+ * [104A-18] Las credenciales SFTP (user/password/port) se generan al provisionar y se muestran aquí.
+ * La contraseña se puede mostrar/ocultar con toggle para seguridad básica en pantallas compartidas. */
 export function TabAcceso({sshInfo, sub}: {
     sshInfo: ReturnType<typeof useHostingDetalle>['sshInfo'];
     sub: Subscription;
 }) {
+    const [showPassword, setShowPassword] = useState(false);
     const isDockerHosting = sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip;
     const wpAdminUrl = isDockerHosting
         ? `http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io/wp-admin`
         : null;
+    const hasSftp = isDockerHosting && sub.sftp_user && sub.sftp_password && sub.sftp_port;
 
     if (isDockerHosting) {
         return (
             <div className="hostingDetalleSection">
-                <h3 className="hostingDetalleSectionTitle">Acceso al panel</h3>
-                <p className="hostingDetalleSectionDesc">
-                    Tu hosting WordPress incluye panel de administración web. No requiere SSH.
-                </p>
+                <h3 className="hostingDetalleSectionTitle">Panel de administración</h3>
                 <div className="hostingDetalleInfoGrid">
-                    <InfoRow label="Panel WordPress" value={wpAdminUrl!} copyable link={wpAdminUrl!} />
+                    <InfoRow label="WordPress admin" value={wpAdminUrl!} copyable link={wpAdminUrl!} />
                 </div>
                 <div className="hostingDetalleAcciones">
                     <a href={wpAdminUrl!} target="_blank" rel="noopener noreferrer" className="hostingDetalleAccionLink">
@@ -305,10 +305,40 @@ export function TabAcceso({sshInfo, sub}: {
                         </Button>
                     </a>
                 </div>
-                <h4 className="hostingDetalleSubTitle">¿Necesitas acceso avanzado?</h4>
-                <p className="hostingDetalleSectionDesc">
-                    Si necesitas acceso FTP/SFTP o a la base de datos, contacta soporte y lo configuramos.
-                </p>
+
+                <h3 className="hostingDetalleSectionTitle">Acceso SFTP</h3>
+                {hasSftp ? (
+                    <>
+                        <p className="hostingDetalleSectionDesc">
+                            Usa estas credenciales con FileZilla, Cyberduck o cualquier cliente SFTP para acceder a los archivos de tu sitio.
+                        </p>
+                        <div className="hostingDetalleInfoGrid">
+                            <InfoRow label="Host" value={sub.server_ip!} copyable />
+                            <InfoRow label="Puerto" value={String(sub.sftp_port!)} copyable />
+                            <InfoRow label="Usuario" value={sub.sftp_user!} copyable />
+                            <InfoRow label="Protocolo" value="SFTP (SSH File Transfer Protocol)" />
+                            <InfoRow
+                                label="Contraseña"
+                                value={showPassword ? sub.sftp_password! : '••••••••••••••••'}
+                                copyable={showPassword}
+                            />
+                        </div>
+                        <div className="hostingDetalleAcciones">
+                            <Button
+                                type="button"
+                                variante="outline"
+                                tamano="pequeno"
+                                onClick={() => setShowPassword(p => !p)}
+                            >
+                                {showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                            </Button>
+                        </div>
+                    </>
+                ) : (
+                    <p className="hostingDetalleSectionDesc">
+                        Las credenciales SFTP estarán disponibles una vez que el hosting esté provisionado.
+                    </p>
+                )}
             </div>
         );
     }

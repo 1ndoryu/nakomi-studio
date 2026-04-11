@@ -5,6 +5,8 @@
  * Diseño no-fatal: los errores de provisioning se loguean pero no bloquean el pago. */
 
 use base64::Engine;
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tracing;
@@ -81,6 +83,12 @@ pub struct CoolifyProvisionResult {
     pub domain: String,
     /// IP del servidor VPS (vendrá del `CoolifyConfig`)
     pub server_ip: String,
+    /// Usuario SFTP generado para acceso a archivos WordPress
+    pub sftp_user: String,
+    /// Contraseña SFTP generada aleatoriamente
+    pub sftp_password: String,
+    /// Puerto del host mapeado al contenedor SFTP (único por hosting)
+    pub sftp_port: i32,
 }
 
 /* ============================================================
@@ -101,9 +109,28 @@ impl CoolifyService {
         config: &CoolifyConfig,
         service_name: &str,
     ) -> Result<CoolifyProvisionResult, AppError> {
-        /* [104A-14] Compose WordPress + MariaDB: SERVICE_FQDN_WORDPRESS= genera FQDN sslip.io
-         * automáticamente. SERVICE_PASSWORD_* son generadas por Coolify. */
-        let compose_yaml = r"services:
+        /* Generar credenciales SFTP únicas para este hosting */
+        let sftp_user: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .map(char::from)
+            .collect::<String>()
+            .to_lowercase();
+        let sftp_user = format!("wp_{sftp_user}");
+        let sftp_password: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(20)
+            .map(char::from)
+            .collect();
+        /* Puerto único en rango 10000-65000 para el contenedor SFTP de este hosting.
+         * Así cada hosting tiene su propio puerto y no colisionan en el mismo VPS. */
+        let sftp_port: i32 = rand::thread_rng().gen_range(10000_i32..65000_i32);
+
+        /* [104A-14] Compose WordPress + MariaDB + SFTP (atmoz/sftp).
+         * El contenedor sftp comparte el volumen wordpress-data, dando acceso SFTP
+         * a los archivos del sitio sin exponer SSH del VPS. Puerto 2222 para no
+         * colisionar con el SSH del host (22). Formato usuarios atmoz: user:pass:uid */
+        let compose_yaml = format!(r#"services:
   wordpress:
     image: 'wordpress:latest'
     environment:
@@ -127,11 +154,19 @@ impl CoolifyService {
     volumes:
       - 'mariadb-data:/var/lib/mysql'
     restart: unless-stopped
+  sftp:
+    image: 'atmoz/sftp:latest'
+    command: '{sftp_user}:{sftp_password}:33:33:html'
+    volumes:
+      - 'wordpress-data:/home/{sftp_user}/html'
+    ports:
+      - '{sftp_port}:22'
+    restart: unless-stopped
 volumes:
   wordpress-data:
   mariadb-data:
-";
-        let compose_b64 = base64::engine::general_purpose::STANDARD.encode(compose_yaml);
+"#);
+        let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose_yaml);
 
         /* Paso 1: Crear el servicio */
         let create_body = CreateServiceBody {
@@ -208,6 +243,9 @@ volumes:
             service_uuid: created.uuid,
             domain,
             server_ip: config.server_ip.clone(),
+            sftp_user,
+            sftp_password,
+            sftp_port,
         })
     }
 

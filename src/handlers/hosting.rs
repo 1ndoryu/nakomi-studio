@@ -893,6 +893,9 @@ pub async fn provision_subscription(
         &service_name,
         &result.service_uuid,
         &result.server_ip,
+        &result.sftp_user,
+        &result.sftp_password,
+        result.sftp_port,
     )
     .await?;
 

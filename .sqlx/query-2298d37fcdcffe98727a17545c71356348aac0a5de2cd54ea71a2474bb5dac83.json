@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO hosting_subscriptions (user_id, client_name, client_email, plan, domain, monthly_price_cents, storage_limit_mb)\n             VALUES ($1, $2, $3, $4, $5, $6, $7)\n             RETURNING id, user_id, client_name, client_email, plan, domain,\n                       coolify_site_name, status, stripe_subscription_id,\n                       monthly_price_cents, storage_limit_mb,\n                       server_uuid, server_ip, created_at, updated_at",
+  "query": "INSERT INTO hosting_subscriptions (user_id, client_name, client_email, plan, domain, monthly_price_cents, storage_limit_mb)\n             VALUES ($1, $2, $3, $4, $5, $6, $7)\n             RETURNING id, user_id, client_name, client_email, plan, domain,\n                       coolify_site_name, status, stripe_subscription_id,\n                       monthly_price_cents, storage_limit_mb,\n                       server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
   "describe": {
     "columns": [
       {
@@ -70,11 +70,26 @@
       },
       {
         "ordinal": 13,
+        "name": "sftp_user",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "sftp_password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "sftp_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 17,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -104,9 +119,12 @@
       false,
       true,
       true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "0b8cba044be9d80f4ce3dc66dca1693d13813b65d9ded44ee48d96b9dc5b7ed7"
+  "hash": "2298d37fcdcffe98727a17545c71356348aac0a5de2cd54ea71a2474bb5dac83"
 }

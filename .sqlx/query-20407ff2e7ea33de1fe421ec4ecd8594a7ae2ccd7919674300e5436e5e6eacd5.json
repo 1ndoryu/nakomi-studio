@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb,\n                    server_uuid, server_ip, created_at, updated_at\n             FROM hosting_subscriptions\n             ORDER BY created_at DESC",
+  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb,\n                    server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at\n             FROM hosting_subscriptions\n             WHERE user_id = $1\n             ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -70,17 +70,34 @@
       },
       {
         "ordinal": 13,
+        "name": "sftp_user",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "sftp_password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "sftp_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 17,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -96,9 +113,12 @@
       false,
       true,
       true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "df070b70016c87e12fb4b20af1444c2b7f1c052a655306bc313685f9b73b8818"
+  "hash": "20407ff2e7ea33de1fe421ec4ecd8594a7ae2ccd7919674300e5436e5e6eacd5"
 }
