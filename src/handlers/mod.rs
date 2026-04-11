@@ -455,9 +455,14 @@ pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Route
          * Otros archivos sin hash (favicon, fonts) obtienen 1 día de cache. */
         let spa_serve = ServeDir::new(&dir).not_found_service(ServeFile::new(&index_path));
 
+        /* [114A-SEO3] Middleware de pre-rendering: intercepta crawlers ANTES del SPA fallback.
+         * Si existe HTML pre-renderizado para la ruta, lo sirve. Si no, cae al SPA normal. */
         router
             .nest_service("/assets", asset_service)
             .fallback_service(spa_serve)
+            .layer(axum::middleware::from_fn(
+                crate::middleware::prerender::prerender,
+            ))
     } else {
         router
     }

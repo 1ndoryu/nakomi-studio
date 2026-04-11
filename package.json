@@ -15,6 +15,10 @@
     "codegen": "npm --prefix frontend run codegen",
     "test": "cargo test",
     "roadmap": "node scripts/check-roadmap.mjs",
-    "roadmap:watch": "node scripts/check-roadmap.mjs --watch"
+    "roadmap:watch": "node scripts/check-roadmap.mjs --watch",
+    "prerender": "node scripts/prerender.mjs"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.40.0"
   }
 }

@@ -1,6 +1,6 @@
 /* [044A-28] Handlers SEO: robots.txt y sitemap.xml.
- * Endpoints estáticos que los crawlers necesitan para indexar correctamente. */
-use axum::{response::IntoResponse, routing::get, Router};
+ * [114A-SEO3] sitemap.xml ahora incluye rutas dinámicas (servicios, proyectos) desde BD. */
+use axum::{extract::State, response::IntoResponse, routing::get, Router};
 use axum::http::header;
 
 use crate::AppState;
@@ -25,17 +25,41 @@ async fn robots_txt() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], body)
 }
 
-async fn sitemap_xml() -> impl IntoResponse {
-    /* Rutas estáticas del SPA — TO-DO: agregar dinámicas desde BD cuando haya contenido */
-    let rutas = [
-        ("/", "1.0", "weekly"),
-        ("/servicios", "0.9", "weekly"),
-        ("/proyectos", "0.9", "weekly"),
-        ("/nosotros", "0.7", "monthly"),
-        ("/blog", "0.8", "daily"),
-        ("/soluciones", "0.8", "monthly"),
-        ("/contacto", "0.6", "monthly"),
+async fn sitemap_xml(State(state): State<AppState>) -> impl IntoResponse {
+    /* Rutas estáticas del SPA */
+    let mut rutas: Vec<(String, &str, &str)> = vec![
+        ("/".into(), "1.0", "weekly"),
+        ("/servicios".into(), "0.9", "weekly"),
+        ("/proyectos".into(), "0.9", "weekly"),
+        ("/nosotros".into(), "0.7", "monthly"),
+        ("/blog".into(), "0.8", "daily"),
+        ("/soluciones".into(), "0.8", "monthly"),
+        ("/soluciones/hosting".into(), "0.8", "monthly"),
     ];
+
+    /* [114A-SEO3] Rutas dinámicas desde BD: servicios con slug público */
+    if let Ok(rows) = sqlx::query_as::<_, (String,)>(
+        "SELECT slug FROM services WHERE slug IS NOT NULL AND slug != ''"
+    )
+    .fetch_all(&state.pool)
+    .await
+    {
+        for (slug,) in rows {
+            rutas.push((format!("/servicios/{slug}"), "0.8", "monthly"));
+        }
+    }
+
+    /* [114A-SEO3] Rutas dinámicas: proyectos con slug público */
+    if let Ok(rows) = sqlx::query_as::<_, (String,)>(
+        "SELECT slug FROM projects WHERE slug IS NOT NULL AND slug != ''"
+    )
+    .fetch_all(&state.pool)
+    .await
+    {
+        for (slug,) in rows {
+            rutas.push((format!("/proyectos/{slug}"), "0.7", "monthly"));
+        }
+    }
 
     let urls: String = rutas
         .iter()
