@@ -55,8 +55,8 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~Sobre la Rotacion de api, podemos desactivar la rotacion? Y que en configuraciones del panel se pueda activar, y muestre el status, necesito eso.~~ (114A-12)
 - ~~En movil serviciosContenedor el padding debe pasar de lg a md~~ (114A-11)
 - ~~La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.~~ (114A-15) 
-- :3000/api/admin/configuracion/rotacion:1  Failed to load resource: the server responded with a status of 404 (Not Found)Comprende este error
-:3000/api/admin/configuracion/rotacion:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+- ~~:3000/api/admin/configuracion/rotacion:1  Failed to load resource: the server responded with a status of 404 (Not Found)Comprende este error~~ (114A-17: binario viejo sin el endpoint — recompilar con `cargo run`)
+~~:3000/api/admin/configuracion/rotacion:1  Failed to load resource: the server responded with a status of 404 (Not Found)~~
 
 - Si sale este error significa que los backup no funcionan?
 
@@ -76,6 +76,8 @@ hay que arreglarlo para todos los sitios, los backup son importantes. Tambien ha
 
 - la imagen de perifl en el panel no carga a pesar de que en el nav si se ve d422903d-c11d-483b-b6a5-369b2646304f-1775854233668.jpg:1  Failed to load resource: the server responded with a status of 404 ()Comprende este error
 panel/:1  Failed to load resource: the server responded with a status of 404 ()
+
+- Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas. 
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos
