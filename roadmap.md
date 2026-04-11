@@ -40,15 +40,13 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - Dominios: verificación DNS implementada (154A-16). Falta: compra de dominios (requiere registrar API), gestión registros DNS via Contabo API, auto-SSL.
 - Hosting/Contabo: el error "Contabo rechazó autenticación" ocurre en la tab "Servidores" (solo admin) porque las variables CONTABO_* no están configuradas en el servidor (.env). Poner las credenciales reales de Contabo en las env vars del servicio Coolify resuelve la tab de servidores. Las suscripciones de hosting son independientes de Contabo (vienen de BD) — si no aparece ninguna, es porque ningún cliente ha comprado hosting aún (los datos seed de prueba se crean con `/api/admin/seed`).
-- Hosting/Recursos y SSH seguro: Plan creado en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Pendiente de implementación (4 fases). Decisiones pendientes: shell vs SFTP-only, quota disco, límites por plan.
-- Historial del proyecto no debería llamarse asi sino fases de proyecto.
-- En actividad de proyecto no usos iconos, usa faseTimelineDot
+- Hosting/Recursos y SSH seguro: Plan creado en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Fase 2 completada (openssh-server + resource limits). Pendiente: Fases 1/3/4. Decisiones pendientes: shell vs SFTP-only, quota disco, límites por plan.
 - en chatListaSesiones chatListaOculta, aparece chat general, esto es un problema porque por cada usuario se va a crear un chat general, esto tiene que actualizarse cuando la ia consiga el nombre del usuario pero inicialmente tiene que diferenciarse con algun numero o algo porque si todos los nombres son iguales es comlpicado, y en la lista tiene que verse la foto de perfil de con quien se habla.
-- El color del badge numerico de las notificaciones, de los mensajes y el color del badge en las tarjetas de los pedidos son 3 colores diferentes, obviamente esto es una inconsistencia desenntralizada, dejalo de color negro.
 - Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.
 - walletHistorialTitulo no necesita estar en negrita.
 - .metodosPagoSubtitulo sin padding top ni borde ni tampoco los numeros en las ordenes "pagosOrdenesCelda pagosOrdenesNumero"
-
+- Hay que hacer otro plan super profundo para la seguridad respecto # Plan: SSH/SFTP Seguro por Despliegue de Hosting, y al servicio de hosting en general. 
+- Necesitamos una auditoría completa al chatbot, necesito ver como se comporta con los usuarios deslogeados, y como lo hace con los logeado, necesito ver como se comporta en cada escenario, para los empleados, para el admin y para los clientes, pues tiene que adaptarse a esos usuarios, tambien tiene que adaptarse cuando se abre el chat desde un intento de reporte por ejemplo. 
 
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
