@@ -333,6 +333,15 @@ export function TabAcceso({sshInfo, sub}: {
                                 {showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                             </Button>
                         </div>
+
+                        <h4 className="hostingDetalleSubTitle">Conectar por terminal</h4>
+                        <div className="hostingDetalleCodeBlock">
+                            <code>{`sftp -P ${sub.sftp_port} ${sub.sftp_user}@${sub.server_ip}`}</code>
+                            <CopyButton text={`sftp -P ${sub.sftp_port} ${sub.sftp_user}@${sub.server_ip}`} />
+                        </div>
+                        <p className="hostingDetalleSectionDesc">
+                            El acceso es SFTP (transferencia de archivos), no SSH interactivo. Para gestión avanzada del servidor, usa el panel WordPress o contacta soporte.
+                        </p>
                     </>
                 ) : (
                     <p className="hostingDetalleSectionDesc">
