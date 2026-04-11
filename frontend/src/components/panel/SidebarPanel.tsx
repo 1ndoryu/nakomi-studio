@@ -4,9 +4,9 @@
  * Muestra avatar, nombre, rol y links de navegacion con iconos.
  * [044A-38 Fase 1] Tabs dinámicos por rol + botón switch-role para admin.
  */
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useRef, useEffect} from 'react';
 import {useTranslation} from 'react-i18next';
-import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet} from 'lucide-react';
+import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, MoreHorizontal} from 'lucide-react';
 import {obtenerTabsPorRol, type SeccionPanel} from '../../data/panel';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {useAuthStore} from '../../stores/authStore';
@@ -60,6 +60,30 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
     const isImpersonating = authUser?.impersonating ?? false;
     const tabs = obtenerTabsPorRol(effectiveRole);
 
+    /* [114A-9] Nav inferior móvil: muestra 4 items + botón "Más" para overflow */
+    const MAX_BOTTOM_NAV = 4;
+    const [menuAbierto, setMenuAbierto] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const visibleTabs = tabs.slice(0, MAX_BOTTOM_NAV);
+    const overflowTabs = tabs.slice(MAX_BOTTOM_NAV);
+
+    /* Cerrar el menú overflow al hacer click fuera */
+    useEffect(() => {
+        if (!menuAbierto) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMenuAbierto(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [menuAbierto]);
+
+    const handleOverflowSelect = useCallback((seccion: SeccionPanel) => {
+        onCambiarSeccion(seccion);
+        setMenuAbierto(false);
+    }, [onCambiarSeccion]);
+
     /* [084A-1] Cicla entre los 3 roles impersonando usuarios reales.
      * Admin → employee → client → admin. El backend busca un usuario real con ese rol. */
     const handleSwitchRole = useCallback(async () => {
@@ -101,14 +125,15 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
                 </div>
             </div>
 
-            {/* Navegacion con iconos — tabs dinámicos según rol */}
+            {/* [114A-9] Desktop: todos los items. Móvil: nav dentro de sidebarNav */}
             <nav className="sidebarNav" aria-label={t('accessibility.panel_sections')}>
+                {/* Desktop: renderizar todos los tabs normalmente */}
                 {tabs.map(tab => {
                     const Icono = ICONOS_SECCION[tab.id];
                     return (
                         <Button
                             key={tab.id}
-                            className={`sidebarItem ${seccionActiva === tab.id ? 'sidebarItemActivo' : ''}`}
+                            className={`sidebarItem sidebarItemDesktop ${seccionActiva === tab.id ? 'sidebarItemActivo' : ''}`}
                             onClick={() => onCambiarSeccion(tab.id)}
                             aria-current={seccionActiva === tab.id ? 'page' : undefined}
                             variante="texto"
@@ -118,6 +143,58 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
                         </Button>
                     );
                 })}
+
+                {/* [114A-9] Móvil: solo los primeros N items + botón "Más" */}
+                {visibleTabs.map(tab => {
+                    const Icono = ICONOS_SECCION[tab.id];
+                    return (
+                        <Button
+                            key={`m-${tab.id}`}
+                            className={`sidebarItem sidebarItemMovil ${seccionActiva === tab.id ? 'sidebarItemActivo' : ''}`}
+                            onClick={() => onCambiarSeccion(tab.id)}
+                            aria-current={seccionActiva === tab.id ? 'page' : undefined}
+                            variante="texto"
+                            title={tab.label}
+                        >
+                            <Icono size={20} className="sidebarItemIcono" aria-hidden="true" />
+                        </Button>
+                    );
+                })}
+
+                {/* [114A-9] Botón "Más" en móvil si hay items overflow */}
+                {overflowTabs.length > 0 && (
+                    <div className="sidebarOverflowContenedor" ref={menuRef}>
+                        <Button
+                            className={`sidebarItem sidebarItemMovil sidebarOverflowBtn ${
+                                overflowTabs.some(t => t.id === seccionActiva) ? 'sidebarItemActivo' : ''
+                            }`}
+                            onClick={() => setMenuAbierto(prev => !prev)}
+                            variante="texto"
+                            title="Más opciones"
+                        >
+                            <MoreHorizontal size={20} className="sidebarItemIcono" aria-hidden="true" />
+                        </Button>
+
+                        {menuAbierto && (
+                            <div className="sidebarOverflowMenu">
+                                {overflowTabs.map(tab => {
+                                    const Icono = ICONOS_SECCION[tab.id];
+                                    return (
+                                        <Button
+                                            key={tab.id}
+                                            className={`sidebarOverflowItem ${seccionActiva === tab.id ? 'sidebarItemActivo' : ''}`}
+                                            onClick={() => handleOverflowSelect(tab.id)}
+                                            variante="texto"
+                                        >
+                                            <Icono size={16} className="sidebarItemIcono" aria-hidden="true" />
+                                            <span>{tab.label}</span>
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
             </nav>
 
             {/* [084A-1] Botón switch-role — visible para admin real o cuando impersonando */}

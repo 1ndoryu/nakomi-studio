@@ -113,45 +113,136 @@
     text-overflow: ellipsis;
 }
 
-/* Responsive: sidebar colapsa a top bar en movil */
+/* [114A-9] Desktop: items de escritorio visibles, items móviles ocultos */
+.sidebarItemMovil,
+.sidebarOverflowContenedor {
+    display: none;
+}
+
+/* Responsive: sidebar colapsa a nav inferior fijo en movil */
+/* [114A-9] Rediseñado: de top-bar a bottom-nav con overflow "Más" */
 @media (max-width: 768px) {
+    /* Ocultar items desktop en móvil */
+    .sidebarItemDesktop {
+        display: none;
+    }
+
+    /* Mostrar items móviles */
+    .sidebarItemMovil,
+    .sidebarOverflowContenedor {
+        display: flex;
+    }
+
     .panelSidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
         width: 100%;
         min-width: unset;
+        min-height: unset;
         flex-direction: row;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         border-right: none;
-        border-bottom: 1px solid var(--bg-item-active);
-        padding: var(--spacing-md);
-        gap: var(--spacing-sm);
+        border-top: 1px solid var(--bg-item-active);
+        background: var(--bg-main, #fff);
+        padding: var(--spacing-xs) 0;
+        gap: 0;
+        z-index: 100;
     }
 
     .sidebarUsuario {
-        width: 100%;
-        padding-bottom: var(--spacing-sm);
-        border-bottom: 1px solid var(--bg-item-active);
+        display: none;
     }
 
     .sidebarNav {
         flex-direction: row;
-        overflow-x: auto;
-        gap: 4px;
+        flex: 1;
+        justify-content: space-around;
+        gap: 0;
     }
 
-    .sidebarItem {
-        white-space: nowrap;
-        padding: var(--spacing-xs) var(--spacing-sm);
-        font-size: var(--text-xs);
+    .sidebarItem.sidebarItemMovil {
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        padding: var(--spacing-xs) 0;
+        margin-left: 0;
+        width: auto;
+        min-width: 0;
+        font-size: var(--text-2xs, 10px);
+        color: var(--text-muted);
+        border-radius: 0;
     }
 
-    /* Ocultar texto en movil, solo mostrar icono */
+    .sidebarItem.sidebarItemMovil:hover {
+        background: transparent;
+        color: var(--brand-black);
+    }
+
+    .sidebarItem.sidebarItemMovil.sidebarItemActivo {
+        background: transparent;
+        color: var(--brand-primary, var(--brand-black));
+    }
+
     .sidebarItemTexto {
         display: none;
     }
 
     .sidebarSwitchRole {
+        display: none;
+    }
+
+    /* [114A-9] Contenedor del botón "Más" y su menú overflow */
+    .sidebarOverflowContenedor {
+        position: relative;
+        flex: 1;
+    }
+
+    .sidebarOverflowBtn {
         width: 100%;
-        padding-top: var(--spacing-xs);
+    }
+
+    .sidebarOverflowMenu {
+        position: absolute;
+        bottom: 100%;
+        right: 0;
+        min-width: 200px;
+        background: var(--bg-main, #fff);
+        border: 1px solid var(--bg-item-active);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+        padding: var(--spacing-sm);
+        margin-bottom: var(--spacing-xs);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        z-index: 110;
+    }
+
+    .sidebarOverflowItem {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        border-radius: var(--radius-md);
+        width: 100%;
+        text-align: left;
+        justify-content: flex-start;
+    }
+
+    .sidebarOverflowItem:hover {
+        color: var(--brand-black);
+        background-color: var(--bg-item-hover);
+    }
+
+    .sidebarOverflowItem.sidebarItemActivo {
+        color: var(--brand-black);
+        background-color: var(--bg-item-active);
     }
 }
 

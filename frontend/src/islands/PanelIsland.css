@@ -74,6 +74,8 @@
 
     .panelContenedor {
         padding: 15vh var(--spacing-md) var(--spacing-xl);
+        /* [114A-9] Espacio inferior para el nav fijo móvil */
+        padding-bottom: 72px;
     }
 
     .panelLayout {
