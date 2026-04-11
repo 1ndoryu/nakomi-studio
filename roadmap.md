@@ -79,7 +79,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 
 - Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas. 
 
-- (desactiva esto ## 114A-20 — Investigación: datos CMS se restauran tras deploy, que no suceda, que los datos de prueba no se ejecuten al deploy en producción)
+- ~~(desactiva esto ## 114A-20 — Investigación: datos CMS se restauran tras deploy, que no suceda, que los datos de prueba no se ejecuten al deploy en producción)~~ (204A-1: FIXTURES_SYNC env var)
 
 - Continua con Pendiente: reducir index.css, SSR/streaming para FCP, imágenes en producción)
 
