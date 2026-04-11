@@ -101,9 +101,36 @@ impl CoolifyService {
         config: &CoolifyConfig,
         service_name: &str,
     ) -> Result<CoolifyProvisionResult, AppError> {
-        /* [154A-11] Compose Nginx puro: SERVICE_FQDN_APP= le dice a Coolify que genere
-         * FQDN sslip.io y Traefik labels automáticamente. */
-        let compose_yaml = "services:\n  app:\n    image: 'nginx:alpine'\n    environment:\n      - SERVICE_FQDN_APP=\n    volumes:\n      - 'site-data:/usr/share/nginx/html'\n    restart: unless-stopped\nvolumes:\n  site-data:\n";
+        /* [104A-14] Compose WordPress + MariaDB: SERVICE_FQDN_WORDPRESS= genera FQDN sslip.io
+         * automáticamente. SERVICE_PASSWORD_* son generadas por Coolify. */
+        let compose_yaml = r"services:
+  wordpress:
+    image: 'wordpress:latest'
+    environment:
+      - SERVICE_FQDN_WORDPRESS=
+      - WORDPRESS_DB_HOST=mariadb
+      - WORDPRESS_DB_USER=wordpress
+      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB
+      - WORDPRESS_DB_NAME=wordpress
+    volumes:
+      - 'wordpress-data:/var/www/html'
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+  mariadb:
+    image: 'mariadb:10.11'
+    environment:
+      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=wordpress
+      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB
+    volumes:
+      - 'mariadb-data:/var/lib/mysql'
+    restart: unless-stopped
+volumes:
+  wordpress-data:
+  mariadb-data:
+";
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(compose_yaml);
 
         /* Paso 1: Crear el servicio */
