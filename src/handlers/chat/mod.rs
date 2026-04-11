@@ -1,10 +1,16 @@
 /* [P-1 Chatbot v2] Módulo de handlers de chat: WebSocket + REST.
  * Refactorizado de un solo archivo (~670 líneas) a módulo por dominio.
+ * rest.rs subdividido en rest_messages, rest_notes, rest_upload.
  * Interfaz pública: ws_routes() + rest_routes() sin cambios. */
 
 mod rest;
+mod file_ai;
+pub(crate) mod rest_messages;
+pub(crate) mod rest_notes;
+pub(crate) mod rest_upload;
 mod ws_staff;
 mod ws_visitor;
+mod ws_visitor_helpers;
 
 pub use rest::*;
 
