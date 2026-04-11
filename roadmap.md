@@ -99,7 +99,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 ## Tareas pendientes extraídas de planes activos (104A-26)
 
 ### Chatbot v2 (`plan-chatbot-v2-2026-04-10.md`)
-- P-1: Refactorizar `chat.rs` (660 líneas → modular)
+- ~~P-1: Refactorizar `chat.rs` (660 líneas → modular)~~ (204A-3)
 - P-2: Migración BD para archivos, perfiles, mensajes especiales
 - Fase I (8 tareas): anti-spam, generación pedidos, memoria, sync, archivos, escalación, branding
 - Fase II (3 tareas): clientes registrados, IA intermediaria en pedidos
@@ -123,3 +123,11 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - **WordPress real provisionado**: `blog-demo.nakomi.dev` → `http://wordpress-vpag09kzdkfax34h4ttxukqq.173.249.50.44.sslip.io/wp-admin/install.php`
 - **Nota Traefik VPS2**: El `coolify-proxy` se cae por un bug de Docker Compose con IPv6 Gateway. Si vuelve a caer, usar: `ssh -i coolify_key root@173.249.50.44 "docker run -d --name coolify-proxy --restart unless-stopped --network coolify -p 80:80 -p 443:443 --add-host=host.docker.internal:host-gateway -v /var/run/docker.sock:/var/run/docker.sock:ro -v /data/coolify/proxy/:/traefik -l coolify.managed=true -l coolify.proxy=true traefik:v3.6 [flags]"`
 - **Dominios**: Proveedor = Contabo DNS. API keys disponibles. Plan: `Agente/planes/plan-dominios-2026-04-07.md`
+
+## Tareas pendientes
+
+- El rendimiento sigue siendo horrible, no hiciste nada. https://pagespeed.web.dev/analysis/https-nakomi-studio/00l5vl5znd?form_factor=mobile lee lo que dice
+- Algo pasa en producción, la primera vez que abres la pagina no carga se qeuda en blanco pero despues de recargar si carga, no se exacamente porque.
+- El boton de 3 puntos que aparece por ejemplo en serviciosContenedor, es inconsistente con el que aparece en el cms, esto es una inconsistencia, el boton de 3 puntos de los cms es mejor, y el boton no debe de aparecer en serviciosContenedor, igualmente El boton de Eliminar imagen dentro del cms tiene fondo negro y no se ve, esto es inconsistencia para cosas que basicamente deberían verse iguales!
+- Anteriormente te mencione una inconsistencia entre la pagina de servicio y la pagina de proyecto, sigue habiendo inconsistencia visuales, la pagina de servicio se ve bien pero la de proyecto no esta bien. 
+- Organiza mejor el roadmap, borra todo lo que esta listo. 
