@@ -205,4 +205,82 @@
     .walletDescripcion {
         max-width: 140px;
     }
+
+    .walletSaldoFila {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .retiroForm {
+        padding: var(--spacing-md);
+    }
+}
+
+/* [T1-withdrawal] Fila saldo + botón retiro */
+.walletSaldoFila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+/* Formulario de retiro */
+.retiroForm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: var(--bg-accent);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+}
+
+.retiroCampo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.retiroLabel {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.retiroAcciones {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.retiroError {
+    font-size: var(--text-xs);
+    color: var(--color-error);
+}
+
+/* Badges de estado de retiro */
+.retiroBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-xs);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-full);
+    font-weight: 500;
+}
+
+.retiroPendiente {
+    color: var(--text-tertiary);
+    background: var(--bg-warm);
+}
+
+.retiroAprobado {
+    color: var(--success-color);
+    background: var(--color-success-bg-soft);
+}
+
+.retiroRechazado {
+    color: var(--color-error);
+    background: var(--color-error-bg-soft);
 }

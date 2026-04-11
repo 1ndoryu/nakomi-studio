@@ -1,7 +1,8 @@
 /* [154A-15a] Wallet system: modelos para saldo virtual de usuarios.
  * UserWallet: saldo en cents por usuario (uno a uno).
  * WalletTransaction: cada movimiento de saldo con snapshot del balance.
- * CancellationRequest: solicitud de cancelación con flujo de aprobación. */
+ * CancellationRequest: solicitud de cancelación con flujo de aprobación.
+ * [184A-1] WithdrawalRequest: solicitudes de retiro de fondos del wallet. */
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -48,6 +49,73 @@ pub struct CancellationRequest {
 /* ============================================================
    RESPONSES
    ============================================================ */
+
+/* [184A-1] Withdrawal request: solicitud de retiro de fondos */
+#[derive(Debug, Clone, FromRow)]
+pub struct WithdrawalRequest {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub amount_cents: i32,
+    pub status: String,
+    pub payment_method: Option<String>,
+    pub payment_details: Option<String>,
+    pub admin_notes: Option<String>,
+    pub resolved_by: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub resolved_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WithdrawalRequestResponse {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub amount_cents: i32,
+    pub status: String,
+    pub payment_method: Option<String>,
+    pub payment_details: Option<String>,
+    pub admin_notes: Option<String>,
+    pub resolved_by: Option<Uuid>,
+    pub created_at: String,
+    pub resolved_at: Option<String>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WithdrawalRequestsPage {
+    pub requests: Vec<WithdrawalRequestResponse>,
+    pub total: i64,
+    pub page: i64,
+    pub per_page: i64,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateWithdrawalRequest {
+    pub amount_cents: i32,
+    pub payment_method: Option<String>,
+    pub payment_details: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ResolveWithdrawalRequest {
+    pub approve: bool,
+    pub admin_notes: Option<String>,
+}
+
+impl From<&WithdrawalRequest> for WithdrawalRequestResponse {
+    fn from(w: &WithdrawalRequest) -> Self {
+        Self {
+            id: w.id,
+            user_id: w.user_id,
+            amount_cents: w.amount_cents,
+            status: w.status.clone(),
+            payment_method: w.payment_method.clone(),
+            payment_details: w.payment_details.clone(),
+            admin_notes: w.admin_notes.clone(),
+            resolved_by: w.resolved_by,
+            created_at: w.created_at.to_rfc3339(),
+            resolved_at: w.resolved_at.map(|t| t.to_rfc3339()),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct WalletResponse {

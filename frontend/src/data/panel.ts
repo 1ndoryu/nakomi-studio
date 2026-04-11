@@ -10,7 +10,7 @@ import type {UserRole} from '../api/auth';
 export type SeccionPanel =
     | 'proyectos' | 'pagos' | 'perfil' | 'metodos-pago' | 'mensajes' | 'wallet'
     | 'asignados' | 'disponibles' | 'delegaciones'
-    | 'todos-ordenes' | 'reembolsos' | 'usuarios' | 'hosting' | 'configuracion'
+    | 'todos-ordenes' | 'reembolsos' | 'retiros' | 'usuarios' | 'hosting' | 'configuracion'
     | 'contenido' | 'problemas';
 
 export interface TabConfig {
@@ -118,6 +118,12 @@ const TABS_ADMIN: TabConfig[] = [
         id: 'usuarios',
         label: 'Usuarios',
         descripcion: 'Busca, filtra y gestiona los usuarios registrados: cambia roles, banea o reactiva cuentas.'
+    },
+    /* [T1-withdrawal] Retiros: aprobar/rechazar solicitudes de retiro de saldo */
+    {
+        id: 'retiros',
+        label: 'Retiros',
+        descripcion: 'Gestiona solicitudes de retiro de saldo de empleados y clientes.'
     },
     {
         id: 'hosting',

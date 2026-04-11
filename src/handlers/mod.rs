@@ -167,6 +167,10 @@ impl utoipa::Modify for SecurityAddon {
         wallet::list_transactions,
         wallet::create_cancellation_request,
         wallet::respond_cancellation_request,
+        wallet::create_withdrawal,
+        wallet::list_withdrawals,
+        wallet::admin_list_withdrawals,
+        wallet::admin_resolve_withdrawal,
         configuracion::get_rotation_status,
         configuracion::toggle_rotation,
     ),
@@ -267,6 +271,10 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::CancellationRequestResponse,
         crate::models::CreateCancellationRequest,
         crate::models::RespondCancellationRequest,
+        crate::models::WithdrawalRequestResponse,
+        crate::models::WithdrawalRequestsPage,
+        crate::models::CreateWithdrawalRequest,
+        crate::models::ResolveWithdrawalRequest,
         configuracion::RotacionStatusResponse,
         configuracion::ToggleRotacionRequest,
         orders::ActivityEntry,
@@ -506,6 +514,7 @@ fn api_routes() -> Router<AppState> {
         .merge(problems::routes())
         .merge(wallet::wallet_routes())
         .merge(wallet::cancellation_routes())
+        .merge(wallet::withdrawal_admin_routes())
         .merge(uploads::routes())
         .merge(image_proxy::routes())
         .layer(GovernorLayer {

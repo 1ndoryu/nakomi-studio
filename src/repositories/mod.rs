@@ -36,4 +36,4 @@ pub use review::ReviewRepository;
 pub use team_member::{CreateTeamMemberParams, TeamMemberRepository, UpdateTeamMemberParams};
 pub use user::{UserRepository, UserWithTotal};
 pub use problem::{ProblemRepository, ProblemWithContext};
-pub use wallet::{CancellationRequestRepository, WalletRepository};
+pub use wallet::{CancellationRequestRepository, WalletRepository, WithdrawalRequestRepository};

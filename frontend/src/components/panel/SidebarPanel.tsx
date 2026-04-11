@@ -6,7 +6,7 @@
  */
 import React, {useState, useCallback, useRef, useEffect} from 'react';
 import {useTranslation} from 'react-i18next';
-import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, MoreHorizontal} from 'lucide-react';
+import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, Banknote, MoreHorizontal} from 'lucide-react';
 import {obtenerTabsPorRol, type SeccionPanel} from '../../data/panel';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {useAuthStore} from '../../stores/authStore';
@@ -33,6 +33,7 @@ const ICONOS_SECCION: Record<SeccionPanel, React.ElementType> = {
     'mensajes': MessageSquare,
     'todos-ordenes': ClipboardList,
     'reembolsos': RotateCcw,
+    'retiros': Banknote,
     'usuarios': UserCog,
     'hosting': Server,
     'configuracion': Settings,

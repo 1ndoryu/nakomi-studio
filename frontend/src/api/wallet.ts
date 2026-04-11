@@ -73,6 +73,69 @@ export async function apiListTransactions(
     return data;
 }
 
+/* --- Withdrawal (retiro de saldo) --- */
+
+export interface WithdrawalRequestResponse {
+    id: string;
+    user_id: string;
+    amount_cents: number;
+    status: string;
+    payment_method: string | null;
+    payment_details: string | null;
+    admin_notes: string | null;
+    resolved_by: string | null;
+    created_at: string;
+    resolved_at: string | null;
+}
+
+export interface WithdrawalRequestsPage {
+    items: WithdrawalRequestResponse[];
+    total: number;
+    page: number;
+    per_page: number;
+}
+
+export interface CreateWithdrawalRequest {
+    amount_cents: number;
+    payment_method?: string;
+    payment_details?: string;
+}
+
+export interface ResolveWithdrawalRequest {
+    approve: boolean;
+    admin_notes?: string;
+}
+
+/* POST /api/wallet/withdraw */
+export async function apiCreateWithdrawal(body: CreateWithdrawalRequest): Promise<WithdrawalRequestResponse> {
+    const { data } = await instance.post<WithdrawalRequestResponse>('/api/wallet/withdraw', body);
+    return data;
+}
+
+/* GET /api/wallet/withdrawals */
+export async function apiListWithdrawals(page = 1, perPage = 10): Promise<WithdrawalRequestsPage> {
+    const { data } = await instance.get<WithdrawalRequestsPage>(
+        '/api/wallet/withdrawals',
+        { params: { page, per_page: perPage } }
+    );
+    return data;
+}
+
+/* GET /api/admin/withdrawals */
+export async function apiAdminListWithdrawals(page = 1, perPage = 20): Promise<WithdrawalRequestsPage> {
+    const { data } = await instance.get<WithdrawalRequestsPage>(
+        '/api/admin/withdrawals',
+        { params: { page, per_page: perPage } }
+    );
+    return data;
+}
+
+/* PATCH /api/admin/withdrawals/:id */
+export async function apiResolveWithdrawal(id: string, body: ResolveWithdrawalRequest): Promise<WithdrawalRequestResponse> {
+    const { data } = await instance.patch<WithdrawalRequestResponse>(`/api/admin/withdrawals/${id}`, body);
+    return data;
+}
+
 /* POST /api/orders/:orderId/cancel-request */
 export async function apiCreateCancellationRequest(
     orderId: string,

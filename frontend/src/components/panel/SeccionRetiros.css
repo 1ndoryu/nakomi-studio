@@ -1,0 +1,144 @@
+/* [T1-withdrawal] Estilos de la sección admin de retiros.
+ * Tabla de solicitudes pendientes con acciones aprobar/rechazar. */
+
+.retiroAdminContenedor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.retiroAdminTitulo {
+    font-size: var(--text-lg);
+    font-weight: 400;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.retiroAdminTablaWrapper {
+    overflow-x: auto;
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-md);
+}
+
+.retiroAdminTabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.retiroAdminHead {
+    text-align: left;
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--bg-item-active);
+    background: var(--bg-accent);
+    white-space: nowrap;
+}
+
+.retiroAdminFila:not(:last-child) .retiroAdminCelda {
+    border-bottom: 1px solid var(--bg-item-active);
+}
+
+.retiroAdminCelda {
+    padding: var(--spacing-xs) var(--spacing-md);
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.retiroAdminMonto {
+    font-family: var(--font-mono);
+    font-weight: 500;
+}
+
+.retiroAdminDetalles {
+    white-space: normal;
+    max-width: 240px;
+    color: var(--text-muted);
+}
+
+.retiroAdminFecha {
+    color: var(--text-tertiary);
+}
+
+.retiroAdminAcciones {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    white-space: normal;
+    min-width: 200px;
+}
+
+.retiroAdminNotas {
+    font-size: var(--text-xs);
+}
+
+.retiroAdminBotones {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+/* Paginación */
+.retiroAdminPaginacion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    padding-top: var(--spacing-md);
+}
+
+.retiroAdminPaginaInfo {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+/* Estados vacíos / carga */
+.retiroAdminVacio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+}
+
+.retiroAdminSpinner {
+    animation: retiroSpin 1s linear infinite;
+    color: var(--text-tertiary);
+}
+
+@keyframes retiroSpin {
+    to { transform: rotate(360deg); }
+}
+
+.retiroAdminVacioTexto {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: var(--spacing-xl);
+}
+
+.retiroAdminError {
+    color: var(--color-error);
+    font-size: var(--text-sm);
+    padding: var(--spacing-sm);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .retiroAdminCelda {
+        padding: var(--spacing-xs) 6px;
+        font-size: var(--text-xs);
+    }
+
+    .retiroAdminHead {
+        padding: var(--spacing-xs) 6px;
+    }
+
+    .retiroAdminDetalles {
+        max-width: 120px;
+    }
+
+    .retiroAdminAcciones {
+        min-width: 150px;
+    }
+}

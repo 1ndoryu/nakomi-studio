@@ -21,6 +21,7 @@ import {SeccionConfiguracion} from '../components/panel/SeccionConfiguracion';
 import {SeccionContenido} from '../components/panel/SeccionContenido';
 import {SeccionProblemas} from '../components/panel/SeccionProblemas';
 import {SeccionWallet} from '../components/panel/SeccionWallet';
+import {SeccionRetiros} from '../components/panel/SeccionRetiros';
 /* [064A-34] EmployeesSection y ServicesCatalogSection eliminados del panel. */
 import {SidebarPanel} from '../components/panel/SidebarPanel';
 import {PlaceholderSeccion} from '../components/panel/PlaceholderSeccion';
@@ -134,6 +135,9 @@ export const PanelIsland: React.FC = () => {
             /* [154A-15a] Wallet / Mi Saldo */
             case 'wallet':
                 return <SeccionWallet />;
+            /* [T1-withdrawal] Retiros: gestión admin */
+            case 'retiros':
+                return <SeccionRetiros />;
             default:
                 return <PlaceholderSeccion tab={tabActual} />;
         }

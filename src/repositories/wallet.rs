@@ -293,3 +293,150 @@ impl CancellationRequestRepository {
         Ok(rows)
     }
 }
+
+/* ============================================================
+   WITHDRAWAL REQUESTS
+   [184A-1] Solicitudes de retiro de fondos del wallet.
+   ============================================================ */
+
+use crate::models::WithdrawalRequest;
+
+pub struct WithdrawalRequestRepository;
+
+impl WithdrawalRequestRepository {
+    pub async fn create(
+        pool: &PgPool,
+        user_id: Uuid,
+        amount_cents: i32,
+        payment_method: Option<&str>,
+        payment_details: Option<&str>,
+    ) -> Result<WithdrawalRequest, AppError> {
+        let row = sqlx::query_as!(
+            WithdrawalRequest,
+            r#"
+            INSERT INTO withdrawal_requests (user_id, amount_cents, payment_method, payment_details)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, user_id, amount_cents, status, payment_method, payment_details,
+                      admin_notes, resolved_by, created_at, resolved_at
+            "#,
+            user_id,
+            amount_cents,
+            payment_method,
+            payment_details
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
+    }
+
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<WithdrawalRequest>, AppError> {
+        let row = sqlx::query_as!(
+            WithdrawalRequest,
+            r#"
+            SELECT id, user_id, amount_cents, status, payment_method, payment_details,
+                   admin_notes, resolved_by, created_at, resolved_at
+            FROM withdrawal_requests WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(row)
+    }
+
+    pub async fn has_pending(pool: &PgPool, user_id: Uuid) -> Result<bool, AppError> {
+        let count = sqlx::query_scalar!(
+            "SELECT COUNT(*) FROM withdrawal_requests WHERE user_id = $1 AND status = 'pending'",
+            user_id
+        )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0);
+        Ok(count > 0)
+    }
+
+    pub async fn resolve(
+        pool: &PgPool,
+        id: Uuid,
+        resolved_by: Uuid,
+        approve: bool,
+        admin_notes: Option<&str>,
+    ) -> Result<WithdrawalRequest, AppError> {
+        let status = if approve { "approved" } else { "rejected" };
+        let row = sqlx::query_as!(
+            WithdrawalRequest,
+            r#"
+            UPDATE withdrawal_requests
+            SET status = $1, resolved_by = $2, admin_notes = $3, resolved_at = NOW()
+            WHERE id = $4
+            RETURNING id, user_id, amount_cents, status, payment_method, payment_details,
+                      admin_notes, resolved_by, created_at, resolved_at
+            "#,
+            status,
+            resolved_by,
+            admin_notes,
+            id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
+    }
+
+    pub async fn list_by_user(
+        pool: &PgPool,
+        user_id: Uuid,
+        page: i64,
+        per_page: i64,
+    ) -> Result<(Vec<WithdrawalRequest>, i64), AppError> {
+        let offset = (page - 1) * per_page;
+        let total = sqlx::query_scalar!(
+            "SELECT COUNT(*) FROM withdrawal_requests WHERE user_id = $1",
+            user_id
+        )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0);
+
+        let rows = sqlx::query_as!(
+            WithdrawalRequest,
+            r#"
+            SELECT id, user_id, amount_cents, status, payment_method, payment_details,
+                   admin_notes, resolved_by, created_at, resolved_at
+            FROM withdrawal_requests WHERE user_id = $1
+            ORDER BY created_at DESC LIMIT $2 OFFSET $3
+            "#,
+            user_id, per_page, offset
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok((rows, total))
+    }
+
+    pub async fn list_pending(
+        pool: &PgPool,
+        page: i64,
+        per_page: i64,
+    ) -> Result<(Vec<WithdrawalRequest>, i64), AppError> {
+        let offset = (page - 1) * per_page;
+        let total = sqlx::query_scalar!(
+            "SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending'"
+        )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0);
+
+        let rows = sqlx::query_as!(
+            WithdrawalRequest,
+            r#"
+            SELECT id, user_id, amount_cents, status, payment_method, payment_details,
+                   admin_notes, resolved_by, created_at, resolved_at
+            FROM withdrawal_requests WHERE status = 'pending'
+            ORDER BY created_at ASC LIMIT $1 OFFSET $2
+            "#,
+            per_page, offset
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok((rows, total))
+    }
+}

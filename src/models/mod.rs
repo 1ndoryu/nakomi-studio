@@ -98,6 +98,8 @@ pub use problem::{
 };
 pub use wallet::{
     CancellationRequest, CancellationRequestResponse, CreateCancellationRequest,
-    RespondCancellationRequest, UserWallet, WalletResponse, WalletTransaction,
-    WalletTransactionResponse, WalletTransactionsPage,
+    CreateWithdrawalRequest, ResolveWithdrawalRequest, RespondCancellationRequest,
+    UserWallet, WalletResponse, WalletTransaction, WalletTransactionResponse,
+    WalletTransactionsPage, WithdrawalRequest, WithdrawalRequestResponse,
+    WithdrawalRequestsPage,
 };
