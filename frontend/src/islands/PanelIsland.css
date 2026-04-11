@@ -73,7 +73,8 @@
     }
 
     .panelContenedor {
-        padding: 15vh var(--spacing-md) var(--spacing-xl);
+        /* [204A-16] Sin padding top/lateral excesivo en móvil */
+        padding: 0;
         /* [114A-9] Espacio inferior para el nav fijo móvil */
         padding-bottom: 72px;
     }
@@ -92,6 +93,7 @@
     }
 
     .panelContenido {
-        padding: var(--spacing-lg);
+        /* [204A-16] Sin padding lateral innecesario en móvil */
+        padding: var(--spacing-md) 0;
     }
 }
