@@ -58,19 +58,19 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~:3000/api/admin/configuracion/rotacion:1  Failed to load resource: the server responded with a status of 404 (Not Found)Comprende este error~~ (114A-17: binario viejo sin el endpoint — recompilar con `cargo run`)
 ~~:3000/api/admin/configuracion/rotacion:1  Failed to load resource: the server responded with a status of 404 (Not Found)~~
 
-- Si sale este error significa que los backup no funcionan?
+- ~~Si sale este error significa que los backup no funcionan?~~ (114A-18)
 
-PS C:\Users\Owner\OneDrive\Documentos\glory-rust-template> cd "c:\Users\Owner\OneDrive\Documentos\WP\app\public\wp-content\themes\glorytemplate\.agent\coolify-manager-rs" ; .\target\release\coolify-manager.exe deploy --name studio --update 
-Sitio 'studio' es template Rust — usando deploy-service zero-downtime (build paralelo + swap)...
-[pre] Verificando estado de sitios en Coolify...
-[pre] Creando backup pre-deploy de 'studio'...
-2026-04-11T16:01:42.187855Z  INFO Backup server-side '20260411_120142-pre_deploy_service' para 'studio' (staging: VPS1:/tmp/cm-staging-20260411_120142-pre_deploy_service)
-ERROR: Backup pre-deploy fallo: Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion
-Abortando deploy. Usa --skip-backup para omitir.
-2026-04-11T16:01:47.644036Z ERROR Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion
-Error: Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion
+~~PS C:\Users\Owner\OneDrive\Documentos\glory-rust-template> cd "c:\Users\Owner\OneDrive\Documentos\WP\app\public\wp-content\themes\glorytemplate\.agent\coolify-manager-rs" ; .\target\release\coolify-manager.exe deploy --name studio --update~~
+~~Sitio 'studio' es template Rust — usando deploy-service zero-downtime (build paralelo + swap)...~~
+~~[pre] Verificando estado de sitios en Coolify...~~
+~~[pre] Creando backup pre-deploy de 'studio'...~~
+~~2026-04-11T16:01:42.187855Z  INFO Backup server-side '20260411_120142-pre_deploy_service' para 'studio' (staging: VPS1:/tmp/cm-staging-20260411_120142-pre_deploy_service)~~
+~~ERROR: Backup pre-deploy fallo: Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion~~
+~~Abortando deploy. Usa --skip-backup para omitir.~~
+~~2026-04-11T16:01:47.644036Z ERROR Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion~~
+~~Error: Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion~~
 
-hay que arreglarlo para todos los sitios, los backup son importantes. Tambien hay revisar que haya un limite pre desploy para no llenar la memoria.
+~~hay que arreglarlo para todos los sitios, los backup son importantes.~~ (114A-18: fix en database_manager.rs — fallback de KAMPLES_PG_* a DATABASE_URL) Tambien hay revisar que haya un limite pre deploy para no llenar la memoria.
 - Necesito que leas lo que hay en https://pagespeed.web.dev/analysis/https-nakomi-studio/cp2d4up7on?form_factor=mobile y resuelvas todos los problemas
 - cuando hice cd "c:\Users\Owner\OneDrive\Documentos\WP\app\public\wp-content\themes\glorytemplate\.agent\coolify-manager-rs" ; .\target\release\coolify-manager.exe deploy --name studio --update --skip-backup, los datos del cms no se preservaron, lo que habia el cms, porque o sea habia borrado algunas cosas y volvieron aparecer, por que? se sincroniza el cms local con el cms de prduccion? no digo que haya que ajustarlo necesito saber que es lo que pasa. (Comprobado, volvi a hacer deploy y restauro las cosas que borre, y probablemente modifque)
 
