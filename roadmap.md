@@ -54,7 +54,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~Necesitamos testear que todo lo relacionado con el servicio de hosting funcione, necesitamos test completos para asegurarnos de que todo funcione.~~ (114A-14)
 - ~~Sobre la Rotacion de api, podemos desactivar la rotacion? Y que en configuraciones del panel se pueda activar, y muestre el status, necesito eso.~~ (114A-12)
 - ~~En movil serviciosContenedor el padding debe pasar de lg a md~~ (114A-11)
-- La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.
+- ~~La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.~~ (114A-15)
 
 - Si sale este error significa que los backup no funcionan?
 

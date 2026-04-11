@@ -1,0 +1,81 @@
+/* [114A-15] Estilos para SeccionProyectosRelacionados — extraídos de ProyectoIndividualIsland.css */
+
+.proyectoRelacionados {
+    padding: var(--spacing-xl) 0;
+    background-color: var(--bg-primary);
+}
+
+/* [044A-26] Igualado a .showcaseContenedor para consistencia visual */
+.proyectoRelacionadosContenedor {
+    width: 100%;
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.proyectoRelacionadosGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-lg);
+}
+
+.proyectoRelacionadoCard {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    transition: transform var(--transicion-media);
+}
+
+.proyectoRelacionadoCard:hover {
+    transform: translateY(-4px);
+}
+
+.proyectoRelacionadoImagen {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background-color: var(--bg-accent);
+}
+
+.proyectoRelacionadoImagen img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transicion-media);
+}
+
+.proyectoRelacionadoCard:hover .proyectoRelacionadoImagen img {
+    transform: scale(1.03);
+}
+
+.proyectoRelacionadoInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.proyectoRelacionadoTitulo {
+    font-family: var(--font-primary);
+    font-size: var(--text-lg);
+    font-weight: 500;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.proyectoRelacionadoCliente {
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+@media (max-width: 768px) {
+    .proyectoRelacionadosGrid {
+        grid-template-columns: 1fr;
+    }
+}
