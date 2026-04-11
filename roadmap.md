@@ -87,6 +87,11 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 
 ## Tareas pendientes (usuario)
 
-- los clientes tambien pueden solicitar cancelar el pedido.
-- los retiros de dinero, mejor dicho las ganancias solo deben poder retirarse a los 7 días. 
-- Comisiones, los proyectos atendido por los empleados deben generar 10% de comisión a Nakomi. 
+- ~~los clientes tambien pueden solicitar cancelar el pedido.~~ (204A-13)
+- ~~los retiros de dinero, mejor dicho las ganancias solo deben poder retirarse a los 7 días.~~ (204A-11)
+- ~~Comisiones, los proyectos atendido por los empleados deben generar 10% de comisión a Nakomi.~~ (204A-12)
+- tal vez esta tarea se borro n ose si ya se soluciono, el punto es que a veces la pagina queda en blanco y no carga completa, o carga a la mitad y hay que recargar para que se vea completa. (ACTUALIZACION; EL ERROR ES OTRO SUCEDE LO QUE SIGUIENTE: el body o html se quedan arriba cubriendo la parte arriba con scroll y luego hay otro scroll que al bajar es el div root vacío, he probrado poner     overflow: unset; en el html y se soluciona al parecer, puede que [204A-5] era innecesario)
+- Cuando intento subir imagen a un proyecto sucede
+index-BXPlPWYr.js:119  POST https://nakomi.studio/api/admin/uploads 400 (Bad Request)
+
+con un proyecto no sucedía pero con otro si
