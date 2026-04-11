@@ -1,5 +1,6 @@
 /* [064A-62] Estilos para SeccionConfiguracion (admin).
- * [094A-17] Se eliminó padding de wrappers y del contenido de confirmación redundante. */
+ * [094A-17] Se eliminó padding de wrappers y del contenido de confirmación redundante.
+ * [114A-12] Estilos para bloque de rotación de API keys. */
 
 .configSeccion {
     display: flex;
@@ -19,9 +20,11 @@
 
 .configBloqueTitle {
     font-size: var(--text-lg);
-    
     color: var(--brand-black);
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
 }
 
 .configBloqueDesc {
@@ -61,6 +64,57 @@
     color: var(--color-error-text);
 }
 
+/* [114A-12] Rotación de API keys */
+.configRotacionStatus {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+}
+
+.configRotacionIndicador {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.configRotacionDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.configRotacionDotActivo {
+    background: var(--color-success-text);
+}
+
+.configRotacionDotInactivo {
+    background: var(--color-error-text);
+}
+
+.configRotacionLabel {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--brand-black);
+}
+
+.configRotacionDetalles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm) var(--spacing-lg);
+    font-size: var(--text-xs);
+    color: var(--brand-black);
+    opacity: 0.7;
+}
+
+.configRotacionFallback {
+    color: var(--color-success-text);
+    font-weight: 500;
+}
+
 .configConfirmContenido {
     display: flex;
     flex-direction: column;
@@ -83,5 +137,10 @@
 @media (max-width: 480px) {
     .configAcciones {
         flex-direction: column;
+    }
+
+    .configRotacionDetalles {
+        flex-direction: column;
+        gap: var(--spacing-xs);
     }
 }

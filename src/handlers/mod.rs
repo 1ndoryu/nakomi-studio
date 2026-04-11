@@ -7,6 +7,7 @@ mod assignment;
 mod auth;
 mod blog;
 mod chat;
+mod configuracion;
 mod dashboard;
 mod deliverables;
 mod health;
@@ -166,6 +167,8 @@ impl utoipa::Modify for SecurityAddon {
         wallet::list_transactions,
         wallet::create_cancellation_request,
         wallet::respond_cancellation_request,
+        configuracion::get_rotation_status,
+        configuracion::toggle_rotation,
     ),
     components(schemas(
         health::HealthResponse,
@@ -264,6 +267,8 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::CancellationRequestResponse,
         crate::models::CreateCancellationRequest,
         crate::models::RespondCancellationRequest,
+        configuracion::RotacionStatusResponse,
+        configuracion::ToggleRotacionRequest,
         orders::ActivityEntry,
         profile::AvatarResponse,
         uploads::UploadResponse,
@@ -493,6 +498,7 @@ fn api_routes() -> Router<AppState> {
         .merge(team_members::admin_routes())
         .merge(public_users::public_routes())
         .merge(admin_seed::seed_routes())
+        .merge(configuracion::configuracion_routes())
         .merge(hosting::hosting_routes())
         .merge(problems::routes())
         .merge(wallet::wallet_routes())

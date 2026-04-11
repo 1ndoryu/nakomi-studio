@@ -52,7 +52,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~Borra las tareas completadas del roadmap.~~ (164A-15) 
 - ~~No se porque cuando se abre un modal a veces, lo que esta de fondo desaparece, es mmolesto.~~ (114A-10)
 - Necesitamos testear que todo lo relacionado con el servicio de hosting funcione, necesitamos test completos para asegurarnos de que todo funcione.
-- Sobre la Rotacion de api, podemos desactivar la rotacion? Y que en configuraciones del panel se pueda activar, y muestre el status, necesito eso.
+- ~~Sobre la Rotacion de api, podemos desactivar la rotacion? Y que en configuraciones del panel se pueda activar, y muestre el status, necesito eso.~~ (114A-12)
 - ~~En movil serviciosContenedor el padding debe pasar de lg a md~~ (114A-11)
 - La estructura de la pagina de servicio se ve correcta y bien, pero la de proyectos no, esto es inconsistente si tienen la misma estructura deberían tener los mismos componentes.
 

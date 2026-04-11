@@ -4,7 +4,7 @@
  * (contexto de orden, fase actual, historial). Usa reqwest HTTP client. */
 
 use std::fmt::Write;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use serde_json::Value;
 use sqlx::PgPool;
@@ -32,6 +32,11 @@ fn sanitize_for_prompt(input: &str, max_len: usize) -> String {
 /* [064A-29] Contador global para rotacion round-robin de API keys.
  * Cada llamada a generate_response incrementa y usa mod num_keys. */
 static KEY_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+/* [114A-12] Toggle global de rotación de API keys.
+ * Si está desactivado, siempre se usa la primera key (sin round-robin).
+ * Controlado desde el panel admin via endpoint PATCH /api/admin/configuracion/rotacion. */
+static ROTATION_ENABLED: AtomicBool = AtomicBool::new(true);
 
 /// Configuración del servicio de IA con soporte multi-proveedor.
 /// Groq como primario (rotación de keys), Gemini como fallback.
@@ -122,13 +127,43 @@ impl AiChatConfig {
         !self.api_keys.is_empty() || self.gemini_key.is_some()
     }
 
-    /* [064A-29] Selecciona la siguiente API key en rotacion round-robin */
+    /* [064A-29] Selecciona la siguiente API key en rotacion round-robin.
+     * [114A-12] Si la rotación está desactivada, siempre retorna la primera key. */
     pub(crate) fn next_key(&self) -> Option<&str> {
         if self.api_keys.is_empty() {
             return None;
         }
+        if !ROTATION_ENABLED.load(Ordering::Relaxed) {
+            return Some(&self.api_keys[0]);
+        }
         let idx = KEY_COUNTER.fetch_add(1, Ordering::Relaxed) % self.api_keys.len();
         Some(&self.api_keys[idx])
+    }
+
+    /* [114A-12] Control de rotación desde el panel admin */
+    pub fn set_rotation_enabled(enabled: bool) {
+        ROTATION_ENABLED.store(enabled, Ordering::Relaxed);
+        tracing::info!("Rotación de API keys: {}", if enabled { "activada" } else { "desactivada" });
+    }
+
+    #[must_use]
+    pub fn is_rotation_enabled() -> bool {
+        ROTATION_ENABLED.load(Ordering::Relaxed)
+    }
+
+    /// Retorna el índice actual del contador de rotación (mod total keys)
+    #[must_use]
+    pub fn current_key_index(&self) -> usize {
+        if self.api_keys.is_empty() {
+            return 0;
+        }
+        KEY_COUNTER.load(Ordering::Relaxed) % self.api_keys.len()
+    }
+
+    /// Número total de API keys configuradas
+    #[must_use]
+    pub fn total_keys(&self) -> usize {
+        self.api_keys.len()
     }
 
     /* [084A-36] Cadena de modelos fallback Groq ordenados por inteligencia.

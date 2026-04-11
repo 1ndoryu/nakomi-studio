@@ -1,19 +1,69 @@
 /* [064A-62] Sección admin: configuración y herramientas de desarrollo.
  * Botones para recrear/borrar datos de prueba (seed).
  * Solo visible para admin.
- * [084A-11] Lógica extraída a useSeccionConfiguracion (max 3 useState). */
+ * [084A-11] Lógica extraída a useSeccionConfiguracion (max 3 useState).
+ * [114A-12] Toggle de rotación de API keys con status. */
 
-import { Loader2, AlertCircle, CheckCircle2, Database, Trash2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Database, Trash2, RotateCw, Key } from 'lucide-react';
 import { useSeccionConfiguracion } from '../../hooks/useSeccionConfiguracion';
+import { useRotacionApi } from '../../hooks/useRotacionApi';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import './SeccionConfiguracion.css';
 
 export function SeccionConfiguracion() {
     const { cargando, resultado, errorMsg, confirmando, setConfirmando, ejecutarSeed } = useSeccionConfiguracion();
+    const { status: rotacion, cargando: rotacionCargando, errorMsg: rotacionError, toggle } = useRotacionApi();
 
     return (
         <div className="configSeccion">
+            {/* [114A-12] Bloque de rotación de API keys */}
+            <div className="configBloque">
+                <h2 className="configBloqueTitle">
+                    <Key size={18} />
+                    Rotación de API Keys
+                </h2>
+                <p className="configBloqueDesc">
+                    Controla la rotación automática de claves API para el chatbot.
+                    Cuando está activa, cada mensaje usa una clave diferente (round-robin).
+                    Desactivada, siempre usa la primera clave.
+                </p>
+
+                {rotacion && (
+                    <div className="configRotacionStatus">
+                        <div className="configRotacionIndicador">
+                            <span className={`configRotacionDot ${rotacion.enabled ? 'configRotacionDotActivo' : 'configRotacionDotInactivo'}`} />
+                            <span className="configRotacionLabel">
+                                {rotacion.enabled ? 'Rotación activa' : 'Rotación desactivada'}
+                            </span>
+                        </div>
+                        <div className="configRotacionDetalles">
+                            <span>Keys configuradas: <strong>{rotacion.total_keys}</strong></span>
+                            <span>Key actual: <strong>#{rotacion.current_index + 1}</strong></span>
+                            <span>Modelo: <strong>{rotacion.model}</strong></span>
+                            {rotacion.has_fallback && <span className="configRotacionFallback">Fallback: Gemini</span>}
+                        </div>
+                    </div>
+                )}
+
+                <div className="configAcciones">
+                    <Button
+                        onClick={() => toggle(!rotacion?.enabled)}
+                        disabled={rotacionCargando || !rotacion}
+                    >
+                        {rotacionCargando ? <Loader2 size={16} className="configSpinner" /> : <RotateCw size={16} />}
+                        {rotacion?.enabled ? 'Desactivar Rotación' : 'Activar Rotación'}
+                    </Button>
+                </div>
+
+                {rotacionError && (
+                    <div className="configMensaje configMensajeError">
+                        <AlertCircle size={16} />
+                        <span>{rotacionError}</span>
+                    </div>
+                )}
+            </div>
+
             <div className="configBloque">
                 <h2 className="configBloqueTitle">Datos de Prueba</h2>
                 <p className="configBloqueDesc">
