@@ -1,7 +1,7 @@
 # Plan: Seguridad Integral del Servicio de Hosting
 
 > **Fecha:** 2026-04-11 (actualizado)
-> **Estado:** En progreso — Fases 1.2/2.3/2-3/4.2 completadas
+> **Estado:** Casi completo — 10/11 áreas resueltas. Pendiente: DNS ownership (4.1), Monitoreo (5.x)
 > **Prioridad:** Crítica — varias vulnerabilidades de nivel alto detectadas
 > **Contexto:** Auditoría de seguridad del servicio de hosting WordPress administrado (Coolify + Docker Compose)
 
@@ -11,7 +11,7 @@
 
 | Área                | Riesgo     | Estado                                                           |
 | ------------------- | ---------- | ---------------------------------------------------------------- |
-| Secrets management  | � Medio   | .env en .gitignore ✅ — documentación rotación pendiente         |
+| Secrets management  | ✅ Resuelto | .env en .gitignore ✅, documentación rotación creada (114A-1)    |
 | Backups             | ✅ Resuelto | Sidecar mariadb backup en plan ecommerce (3 daily + 2 weekly) (114A-1) |
 | SFTP credentials    | ✅ Resuelto | Endpoint rotate-credentials + Coolify compose update (114A-1)    |
 | Container isolation | ✅ Resuelto | Network isolation + cap_drop ALL + no-new-privileges (164A-16)  |
