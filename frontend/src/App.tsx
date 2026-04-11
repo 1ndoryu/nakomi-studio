@@ -11,20 +11,24 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {registrarNavigate} from './navegacionSPA';
 import {ScrollToTop} from './components/ui/ScrollToTop';
 
-/* Pages (ex-islands) — carga directa para rutas públicas */
+/* Pages (ex-islands) — carga directa solo para rutas de aterrizaje principales */
 import {BienvenidaIsland} from './islands/BienvenidaIsland';
 import {ServiciosIsland} from './islands/ServiciosIsland';
-import {ServicioIndividualIsland} from './islands/ServicioIndividualIsland';
 import {ProyectosIsland} from './islands/ProyectosIsland';
-import {ProyectoIndividualIsland} from './islands/ProyectoIndividualIsland';
-import {NosotrosIsland} from './islands/NosotrosIsland';
 import {BlogIsland} from './islands/BlogIsland';
-import {BlogSingleIsland} from './islands/BlogSingleIsland';
-import {SolucionesIsland} from './islands/SolucionesIsland';
-import {SolucionPlaceholderIsland} from './islands/SolucionPlaceholderIsland';
-import {SolucionHostingIsland} from './islands/SolucionHostingIsland';
-import {UsuarioPublicoIsland} from './islands/UsuarioPublicoIsland';
 import {NotFoundIsland} from './islands/NotFoundIsland';
+
+/* [204A-2] Lazy: páginas de detalle y rutas secundarias.
+ * Solo cargan cuando el usuario navega a ellas, reduciendo el CSS+JS inicial.
+ * Las listings (Servicios, Proyectos, Blog) siguen eager porque son rutas de aterrizaje frecuentes. */
+const ServicioIndividualIsland = lazy(() => import('./islands/ServicioIndividualIsland').then(m => ({default: m.ServicioIndividualIsland})));
+const ProyectoIndividualIsland = lazy(() => import('./islands/ProyectoIndividualIsland').then(m => ({default: m.ProyectoIndividualIsland})));
+const BlogSingleIsland = lazy(() => import('./islands/BlogSingleIsland').then(m => ({default: m.BlogSingleIsland})));
+const NosotrosIsland = lazy(() => import('./islands/NosotrosIsland').then(m => ({default: m.NosotrosIsland})));
+const SolucionesIsland = lazy(() => import('./islands/SolucionesIsland').then(m => ({default: m.SolucionesIsland})));
+const SolucionPlaceholderIsland = lazy(() => import('./islands/SolucionPlaceholderIsland').then(m => ({default: m.SolucionPlaceholderIsland})));
+const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
+const UsuarioPublicoIsland = lazy(() => import('./islands/UsuarioPublicoIsland').then(m => ({default: m.UsuarioPublicoIsland})));
 
 /* [054A-5] Toast system */
 import {ToastContainer} from './components/ui/ToastContainer';
@@ -102,18 +106,18 @@ function App() {
                 <Routes>
                     <Route path="/" element={<BienvenidaIsland />} />
                     <Route path="/servicios" element={<ServiciosIsland />} />
-                    <Route path="/servicios/:slug" element={<ServicioDetallePage />} />
+                    <Route path="/servicios/:slug" element={<Suspense fallback={null}><ServicioDetallePage /></Suspense>} />
                     <Route path="/proyectos" element={<ProyectosIsland />} />
-                    <Route path="/proyectos/:slug" element={<ProyectoDetallePage />} />
-                    <Route path="/nosotros" element={<NosotrosIsland />} />
+                    <Route path="/proyectos/:slug" element={<Suspense fallback={null}><ProyectoDetallePage /></Suspense>} />
+                    <Route path="/nosotros" element={<Suspense fallback={null}><NosotrosIsland /></Suspense>} />
                     <Route path="/blog" element={<BlogIsland />} />
-                    <Route path="/blog/:slug" element={<BlogDetallePage />} />
-                    <Route path="/soluciones" element={<SolucionesIsland />} />
+                    <Route path="/blog/:slug" element={<Suspense fallback={null}><BlogDetallePage /></Suspense>} />
+                    <Route path="/soluciones" element={<Suspense fallback={null}><SolucionesIsland /></Suspense>} />
                     {/* [064A-32] Hosting tiene página propia, el resto usa placeholder */}
-                    <Route path="/soluciones/hosting" element={<SolucionHostingIsland />} />
-                    <Route path="/soluciones/:slug" element={<SolucionPlaceholderIsland />} />
+                    <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />
+                    <Route path="/soluciones/:slug" element={<Suspense fallback={null}><SolucionPlaceholderIsland /></Suspense>} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
-                    <Route path="/usuario/:username" element={<UsuarioPublicoIsland />} />
+                    <Route path="/usuario/:username" element={<Suspense fallback={null}><UsuarioPublicoIsland /></Suspense>} />
                     <Route path="/panel" element={<Suspense fallback={null}><PanelIsland /></Suspense>} />
                     {/* [044A-28] Página 404 real en vez de redirigir silenciosamente al home */}
                     <Route path="*" element={<NotFoundIsland />} />
