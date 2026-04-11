@@ -23,6 +23,7 @@ import CheckoutModal from './CheckoutModal';
 import {OrderChat} from './OrderChat';
 import {OrderDetailModals} from './OrderDetailModals';
 import {OrderProjectDescription} from './OrderProjectDescription';
+import {OrdenHistorialActividad} from './OrdenHistorialActividad';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
 import {useChatStore} from '../../stores/chatStore';
 import './OrdenDetalle.css';
@@ -324,6 +325,9 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* [154A-15d] Timeline de actividad visible para todas las partes */}
+            <OrdenHistorialActividad orderId={order.id} />
 
             {/* [084A-2] Chat siempre abierto, debajo del historial */}
             {canChat && (

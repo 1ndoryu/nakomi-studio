@@ -69,6 +69,21 @@ pub async fn create_order(
     };
     let _ = state.notification_hub.notify_many(&admins, &base).await;
 
+    /* [154A-15d] Registrar en activity_log */
+    let _ = sqlx::query(
+        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+           VALUES ($1, 'order_created', 'order', $2, $3::jsonb)",
+    )
+    .bind(auth.user_id)
+    .bind(order.id)
+    .bind(serde_json::json!({
+        "service": order.service_title,
+        "plan": order.plan_name,
+        "payment_mode": format!("{:?}", order.payment_mode),
+    }))
+    .execute(&state.pool)
+    .await;
+
     Ok((StatusCode::CREATED, Json(order)))
 }
 
@@ -249,6 +264,17 @@ pub async fn assign_order(
         reference_id: Some(order.id),
     }).await;
 
+    /* [154A-15d] Registrar asignación en activity_log */
+    let _ = sqlx::query(
+        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+           VALUES ($1, 'employee_assigned', 'order', $2, $3::jsonb)",
+    )
+    .bind(auth.user_id)
+    .bind(order_id)
+    .bind(serde_json::json!({"employee_id": employee_id.to_string()}))
+    .execute(&state.pool)
+    .await;
+
     Ok(Json(serde_json::json!({ "status": order.status, "assigned_employee_id": order.assigned_employee_id })))
 }
 
@@ -378,6 +404,17 @@ pub async fn cancel_order_handler(
     };
     let _ = state.notification_hub.notify_many(&recipients, &base).await;
 
+    /* [154A-15d] Registrar cancelación en activity_log */
+    let _ = sqlx::query(
+        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+           VALUES ($1, 'order_cancelled', 'order', $2, $3::jsonb)",
+    )
+    .bind(auth.user_id)
+    .bind(order_id)
+    .bind(serde_json::json!({"reason": reason}))
+    .execute(&state.pool)
+    .await;
+
     Ok(Json(serde_json::json!({ "status": order.status })))
 }
 
@@ -409,9 +446,30 @@ pub async fn approve_phase(
     auth.require_role(&[UserRole::Client, UserRole::Admin])?;
     let phase = OrderService::approve_phase(&state.pool, order_id, phase_number, auth.user_id).await?;
 
+    /* [154A-15d] Registrar aprobación de fase en activity_log */
+    let _ = sqlx::query(
+        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+           VALUES ($1, 'phase_approved', 'order', $2, $3::jsonb)",
+    )
+    .bind(auth.user_id)
+    .bind(order_id)
+    .bind(serde_json::json!({"phase_number": phase_number}))
+    .execute(&state.pool)
+    .await;
+
     /* [044A-38 Fase 3] Si la orden se completó, capturar los pagos retenidos en Stripe */
     if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
         if order.status == OrderStatus::Completed {
+            /* [154A-15d] Registrar orden completada */
+            let _ = sqlx::query(
+                r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+                   VALUES ($1, 'order_completed', 'order', $2, NULL)",
+            )
+            .bind(auth.user_id)
+            .bind(order_id)
+            .execute(&state.pool)
+            .await;
+
             /* [104A-38] Notificar cliente y empleado sobre orden completada */
             let mut recipients = vec![order.client_id];
             if let Some(emp) = order.assigned_employee_id {
@@ -471,6 +529,17 @@ pub async fn request_revision(
     auth.require_role(&[UserRole::Client, UserRole::Admin])?;
     let phase = OrderService::request_revision(&state.pool, order_id, phase_number, auth.user_id).await?;
 
+    /* [154A-15d] Registrar revisión solicitada en activity_log */
+    let _ = sqlx::query(
+        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+           VALUES ($1, 'revision_requested', 'order', $2, $3::jsonb)",
+    )
+    .bind(auth.user_id)
+    .bind(order_id)
+    .bind(serde_json::json!({"phase_number": phase_number}))
+    .execute(&state.pool)
+    .await;
+
     /* [104A-38] Notificar al empleado asignado sobre la revisión solicitada */
     if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
         if let Some(emp) = order.assigned_employee_id {
@@ -509,6 +578,7 @@ pub fn routes() -> Router<AppState> {
         .route("/orders/:order_id/phases/:phase_number/approve", put(approve_phase))
         .route("/orders/:order_id/phases/:phase_number/revision", put(request_revision))
         .route("/orders/:order_id/ai-intermediary", put(toggle_ai_intermediary))
+        .route("/orders/:order_id/activity", get(get_order_activity))
         .route("/auth/switch-role", post(switch_role))
 }
 
@@ -571,4 +641,82 @@ pub async fn toggle_ai_intermediary(
         ai_intermediary_enabled: order.ai_intermediary_enabled.unwrap_or(false),
         ai_summary: order.ai_summary,
     }))
+}
+
+/* ============================================================
+   [154A-15d] GET /api/orders/:order_id/activity — timeline de actividad
+   ============================================================ */
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct ActivityEntry {
+    pub id: uuid::Uuid,
+    pub user_id: Option<uuid::Uuid>,
+    pub action: String,
+    pub details: Option<serde_json::Value>,
+    pub created_at: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/orders/{order_id}/activity",
+    params(("order_id" = Uuid, Path, description = "ID de la orden")),
+    responses(
+        (status = 200, description = "Timeline de actividad", body = Vec<ActivityEntry>),
+        (status = 401, description = "No autorizado"),
+        (status = 403, description = "Sin permisos"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "orders"
+)]
+pub async fn get_order_activity(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(order_id): Path<Uuid>,
+) -> Result<Json<Vec<ActivityEntry>>, AppError> {
+    /* Verificar que el usuario tiene acceso a la orden */
+    let order = OrderRepository::find_order_by_id(&state.pool, order_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
+
+    let is_admin = auth.role == UserRole::Admin;
+    let is_client = order.client_id == auth.user_id;
+    let is_employee = order.assigned_employee_id == Some(auth.user_id);
+
+    if !is_admin && !is_client && !is_employee {
+        return Err(AppError::Forbidden("Sin acceso a esta orden".into()));
+    }
+
+    let rows = sqlx::query_as!(
+        ActivityRow,
+        r#"SELECT id, user_id, action, details, created_at
+           FROM activity_log
+           WHERE entity_type = 'order' AND entity_id = $1
+           ORDER BY created_at ASC"#,
+        order_id,
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Error consultando activity_log: {e}")))?;
+
+    let entries: Vec<ActivityEntry> = rows
+        .into_iter()
+        .map(|r| ActivityEntry {
+            id: r.id,
+            user_id: r.user_id,
+            action: r.action,
+            details: r.details,
+            created_at: r.created_at.to_rfc3339(),
+        })
+        .collect();
+
+    Ok(Json(entries))
+}
+
+#[derive(sqlx::FromRow)]
+struct ActivityRow {
+    id: uuid::Uuid,
+    user_id: Option<uuid::Uuid>,
+    action: String,
+    details: Option<serde_json::Value>,
+    created_at: chrono::DateTime<chrono::Utc>,
 }

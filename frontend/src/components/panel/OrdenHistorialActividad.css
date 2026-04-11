@@ -1,0 +1,99 @@
+/* [154A-15d] Estilos de timeline de actividad de orden.
+ * Diseño vertical con línea conectora, iconos coloreados y texto. */
+
+.actividadCard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+    background: var(--brand-white);
+}
+
+.actividadTitulo {
+    font-family: var(--font-primary);
+    font-size: var(--text-lg);
+    font-weight: 500;
+    color: var(--brand-black);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.actividadCargando {
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    padding: var(--spacing-md);
+}
+
+.actividadTimeline {
+    display: flex;
+    flex-direction: column;
+}
+
+.actividadItem {
+    display: flex;
+    gap: var(--spacing-md);
+    min-height: 48px;
+}
+
+.actividadLinea {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 32px;
+}
+
+.actividadIcono {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--brand-white);
+    flex-shrink: 0;
+}
+
+.actividadConector {
+    width: 2px;
+    flex: 1;
+    min-height: 16px;
+    background: var(--bg-item-active);
+}
+
+.actividadContenido {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: var(--spacing-md);
+}
+
+.actividadLabel {
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--brand-black);
+}
+
+.actividadDetalle {
+    font-family: var(--font-primary);
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+
+.actividadFecha {
+    font-family: var(--font-primary);
+    font-size: var(--text-2xs);
+    color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+    .actividadCard {
+        padding: var(--spacing-md);
+    }
+}

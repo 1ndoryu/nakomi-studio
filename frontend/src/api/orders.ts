@@ -258,3 +258,17 @@ export function formatPrice(cents: number, currency = 'USD'): string {
         maximumFractionDigits: 2,
     }).format(cents / 100);
 }
+
+/* [154A-15d] Timeline de actividad de una orden */
+export interface ActivityEntry {
+    id: string;
+    user_id: string | null;
+    action: string;
+    details: Record<string, unknown> | null;
+    created_at: string;
+}
+
+export async function apiGetOrderActivity(orderId: string): Promise<ActivityEntry[]> {
+    const {data} = await instance.get<ActivityEntry[]>(`/api/orders/${orderId}/activity`);
+    return data;
+}

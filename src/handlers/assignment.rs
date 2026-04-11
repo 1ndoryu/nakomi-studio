@@ -6,6 +6,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
+use sqlx;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -55,6 +56,17 @@ pub async fn take_order(
         reference_type: Some("order".to_string()),
         reference_id: Some(order.id),
     }).await;
+
+    /* [154A-15d] Registrar en activity_log que empleado tomó la orden */
+    let _ = sqlx::query(
+        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
+           VALUES ($1, 'order_assigned', 'order', $2, $3::jsonb)",
+    )
+    .bind(auth.user_id)
+    .bind(order_id)
+    .bind(serde_json::json!({"source": "employee_take"}))
+    .execute(&state.pool)
+    .await;
 
     Ok(Json(order))
 }
