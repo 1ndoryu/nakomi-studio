@@ -41,12 +41,14 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - Dominios: verificación DNS implementada (154A-16). Falta: compra de dominios (requiere registrar API), gestión registros DNS via Contabo API, auto-SSL.
 - Hosting/Contabo: el error "Contabo rechazó autenticación" ocurre en la tab "Servidores" (solo admin) porque las variables CONTABO_* no están configuradas en el servidor (.env). Poner las credenciales reales de Contabo en las env vars del servicio Coolify resuelve la tab de servidores. Las suscripciones de hosting son independientes de Contabo (vienen de BD) — si no aparece ninguna, es porque ningún cliente ha comprado hosting aún (los datos seed de prueba se crean con `/api/admin/seed`).
 - Hosting/Recursos y SSH seguro: Plan creado en `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md`. Pendiente de implementación (4 fases). Decisiones pendientes: shell vs SFTP-only, quota disco, límites por plan.
-- Lo he dicho varias veces, chatBell__badge el fucking numero no se actualiza ni desaparece al abrir la lista de mensajes, o tan siquiera abriendo los mensajes directamente.
-- Otra vez lo digo, las tab del panel no perduran a recargar, siempre regresan a la primera.
 - Historial del proyecto no debería llamarse asi sino fases de proyecto.
 - En actividad de proyecto no usos iconos, usa faseTimelineDot
-- en chatListaSesiones chatListaOculta, aparece chat general, esto es un problema porque por cada usuario se va a crear un chat general, esto tiene que actualizarse cuando la ia consiga el nombre del usuario, y en la lista tiene que verse la foto de perfil de con quien se habla.
+- en chatListaSesiones chatListaOculta, aparece chat general, esto es un problema porque por cada usuario se va a crear un chat general, esto tiene que actualizarse cuando la ia consiga el nombre del usuario pero inicialmente tiene que diferenciarse con algun numero o algo porque si todos los nombres son iguales es comlpicado, y en la lista tiene que verse la foto de perfil de con quien se habla.
 - El color del badge numerico de las notificaciones, de los mensajes y el color del badge en las tarjetas de los pedidos son 3 colores diferentes, obviamente esto es una inconsistencia desenntralizada, dejalo de color negro.
+- Ejecuta el plan # Plan: SSH/SFTP Seguro por Despliegue de Hosting.
+- walletHistorialTitulo no necesita estar en negrita.
+- .metodosPagoSubtitulo sin padding top ni borde ni tampoco los numeros en las ordenes "pagosOrdenesCelda pagosOrdenesNumero"
+
 
 
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding

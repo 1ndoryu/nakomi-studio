@@ -171,5 +171,5 @@ Decisión: ¿renombrar `sftp_*` a `ssh_*`?
 ## Decisiones pendientes (requieren input del usuario)
 1. ¿Shell completo o solo SFTP? (recomendación: solo SFTP inicialmente). Ambas cosas, pero enfocarse en la seguridad desde el inicio.
 2. ¿Quota de disco por hosting? (depende de infraestructura VPS) Si.
-3. ¿Límites de recursos diferenciados por plan de hosting? (ej: básico=0.5 CPU, pro=1 CPU) Si, y tiene que ser modificable por el admi
-4. ¿wp-cli accesible desde SSH? (requiere shell + instalación dentro del chroot)
+3. ¿Límites de recursos diferenciados por plan de hosting? (ej: básico=0.5 CPU, pro=1 CPU) Si, y tiene que ser modificable por el admin y adaptarse automaticamente si se cambian los planes.
+4. ¿wp-cli accesible desde SSH? (requiere shell + instalación dentro del chroot) Si. 
