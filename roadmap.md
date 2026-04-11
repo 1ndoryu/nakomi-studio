@@ -67,7 +67,7 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 - Testing e2e: 8 smoke tests + tests unitarios (`plan-testing-chatbot-e2e-2026-04-10.md`)
 
 ### Seed system (`plan-glory-rs-seed-system-2026-04-07.md`)
-- Fase 5: Migrar órdenes, chat, reviews, activity log, notifications de Rust a TOML
+- ~~Fase 5: Migrar órdenes, chat, reviews, activity log, notifications de Rust a TOML~~ (214A-3: datos suplementarios permanecen en seed.rs — ver justificación en completados)
 
 ### SEO (`plan-seo-completo-2026-04-04.md`)
 - ~~Fase 2: width/height explícitos en imágenes~~ (204A-4). Pendiente: conversión WebP server-side (el proxy /api/img/ ya convierte on-the-fly)
