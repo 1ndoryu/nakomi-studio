@@ -1,7 +1,7 @@
 # Plan: Seguridad Integral del Servicio de Hosting
 
-> **Fecha:** 2026-04-16
-> **Estado:** Activo
+> **Fecha:** 2026-04-17 (actualizado)
+> **Estado:** En progreso — Fases 2-3 completadas (164A-16)
 > **Prioridad:** Crítica — varias vulnerabilidades de nivel alto detectadas
 > **Contexto:** Auditoría de seguridad del servicio de hosting WordPress administrado (Coolify + Docker Compose)
 
@@ -9,18 +9,19 @@
 
 ## Resumen de hallazgos
 
-| Área                | Riesgo     | Estado actual                                          |
-| ------------------- | ---------- | ------------------------------------------------------ |
-| Secrets management  | 🔴 Crítico | Tokens en .env plaintext, sin rotación                 |
-| Backups             | 🔴 Crítico | No existen backups automáticos; delete borra volúmenes |
-| SFTP credentials    | 🟡 Medio   | Generación fuerte, sin rotación, solo password auth    |
-| Container isolation | 🟡 Medio   | Bridge default, sin network policies                   |
-| Resource limits     | 🟡 Medio   | CPU/mem definidos, sin swap/IO limits                  |
-| Port collisions     | 🟡 Medio   | Random 10k-65k, sin verificación de unicidad           |
-| WordPress hardening | 🟡 Medio   | No WAF, imagen `latest` sin pinear                     |
-| DB isolation        | 🟡 Medio   | Red privada, pero sin cifrado ni policies              |
-| DNS/Domain          | 🟡 Medio   | Sin validación de ownership de dominios custom         |
-| API authorization   | 🟢 Bajo    | Role-based checks correctos, ownership validada        |
+| Área                | Riesgo     | Estado                                                           |
+| ------------------- | ---------- | ---------------------------------------------------------------- |
+| Secrets management  | 🔴 Crítico | .env en .gitignore ✅ — rotación pendiente                       |
+| Backups             | 🔴 Crítico | Solo plan ecommerce (3 daily + 2 weekly) — pendiente implementar |
+| SFTP credentials    | 🟡 Medio   | Generación fuerte, sin rotación — PENDIENTE                      |
+| Container isolation | ✅ Resuelto | Network isolation + cap_drop ALL + no-new-privileges (164A-16)  |
+| Resource limits     | ✅ Resuelto | CPU/mem/pids_limit/reservations (164A-16)                        |
+| Port collisions     | ✅ Resuelto | UNIQUE constraint + retry loop 10000-49151 (164A-16)            |
+| WordPress hardening | ✅ Resuelto | Imágenes pineadas, DISALLOW_FILE_EDIT (164A-16)                 |
+| DB isolation        | ✅ Resuelto | MariaDB en backend_net internal only (164A-16)                   |
+| DNS/Domain          | 🟡 Medio   | Sin validación de ownership de dominios custom — PENDIENTE       |
+| API authorization   | 🟢 Bajo    | Role-based checks + Referrer-Policy/Permissions-Policy (164A-16)|
+| Security headers    | ✅ Resuelto | HSTS + nosniff + DENY + referrer-policy + permissions (164A-16) |
 
 ---
 

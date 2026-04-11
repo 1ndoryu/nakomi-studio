@@ -876,7 +876,10 @@ pub async fn provision_subscription(
 
     let service_name = CoolifyService::service_name_for(&id);
 
-    let result = match CoolifyService::provision_hosting(&state.http_client, config, &service_name).await {
+    /* [164A-16] Generar puerto SFTP único con verificación en BD */
+    let sftp_port = HostingRepository::find_available_sftp_port(&state.pool).await?;
+
+    let result = match CoolifyService::provision_hosting(&state.http_client, config, &service_name, sftp_port).await {
         Ok(r) => r,
         Err(e) => {
             /* Revertir a pending si Coolify falla —  admin puede reintentar */

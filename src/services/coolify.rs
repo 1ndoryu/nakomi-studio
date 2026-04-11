@@ -98,73 +98,27 @@ pub struct CoolifyProvisionResult {
 pub struct CoolifyService;
 
 /* [164A-6] Genera el compose YAML para un hosting WordPress + MariaDB + SSH/SFTP.
- * Extraído a función separada para mantener provision_hosting dentro del límite clippy. */
+ * [164A-16] Hardening: imágenes pineadas, network isolation, cap_drop ALL,
+ * no-new-privileges, pids_limit, WP file editing deshabilitado. */
 fn build_hosting_compose(sftp_user: &str, sftp_password: &str, sftp_port: i32) -> String {
-    format!("services:
-  wordpress:
-    image: 'wordpress:latest'
-    environment:
-      - SERVICE_FQDN_WORDPRESS=
-      - WORDPRESS_DB_HOST=mariadb
-      - WORDPRESS_DB_USER=wordpress
-      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB
-      - WORDPRESS_DB_NAME=wordpress
-    volumes:
-      - 'wordpress-data:/var/www/html'
-    depends_on:
-      - mariadb
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-  mariadb:
-    image: 'mariadb:10.11'
-    environment:
-      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT
-      - MYSQL_DATABASE=wordpress
-      - MYSQL_USER=wordpress
-      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB
-    volumes:
-      - 'mariadb-data:/var/lib/mysql'
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-  ssh:
-    image: 'linuxserver/openssh-server:latest'
-    environment:
-      - PUID=33
-      - PGID=33
-      - TZ=UTC
-      - USER_NAME={sftp_user}
-      - USER_PASSWORD={sftp_password}
-      - PASSWORD_ACCESS=true
-      - SUDO_ACCESS=false
-      - LOG_STDOUT=true
-    volumes:
-      - 'wordpress-data:/home/{sftp_user}/html'
-    ports:
-      - '{sftp_port}:2222'
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-volumes:
-  wordpress-data:
-  mariadb-data:
-")
+    let wp_db = build_compose_wp_db();
+    let ssh = build_compose_ssh(sftp_user, sftp_password, sftp_port);
+    format!("services:\n{wp_db}{ssh}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n")
+}
+
+fn build_compose_wp_db() -> String {
+    "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '1.0'\n          memory: 512M\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '0.5'\n          memory: 512M\n        reservations:\n          memory: 128M\n".to_string()
+}
+
+fn build_compose_ssh(sftp_user: &str, sftp_password: &str, sftp_port: i32) -> String {
+    format!("  ssh:\n    image: 'lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190'\n    environment:\n      - PUID=33\n      - PGID=33\n      - TZ=UTC\n      - USER_NAME={sftp_user}\n      - USER_PASSWORD={sftp_password}\n      - PASSWORD_ACCESS=true\n      - SUDO_ACCESS=false\n      - LOG_STDOUT=true\n    volumes:\n      - 'wordpress-data:/home/{sftp_user}/html'\n    ports:\n      - '{sftp_port}:2222'\n    restart: unless-stopped\n    networks:\n      - ssh_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 100\n    deploy:\n      resources:\n        limits:\n          cpus: '0.5'\n          memory: 256M\n        reservations:\n          memory: 64M\n")
 }
 
 impl CoolifyService {
     /// Provision completo: crea servicio `WordPress` en Coolify y lo arranca.
     /// Usa `docker_compose_raw` con `WordPress` + `MariaDB` + SSH/SFTP.
     /// El nombre de servicio garantiza idempotencia (Coolify rechaza duplicados).
+    /// `sftp_port` debe generarse externamente con `HostingRepository::find_available_sftp_port`.
     ///
     /// # Errors
     /// Retorna `AppError` si la API falla o el JSON no parsea.
@@ -172,6 +126,7 @@ impl CoolifyService {
         http_client: &Client,
         config: &CoolifyConfig,
         service_name: &str,
+        sftp_port: i32,
     ) -> Result<CoolifyProvisionResult, AppError> {
         /* Generar credenciales SSH/SFTP únicas para este hosting */
         let sftp_user: String = rand::thread_rng()
@@ -186,9 +141,6 @@ impl CoolifyService {
             .take(20)
             .map(char::from)
             .collect();
-        /* Puerto único en rango 10000-65000 para el contenedor SSH de este hosting.
-         * Así cada hosting tiene su propio puerto y no colisionan en el mismo VPS. */
-        let sftp_port: i32 = rand::thread_rng().gen_range(10000_i32..65000_i32);
 
         let compose_yaml = build_hosting_compose(&sftp_user, &sftp_password, sftp_port);
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose_yaml);

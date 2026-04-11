@@ -279,6 +279,32 @@ impl utoipa::Modify for SecurityAddon {
 #[allow(clippy::needless_for_each)]
 pub struct ApiDoc;
 
+/* [164A-16] Security headers OWASP extraídos para mantener create_router dentro del límite clippy */
+type SecurityHeaderLayer = SetResponseHeaderLayer<HeaderValue>;
+fn security_headers() -> (SecurityHeaderLayer, SecurityHeaderLayer, SecurityHeaderLayer, SecurityHeaderLayer, SecurityHeaderLayer) {
+    let hsts = SetResponseHeaderLayer::if_not_present(
+        HeaderName::from_static("strict-transport-security"),
+        HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    let nosniff = SetResponseHeaderLayer::if_not_present(
+        HeaderName::from_static("x-content-type-options"),
+        HeaderValue::from_static("nosniff"),
+    );
+    let frame_deny = SetResponseHeaderLayer::if_not_present(
+        HeaderName::from_static("x-frame-options"),
+        HeaderValue::from_static("DENY"),
+    );
+    let referrer = SetResponseHeaderLayer::if_not_present(
+        HeaderName::from_static("referrer-policy"),
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    let permissions = SetResponseHeaderLayer::if_not_present(
+        HeaderName::from_static("permissions-policy"),
+        HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
+    );
+    (hsts, nosniff, frame_deny, referrer, permissions)
+}
+
 /// Crea el router principal con CORS, tracing, Swagger UI y todas las rutas
 pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Router {
     let chat_hub = crate::services::ChatHub::new(pool.clone());
@@ -359,19 +385,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
             .allow_credentials(true)
     };
 
-    /* [064A-73] Security headers OWASP */
-    let hsts = SetResponseHeaderLayer::if_not_present(
-        HeaderName::from_static("strict-transport-security"),
-        HeaderValue::from_static("max-age=31536000; includeSubDomains"),
-    );
-    let nosniff = SetResponseHeaderLayer::if_not_present(
-        HeaderName::from_static("x-content-type-options"),
-        HeaderValue::from_static("nosniff"),
-    );
-    let frame_deny = SetResponseHeaderLayer::if_not_present(
-        HeaderName::from_static("x-frame-options"),
-        HeaderValue::from_static("DENY"),
-    );
+    let (hsts, nosniff, frame_deny, referrer, permissions) = security_headers();
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
@@ -397,6 +411,8 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         .layer(hsts)
         .layer(nosniff)
         .layer(frame_deny)
+        .layer(referrer)
+        .layer(permissions)
         .with_state(state)
 }
 

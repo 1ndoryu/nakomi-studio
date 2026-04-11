@@ -1,6 +1,7 @@
 /* [054A-2] Repositorio de hosting: CRUD para suscripciones y eventos.
  * Queries verificadas con sqlx offline. */
 
+use rand::Rng;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -266,5 +267,26 @@ impl HostingRepository {
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    /* [164A-16] Genera un puerto SFTP único en rango 10000-49151 (evita efímeros 49152-65535).
+     * Verifica unicidad en BD antes de retornar. Reintenta hasta 10 veces.
+     * Requiere UNIQUE constraint en sftp_port (migration 20260417000000). */
+    pub async fn find_available_sftp_port(pool: &PgPool) -> Result<i32, AppError> {
+        for _ in 0..10 {
+            let port: i32 = rand::thread_rng().gen_range(10000..49152);
+            let taken = sqlx::query_scalar!(
+                "SELECT EXISTS(SELECT 1 FROM hosting_subscriptions WHERE sftp_port = $1) AS \"exists!\"",
+                port
+            )
+            .fetch_one(pool)
+            .await?;
+            if !taken {
+                return Ok(port);
+            }
+        }
+        Err(AppError::Internal(
+            "No se pudo encontrar un puerto SFTP disponible tras 10 intentos".into(),
+        ))
     }
 }

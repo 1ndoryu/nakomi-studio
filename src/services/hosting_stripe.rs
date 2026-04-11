@@ -220,10 +220,18 @@ impl HostingStripeService {
 
         /* [104A-42] Provisioning real en Coolify — no-fatal: si falla, el pago ya fue aceptado.
          * El admin puede provisionar manualmente desde el panel de Coolify.
-         * service_name usa los 8 primeros chars del UUID para idempotencia. */
+         * service_name usa los 8 primeros chars del UUID para idempotencia.
+         * [164A-16] Puerto SFTP generado con verificación de unicidad en BD. */
         if let Some(config) = coolify_config {
             let service_name = CoolifyService::service_name_for(&hosting_id);
-            match CoolifyService::provision_hosting(http_client, config, &service_name).await {
+            let sftp_port = match HostingRepository::find_available_sftp_port(pool).await {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::warn!("No se pudo generar puerto SFTP para {hosting_id}: {e}");
+                    return Ok(true);
+                }
+            };
+            match CoolifyService::provision_hosting(http_client, config, &service_name, sftp_port).await {
                 Ok(result) => {
                     tracing::info!(
                         "Hosting {} provisionado en Coolify: uuid={}, domain={}, ip={}",
