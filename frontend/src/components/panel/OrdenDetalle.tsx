@@ -303,7 +303,7 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
             {/* [064A-30] Cuadro de historial: fases con progreso, entregas, revisiones */}
             {phases.length > 0 && (
                 <div className="ordenHistorialCard">
-                    <h3 className="ordenHistorialTitulo">Historial del proyecto</h3>
+                    <h3 className="ordenHistorialTitulo">Fases del proyecto</h3>
                     <div className="fasesTimeline">
                         {phases.map((phase, idx) => (
                             <FaseCard

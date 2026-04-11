@@ -1,66 +1,24 @@
 /* [154A-15d] Timeline de actividad visible de una orden.
  * Muestra eventos del activity_log: creación, asignación, cancelación,
- * aprobación de fases, revisiones, completado, etc. */
+ * aprobación de fases, revisiones, completado, etc.
+ * [164A-5] Simplificado: dots minimalistas tipo faseTimelineDot en vez de iconos coloreados. */
 import React from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {apiGetOrderActivity, type ActivityEntry} from '../../api/orders';
-import {
-    Clock, UserPlus, XCircle, CheckCircle, RotateCcw,
-    FileText, AlertTriangle, ArrowRightLeft, Trophy,
-} from 'lucide-react';
+import {Clock} from 'lucide-react';
 import './OrdenHistorialActividad.css';
 
-const ACTION_CONFIG: Record<string, {label: string; icon: React.ReactNode; color: string}> = {
-    order_created: {
-        label: 'Orden creada',
-        icon: <FileText size={16} />,
-        color: 'var(--brand-primary)',
-    },
-    order_assigned: {
-        label: 'Empleado asignado',
-        icon: <UserPlus size={16} />,
-        color: '#0077b6',
-    },
-    employee_assigned: {
-        label: 'Empleado asignado',
-        icon: <UserPlus size={16} />,
-        color: '#0077b6',
-    },
-    order_cancelled: {
-        label: 'Orden cancelada',
-        icon: <XCircle size={16} />,
-        color: '#d62828',
-    },
-    phase_approved: {
-        label: 'Fase aprobada',
-        icon: <CheckCircle size={16} />,
-        color: '#2d6a4f',
-    },
-    revision_requested: {
-        label: 'Revisión solicitada',
-        icon: <RotateCcw size={16} />,
-        color: '#c59000',
-    },
-    order_completed: {
-        label: 'Orden completada',
-        icon: <Trophy size={16} />,
-        color: '#2d6a4f',
-    },
-    cancellation_requested: {
-        label: 'Cancelación solicitada',
-        icon: <AlertTriangle size={16} />,
-        color: '#d62828',
-    },
-    cancellation_accepted: {
-        label: 'Cancelación aceptada',
-        icon: <XCircle size={16} />,
-        color: '#d62828',
-    },
-    cancellation_rejected: {
-        label: 'Cancelación rechazada',
-        icon: <ArrowRightLeft size={16} />,
-        color: '#0077b6',
-    },
+const ACTION_LABELS: Record<string, string> = {
+    order_created: 'Orden creada',
+    order_assigned: 'Empleado asignado',
+    employee_assigned: 'Empleado asignado',
+    order_cancelled: 'Orden cancelada',
+    phase_approved: 'Fase aprobada',
+    revision_requested: 'Revisión solicitada',
+    order_completed: 'Orden completada',
+    cancellation_requested: 'Cancelación solicitada',
+    cancellation_accepted: 'Cancelación aceptada',
+    cancellation_rejected: 'Cancelación rechazada',
 };
 
 function formatTimestamp(iso: string): string {
@@ -107,27 +65,18 @@ export const OrdenHistorialActividad: React.FC<Props> = ({orderId}) => {
             </h3>
             <div className="actividadTimeline">
                 {entries.map((entry, idx) => {
-                    const config = ACTION_CONFIG[entry.action] ?? {
-                        label: entry.action,
-                        icon: <FileText size={16} />,
-                        color: 'var(--text-muted)',
-                    };
+                    const label = ACTION_LABELS[entry.action] ?? entry.action;
                     const detail = buildDetail(entry);
                     const isLast = idx === entries.length - 1;
 
                     return (
                         <div key={entry.id} className="actividadItem">
                             <div className="actividadLinea">
-                                <div
-                                    className="actividadIcono"
-                                    style={{backgroundColor: config.color}}
-                                >
-                                    {config.icon}
-                                </div>
+                                <div className="actividadDot" />
                                 {!isLast && <div className="actividadConector" />}
                             </div>
                             <div className="actividadContenido">
-                                <span className="actividadLabel">{config.label}</span>
+                                <span className="actividadLabel">{label}</span>
                                 {detail && <span className="actividadDetalle">{detail}</span>}
                                 <span className="actividadFecha">{formatTimestamp(entry.created_at)}</span>
                             </div>
