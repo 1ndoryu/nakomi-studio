@@ -158,11 +158,11 @@ return s.visitor_name || 'Chat general';
 
 | #   | Problema                                                                                                                                     | Ubicación                              | Impacto                                         |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------- |
-| 4   | **Context summary no se reutiliza** — `visitor_profiles.context_summary` se genera al cerrar sesión pero NUNCA se carga en próximas sesiones | `ai_chat.rs` → `build_system_prompt()` | IA no recuerda visitantes recurrentes           |
-| 5   | **"Chat general" naming** — todos los anónimos = "Chat general"                                                                              | `SeccionChat.tsx`, `ChatBell.tsx`      | Staff no puede distinguir sesiones              |
-| 6   | **Upload file solo visitante** — SeccionChat no tiene botón de adjuntar                                                                      | `SeccionChat.tsx`                      | Staff no puede enviar archivos al cliente       |
-| 7   | **Sin timeout de sesión inactiva** — sesión no se cierra automáticamente tras inactividad                                                    | No implementado                        | Sesiones zombie se acumulan                     |
-| 8   | **Report context sin UI** — abrir chat desde "Reportar problema" no muestra banner indicativo                                                | `ChatWidget.tsx`                       | Cliente no sabe que está en contexto de reporte |
+| 4   | ~~**Context summary no se reutiliza**~~ — En realidad SÍ funciona: `append_visitor_context()` carga `context_summary` correctamente | `ai_chat.rs` → `build_system_prompt()` | **YA FUNCIONABA** (114A-13 verificó)           |
+| 5   | ~~**"Chat general" naming**~~ — todos los anónimos = "Chat general"                                                                          | `SeccionChat.tsx`, `ChatBell.tsx`      | **YA RESUELTO** (164A-13)              |
+| 6   | ~~**Upload file solo visitante**~~ — SeccionChat no tenía botón de adjuntar                                                                  | `SeccionChat.tsx`                      | **YA RESUELTO** (114A-13)       |
+| 7   | ~~**Sin timeout de sesión inactiva**~~ — sesión no se cerraba automáticamente tras inactividad                                               | `repositories/chat.rs`, `main.rs`     | **YA RESUELTO** (114A-13)     |
+| 8   | ~~**Report context sin UI**~~ — abrir chat desde "Reportar problema" no mostraba banner indicativo                                           | `ChatWidget.tsx`                       | **YA RESUELTO** (114A-13) |
 
 ### 🟢 Bajos
 

@@ -8,7 +8,7 @@
 
 import React, {useState, useRef, useEffect} from 'react';
 import {useLocation} from 'react-router-dom';
-import {Send, User, Minus, Paperclip, FileText, Palette, Package} from 'lucide-react';
+import {Send, User, Minus, Paperclip, FileText, Palette, Package, AlertTriangle} from 'lucide-react';
 import {useChatWidget} from '../../hooks/useChatWidget';
 import {SENDER_LABELS} from '../../api/chat';
 import {useChatStore} from '../../stores/chatStore';
@@ -103,6 +103,15 @@ export const ChatWidget: React.FC = () => {
                 >
                     <Minus size={18} />
                 </Button>
+
+                {/* [114A-13] Banner de contexto de reporte: indica visualmente que el chat
+                 * fue abierto desde "Reportar problema" en una orden específica. */}
+                {storeContext?.startsWith('problem:') && (
+                    <div className="chatWidgetReportBanner">
+                        <AlertTriangle size={14} />
+                        <span>Reportando un problema con tu pedido</span>
+                    </div>
+                )}
 
                 <ChatWidgetMessages
                     messages={messages}

@@ -5,7 +5,7 @@
 import {useCallback, useEffect, useRef, useState, type KeyboardEvent} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 
-import {apiCloseSession, apiMarkSessionViewed} from '../api/chat';
+import {apiCloseSession, apiMarkSessionViewed, apiUploadChatFile} from '../api/chat';
 import {useChat} from './useChat';
 import {useChatWs} from './useChatWs';
 import {toast} from '../stores/toastStore';
@@ -15,6 +15,7 @@ export function useSeccionChat() {
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [input, setInput] = useState('');
     const [closing, setClosing] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [messageLimit, setMessageLimit] = useState(100);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -125,6 +126,20 @@ export function useSeccionChat() {
     /* Indica si podría haber mensajes más antiguos (si la cantidad actual coincide con el límite) */
     const hasOlderMessages = messages.length >= messageLimit;
 
+    /* [114A-13] Subir archivo adjunto en la sesión activa (staff) */
+    const handleUpload = useCallback(async (file: File) => {
+        if (!activeSessionId || uploading) return;
+        setUploading(true);
+        try {
+            await apiUploadChatFile(activeSessionId, file);
+            queryClient.invalidateQueries({queryKey: ['chat-messages']});
+        } catch {
+            toast.error('Error al subir archivo');
+        } finally {
+            setUploading(false);
+        }
+    }, [activeSessionId, uploading, queryClient]);
+
     return {
         activeSessionId,
         sessions,
@@ -148,5 +163,7 @@ export function useSeccionChat() {
         handleKeyDown,
         handleSend,
         handleCloseSession,
+        handleUpload,
+        uploading,
     };
 }

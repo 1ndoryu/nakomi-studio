@@ -190,6 +190,24 @@ impl ChatRepository {
         .await
     }
 
+    /* [114A-13] Cerrar sesiones inactivas automáticamente.
+     * Una sesión se considera inactiva si updated_at > inactivity_hours horas.
+     * Retorna el número de sesiones cerradas. */
+    pub async fn close_inactive_sessions(
+        pool: &PgPool,
+        inactivity_hours: i32,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query(
+            "UPDATE chat_sessions SET status = 'closed', updated_at = NOW() \
+             WHERE status != 'closed' \
+             AND updated_at < NOW() - make_interval(hours => $1)",
+        )
+        .bind(inactivity_hours)
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
     /* [104A-39] Marcar sesión como vista por staff — actualiza last_viewed_at = NOW().
      * Permite que el badge de ChatBell solo cuente sesiones con mensajes no leídos. */
     pub async fn mark_session_viewed(

@@ -47,7 +47,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 - ~~El panel se ve mu mal en la versión movil, tenemos que hacer que el sidebar en movil y tablet, sean botones inferiores y un boton de hamburgueza por claro, no caben todos, dejalos en un nav inferior movil solo con el icono.~~ (114A-9)
 - Ejecuta # Plan: Seguridad Integral del Servicio de Hosting, no te preocupes por los hosting actuales, no hay (no tocar nada de la vps1, estamos usando vps2 de prueba), el plan basico no debe contener copias de seguridad ni el medio. las copias de seguridad deben 3 maxima diara y 2 maximas semanal, es decir, se mantienen solo las de los 3 ultimos dias, y la de las 2 ultimas semanas. *(Casi completo: 10/11 áreas resueltas. Pendiente: Fase 4.1 DNS ownership, Fase 5 monitoreo — depriorizados)*
 - despues de terminar # Plan: Seguridad Integral del Servicio de Hosting, hacer una segunda auditoría profunda de seguridad a todo el sistmea de hosting. 
-- Resuelve todo lo que dice # Auditoría Completa del Sistema de Chat/Chatbot, 
+- ~~Resuelve todo lo que dice # Auditoría Completa del Sistema de Chat/Chatbot~~ (114A-13)
 - ~~Elimina menuMovilSeparador, es innecesario.~~ (164A-15)
 - ~~Borra las tareas completadas del roadmap.~~ (164A-15) 
 - ~~No se porque cuando se abre un modal a veces, lo que esta de fondo desaparece, es mmolesto.~~ (114A-10)

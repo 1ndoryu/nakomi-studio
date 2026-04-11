@@ -3,8 +3,8 @@
  * Staff: ve todas las sesiones. Cliente: solo sus chats de órdenes.
  * [074A-60] Info visitante solo visible para admin. */
 
-import React, {useState} from 'react';
-import {MessageCircle, Send, Bot, User, ChevronLeft, XCircle, Info} from 'lucide-react';
+import React, {useRef, useState} from 'react';
+import {MessageCircle, Send, Bot, User, ChevronLeft, XCircle, Info, Paperclip} from 'lucide-react';
 import {SENDER_LABELS, SESSION_STATUS_LABELS, type ChatSession} from '../../api/chat';
 import {useSeccionChat} from '../../hooks/useSeccionChat';
 import {useAuthStore} from '../../stores/authStore';
@@ -50,10 +50,13 @@ export const SeccionChat: React.FC = () => {
         handleKeyDown,
         handleSend,
         handleCloseSession,
+        handleUpload,
+        uploading,
         closing,
     } = useSeccionChat();
 
     const [showInfo, setShowInfo] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const activeSession = sessions.find(s => s.id === activeSessionId) ?? null;
     /* [104A-36] Info panel visible para admin y empleados (no solo admin) */
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole);
@@ -195,6 +198,32 @@ export const SeccionChat: React.FC = () => {
                         </div>
 
                         <div className="chatInputArea">
+                            {/* [114A-13] Botón adjuntar archivo (staff) */}
+                            {isStaff && (
+                                <>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        className="chatFileInput"
+                                        onChange={e => {
+                                            const file = e.target.files?.[0];
+                                            if (file) void handleUpload(file);
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                    <Button
+                                        className="chatBtnAdjuntar"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                        type="button"
+                                        variante="texto"
+                                        tamano="pequeno"
+                                        title="Adjuntar archivo"
+                                    >
+                                        <Paperclip size={16} />
+                                    </Button>
+                                </>
+                            )}
                             <Textarea
                                 className="chatInput"
                                 value={input}

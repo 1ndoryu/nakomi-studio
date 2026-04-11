@@ -69,6 +69,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         AssignmentService::auto_assign_loop(bg_pool).await;
     });
 
+    /* [114A-13] Background task: cierra sesiones de chat inactivas (>24h sin actividad).
+     * Ejecuta cada hora. Previene acumulación de sesiones zombie. */
+    let chat_cleanup_pool = pool.clone();
+    tokio::spawn(async move {
+        session_cleanup_loop(chat_cleanup_pool).await;
+    });
+
     let addr = format!("{}:{}", config.host, config.port);
     tracing::info!("Servidor iniciando en {addr}");
     tracing::info!("Swagger UI disponible en http://{addr}/swagger-ui/");
@@ -173,5 +180,23 @@ async fn cleanup_legacy_seed(pool: &sqlx::PgPool) {
 
     if total_deleted > 0 {
         tracing::info!("[cleanup] Legacy seed: {total_deleted} records deleted");
+    }
+}
+
+/* [114A-13] Background loop: cierra sesiones de chat inactivas (>24h sin actividad).
+ * Ejecuta cada hora. Previene acumulación de sesiones zombie en BD y en el panel staff. */
+async fn session_cleanup_loop(pool: sqlx::PgPool) {
+    use glory_backend::repositories::ChatRepository;
+
+    const INACTIVITY_HOURS: i32 = 24;
+    const CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
+
+    loop {
+        tokio::time::sleep(CHECK_INTERVAL).await;
+        match ChatRepository::close_inactive_sessions(&pool, INACTIVITY_HOURS).await {
+            Ok(0) => {}
+            Ok(n) => tracing::info!("[chat-cleanup] {n} sesiones inactivas cerradas (>{INACTIVITY_HOURS}h)"),
+            Err(e) => tracing::error!("[chat-cleanup] Error cerrando sesiones inactivas: {e}"),
+        }
     }
 }
