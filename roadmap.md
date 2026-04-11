@@ -71,7 +71,7 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 
 ### SEO (`plan-seo-completo-2026-04-04.md`)
 - ~~Fase 2: width/height explícitos en imágenes~~ (204A-4). Pendiente: conversión WebP server-side (el proxy /api/img/ ya convierte on-the-fly)
-- Fase 3: Pre-rendering para crawlers
+- ~~Fase 3: Pre-rendering para crawlers~~ (114A-SEO3)
 
 ### Hosting Automation (`plan-hosting-automation-2026-04-10.md`)
 - Fase 4: Dominios y DNS — parcialmente resuelto (154A-16: DNS check). Falta: registrar API, gestión DNS via Contabo, auto-SSL
@@ -94,3 +94,7 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 - ~~Cuando intento subir imagen a un proyecto sucede POST /api/admin/uploads 400 (Bad Request) con un proyecto no sucedía pero con otro si~~ (204A-15)
 - ~~con panelSidebar debería estar abajo en la parte inferior movil, el boton 3 puntos alli debería ser una hamburgueza, a demás, no funciona ese boton, en movil panelUsuario no necesita padding, panelContenido tampoco necesita padding en movil~~ (204A-16)
 - ~~retiroAdminContenedor se ve mal, no tiene la estructura de los otros paneles, presiento.~~ (204A-17)
+
+- URGENTE; LAS IMAGENES FALLAN https://nakomi.studio/api/img/content/cdc038b3-61bf-4c8b-b7b7-efedb2cef5d8.jpg?w=480&q=80&fmt=webp {"error":"not_found","message":"Imagen no encontrada"}
+
+- veo un problema con el prerender que hiciste, los contenidos del cms no pueden prendererizarse asi, tiene que ser dinamico, tuviste eso en cuenta con el prerender? los proyectos, los servicios son modificables desde el cms.

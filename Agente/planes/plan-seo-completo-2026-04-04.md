@@ -32,6 +32,6 @@ SPA pura (React + Vite) sin SSR, sin meta tags, sin robots.txt/sitemap, sin stru
 18. Servir HTML pre-renderizado a crawlers, SPA a usuarios
 
 ## Estado actual
-- [ ] Fase 1 en progreso
-- [ ] Fase 2 pendiente
-- [ ] Fase 3 pendiente
+- [x] Fase 1 completada
+- [x] Fase 2 parcial (WebP server-side pendiente)
+- [x] Fase 3 completada — middleware prerender + script Puppeteer + sitemap dinámico
