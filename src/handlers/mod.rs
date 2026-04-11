@@ -424,30 +424,32 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
 
 /* [044A-9] Monta el frontend React como SPA: archivos estaticos con fallback a index.html.
  * Solo se activa si STATIC_DIR esta configurado (en produccion). En desarrollo, Vite sirve el frontend.
- * [154A-6] Cache-Control: assets con hash de Vite se cachean; index.html se revalida siempre. */
+ * [114A-19] Cache-Control diferenciado: assets con hash → 1 año immutable, index.html → no-cache.
+ * Esto mejora PageSpeed: evita re-descargar 5+ MB de JS/CSS en visitas repetidas. */
 pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Router {
     let static_dir = config.static_dir.clone();
     let router = create_router(pool, config);
 
     if let Some(dir) = static_dir {
         let index_path = format!("{dir}/index.html");
-        let serve = ServeDir::new(&dir).not_found_service(ServeFile::new(&index_path));
+        let assets_dir = format!("{dir}/assets");
 
-        /* [154A-6] Cache headers para assets estáticos del frontend.
-         * Vite genera filenames con content-hash (ej: assets/index-a1b2c3.js).
-         * Cache moderado (1 día) es seguro: si el contenido cambia, el hash cambia.
-         * index.html no se cachea porque el fallback lo sirve en rutas SPA
-         * y necesita siempre apuntar a los assets más recientes. */
-        let cache_layer = SetResponseHeaderLayer::if_not_present(
-            HeaderName::from_static("cache-control"),
-            HeaderValue::from_static("public, max-age=86400"),
-        );
+        /* [114A-19] Assets con content-hash de Vite (ej: index-B5XA6NlK.js): cache 1 año immutable.
+         * El hash cambia cada vez que el contenido cambia, así que es seguro. */
+        let asset_service = tower::ServiceBuilder::new()
+            .layer(SetResponseHeaderLayer::if_not_present(
+                HeaderName::from_static("cache-control"),
+                HeaderValue::from_static("public, max-age=31536000, immutable"),
+            ))
+            .service(ServeDir::new(&assets_dir));
 
-        router.fallback_service(
-            tower::ServiceBuilder::new()
-                .layer(cache_layer)
-                .service(serve),
-        )
+        /* SPA fallback: index.html se revalida siempre para apuntar a los assets más recientes.
+         * Otros archivos sin hash (favicon, fonts) obtienen 1 día de cache. */
+        let spa_serve = ServeDir::new(&dir).not_found_service(ServeFile::new(&index_path));
+
+        router
+            .nest_service("/assets", asset_service)
+            .fallback_service(spa_serve)
     } else {
         router
     }

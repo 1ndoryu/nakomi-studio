@@ -71,7 +71,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 ~~Error: Validacion: Credenciales PostgreSQL no disponibles en el contenedor de aplicacion~~
 
 ~~hay que arreglarlo para todos los sitios, los backup son importantes.~~ (114A-18: fix en database_manager.rs — fallback de KAMPLES_PG_* a DATABASE_URL) Tambien hay revisar que haya un limite pre deploy para no llenar la memoria.
-- Necesito que leas lo que hay en https://pagespeed.web.dev/analysis/https-nakomi-studio/cp2d4up7on?form_factor=mobile y resuelvas todos los problemas
+- ~~Necesito que leas lo que hay en https://pagespeed.web.dev/analysis/https-nakomi-studio/cp2d4up7on?form_factor=mobile y resuelvas todos los problemas~~ (114A-19: fixes aplicados — immutable cache assets, filtrado modulepreload editor/stripe, ~126KB gzip menos en carga inicial. Pendiente: reducir index.css, SSR/streaming para FCP, imágenes en producción)
 - cuando hice cd "c:\Users\Owner\OneDrive\Documentos\WP\app\public\wp-content\themes\glorytemplate\.agent\coolify-manager-rs" ; .\target\release\coolify-manager.exe deploy --name studio --update --skip-backup, los datos del cms no se preservaron, lo que habia el cms, porque o sea habia borrado algunas cosas y volvieron aparecer, por que? se sincroniza el cms local con el cms de prduccion? no digo que haya que ajustarlo necesito saber que es lo que pasa. (Comprobado, volvi a hacer deploy y restauro las cosas que borre, y probablemente modifque)
 
 - la imagen de perifl en el panel no carga a pesar de que en el nav si se ve d422903d-c11d-483b-b6a5-369b2646304f-1775854233668.jpg:1  Failed to load resource: the server responded with a status of 404 ()Comprende este error

@@ -3,10 +3,17 @@ import react from '@vitejs/plugin-react';
 
 /* [074A-14] Bundle splitting + optimizaciones de build para Core Web Vitals.
  * manualChunks separa dependencias pesadas en archivos independientes para
- * mejorar caching (vendor rara vez cambia) y reducir main bundle size. */
+ * mejorar caching (vendor rara vez cambia) y reducir main bundle size.
+ * [114A-19] modulePreload filtrado: editor y stripe son lazy (solo admin panel);
+ * precargarlos en TODAS las páginas desperdicia ~393KB en mobile. */
 export default defineConfig({
   plugins: [react()],
   build: {
+    modulePreload: {
+      resolveDependencies: (_filename, deps) => {
+        return deps.filter(dep => !dep.includes('editor') && !dep.includes('stripe'));
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks: {
