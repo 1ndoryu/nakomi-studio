@@ -59,7 +59,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         /* [104A-15] Forzar la tab correcta evita que el usuario aterrice en la
          * ultima seccion persistida y pierda de vista el flujo que acaba de iniciar.
          * [104A-16] Hosting vuelve al panel de Hosting, no a Proyectos. */
-        sessionStorage.setItem(PANEL_TAB_KEY, isHosting ? 'hosting' : 'proyectos');
+        localStorage.setItem(PANEL_TAB_KEY, isHosting ? 'hosting' : 'proyectos');
         navegar('/panel');
         onClose();
     };
@@ -71,7 +71,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
                 plan: normalizeHostingPlanSlug(plan.id),
                 domain: hostingDomain.trim() || undefined,
             });
-            sessionStorage.setItem(PANEL_TAB_KEY, 'hosting');
+            localStorage.setItem(PANEL_TAB_KEY, 'hosting');
             window.location.href = response.checkout_url;
         } catch (err: unknown) {
             setPaso('error');
@@ -100,7 +100,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
                 const paymentIntent = await apiInitiatePayment(orden.id, {
                     phase_number: paymentMode === 'phased' ? 1 : undefined,
                 });
-                sessionStorage.setItem(PANEL_TAB_KEY, 'proyectos');
+                localStorage.setItem(PANEL_TAB_KEY, 'proyectos');
                 setCheckoutPendiente({
                     clientSecret: paymentIntent.client_secret,
                     orderId: orden.id,

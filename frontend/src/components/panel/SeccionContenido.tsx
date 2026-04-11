@@ -26,21 +26,22 @@ const SUB_TABS: SubTabConfig[] = [
     {id: 'equipo', label: 'Equipo', icono: Users},
 ];
 
-/* [084A-9] Clave de sessionStorage para persistir sub-tab CMS entre recargas */
+/* [084A-9] Clave de localStorage para persistir sub-tab CMS entre recargas.
+ * [154A-12b] Cambiado de sessionStorage a localStorage. */
 const CMS_SUBTAB_KEY = 'panel-cms-subtab';
 const VALID_SUBTABS: SubTab[] = SUB_TABS.map(t => t.id);
 
 export const SeccionContenido: React.FC = () => {
-    /* [084A-9] Restaurar sub-tab desde sessionStorage si es válida */
+    /* [084A-9] Restaurar sub-tab desde localStorage si es válida */
     const [subTab, setSubTab] = useState<SubTab>(() => {
-        const stored = sessionStorage.getItem(CMS_SUBTAB_KEY) as SubTab | null;
+        const stored = localStorage.getItem(CMS_SUBTAB_KEY) as SubTab | null;
         if (stored && VALID_SUBTABS.includes(stored)) return stored;
         return 'servicios';
     });
 
-    /* [084A-9] Persistir sub-tab en sessionStorage */
+    /* [084A-9] Persistir sub-tab en localStorage */
     useEffect(() => {
-        sessionStorage.setItem(CMS_SUBTAB_KEY, subTab);
+        localStorage.setItem(CMS_SUBTAB_KEY, subTab);
     }, [subTab]);
 
     return (

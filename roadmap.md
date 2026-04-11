@@ -39,10 +39,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React de Ap
 > Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
 
 - Dominios: verificación DNS implementada (154A-16). Falta: compra de dominios (requiere registrar API), gestión registros DNS via Contabo API, auto-SSL.
-- No me aparece ningun hosting real, y tambien aparece "Contabo rechazó la autenticación." (tal vez sea error: failed to remove file y veo el backend desactualizado)
-- error: failed to remove file `glory-backend.exe` — Acceso denegado (os error 5), backend no compila localmente
-- 154A-12 no se arreglo, el problema sigue (tal vez sea error: failed to remove file y veo el backend desactualizado)
->
+- No me aparece ningun hosting real, y tambien aparece "Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas." 
+
+
 > **Fase I** — Captación de clientes (front-facing): anti-spam, tool use, facturas, memoria, sync, archivos, escalación, branding
 > **Fase II** — Clientes registrados: flujo autenticado, IA intermediaria en pedidos
 

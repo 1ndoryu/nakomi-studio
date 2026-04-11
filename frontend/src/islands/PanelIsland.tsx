@@ -40,9 +40,10 @@ export const PanelIsland: React.FC = () => {
 
     const tabs = obtenerTabsPorRol(effectiveRole);
 
-    /* [084A-9] Restaurar tab desde sessionStorage si es válida para el rol actual */
+    /* [084A-9] Restaurar tab desde localStorage para persistir entre recargas y cierres de pestaña.
+     * [154A-12b] Cambiado de sessionStorage a localStorage — el usuario reportó que se perdía al recargar. */
     const [seccionActiva, setSeccionActiva] = useState<SeccionPanel>(() => {
-        const stored = sessionStorage.getItem(PANEL_TAB_KEY) as SeccionPanel | null;
+        const stored = localStorage.getItem(PANEL_TAB_KEY) as SeccionPanel | null;
         const tabsRol = obtenerTabsPorRol(effectiveRole);
         if (stored && tabsRol.some(t => t.id === stored)) return stored;
         return seccionInicialPorRol(effectiveRole);
@@ -58,13 +59,14 @@ export const PanelIsland: React.FC = () => {
     /* [044A-38 Fase 1] Cuando cambia el rol efectivo, resetear a la primera tab del nuevo rol */
     useEffect(() => {
         const inicial = seccionInicialPorRol(effectiveRole);
-        sessionStorage.setItem(PANEL_TAB_KEY, inicial);
+        localStorage.setItem(PANEL_TAB_KEY, inicial);
         setSeccionActiva(inicial);
     }, [effectiveRole]);
 
-    /* [084A-9] Persistir tab activa en sessionStorage para sobrevivir recargas */
+    /* [084A-9] Persistir tab activa en localStorage para sobrevivir recargas y cierres.
+     * [154A-12b] Cambiado de sessionStorage a localStorage. */
     useEffect(() => {
-        sessionStorage.setItem(PANEL_TAB_KEY, seccionActiva);
+        localStorage.setItem(PANEL_TAB_KEY, seccionActiva);
     }, [seccionActiva]);
 
     /* [064A-5] Escuchar custom event desde HeaderPanel para cambiar tab */

@@ -165,11 +165,13 @@
     display: block;
 }
 
-/* [154A-13] Badge de chat no leído en la esquina de la imagen del pedido */
+/* [154A-13] Badge de chat no leído en la esquina de la imagen del pedido.
+ * [154A-12 fix] Posición 4px dentro del wrapper (no fuera) porque .ordenCard
+ * tiene overflow:hidden que cortaba el badge con top/right negativos. */
 .ordenCardChatBadge {
     position: absolute;
-    top: -4px;
-    right: -4px;
+    top: 4px;
+    right: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
