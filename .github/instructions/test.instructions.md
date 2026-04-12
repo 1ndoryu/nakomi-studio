@@ -133,6 +133,11 @@ Sin este anuncio, no se inicia ninguna tarea. Esta regla existe para que el agen
   - Excepciones: diagnostico puntual de emergencia donde coolify-manager-rs no cubra el caso (y en ese caso, documentar la carencia para mejorar la herramienta).
   - Esta regla existe porque los comandos directos eluden las protecciones de bind mount, health check y flujo de deploy que coolify-manager-rs implementa.
 
+**20. Prohibido reiniciar VS Code.**
+  - Nunca ejecutar comandos que reinicien, recarguen o cierren VS Code (ej: `workbench.action.reloadWindow`, `Developer: Reload Window`, cerrar y reabrir la ventana).
+  - Si una extension se modifica o reinstala, el usuario decidira cuando reiniciar. El agente no debe forzar ni sugerir reinicio automatico.
+  - Esta regla existe porque reiniciar VS Code interrumpe terminales, agentes en ejecucion y el contexto de la sesion.
+
 ---
 
 ## II. FLUJO DE TRABAJO (ciclo continuo)
