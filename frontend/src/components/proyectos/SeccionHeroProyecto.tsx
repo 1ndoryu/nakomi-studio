@@ -1,47 +1,13 @@
 /**
  * Componente: SeccionHeroProyecto
- * Descripcion: Hero para la página individual de proyecto.
- * Muestra meta (cliente + categorías), título, descripción, tecnologías y enlaces.
- * [114A-15] Extraído de ProyectoIndividualIsland para consistencia con SeccionHeroServicio.
+ * [124A-PROJ1] Rediseño estilo kontrapunkt: hero + portada full-width + case introduction.
+ * Hero: izquierda descripción breve, derecha título H1.
+ * Portada: featured_image a 100% ancho.
+ * Case intro: izquierda Client/Industry/Deliveries/Links, derecha descripción completa.
  */
-import {
-    GitBranch, Globe, ExternalLink, Package,
-    AtSign, Briefcase, PlayCircle, Camera, Share2,
-    PenTool, CircleDot, Mail, FileText, Code, Play,
-    Smartphone, MonitorPlay, Music, BookOpen,
-    ShoppingBag, Palette, Pen, MessageCircle, Hash
-} from 'lucide-react';
 import type {EnlaceProyecto} from '../../types/contenido';
+import OptimizedImage from '../ui/OptimizedImage';
 import './SeccionHeroProyecto.css';
-
-/* [064A-8] Icono según tipo de enlace — ampliado en 154A-10 con IconPickerEnlace */
-const ICONOS_ENLACE: Record<string, typeof GitBranch> = {
-    github: GitBranch,
-    git: GitBranch,
-    web: Globe,
-    npm: Package,
-    demo: ExternalLink,
-    figma: PenTool,
-    dribbble: CircleDot,
-    behance: Palette,
-    twitter: AtSign,
-    linkedin: Briefcase,
-    youtube: PlayCircle,
-    instagram: Camera,
-    facebook: Share2,
-    discord: MessageCircle,
-    slack: Hash,
-    email: Mail,
-    docs: FileText,
-    api: Code,
-    playstore: Play,
-    appstore: Smartphone,
-    video: MonitorPlay,
-    podcast: Music,
-    blog: BookOpen,
-    tienda: ShoppingBag,
-    otro: Pen,
-};
 
 interface SeccionHeroProyectoProps {
     titulo: string;
@@ -50,45 +16,82 @@ interface SeccionHeroProyectoProps {
     categorias?: string;
     tecnologias?: string[];
     enlaces?: EnlaceProyecto[];
+    imagenPortada?: string;
 }
 
-export const SeccionHeroProyecto = ({titulo, descripcion, cliente = '', categorias = '', tecnologias = [], enlaces = []}: SeccionHeroProyectoProps): JSX.Element => {
+export const SeccionHeroProyecto = ({titulo, descripcion, cliente = '', categorias = '', tecnologias = [], enlaces = [], imagenPortada}: SeccionHeroProyectoProps): JSX.Element => {
     return (
-        <section className="proyectoHero">
-            <div className="proyectoHeroContenido">
-                <div className="proyectoHeroMeta">
-                    <span className="proyectoHeroCliente">{cliente}</span>
-                    <span className="proyectoHeroCategorias">{categorias}</span>
+        <>
+            {/* Hero: texto breve izq + título der */}
+            <section className="proyectoHero">
+                <div className="proyectoHeroContenido">
+                    <div className="proyectoHeroIzquierda">
+                        {cliente && <span className="proyectoHeroCliente">{cliente}</span>}
+                    </div>
+                    <div className="proyectoHeroDerecha">
+                        <h1 className="proyectoHeroTitulo">{titulo}</h1>
+                    </div>
                 </div>
-                <h1 className="proyectoHeroTitulo">{titulo}</h1>
-                {descripcion && <p className="proyectoHeroDescripcion">{descripcion}</p>}
+            </section>
 
-                {/* [064A-8] Detalles técnicos: tecnologías y enlaces */}
-                {(tecnologias.length > 0 || enlaces.length > 0) && (
-                    <div className="proyectoHeroDetalles">
+            {/* Portada full-width */}
+            {imagenPortada && (
+                <section className="proyectoPortada">
+                    <OptimizedImage
+                        src={imagenPortada}
+                        alt={titulo}
+                        className="proyectoPortadaImagen"
+                        sizes="100vw"
+                    />
+                </section>
+            )}
+
+            {/* Case introduction: meta izq + descripción der */}
+            <section className="proyectoCaseIntro">
+                <div className="proyectoCaseIntroContenido">
+                    <div className="proyectoCaseIntroMeta">
+                        {cliente && (
+                            <div className="proyectoCaseIntroBloque">
+                                <span className="proyectoCaseIntroLabel">Client</span>
+                                <span className="proyectoCaseIntroValor">{cliente}</span>
+                            </div>
+                        )}
+                        {categorias && (
+                            <div className="proyectoCaseIntroBloque">
+                                <span className="proyectoCaseIntroLabel">Industry</span>
+                                <span className="proyectoCaseIntroValor">{categorias}</span>
+                            </div>
+                        )}
                         {tecnologias.length > 0 && (
-                            <div className="proyectoHeroTecnologias">
-                                {tecnologias.map(tech => (
-                                    <span key={tech} className="proyectoHeroTechTag">{tech}</span>
-                                ))}
+                            <div className="proyectoCaseIntroBloque">
+                                <span className="proyectoCaseIntroLabel">Deliveries</span>
+                                <div className="proyectoCaseIntroLista">
+                                    {tecnologias.map(tech => (
+                                        <span key={tech}>{tech}</span>
+                                    ))}
+                                </div>
                             </div>
                         )}
                         {enlaces.length > 0 && (
-                            <div className="proyectoHeroEnlaces">
-                                {enlaces.map(enlace => {
-                                    const Icono = ICONOS_ENLACE[enlace.tipo] || ExternalLink;
-                                    return (
-                                        <a key={enlace.url} href={enlace.url} target="_blank" rel="noopener noreferrer" className="proyectoHeroEnlace">
-                                            <Icono size={16} />
-                                            <span>{enlace.etiqueta || enlace.tipo}</span>
+                            <div className="proyectoCaseIntroBloque">
+                                <span className="proyectoCaseIntroLabel">Links</span>
+                                <div className="proyectoCaseIntroLista">
+                                    {enlaces.map(enlace => (
+                                        <a key={enlace.url} href={enlace.url} target="_blank" rel="noopener noreferrer" className="proyectoCaseIntroEnlace">
+                                            {enlace.etiqueta || enlace.tipo}
                                         </a>
-                                    );
-                                })}
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
-                )}
-            </div>
-        </section>
+                    {descripcion && (
+                        <div className="proyectoCaseIntroDescripcion">
+                            <p>{descripcion}</p>
+                        </div>
+                    )}
+                </div>
+            </section>
+        </>
     );
 };

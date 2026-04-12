@@ -2,6 +2,7 @@
  * Mismo patrón que admin-blog.ts. Tipos alineados con ProjectResponse del backend. */
 
 import instance from './axios-instance';
+import type {GaleriaImagen} from '../types/contenido';
 
 export interface ProjectLink {
     tipo: string;
@@ -21,7 +22,7 @@ export interface AdminProject {
     client: string | null;
     description: string;
     featured_image: string | null;
-    gallery: string[];
+    gallery: GaleriaImagen[];
     categories: string[];
     technologies: string[];
     links: ProjectLink[];
@@ -41,7 +42,7 @@ export interface CreateProjectBody {
     client?: string;
     description?: string;
     featured_image?: string;
-    gallery?: string[];
+    gallery?: GaleriaImagen[];
     categories?: string[];
     technologies?: string[];
     links?: ProjectLink[];
@@ -59,7 +60,7 @@ export interface UpdateProjectBody {
     client?: string;
     description?: string;
     featured_image?: string;
-    gallery?: string[];
+    gallery?: GaleriaImagen[];
     categories?: string[];
     technologies?: string[];
     links?: ProjectLink[];

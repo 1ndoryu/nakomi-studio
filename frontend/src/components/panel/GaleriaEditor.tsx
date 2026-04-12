@@ -1,17 +1,17 @@
 /* [154A-10] Editor de galería de imágenes del proyecto.
- * Permite subir múltiples imágenes vía /api/admin/uploads y mostrarlas en grid con opción de eliminar.
- * Reutiliza apiUploadImage del módulo de uploads existente.
+ * [124A-PROJ1] Soporta GaleriaImagen con layout full/half (1/1 o 1/2 ancho).
  * sentinel-disable-file html-nativo-en-vez-de-componente: El botón × de eliminar sobre thumbnail
  * y el input[type=file] oculto no aplican a los componentes UI estándar (Button/Input). */
 import React, { useCallback, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Maximize2, Columns2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { apiUploadImage } from '../../api/uploads';
+import type { GaleriaImagen } from '../../types/contenido';
 import './EditorProyecto.css';
 
 interface GaleriaEditorProps {
-    galeria: string[];
-    onChange: (galeria: string[]) => void;
+    galeria: GaleriaImagen[];
+    onChange: (galeria: GaleriaImagen[]) => void;
 }
 
 export const GaleriaEditor: React.FC<GaleriaEditorProps> = ({ galeria, onChange }) => {
@@ -21,12 +21,12 @@ export const GaleriaEditor: React.FC<GaleriaEditorProps> = ({ galeria, onChange 
     const handleUpload = useCallback(async (files: FileList | null) => {
         if (!files || files.length === 0) return;
         setSubiendo(true);
-        const nuevas: string[] = [];
+        const nuevas: GaleriaImagen[] = [];
         for (const file of Array.from(files)) {
             if (!file.type.startsWith('image/')) continue;
             try {
                 const res = await apiUploadImage(file);
-                nuevas.push(res.url);
+                nuevas.push({ url: res.url, layout: 'full' });
             } catch { /* error manejado por toast futuro */ }
         }
         if (nuevas.length > 0) {
@@ -40,23 +40,41 @@ export const GaleriaEditor: React.FC<GaleriaEditorProps> = ({ galeria, onChange 
         onChange(galeria.filter((_, i) => i !== idx));
     }, [galeria, onChange]);
 
+    /* [124A-PROJ1] Alternar layout full ↔ half */
+    const handleToggleLayout = useCallback((idx: number) => {
+        const copia = [...galeria];
+        copia[idx] = { ...copia[idx], layout: copia[idx].layout === 'full' ? 'half' : 'full' };
+        onChange(copia);
+    }, [galeria, onChange]);
+
     return (
         <div className="editorProyectoGaleria">
             <span className="editorProyectoLabel">Galería</span>
 
             {galeria.length > 0 && (
                 <div className="editorProyectoGaleriaGrid">
-                    {galeria.map((url, idx) => (
-                        <div key={`gal-${url}-${idx}`} className="editorProyectoGaleriaItem">
-                            <img src={url} alt={`Galería ${idx + 1}`} loading="lazy" />
-                            <button
-                                type="button"
-                                className="editorProyectoGaleriaEliminar"
-                                onClick={() => handleRemove(idx)}
-                                title="Eliminar imagen"
-                            >
-                                <X size={14} />
-                            </button>
+                    {galeria.map((img, idx) => (
+                        <div key={`gal-${img.url}-${idx}`} className={`editorProyectoGaleriaItem ${img.layout === 'half' ? 'editorProyectoGaleriaItem--half' : ''}`}>
+                            <img src={img.url} alt={`Galería ${idx + 1}`} loading="lazy" />
+                            <div className="editorProyectoGaleriaControles">
+                                <button
+                                    type="button"
+                                    className="editorProyectoGaleriaLayout"
+                                    onClick={() => handleToggleLayout(idx)}
+                                    title={img.layout === 'full' ? 'Cambiar a 1/2 ancho' : 'Cambiar a ancho completo'}
+                                >
+                                    {img.layout === 'full' ? <Maximize2 size={14} /> : <Columns2 size={14} />}
+                                    <span>{img.layout === 'full' ? '1/1' : '1/2'}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="editorProyectoGaleriaEliminar"
+                                    onClick={() => handleRemove(idx)}
+                                    title="Eliminar imagen"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

@@ -52,7 +52,7 @@ pub use payment_method::{
     PaymentMethodResponse, SavePaymentMethodRequest, SetupIntentResponse, UserPaymentMethod,
 };
 pub use project::{
-    CreateProjectRequest, Project, ProjectLink, ProjectResponse, ProjectSkill,
+    CreateProjectRequest, GalleryImage, Project, ProjectLink, ProjectResponse, ProjectSkill,
     ReorderItem, ReorderProjectsRequest, ReorderRequest, UpdateProjectRequest,
 };
 pub use team_member::{

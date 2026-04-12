@@ -6,6 +6,7 @@ import type {
     AdminProject, CreateProjectBody, UpdateProjectBody,
     ProjectLink, ProjectSkill,
 } from '../api/admin-projects';
+import type {GaleriaImagen} from '../types/contenido';
 
 export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolean) {
     const [titulo, setTitulo] = useState('');
@@ -14,7 +15,8 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
     const [descripcion, setDescripcion] = useState('');
     const [contenido, setContenido] = useState('');
     const [imagenUrl, setImagenUrl] = useState('');
-    const [galeria, setGaleria] = useState<string[]>([]);
+    /* [124A-PROJ1] Galería con layout (full/half) en vez de string[] */
+    const [galeria, setGaleria] = useState<GaleriaImagen[]>([]);
     const [categorias, setCategorias] = useState<string[]>([]);
     const [tecnologias, setTecnologias] = useState<string[]>([]);
     const [enlaces, setEnlaces] = useState<ProjectLink[]>([]);

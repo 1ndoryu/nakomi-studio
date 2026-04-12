@@ -1,0 +1,47 @@
+/* [124A-PROJ1] Galería de proyecto — grid alternante full/half.
+ * Grid de 2 columnas: full = span 2 (100%), half = span 1 (50%). */
+
+.proyectoGaleria {
+    padding: 0;
+}
+
+.proyectoGaleriaGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.proyectoGaleriaItem {
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: var(--bg-accent);
+}
+
+.proyectoGaleriaItem--full {
+    grid-column: span 2;
+}
+
+.proyectoGaleriaItem--half {
+    grid-column: span 1;
+}
+
+.proyectoGaleriaImagen {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .proyectoGaleriaGrid {
+        grid-template-columns: 1fr;
+        padding: 0 var(--spacing-md);
+    }
+
+    .proyectoGaleriaItem--full,
+    .proyectoGaleriaItem--half {
+        grid-column: span 1;
+    }
+}

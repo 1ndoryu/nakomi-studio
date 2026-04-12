@@ -82,6 +82,7 @@ function ProyectoDetallePage() {
             descripcion={proyecto?.descripcion}
             cliente={proyecto?.cliente}
             categorias={Array.isArray(proyecto?.categorias) ? proyecto.categorias.join(', ') : proyecto?.categorias}
+            imagen={proyecto?.imagen}
             slug={slug}
         />
     );

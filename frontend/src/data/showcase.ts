@@ -20,7 +20,7 @@ const PROYECTOS_FALLBACK: Proyecto[] = [
             {id: 3, titulo: 'DAW Integrado', descripcion: 'Workstation de audio embebida para previsualizar y mezclar samples.'},
             {id: 4, titulo: 'Red Social', descripcion: 'Colecciones, tableros, "ver más ideas" y perfiles de usuario.'}
         ],
-        galeria: ['/assets/Kamples/1.jpg', '/assets/Kamples/2.jpg', '/assets/Kamples/3.jpg'],
+        galeria: [{url: '/assets/Kamples/1.jpg', layout: 'full'}, {url: '/assets/Kamples/2.jpg', layout: 'half'}, {url: '/assets/Kamples/3.jpg', layout: 'half'}],
         /* [064A-8] Detalles técnicos del proyecto */
         tecnologias: ['React', 'Node.js', 'PostgreSQL', 'Web Audio API', 'Redis'],
         enlaces: [
@@ -41,7 +41,7 @@ const PROYECTOS_FALLBACK: Proyecto[] = [
             {id: 2, titulo: 'Branding', descripcion: 'Identidad visual inspirada en la hospitalidad filipina.'},
             {id: 3, titulo: 'Content Strategy', descripcion: 'Fotografía y textos que invitan a explorar.'}
         ],
-        galeria: ['/assets/Mabuhay/1.png', '/assets/Mabuhay/2.jpg', '/assets/Mabuhay/3.jpg'],
+        galeria: [{url: '/assets/Mabuhay/1.png', layout: 'full'}, {url: '/assets/Mabuhay/2.jpg', layout: 'half'}, {url: '/assets/Mabuhay/3.jpg', layout: 'half'}],
         tecnologias: ['WordPress', 'PHP', 'JavaScript', 'Figma'],
         enlaces: [
             {tipo: 'web', url: 'https://mabuhay.es'}

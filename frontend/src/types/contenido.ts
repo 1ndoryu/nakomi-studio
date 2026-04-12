@@ -44,12 +44,19 @@ export interface Proyecto {
     contenido?: string;
     link?: string;
     skills?: Skill[];
-    galeria?: string[];
+    /* [124A-PROJ1] Galería con layout (full/half) */
+    galeria?: GaleriaImagen[];
     /* [064A-8] Detalles técnicos y enlaces del proyecto */
     tecnologias?: string[];
     enlaces?: EnlaceProyecto[];
     /* [084A-29] UUID original del backend para edición admin inline */
     adminId?: string;
+}
+
+/* [124A-PROJ1] Imagen de galería con layout */
+export interface GaleriaImagen {
+    url: string;
+    layout: 'full' | 'half';
 }
 
 export interface CategoriaShowcase {

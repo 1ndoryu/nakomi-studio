@@ -70,7 +70,7 @@ export const SeccionProyectosRelacionados: React.FC<SeccionProyectosRelacionados
             if (String(p.id) === slugActual || p.titulo === tituloActual) return false;
             const pCats = Array.isArray(p.categorias) ? p.categorias : [p.categorias];
             return pCats.some(c => categoriasArray.includes(c.toLowerCase()));
-        }).slice(0, 3);
+        }).slice(0, 4);
     }, [apiData, slugActual, tituloActual, categorias]);
 
     if (relacionados.length === 0) return null;

@@ -16,9 +16,10 @@
     gap: var(--spacing-xl);
 }
 
+/* [124A-PROJ1] Grid de 4 columnas (antes 3) */
 .proyectoRelacionadosGrid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--spacing-lg);
 }
 
@@ -72,6 +73,12 @@
     font-family: var(--font-primary);
     font-size: var(--text-sm);
     color: var(--text-tertiary);
+}
+
+@media (max-width: 1024px) {
+    .proyectoRelacionadosGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 768px) {

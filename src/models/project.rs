@@ -39,7 +39,7 @@ pub struct ProjectResponse {
     pub client: Option<String>,
     pub description: String,
     pub featured_image: Option<String>,
-    pub gallery: Vec<String>,
+    pub gallery: Vec<GalleryImage>,
     pub categories: Vec<String>,
     pub technologies: Vec<String>,
     pub links: Vec<ProjectLink>,
@@ -66,6 +66,13 @@ pub struct ProjectSkill {
     pub descripcion: Option<String>,
 }
 
+/* [124A-PROJ1] Imagen de galería con layout (full=100% ancho, half=50% ancho) */
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+pub struct GalleryImage {
+    pub url: String,
+    pub layout: String,
+}
+
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateProjectRequest {
     #[validate(length(min = 1, max = 255))]
@@ -75,7 +82,7 @@ pub struct CreateProjectRequest {
     pub client: Option<String>,
     pub description: Option<String>,
     pub featured_image: Option<String>,
-    pub gallery: Option<Vec<String>>,
+    pub gallery: Option<Vec<GalleryImage>>,
     pub categories: Option<Vec<String>>,
     pub technologies: Option<Vec<String>>,
     pub links: Option<Vec<ProjectLink>>,
@@ -94,7 +101,7 @@ pub struct UpdateProjectRequest {
     pub client: Option<String>,
     pub description: Option<String>,
     pub featured_image: Option<String>,
-    pub gallery: Option<Vec<String>>,
+    pub gallery: Option<Vec<GalleryImage>>,
     pub categories: Option<Vec<String>>,
     pub technologies: Option<Vec<String>>,
     pub links: Option<Vec<ProjectLink>>,
@@ -128,7 +135,16 @@ impl Project {
     /// Convierte a respuesta API deserializando JSONB a tipos tipados
     #[must_use]
     pub fn into_response(self) -> ProjectResponse {
-        let gallery: Vec<String> = serde_json::from_value(self.gallery).unwrap_or_default();
+        /* [124A-PROJ1] Gallery: intenta formato nuevo {url, layout} primero,
+         * si falla intenta legacy ["url"] y convierte a GalleryImage con layout "full" */
+        let gallery: Vec<GalleryImage> = serde_json::from_value::<Vec<GalleryImage>>(self.gallery.clone())
+            .unwrap_or_else(|_| {
+                serde_json::from_value::<Vec<String>>(self.gallery)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|url| GalleryImage { url, layout: "full".to_string() })
+                    .collect()
+            });
         let categories: Vec<String> = serde_json::from_value(self.categories).unwrap_or_default();
         let technologies: Vec<String> =
             serde_json::from_value(self.technologies).unwrap_or_default();

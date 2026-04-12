@@ -1,5 +1,9 @@
-/* [114A-15] Estilos para SeccionHeroProyecto — extraídos de ProyectoIndividualIsland.css */
+/* [124A-PROJ1] Rediseño estilo kontrapunkt.
+ * Hero: 2 columnas (texto breve izq + título H1 der).
+ * Portada: featured_image 100% ancho.
+ * Case intro: 2 columnas (meta izq + descripción der). */
 
+/* === HERO === */
 .proyectoHero {
     padding: 0;
 }
@@ -9,29 +13,30 @@
     margin: 0 auto;
     padding: 15vh var(--spacing-lg) var(--spacing-2xl);
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--spacing-xl);
+    align-items: end;
 }
 
-/* [044A-11] Agregado font-weight: 500 !important por solicitud del usuario */
-.proyectoHeroMeta {
+.proyectoHeroIzquierda {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.proyectoHeroCliente {
     font-family: var(--font-primary);
     font-size: var(--text-sm);
-    font-weight: 500 !important;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-tertiary);
 }
 
-.proyectoHeroMeta span + span::before {
-    content: '/';
-    margin-right: var(--spacing-md);
-    color: var(--text-tertiary);
-    opacity: 0.4;
+.proyectoHeroDerecha {
+    display: flex;
+    flex-direction: column;
 }
 
 .proyectoHeroTitulo {
@@ -44,69 +49,112 @@
     margin: 0;
 }
 
-.proyectoHeroDescripcion {
-    font-family: var(--font-serif);
-    font-size: var(--text-xl);
-    color: var(--text-dark);
-    line-height: 1.6;
-    max-width: 60ch;
-    margin: var(--spacing-md) 0 0;
+/* === PORTADA FULL-WIDTH === */
+.proyectoPortada {
+    width: 100%;
+    overflow: hidden;
 }
 
-/* [064A-8] Detalles técnicos en el hero: tecnologías y enlaces */
-.proyectoHeroDetalles {
+.proyectoPortadaImagen {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* === CASE INTRODUCTION === */
+.proyectoCaseIntro {
+    padding: var(--spacing-3xl) 0;
+}
+
+.proyectoCaseIntroContenido {
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--spacing-xl);
+}
+
+.proyectoCaseIntroMeta {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
-    margin-top: var(--spacing-md);
+    gap: var(--spacing-lg);
 }
 
-.proyectoHeroTecnologias {
+.proyectoCaseIntroBloque {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: var(--spacing-xs);
 }
 
-.proyectoHeroTechTag {
+.proyectoCaseIntroLabel {
     font-family: var(--font-primary);
     font-size: var(--text-xs);
     font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
-    background: var(--bg-accent);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-sm);
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
 }
 
-.proyectoHeroEnlaces {
-    display: flex;
-    gap: var(--spacing-md);
-}
-
-.proyectoHeroEnlace {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-xs);
+.proyectoCaseIntroValor {
     font-family: var(--font-primary);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--text-dark);
+    font-size: var(--text-md);
+    color: var(--text-primary);
+}
+
+.proyectoCaseIntroLista {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.proyectoCaseIntroLista span {
+    font-family: var(--font-primary);
+    font-size: var(--text-md);
+    color: var(--text-primary);
+}
+
+.proyectoCaseIntroEnlace {
+    font-family: var(--font-primary);
+    font-size: var(--text-md);
+    color: var(--text-primary);
     text-decoration: none;
-    text-transform: capitalize;
     transition: color var(--transicion-rapida);
 }
 
-.proyectoHeroEnlace:hover {
+.proyectoCaseIntroEnlace:hover {
     color: var(--brand-primary);
 }
 
+.proyectoCaseIntroDescripcion {
+    display: flex;
+    flex-direction: column;
+}
+
+.proyectoCaseIntroDescripcion p {
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+    color: var(--text-dark);
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* === RESPONSIVE === */
 @media (max-width: 768px) {
+    .proyectoHeroContenido {
+        grid-template-columns: 1fr;
+        padding: 10vh var(--spacing-lg) var(--spacing-xl);
+    }
+
     .proyectoHeroTitulo {
         font-size: var(--text-3xl);
     }
 
-    .proyectoHeroEnlaces {
-        flex-wrap: wrap;
+    .proyectoCaseIntroContenido {
+        grid-template-columns: 1fr;
+    }
+
+    .proyectoCaseIntroDescripcion p {
+        font-size: var(--text-lg);
     }
 }
