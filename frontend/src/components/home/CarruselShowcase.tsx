@@ -90,6 +90,10 @@ export const CarruselShowcase: React.FC = () => {
                         ? proyecto.categorias
                         : (proyecto.categorias ? [proyecto.categorias] : []);
 
+                    /* [124A-IMG] Primer item visible = LCP candidato = eager + alta prioridad.
+                     * El resto lazy para no bloquear la carga inicial. */
+                    const isFirst = index === 0;
+
                     return (
                         <a key={`proj-${index}`} href={proyecto.link || '#'} className="carruselItem" draggable={false} onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
                             <div className="carruselImagenWrapper">
@@ -98,7 +102,12 @@ export const CarruselShowcase: React.FC = () => {
                                         src={proyecto.imagen}
                                         alt={proyecto.titulo}
                                         className="carruselImagen"
-                                        sizes="(min-width: 768px) 450px, 300px"
+                                        /* [124A-IMG] Sizes realista: la imagen tiene altura fija (400-600px)
+                                         * y ancho proporcional. En desktop puede llegar a 800-900px para ratio 3:2. */
+                                        sizes="(min-width: 1440px) min(85vw, 900px), (min-width: 768px) min(80vw, 800px), 90vw"
+                                        quality={85}
+                                        loading={isFirst ? 'eager' : 'lazy'}
+                                        fetchPriority={isFirst ? 'high' : 'auto'}
                                         draggable={false}
                                     />
                                 )}

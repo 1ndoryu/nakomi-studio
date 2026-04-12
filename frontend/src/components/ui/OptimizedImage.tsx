@@ -19,6 +19,8 @@ interface OptimizedImageProps {
     /** Deshabilitar optimización (servir original) */
     noOptimize?: boolean;
     loading?: 'lazy' | 'eager';
+    /** [124A-IMG] Prioridad de fetch para LCP. 'high' para la imagen above the fold. */
+    fetchPriority?: 'high' | 'low' | 'auto';
     draggable?: boolean;
     onClick?: () => void;
     onError?: (event: SyntheticEvent<HTMLImageElement>) => void;
@@ -34,6 +36,7 @@ export default function OptimizedImage({
     quality = 80,
     noOptimize = false,
     loading = 'lazy',
+    fetchPriority,
     draggable,
     onClick,
     onError,
@@ -66,6 +69,7 @@ export default function OptimizedImage({
                 height={height}
                 className={className}
                 loading={loading}
+                fetchPriority={fetchPriority}
                 draggable={draggable}
                 onClick={onClick}
                 onError={onError}
@@ -85,6 +89,7 @@ export default function OptimizedImage({
                 height={height}
                 className={className}
                 loading={loading}
+                fetchPriority={fetchPriority}
                 draggable={draggable}
                 onClick={onClick}
                 onError={onError}
