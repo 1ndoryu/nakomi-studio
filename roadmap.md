@@ -25,7 +25,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- Hacer una auditoría de rendimiento, fuga de ram las extensiones de sentinel y varsense, una auditoría profunda.
+(sin tareas pendientes)
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 
