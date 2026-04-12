@@ -25,7 +25,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- Revisar que imágenes de blogs se optimicen (pasen por /api/img/ con WebP).
 - AL mover los proyectos da 400 (falta deploy del código nuevo al servidor).
 - Se puede optimizar rust? es que me relentiza mucho la pc y ocupa mucho espacio con cada compilación, no hay forma que puqeda limpiarse?
 
