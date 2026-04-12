@@ -83,6 +83,17 @@ glory-rs = { path = "glory-rs/backend" }
 [dev-dependencies]
 tokio-test = "0.4"
 
+# [124A-OPT1] Perfil dev optimizado: menos debug info = menor disco + builds más rápidos.
+# debug = "line-tables-only" produce ~60% menos datos de debug que full.
+# Dependencias con opt-level=1 y sin debug: se compilan una vez, más rápido después.
+[profile.dev]
+debug = "line-tables-only"
+split-debuginfo = "packed"
+
+[profile.dev.package."*"]
+opt-level = 1
+debug = false
+
 [lints.clippy]
 all = { level = "deny", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
