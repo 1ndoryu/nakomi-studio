@@ -80,10 +80,6 @@ export const EditorMiembro: React.FC<EditorMiembroProps> = ({miembro, abierto, g
                         <label>Twitter</label>
                         <input type="text" value={editor.twitter} onChange={e => editor.setTwitter(e.target.value)} placeholder="URL Twitter/X" />
                     </div>
-                    <div className="editorMiembroCampo">
-                        <label>Orden</label>
-                        <input type="number" value={editor.sortOrder} onChange={e => editor.setSortOrder(Number(e.target.value))} />
-                    </div>
                 </div>
                 <div className="editorMiembroCampo">
                     <label>Estado</label>

@@ -108,15 +108,6 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
                                 />
                             </label>
 
-                            <label className="editorServicioLabel editorServicioLabelCorto">
-                                Orden
-                                <Input
-                                    type="number"
-                                    value={form.sortOrder}
-                                    onChange={e => form.setSortOrder(Number(e.target.value))}
-                                    min={0}
-                                />
-                            </label>
                         </div>
                     </div>
                 )}

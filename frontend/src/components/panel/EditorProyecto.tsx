@@ -142,15 +142,6 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                             </span>
                         </label>
 
-                        <label className="editorProyectoLabel">
-                            Orden
-                            <Input
-                                type="number"
-                                value={String(form.sortOrder)}
-                                onChange={e => form.setSortOrder(Number(e.target.value) || 0)}
-                                placeholder="0"
-                            />
-                        </label>
                     </div>
                 )}
 
