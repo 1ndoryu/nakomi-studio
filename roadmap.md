@@ -64,7 +64,7 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 - ~~P-2: Migración BD para archivos, perfiles, mensajes especiales~~ (ya implementada)
 - ~~Fase I (8 tareas): anti-spam, generación pedidos, memoria, sync, archivos, escalación, branding~~ (ya implementada: T-1 rate limiting + timing, T-2 tool use + facturas Stripe, T-3 visitor_profiles + context summary, T-4 cross-device BroadcastChannel, T-5 upload archivos + AI vision/whisper/PDF, T-6 escalación + notificaciones + email, T-7 branding "Claudia" + no disclosure)
 - ~~Fase II (3 tareas): clientes registrados, IA intermediaria en pedidos~~ (ya implementada: JWT auth en WS, registered_client_context, toggle ai_intermediary_enabled por orden)
-- Testing e2e: 8 smoke tests + tests unitarios (`plan-testing-chatbot-e2e-2026-04-10.md`)
+- ~~Testing e2e: 8 smoke tests + tests unitarios~~ (214A-5: 23 unit tests para ai_tools + chat_timing, 108 tests total)
 
 ### Seed system (`plan-glory-rs-seed-system-2026-04-07.md`)
 - ~~Fase 5: Migrar órdenes, chat, reviews, activity log, notifications de Rust a TOML~~ (214A-3: datos suplementarios permanecen en seed.rs — ver justificación en completados)
