@@ -25,8 +25,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- AL mover los proyectos da 400 (falta deploy del código nuevo al servidor).
-- config-toml se va a perder a cambiar de rama, necesito que sea algo qeu perdure entre ramas
+
+- No puedo cambiar el orden de los servicios y blog, debería asi como cmabio el orden los proyectos. EL INPUT ORDEN DENTRO DE LOS MODALES DEJA DE TENER SENTIDO!
+- listaProyectosGrip no necesita padding
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 
