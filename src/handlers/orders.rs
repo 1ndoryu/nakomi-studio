@@ -5,7 +5,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, patch, post, put};
 use axum::{Json, Router};
-use sqlx;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -18,7 +17,7 @@ use crate::models::{
     NOTIF_NEW_ORDER, NOTIF_ORDER_ASSIGNED, NOTIF_ORDER_CANCELLED,
     NOTIF_ORDER_COMPLETED, NOTIF_REVISION_REQUESTED,
 };
-use crate::repositories::{OrderRepository, UserRepository, WalletRepository};
+use crate::repositories::{ActivityLogRepository, OrderRepository, UserRepository, WalletRepository};
 use crate::services::{AuthService, OrderService, PaymentService};
 use crate::AppState;
 
@@ -52,12 +51,9 @@ pub async fn create_order(
     let order = OrderService::create_order(&state.pool, auth.user_id, req).await?;
 
     /* [104A-38] Notificar a admins sobre nueva orden */
-    let admins = sqlx::query_scalar::<_, Uuid>(
-        "SELECT id FROM users WHERE role = 'admin' AND is_active = true",
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    let admins = UserRepository::admin_ids(&state.pool)
+        .await
+        .unwrap_or_default();
     let base = CreateNotification {
         user_id: Uuid::nil(),
         notification_type: NOTIF_NEW_ORDER.to_string(),
@@ -70,19 +66,14 @@ pub async fn create_order(
     let _ = state.notification_hub.notify_many(&admins, &base).await;
 
     /* [154A-15d] Registrar en activity_log */
-    let _ = sqlx::query(
-        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
-           VALUES ($1, 'order_created', 'order', $2, $3::jsonb)",
-    )
-    .bind(auth.user_id)
-    .bind(order.id)
-    .bind(serde_json::json!({
-        "service": order.service_title,
-        "plan": order.plan_name,
-        "payment_mode": format!("{:?}", order.payment_mode),
-    }))
-    .execute(&state.pool)
-    .await;
+    let _ = ActivityLogRepository::log(
+        &state.pool, auth.user_id, "order_created", "order", order.id,
+        Some(serde_json::json!({
+            "service": order.service_title,
+            "plan": order.plan_name,
+            "payment_mode": format!("{:?}", order.payment_mode),
+        })),
+    ).await;
 
     /* [154A-15c] Crear chat session + mensaje de bienvenida automático */
     {
@@ -105,23 +96,15 @@ pub async fn create_order(
 
     /* [154A-15c] Email de confirmación al cliente (non-fatal) */
     if let Some(ref email_cfg) = state.email_config {
-        let client_email: Option<String> = sqlx::query_scalar(
-            "SELECT email FROM users WHERE id = $1",
-        )
-        .bind(auth.user_id)
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten();
+        let client_email: Option<String> = UserRepository::get_email(&state.pool, auth.user_id)
+            .await
+            .ok()
+            .flatten();
 
-        let client_name: Option<String> = sqlx::query_scalar(
-            "SELECT name FROM users WHERE id = $1",
-        )
-        .bind(auth.user_id)
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten();
+        let client_name: Option<String> = UserRepository::get_display_name(&state.pool, auth.user_id)
+            .await
+            .ok()
+            .flatten();
 
         if let Some(email) = client_email {
             let cfg = email_cfg.clone();
@@ -322,15 +305,10 @@ pub async fn assign_order(
     }).await;
 
     /* [154A-15d] Registrar asignación en activity_log */
-    let _ = sqlx::query(
-        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
-           VALUES ($1, 'employee_assigned', 'order', $2, $3::jsonb)",
-    )
-    .bind(auth.user_id)
-    .bind(order_id)
-    .bind(serde_json::json!({"employee_id": employee_id.to_string()}))
-    .execute(&state.pool)
-    .await;
+    let _ = ActivityLogRepository::log(
+        &state.pool, auth.user_id, "employee_assigned", "order", order_id,
+        Some(serde_json::json!({"employee_id": employee_id.to_string()})),
+    ).await;
 
     Ok(Json(serde_json::json!({ "status": order.status, "assigned_employee_id": order.assigned_employee_id })))
 }
@@ -462,15 +440,10 @@ pub async fn cancel_order_handler(
     let _ = state.notification_hub.notify_many(&recipients, &base).await;
 
     /* [154A-15d] Registrar cancelación en activity_log */
-    let _ = sqlx::query(
-        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
-           VALUES ($1, 'order_cancelled', 'order', $2, $3::jsonb)",
-    )
-    .bind(auth.user_id)
-    .bind(order_id)
-    .bind(serde_json::json!({"reason": reason}))
-    .execute(&state.pool)
-    .await;
+    let _ = ActivityLogRepository::log(
+        &state.pool, auth.user_id, "order_cancelled", "order", order_id,
+        Some(serde_json::json!({"reason": reason})),
+    ).await;
 
     Ok(Json(serde_json::json!({ "status": order.status })))
 }
@@ -504,28 +477,18 @@ pub async fn approve_phase(
     let phase = OrderService::approve_phase(&state.pool, order_id, phase_number, auth.user_id).await?;
 
     /* [154A-15d] Registrar aprobación de fase en activity_log */
-    let _ = sqlx::query(
-        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
-           VALUES ($1, 'phase_approved', 'order', $2, $3::jsonb)",
-    )
-    .bind(auth.user_id)
-    .bind(order_id)
-    .bind(serde_json::json!({"phase_number": phase_number}))
-    .execute(&state.pool)
-    .await;
+    let _ = ActivityLogRepository::log(
+        &state.pool, auth.user_id, "phase_approved", "order", order_id,
+        Some(serde_json::json!({"phase_number": phase_number})),
+    ).await;
 
     /* [044A-38 Fase 3] Si la orden se completó, capturar los pagos retenidos en Stripe */
     if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
         if order.status == OrderStatus::Completed {
             /* [154A-15d] Registrar orden completada */
-            let _ = sqlx::query(
-                r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
-                   VALUES ($1, 'order_completed', 'order', $2, NULL)",
-            )
-            .bind(auth.user_id)
-            .bind(order_id)
-            .execute(&state.pool)
-            .await;
+            let _ = ActivityLogRepository::log(
+                &state.pool, auth.user_id, "order_completed", "order", order_id, None,
+            ).await;
 
             /* [104A-38] Notificar cliente y empleado sobre orden completada */
             let mut recipients = vec![order.client_id];
@@ -597,15 +560,10 @@ pub async fn request_revision(
     let phase = OrderService::request_revision(&state.pool, order_id, phase_number, auth.user_id).await?;
 
     /* [154A-15d] Registrar revisión solicitada en activity_log */
-    let _ = sqlx::query(
-        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
-           VALUES ($1, 'revision_requested', 'order', $2, $3::jsonb)",
-    )
-    .bind(auth.user_id)
-    .bind(order_id)
-    .bind(serde_json::json!({"phase_number": phase_number}))
-    .execute(&state.pool)
-    .await;
+    let _ = ActivityLogRepository::log(
+        &state.pool, auth.user_id, "revision_requested", "order", order_id,
+        Some(serde_json::json!({"phase_number": phase_number})),
+    ).await;
 
     /* [104A-38] Notificar al empleado asignado sobre la revisión solicitada */
     if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
@@ -753,17 +711,9 @@ pub async fn get_order_activity(
         return Err(AppError::Forbidden("Sin acceso a esta orden".into()));
     }
 
-    let rows = sqlx::query_as!(
-        ActivityRow,
-        r#"SELECT id, user_id, action, details, created_at
-           FROM activity_log
-           WHERE entity_type = 'order' AND entity_id = $1
-           ORDER BY created_at ASC"#,
-        order_id,
-    )
-    .fetch_all(&state.pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Error consultando activity_log: {e}")))?;
+    let rows = ActivityLogRepository::list_by_entity(&state.pool, "order", order_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Error consultando activity_log: {e}")))?;
 
     let entries: Vec<ActivityEntry> = rows
         .into_iter()
@@ -777,15 +727,6 @@ pub async fn get_order_activity(
         .collect();
 
     Ok(Json(entries))
-}
-
-#[derive(sqlx::FromRow)]
-struct ActivityRow {
-    id: uuid::Uuid,
-    user_id: Option<uuid::Uuid>,
-    action: String,
-    details: Option<serde_json::Value>,
-    created_at: chrono::DateTime<chrono::Utc>,
 }
 
 /* [204A-12] Comisiones: al completar orden, 90% al empleado y 10% a Nakomi.
@@ -811,12 +752,7 @@ async fn credit_employee_and_commission(
     }
 
     /* Comisión a Nakomi (primer admin activo) */
-    let admin_id = sqlx::query_scalar::<_, Uuid>(
-        "SELECT id FROM users WHERE role = 'admin' AND is_active = true \
-         ORDER BY created_at ASC LIMIT 1",
-    )
-    .fetch_optional(&state.pool)
-    .await;
+    let admin_id = UserRepository::first_admin_id(&state.pool).await;
 
     match admin_id {
         Ok(Some(nakomi_id)) => {

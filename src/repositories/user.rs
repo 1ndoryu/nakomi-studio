@@ -413,4 +413,31 @@ impl UserRepository {
         .fetch_one(pool)
         .await
     }
+
+    /* [124A-R1] Obtener email de un usuario por ID */
+    pub async fn get_email(pool: &PgPool, user_id: Uuid) -> Result<Option<String>, sqlx::Error> {
+        sqlx::query_scalar!(r#"SELECT email FROM users WHERE id = $1"#, user_id)
+            .fetch_optional(pool)
+            .await
+    }
+
+    /* [124A-R1] Obtener display_name de un usuario por ID.
+     * display_name es nullable en la BD → query_scalar devuelve Option<Option<String>>;
+     * flatten() colapsa ambos niveles en Option<String>. */
+    pub async fn get_display_name(pool: &PgPool, user_id: Uuid) -> Result<Option<String>, sqlx::Error> {
+        sqlx::query_scalar!(r#"SELECT display_name FROM users WHERE id = $1"#, user_id)
+            .fetch_optional(pool)
+            .await
+            .map(Option::flatten)
+    }
+
+    /* [124A-R1] Primer admin activo (por fecha de creación). Usado para comisiones. */
+    pub async fn first_admin_id(pool: &PgPool) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"SELECT id FROM users WHERE role = 'admin' AND status = 'active'
+               ORDER BY created_at ASC LIMIT 1"#
+        )
+        .fetch_optional(pool)
+        .await
+    }
 }

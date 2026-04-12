@@ -1,3 +1,4 @@
+mod activity_log;
 mod blog;
 mod chat;
 mod dashboard;
@@ -18,6 +19,7 @@ mod team_member;
 mod user;
 mod wallet;
 
+pub use activity_log::{ActivityLogRepository, ActivityRow};
 pub use blog::{BlogRepository, CreateBlogPostParams, UpdateBlogPostParams};
 pub use chat::ChatRepository;
 pub use dashboard::DashboardRepository;
