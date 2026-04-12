@@ -189,4 +189,105 @@ impl EmailService {
             );
         }
     }
+
+    /* [124A-INV] Email al cliente notificando que su factura fue pagada y
+     * que puede registrarse con el email de pago para acceder al panel. */
+    pub async fn send_chat_invoice_paid_client(
+        config: &EmailConfig,
+        client_email: &str,
+        amount_usd: f64,
+        site_url: &str,
+        register_url: &str,
+    ) {
+        let subject = "Tu pago fue recibido — Nakomi Studio".to_string();
+        let escaped_email = html_escape(client_email);
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#c9a84c;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">✓ Pago recibido</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      ¡Hola! Tu pago de <strong>${amount_usd:.2} USD</strong> fue procesado exitosamente.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
+      Para hacer seguimiento de tu proyecto y comunicarte con nuestro equipo, crea tu cuenta
+      usando el correo con el que realizaste el pago: <strong>{escaped_email}</strong>
+    </p>
+    <a href="{register_url}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Crear mi cuenta
+    </a>
+    <p style="color:#999;font-size:12px;margin-top:20px;">
+      Si ya tienes cuenta con ese correo, simplemente inicia sesión en
+      <a href="{site_url}/panel" style="color:#c9a84c;">{site_url}/panel</a>
+    </p>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de pago</p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        if let Err(e) = Self::send(config, client_email, &subject, &html).await {
+            tracing::error!("Error enviando email pago factura chat a {client_email}: {e}");
+        } else {
+            tracing::info!("Email pago chat invoice enviado a {client_email}");
+        }
+    }
+
+    /* [124A-INV] Email a admins notificando que una factura de chat fue pagada. */
+    pub async fn send_chat_invoice_paid_admin(
+        config: &EmailConfig,
+        admin_emails: &[String],
+        client_email: &str,
+        amount_usd: f64,
+        session_id: uuid::Uuid,
+        site_url: &str,
+    ) {
+        let subject = format!("Factura pagada: {client_email} — Nakomi Studio");
+        let panel_link = format!("{site_url}/panel/chat?session={session_id}");
+        let escaped_email = html_escape(client_email);
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#166534;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">💰 Pago recibido via chat</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      El cliente <strong>{escaped_email}</strong> pagó <strong>${amount_usd:.2} USD</strong> via factura de chat.
+    </p>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ver sesión de chat
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de pago</p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        for email in admin_emails {
+            if let Err(e) = Self::send(config, email, &subject, &html).await {
+                tracing::error!("Error enviando email pago chat admin a {email}: {e}");
+            }
+        }
+        if !admin_emails.is_empty() {
+            tracing::info!(
+                "Email pago chat invoice enviado a {} admins para sesión {session_id}",
+                admin_emails.len()
+            );
+        }
+    }
 }

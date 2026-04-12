@@ -73,6 +73,7 @@ pub use notification::{
     NOTIF_REVIEW_RESPONSE, NOTIF_DELEGATION_RECEIVED, NOTIF_DELEGATION_RESOLVED,
     NOTIF_NEW_MESSAGE, NOTIF_PAYMENT_RECEIVED,
     NOTIF_HOSTING_CANCELLED, NOTIF_HOSTING_SUSPENDED,
+    NOTIF_CHAT_INVOICE_PAID,
 };
 pub use dashboard::{
     DashboardAlerts, DashboardResponse, EmployeePerformance, OrderCounts, RevenueStats,

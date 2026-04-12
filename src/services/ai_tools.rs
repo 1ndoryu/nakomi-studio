@@ -125,7 +125,7 @@ pub async fn execute_tool(
     arguments: &Value,
 ) -> ToolExecResult {
     match tool_name {
-        "create_invoice" => exec_create_invoice(http_client, stripe_key, arguments).await,
+        "create_invoice" => exec_create_invoice(http_client, stripe_key, session_id, arguments).await,
         "request_human_assistance" => exec_request_human(arguments),
         "capture_email" => exec_capture_email(pool, visitor_id, session_id, arguments).await,
         "save_client_info" => exec_save_client_info(pool, visitor_id, session_id, arguments).await,
@@ -143,10 +143,13 @@ pub async fn execute_tool(
 
 /* create_invoice: crea factura en Stripe con link de pago.
  * Flujo: create customer → create invoice → add line item → finalize → get URL.
- * El resultado es un mensaje de tipo "invoice" con el link de pago. */
+ * El resultado es un mensaje de tipo "invoice" con el link de pago.
+ * [124A-INV] session_id se guarda en metadata de Stripe para detectar pago
+ * via webhook invoice.paid y notificar al admin/cliente. */
 async fn exec_create_invoice(
     http_client: &reqwest::Client,
     stripe_key: Option<&str>,
+    session_id: uuid::Uuid,
     args: &Value,
 ) -> ToolExecResult {
     let Some(stripe_key) = stripe_key else {
@@ -199,13 +202,15 @@ async fn exec_create_invoice(
         }
     };
 
-    /* Paso 2: crear invoice */
+    /* Paso 2: crear invoice con session_id en metadata para detectar pago via webhook */
     let invoice = match create_stripe_invoice(
         http_client,
         stripe_key,
         &customer_id,
+        client_email,
         description,
         amount_cents,
+        session_id,
     )
     .await
     {
@@ -331,16 +336,20 @@ async fn find_or_create_stripe_customer(
 }
 
 /* Crea invoice en Stripe: invoice + line item + finalize.
- * Retorna invoice con hosted_invoice_url (link de pago). */
+ * Retorna invoice con hosted_invoice_url (link de pago).
+ * [124A-INV] session_id y client_email van en metadata para detectar pago chat en webhook. */
 async fn create_stripe_invoice(
     client: &reqwest::Client,
     key: &str,
     customer_id: &str,
+    client_email: &str,
     description: &str,
     amount_cents: i64,
+    session_id: uuid::Uuid,
 ) -> Result<StripeInvoice, String> {
     /* Crear invoice draft — currency explícito para evitar conflicto con
-     * el default de la cuenta Stripe (puede ser MXN u otra moneda local) */
+     * el default de la cuenta Stripe (puede ser MXN u otra moneda local).
+     * [124A-INV] metadata[session_id] + metadata[client_email] para webhook invoice.paid. */
     let inv_resp = client
         .post("https://api.stripe.com/v1/invoices")
         .header("Authorization", format!("Bearer {key}"))
@@ -350,6 +359,9 @@ async fn create_stripe_invoice(
             ("days_until_due", "7"),
             ("auto_advance", "true"),
             ("currency", "usd"),
+            ("metadata[session_id]", session_id.to_string().as_str()),
+            ("metadata[client_email]", client_email),
+            ("metadata[source]", "chat_invoice"),
         ])
         .send()
         .await

@@ -14,10 +14,10 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     CreateNotification, InitiatePaymentRequest, PaymentIntentResponse, PaymentResponse, UserRole,
-    NOTIF_PAYMENT_RECEIVED,
+    NOTIF_CHAT_INVOICE_PAID, NOTIF_PAYMENT_RECEIVED,
 };
 use crate::repositories::{OrderRepository, PaymentRepository, UserRepository};
-use crate::services::{AuditService, HostingStripeService, PaymentService};
+use crate::services::{AuditService, EmailService, HostingStripeService, PaymentService};
 use crate::AppState;
 
 /// Iniciar pago de una orden (crea `PaymentIntent` en Stripe)
@@ -159,6 +159,86 @@ pub async fn stripe_webhook(
                     }).await;
                 }
             }
+        }
+    }
+
+    /* [124A-INV] Detectar cuando una factura generada por IA en el chat fue pagada.
+     * La factura tiene metadata: source=chat_invoice, session_id, client_email.
+     * Al confirmar el pago: notificar admins via hub + email, y enviar email al
+     * cliente invitándolo a registrarse con el email de pago para acceder al panel. */
+    if event_type == "invoice.paid" {
+        let meta = &event["data"]["object"]["metadata"];
+        if meta["source"].as_str() == Some("chat_invoice") {
+            let client_email = meta["client_email"]
+                .as_str()
+                .or_else(|| event["data"]["object"]["customer_email"].as_str())
+                .unwrap_or_default()
+                .to_string();
+            let session_id_str = meta["session_id"].as_str().unwrap_or_default();
+            let session_id = session_id_str.parse::<Uuid>().unwrap_or(Uuid::nil());
+            let amount_cents = event["data"]["object"]["amount_paid"].as_i64().unwrap_or(0);
+            #[allow(clippy::cast_precision_loss)]
+            let amount_usd = amount_cents as f64 / 100.0;
+            let site_url = std::env::var("SITE_URL")
+                .unwrap_or_else(|_| "https://nakomi.studio".to_string());
+
+            /* Notificar admins via notification hub */
+            if let Ok(admin_ids) = UserRepository::admin_ids(&state.pool).await {
+                if !admin_ids.is_empty() {
+                    let _ = state
+                        .notification_hub
+                        .notify_many(
+                            &admin_ids,
+                            &CreateNotification {
+                                user_id: Uuid::nil(),
+                                notification_type: NOTIF_CHAT_INVOICE_PAID.to_string(),
+                                title: format!(
+                                    "Factura pagada: ${amount_usd:.2} — {client_email}"
+                                ),
+                                body: Some(
+                                    "Una factura del chatbot fue pagada. El cliente puede registrarse."
+                                        .to_string(),
+                                ),
+                                link: Some(format!("/panel/chat?session={session_id}")),
+                                reference_type: None,
+                                reference_id: None,
+                            },
+                        )
+                        .await;
+                }
+            }
+
+            /* Email a admins y al cliente (no fatal si falla) */
+            if let Some(cfg) = &state.email_config {
+                if let Ok(admin_emails) = UserRepository::admin_emails(&state.pool).await {
+                    EmailService::send_chat_invoice_paid_admin(
+                        cfg,
+                        &admin_emails,
+                        &client_email,
+                        amount_usd,
+                        session_id,
+                        &site_url,
+                    )
+                    .await;
+                }
+                if !client_email.is_empty() {
+                    /* Encoding mínimo para email en query param (@→%40) */
+                    let encoded_email = client_email.replace('@', "%40").replace('+', "%2B");
+                    let register_url = format!("{site_url}/registro?email={encoded_email}");
+                    EmailService::send_chat_invoice_paid_client(
+                        cfg,
+                        &client_email,
+                        amount_usd,
+                        &site_url,
+                        &register_url,
+                    )
+                    .await;
+                }
+            }
+
+            tracing::info!(
+                "Factura chat pagada: {client_email} ${amount_usd:.2} sesión {session_id}"
+            );
         }
     }
 

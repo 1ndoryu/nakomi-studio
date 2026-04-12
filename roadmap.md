@@ -26,13 +26,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 ## Tareas pendientes 
 
 - Corregir ~126 problemas reales del sentinel-report → ver plan detallado en `Agente/planes/plan-sentinel-problemas-reales-2026-04-12.md`
-- El input orden dentro dentro de los contenido de cms es innecesario. 
-- Los proyectos elegir si aparecen en el carrusel o si aparecen en Selected Work es confuso, tiene que ser interno en el modal, puede aparecer en ambos o en ninguno y por defecto todo tiene que aparecer. Igualmente un blog no tiene opcion aparente para mostrarse dentro de la pagina de inicio o no, tiene que interno, con el icono de estrella.
-- Las env del chatbot ya están en producción. El fix de IA (asign_staff + toggle panel) requiere un deploy (commit 465f2eb).
-- Cuando la IA hace una escalación: notificación push + correo. En el panel: verificar/mostrar indicador y toggle de IA apagado cuando hay escalación activa.
 - Hay que asegurar que una vez que el chatbot le envía la factura, detectar cuando la factura se pague, notificar al admin, y avisarle al cliente que se registre con el correo con el que hizo el pago.
-- En chat del panel en info de visitante falta que diga el país.
 - Las imágenes de proyectos tienen problema: la misma imagen carga 2 veces (carrusel = carruselImagen + Selected Work = proyectoImagen con srcset diferente). La resolución del carrusel es mala y el peso es excesivo. Hay que unificar el pipeline de imágenes y optimizar srcset/sizes para LCP.
+- botonBase botonTexto botonPequeno chatBtnToggleAi no funciona no veo la diferencia entre desactivado y activado visualmente
 
 
 
