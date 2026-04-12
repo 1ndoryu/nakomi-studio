@@ -214,4 +214,33 @@ impl ProjectRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    /* [124A-CMS3] Reordenar proyectos en batch.
+     * Recibe pares (id, sort_order) y actualiza todos en una sola transacción.
+     * Usa CTE con UNNEST para evitar N+1 queries. */
+    pub async fn reorder(
+        pool: &PgPool,
+        items: &[(Uuid, i32)],
+    ) -> Result<(), sqlx::Error> {
+        if items.is_empty() {
+            return Ok(());
+        }
+
+        let ids: Vec<Uuid> = items.iter().map(|(id, _)| *id).collect();
+        let orders: Vec<i32> = items.iter().map(|(_, order)| *order).collect();
+
+        sqlx::query(
+            "UPDATE projects AS p SET
+                sort_order = v.new_order,
+                updated_at = NOW()
+             FROM (SELECT UNNEST($1::uuid[]) AS id, UNNEST($2::int[]) AS new_order) AS v
+             WHERE p.id = v.id"
+        )
+        .bind(&ids)
+        .bind(&orders)
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
 }

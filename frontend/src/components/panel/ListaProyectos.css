@@ -1,5 +1,5 @@
 /* [074A-12] Estilos de la lista de proyectos CMS.
- * Patrón: misma estructura que ListaBlog.css. */
+ * [124A-CMS3] Convertido de grid a lista vertical para drag-to-reorder. */
 
 .listaProyectos {
     display: flex;
@@ -22,105 +22,92 @@
 
 .listaProyectosTitulo {
     font-size: var(--text-lg);
-    
     color: var(--text-primary);
     margin: 0;
 }
 
-.listaProyectosGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--spacing-md);
-}
-
-.listaProyectosCard {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    background: var(--bg-primary);
-    cursor: pointer;
-    transition: border-color 0.2s;
-    /* [154A-4] sin overflow:hidden para no recortar menús contextuales */
-}
-
-.listaProyectosCard:hover {
-    border-color: var(--brand-primary);
-}
-
-.listaProyectosCard--inactivo {
-    opacity: 0.6;
-}
-
-.listaProyectosImagen {
-    width: 100%;
-    height: 120px;
-    overflow: hidden;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-
-.listaProyectosImagen img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.listaProyectosInfo {
-    padding: var(--spacing-md);
+/* [124A-CMS3] Lista vertical (antes era grid) */
+.listaProyectosLista {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
 }
 
-.listaProyectosCardHeader {
+/* [124A-CMS3] Fila individual de proyecto con grip de arrastre */
+.listaProyectosFila {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.listaProyectosFila:hover {
+    border-color: var(--brand-primary);
+}
+
+.listaProyectosFila--inactivo {
+    opacity: 0.6;
+}
+
+/* Handle de arrastre */
+.listaProyectosGrip {
+    display: flex;
+    align-items: center;
+    color: var(--text-tertiary);
+    cursor: grab;
+    padding: var(--spacing-xs);
+    flex-shrink: 0;
+    touch-action: none;
+}
+
+.listaProyectosGrip:active {
+    cursor: grabbing;
+}
+
+/* Miniatura de imagen (compacta para la fila) */
+.listaProyectosMiniatura {
+    width: 48px;
+    height: 48px;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.listaProyectosMiniatura img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Info de la fila (clicable para editar) */
+.listaProyectosFilaInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    padding: var(--spacing-xs) 0;
 }
 
 .listaProyectosNombre {
-    
     font-size: var(--text-sm);
     color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.listaProyectosCliente {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    font-style: italic;
-}
-
-.listaProyectosSlug {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    font-family: monospace;
-}
-
-.listaProyectosCardFooter {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: var(--spacing-xs);
+    font-weight: 500;
 }
 
 .listaProyectosCategorias {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
-}
-
-.listaProyectosTech {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 50%;
-    text-align: right;
 }
 
 /* Badge de status */
@@ -132,7 +119,7 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
     white-space: nowrap;
-    filter: grayscale(100%);
+    flex-shrink: 0;
 }
 
 .listaProyectosBadge--published {
@@ -151,22 +138,25 @@
     opacity: 0.7;
 }
 
-/* [114A-7] Menú contextual 3 puntos */
+/* Menú contextual 3 puntos */
 .listaProyectosMenu {
-    position: absolute;
-    top: var(--spacing-sm);
-    right: var(--spacing-sm);
+    flex-shrink: 0;
     opacity: 0;
     transition: opacity 0.2s;
 }
 
-.listaProyectosCard:hover .listaProyectosMenu {
+.listaProyectosFila:hover .listaProyectosMenu {
     opacity: 1;
 }
 
 /* Responsive */
 @media (max-width: 640px) {
-    .listaProyectosGrid {
-        grid-template-columns: 1fr;
+    .listaProyectosFila {
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .listaProyectosMiniatura {
+        width: 36px;
+        height: 36px;
     }
 }

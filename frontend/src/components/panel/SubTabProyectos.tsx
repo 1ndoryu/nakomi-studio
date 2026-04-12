@@ -11,7 +11,7 @@ import type {AdminProject, CreateProjectBody, UpdateProjectBody} from '../../api
 export const SubTabProyectos: React.FC = () => {
     const {
         proyectos, cargando, error, guardando,
-        crear, actualizar, archivar, eliminar,
+        crear, actualizar, archivar, eliminar, reordenar,
     } = useContenidoProyectos();
     const [editorAbierto, setEditorAbierto] = useState(false);
     const [proyectoEditando, setProyectoEditando] = useState<AdminProject | null>(null);
@@ -64,6 +64,7 @@ export const SubTabProyectos: React.FC = () => {
                 onDesarchivar={handleDesarchivar}
                 onEliminar={handleEliminar}
                 onPublicar={handlePublicar}
+                onReordenar={reordenar}
             />
             <EditorProyecto
                 abierto={editorAbierto}

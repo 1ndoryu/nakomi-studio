@@ -92,6 +92,11 @@ export async function apiDestroyProject(id: string): Promise<void> {
     await instance.post(`/api/admin/projects/${id}/destroy`);
 }
 
+/* [124A-CMS3] Reordenar proyectos en batch */
+export async function apiReorderProjects(items: {id: string; sort_order: number}[]): Promise<void> {
+    await instance.put('/api/admin/projects/reorder', {items});
+}
+
 export async function apiListPublicProjects(): Promise<AdminProject[]> {
     const { data } = await instance.get<AdminProject[]>('/api/projects');
     return data;

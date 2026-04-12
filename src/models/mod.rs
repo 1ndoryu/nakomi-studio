@@ -53,7 +53,7 @@ pub use payment_method::{
 };
 pub use project::{
     CreateProjectRequest, Project, ProjectLink, ProjectResponse, ProjectSkill,
-    UpdateProjectRequest,
+    ReorderProjectsRequest, UpdateProjectRequest,
 };
 pub use team_member::{
     CreateTeamMemberRequest, TeamMember, TeamMemberResponse, UpdateTeamMemberRequest,

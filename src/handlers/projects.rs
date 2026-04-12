@@ -13,7 +13,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateProjectRequest, Project, ProjectResponse, UpdateProjectRequest, UserRole,
+    CreateProjectRequest, Project, ProjectResponse, ReorderProjectsRequest,
+    UpdateProjectRequest, UserRole,
 };
 use crate::repositories::{CreateProjectParams, ProjectRepository, UpdateProjectParams};
 use crate::AppState;
@@ -32,6 +33,7 @@ pub fn admin_routes() -> Router<AppState> {
             axum::routing::put(update).delete(archive),
         )
         .route("/admin/projects/:id/destroy", axum::routing::post(destroy))
+        .route("/admin/projects/reorder", axum::routing::put(reorder))
 }
 
 /// Lista proyectos publicados (público)
@@ -284,5 +286,29 @@ pub async fn destroy(
     if !deleted {
         return Err(AppError::NotFound("Project not found".into()));
     }
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/* [124A-CMS3] Reordenar proyectos en batch (admin).
+ * Recibe array de {id, sort_order} y actualiza todos en una sola query. */
+#[utoipa::path(
+    put,
+    path = "/api/admin/projects/reorder",
+    request_body = ReorderProjectsRequest,
+    responses(
+        (status = 204, description = "Proyectos reordenados")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn reorder(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(body): Json<ReorderProjectsRequest>,
+) -> Result<axum::http::StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let items: Vec<(Uuid, i32)> = body.items.iter().map(|i| (i.id, i.sort_order)).collect();
+    ProjectRepository::reorder(&state.pool, &items).await?;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

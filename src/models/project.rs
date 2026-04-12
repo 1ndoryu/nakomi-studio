@@ -102,6 +102,18 @@ pub struct UpdateProjectRequest {
     pub meta_description: Option<String>,
 }
 
+/* [124A-CMS3] Request para reordenar proyectos en batch */
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ReorderItem {
+    pub id: uuid::Uuid,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ReorderProjectsRequest {
+    pub items: Vec<ReorderItem>,
+}
+
 impl Project {
     /// Convierte a respuesta API deserializando JSONB a tipos tipados
     #[must_use]
