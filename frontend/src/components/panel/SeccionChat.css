@@ -238,6 +238,27 @@
     cursor: default;
 }
 
+/* [124A-BTN] Toggle IA: estado activo = color brand para que se note claramente
+ * que la IA está en control. Inactivo = gris apagado. */
+.chatBtnToggleAiActivo {
+    color: var(--brand-primary) !important;
+    opacity: 1;
+}
+
+.chatBtnToggleAiActivo:hover {
+    color: var(--text-primary) !important;
+}
+
+.chatBtnToggleAiInactivo {
+    color: var(--text-muted) !important;
+    opacity: 0.6;
+}
+
+.chatBtnToggleAiInactivo:hover {
+    color: var(--text-dark, #555) !important;
+    opacity: 1;
+}
+
 /* [124A-CSS1] Sin max-width: el chat ocupa todo el ancho disponible */
 .chatMensajes {
     flex: 1;

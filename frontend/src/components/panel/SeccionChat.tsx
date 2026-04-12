@@ -161,7 +161,7 @@ export const SeccionChat: React.FC = () => {
                                         </span>
                                     )}
                                     <Button
-                                        className="chatBtnToggleAi"
+                                        className={`chatBtnToggleAi${(wsSessionAiEnabled ?? activeSession.ai_enabled) && !activeSession.is_escalated ? ' chatBtnToggleAiActivo' : ' chatBtnToggleAiInactivo'}`}
                                         onClick={() => {
                                             const current = wsSessionAiEnabled ?? activeSession.ai_enabled;
                                             toggleAi(activeSessionId!, !current);
