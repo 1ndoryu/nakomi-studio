@@ -140,6 +140,13 @@ export function useSeccionChat() {
         }
     }, [activeSessionId, uploading, queryClient]);
 
+    /* [124A-CHAT1] Merge de ai_enabled desde WS en tiempo real.
+     * ws.sessions tiene el estado live (actualizado por WS status messages),
+     * sessions (React Query) puede estar stale hasta el próximo poll de 15s. */
+    const wsSessionAiEnabled = (activeSessionId
+        ? ws.sessions.find(s => s.id === activeSessionId)?.ai_enabled
+        : undefined);
+
     return {
         activeSessionId,
         sessions,
@@ -154,6 +161,10 @@ export function useSeccionChat() {
         /* [104A-40] Presencia del visitante para indicador online/offline */
         visitorOnlineMap: ws.visitorOnlineMap,
         sendTyping: ws.sendTyping,
+        /* [124A-CHAT1] Toggle IA por sesión — staff puede activar/desactivar la IA */
+        toggleAi: ws.toggleAi,
+        /* [124A-CHAT1] ai_enabled en tiempo real (WS) para el botón toggle — fallback a sessions */
+        wsSessionAiEnabled,
         showingChat: activeSessionId !== null,
         hasOlderMessages,
         setInput,

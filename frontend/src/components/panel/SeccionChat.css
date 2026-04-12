@@ -223,7 +223,7 @@
     background: var(--text-muted);
 }
 
-/* [074A-43] max-width para legibilidad + scroll adaptativo */
+/* [124A-CSS1] Sin max-width: el chat ocupa todo el ancho disponible */
 .chatMensajes {
     flex: 1;
     overflow-y: auto;
@@ -231,9 +231,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
-    max-width: 800px;
-    width: 100%;
-    margin: 0 auto;
 }
 
 /* [074A-43] Botón para cargar mensajes anteriores */

@@ -4,7 +4,7 @@
  * [074A-60] Info visitante solo visible para admin. */
 
 import React, {useRef, useState} from 'react';
-import {MessageCircle, Send, Bot, User, ChevronLeft, XCircle, Info, Paperclip} from 'lucide-react';
+import {MessageCircle, Send, Bot, BotOff, User, ChevronLeft, XCircle, Info, Paperclip} from 'lucide-react';
 import {SENDER_LABELS, SESSION_STATUS_LABELS, type ChatSession} from '../../api/chat';
 import {useSeccionChat} from '../../hooks/useSeccionChat';
 import {useAuthStore} from '../../stores/authStore';
@@ -53,6 +53,8 @@ export const SeccionChat: React.FC = () => {
         handleUpload,
         uploading,
         closing,
+        toggleAi,
+        wsSessionAiEnabled,
     } = useSeccionChat();
 
     const [showInfo, setShowInfo] = useState(false);
@@ -143,6 +145,24 @@ export const SeccionChat: React.FC = () => {
                                     title="Info del visitante"
                                 >
                                     <Info size={18} />
+                                </Button>
+                            )}
+                            {/* [124A-CHAT1] Toggle IA — staff puede activar/desactivar la IA por sesión.
+                             * Solo visible en chats generales (no de órdenes).
+                             * wsSessionAiEnabled = estado live del WS para feedback inmediato. */}
+                            {isStaff && activeSession && !activeSession.order_id && activeSession.status !== 'closed' && (
+                                <Button
+                                    className="chatBtnToggleAi"
+                                    onClick={() => {
+                                        const current = wsSessionAiEnabled ?? activeSession.ai_enabled;
+                                        toggleAi(activeSessionId!, !current);
+                                    }}
+                                    type="button"
+                                    title={(wsSessionAiEnabled ?? activeSession.ai_enabled) ? 'Desactivar IA' : 'Activar IA'}
+                                    variante="texto"
+                                    tamano="pequeno"
+                                >
+                                    {(wsSessionAiEnabled ?? activeSession.ai_enabled) ? <Bot size={18} /> : <BotOff size={18} />}
                                 </Button>
                             )}
                             {/* [104A-36] Cerrar sesión en BD (staff) — antes solo limpiaba UI.

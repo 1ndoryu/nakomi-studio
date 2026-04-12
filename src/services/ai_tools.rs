@@ -94,10 +94,11 @@ fn visitor_tool_defs() -> Value {
             "type": "function",
             "function": {
                 "name": "save_client_info",
-                "description": "Guarda información relevante del cliente para futuras conversaciones (industria, presupuesto, intereses, tipo de proyecto). Úsalo cuando el cliente mencione datos útiles sobre su negocio o necesidades.",
+                "description": "Guarda información relevante del cliente para futuras conversaciones (industria, presupuesto, intereses, tipo de proyecto, nombre). Úsalo cuando el cliente mencione datos útiles sobre su negocio, necesidades, o cuando dé su nombre.",
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "name": { "type": "string", "description": "Nombre del visitante. Úsalo cuando el cliente diga su nombre" },
                         "industry": { "type": "string", "description": "Sector o industria del cliente" },
                         "budget_range": { "type": "string", "description": "Rango de presupuesto mencionado" },
                         "interests": { "type": "array", "items": { "type": "string" }, "description": "Servicios o temas de interés" },
@@ -112,20 +113,22 @@ fn visitor_tool_defs() -> Value {
 
 /* Ejecutar una tool call retornada por la IA.
  * Despacha al handler correcto según el nombre de la función.
- * visitor_id necesario para tools que actualizan visitor_profiles (T-3). */
+ * visitor_id necesario para tools que actualizan visitor_profiles (T-3).
+ * [124A-CHAT2] session_id necesario para actualizar visitor_name en chat_sessions al capturar nombre. */
 pub async fn execute_tool(
     pool: &PgPool,
     http_client: &reqwest::Client,
     stripe_key: Option<&str>,
     visitor_id: Option<&str>,
+    session_id: uuid::Uuid,
     tool_name: &str,
     arguments: &Value,
 ) -> ToolExecResult {
     match tool_name {
         "create_invoice" => exec_create_invoice(http_client, stripe_key, arguments).await,
         "request_human_assistance" => exec_request_human(arguments),
-        "capture_email" => exec_capture_email(pool, visitor_id, arguments).await,
-        "save_client_info" => exec_save_client_info(pool, visitor_id, arguments).await,
+        "capture_email" => exec_capture_email(pool, visitor_id, session_id, arguments).await,
+        "save_client_info" => exec_save_client_info(pool, visitor_id, session_id, arguments).await,
         "create_support_ticket" => exec_create_support_ticket(pool, visitor_id, arguments).await,
         _ => ToolExecResult {
             tool_result_json: json!({"error": "Tool desconocida"}).to_string(),
@@ -411,11 +414,31 @@ async fn create_stripe_invoice(
    VISITOR PROFILE TOOLS (T-3 — Memoria y contexto)
    ============================================================ */
 
+/* [124A-CHAT2] Helper: actualiza visitor_name en chat_sessions para que el panel
+ * muestre el nombre real del visitante capturado por la IA.
+ * Usa sqlx::query (sin macro) para evitar requerir caché offline. */
+async fn update_session_visitor_name(
+    pool: &PgPool,
+    session_id: uuid::Uuid,
+    name: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE chat_sessions SET visitor_name = $2, updated_at = NOW() WHERE id = $1",
+    )
+    .bind(session_id)
+    .bind(name)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /* [T-3] capture_email: guarda email del visitante en visitor_profiles.
- * También actualiza display_name si lo proporcionó. No bloquea la conversación. */
+ * También actualiza display_name si lo proporcionó.
+ * [124A-CHAT2] Actualiza visitor_name en chat_sessions para que el panel muestre el nombre real. */
 async fn exec_capture_email(
     pool: &PgPool,
     visitor_id: Option<&str>,
+    session_id: uuid::Uuid,
     args: &Value,
 ) -> ToolExecResult {
     let Some(vid) = visitor_id else {
@@ -434,6 +457,11 @@ async fn exec_capture_email(
     }
 
     let display_name = args["display_name"].as_str();
+
+    /* Si la IA nos da el nombre junto con el email, actualizar visitor_name en la sesión */
+    if let Some(name) = display_name {
+        let _ = update_session_visitor_name(pool, session_id, name).await;
+    }
 
     match ChatRepository::update_visitor_email(pool, vid, email, display_name).await {
         Ok(profile) => {
@@ -460,10 +488,12 @@ async fn exec_capture_email(
 }
 
 /* [T-3] save_client_info: guarda preferencias/datos del cliente en visitor_profiles.
- * Hace merge con preferencias existentes (JSON ||). */
+ * Hace merge con preferencias existentes (JSON ||).
+ * [124A-CHAT2] Si se incluye 'name', actualiza visitor_name en chat_sessions para el panel. */
 async fn exec_save_client_info(
     pool: &PgPool,
     visitor_id: Option<&str>,
+    session_id: uuid::Uuid,
     args: &Value,
 ) -> ToolExecResult {
     let Some(vid) = visitor_id else {
@@ -472,6 +502,15 @@ async fn exec_save_client_info(
             rich_message: None,
         };
     };
+
+    /* Si la IA capturó el nombre, actualizar visitor_name en la sesión para el panel */
+    if let Some(name) = args["name"].as_str() {
+        if !name.trim().is_empty() {
+            let _ = update_session_visitor_name(pool, session_id, name).await;
+            /* También guardar en visitor_profiles */
+            let _ = ChatRepository::update_visitor_email(pool, vid, "", Some(name)).await;
+        }
+    }
 
     /* Construir objeto de preferencias solo con campos que la IA proporcionó */
     let mut prefs = serde_json::Map::new();
@@ -491,9 +530,16 @@ async fn exec_save_client_info(
         prefs.insert("notes".to_string(), v.clone());
     }
 
-    if prefs.is_empty() {
+    if prefs.is_empty() && args["name"].as_str().is_none() {
         return ToolExecResult {
             tool_result_json: json!({"status": "ok", "message": "Sin datos nuevos"}).to_string(),
+            rich_message: None,
+        };
+    }
+
+    if prefs.is_empty() {
+        return ToolExecResult {
+            tool_result_json: json!({"status": "ok", "message": "Nombre guardado."}).to_string(),
             rich_message: None,
         };
     }

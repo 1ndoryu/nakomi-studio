@@ -122,31 +122,10 @@ async fn handle_visitor_ws(
         return;
     };
 
-    /* [154A-9] Greeting automático: si la sesión es nueva (sin mensajes previos),
-     * enviar un saludo como mensaje "ai" persistido en BD. Así:
-     * - El visitante ve un saludo inmediato sin esperar a escribir
-     * - La IA lo tiene en su contexto y no lo repite
-     * - El staff lo ve en el panel de chat
-     * Se persiste vía repository directo (no chat_hub.send_message) para evitar
-     * broadcast duplicado al visitor que acaba de conectarse. */
-    if !had_messages {
-        let greeting = "¡Hola! Estoy aquí para ayudarte. Puedes preguntarme acerca de nuestros servicios, resolver dudas, o cualquier consulta que tengas.";
-        if let Ok(msg) = ChatRepository::save_message(&state.pool, session_id, "ai", None, greeting).await {
-            let ws_msg = WsServerMessage::Message {
-                id: msg.id,
-                session_id: msg.session_id,
-                sender: msg.sender_type.clone(),
-                sender_id: msg.sender_id.clone(),
-                content: msg.content.clone(),
-                created_at: msg.created_at,
-                message_type: msg.message_type.clone(),
-                metadata: msg.metadata.clone(),
-            };
-            if let Ok(json) = serde_json::to_string(&ws_msg) {
-                let _ = sender.send(Message::Text(json)).await;
-            }
-        }
-    }
+    /* [124A-VISIT1] Auto-greeting eliminado: creaba una sesión visible en el panel
+     * por cada visitante que abre el chat, incluso sin escribir. La IA responde
+     * en cuanto el visitante envía su primer mensaje. */
+    let _ = had_messages; /* variable usada para suprimir unused warning */
 
     /* [104A-40] Registrar timestamp de conexión y notificar al staff que el visitante está online.
      * Sirve como confirmación de lectura: si el visitante está online, vio los mensajes. */

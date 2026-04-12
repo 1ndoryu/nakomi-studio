@@ -255,7 +255,7 @@ impl AiChatService {
                 /* La IA quiere llamar tools — ejecutarlas */
                 messages.push(choice["message"].clone());
                 let tool_results = process_tool_calls(
-                    pool, http_client, stripe_key, ctx.visitor_id, tool_calls, &mut rich_messages,
+                    pool, http_client, stripe_key, ctx.visitor_id, ctx.session_id, tool_calls, &mut rich_messages,
                 ).await;
 
                 if tool_results.iter().any(|r| r.contains("\"status\":\"escalated\"")) {
@@ -580,12 +580,14 @@ fn build_chat_body(model: &str, messages: &[Value], tools: Option<&Value>) -> Va
 
 /* [T-2] Ejecutar tool calls y recopilar rich messages.
  * Retorna Vec<String> con los resultados JSON de cada tool.
- * [T-3] visitor_id para tools que actualizan visitor_profiles. */
+ * [T-3] visitor_id para tools que actualizan visitor_profiles.
+ * [124A-CHAT2] session_id para actualizar visitor_name en la sesión. */
 async fn process_tool_calls(
     pool: &PgPool,
     http_client: &reqwest::Client,
     stripe_key: Option<&str>,
     visitor_id: Option<&str>,
+    session_id: Uuid,
     tool_calls: &Value,
     rich_messages: &mut Vec<RichMessage>,
 ) -> Vec<String> {
@@ -608,7 +610,7 @@ async fn process_tool_calls(
         };
         tracing::debug!("AI tool call: {name}({args})");
 
-        let result = ai_tools::execute_tool(pool, http_client, stripe_key, visitor_id, name, &args).await;
+        let result = ai_tools::execute_tool(pool, http_client, stripe_key, visitor_id, session_id, name, &args).await;
         if let Some(rm) = result.rich_message {
             rich_messages.push(rm);
         }
@@ -745,14 +747,17 @@ fn base_system_prompt() -> &'static str {
      - request_human_assistance: Escala a un humano. Úsala en los casos de la REGLA DE ESCALACIÓN.\n\
      - capture_email: Guarda el email del cliente. Úsala SIEMPRE que el cliente comparta su correo.\n\
      - save_client_info: Guarda info relevante del cliente. Úsala cuando el cliente mencione datos \
-       útiles sobre su negocio o proyecto.\n\n\
+       útiles sobre su negocio o proyecto. También acepta 'name' para guardar el nombre del visitante.\n\n\
      FLUJO DE FACTURA (obligatorio):\n\
      1. Si el cliente quiere pagar y NO tienes su email → pide el email primero, luego create_invoice.\n\
      2. Si ya tienes su email → usa create_invoice directamente con amount_cents, currency, description, email.\n\
      3. NUNCA escribas texto que parezca una factura. La herramienta genera una tarjeta visual real con botón de pago.\n\n\
-     CAPTURA DE EMAIL: No pidas el email de forma forzada. Después de 2-3 intercambios productivos, puedes \
-     preguntar: 'Me compartes tu correo para enviarte la información?' Si el cliente lo da, \
-     usa capture_email inmediatamente. Si no quiere, no insistas.\n\n\
+     CAPTURA DE NOMBRE Y EMAIL (en orden):\n\
+     1. Primero pregunta el nombre del visitante de forma natural en la primera o segunda respuesta ('¿Con quién tengo el gusto?').\n\
+     2. Cuando el visitante dé su nombre, usa save_client_info con el campo 'name' para guardarlo inmediatamente.\n\
+     3. Después de 2-3 intercambios productivos, puedes preguntar el correo: 'Me compartes tu correo para enviarte la información?'\n\
+     4. Cuando el cliente dé el email, usa capture_email con display_name incluido si lo tienes.\n\
+     5. Si ya conoces el nombre del contexto anterior, NO vuelvas a pedirlo.\n\n\
      CAPTURA DE INFO: Cuando el cliente mencione su industria, presupuesto, tipo de proyecto o necesidades \
      específicas, usa save_client_info para guardar esos datos.\n\n\
      REGLA DE ESCALACIÓN: Si detectas alguna de estas situaciones, usa request_human_assistance O inicia tu \

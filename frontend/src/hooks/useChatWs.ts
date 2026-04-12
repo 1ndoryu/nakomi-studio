@@ -86,11 +86,15 @@ export function useChatWs() {
                     case 'status':
                         if (msg.session_id && msg.value) {
                             setSessions(prev =>
-                                prev.map(s =>
-                                    s.id === msg.session_id
-                                        ? {...s, status: msg.value!}
-                                        : s,
-                                ),
+                                prev.map(s => {
+                                    if (s.id !== msg.session_id) return s;
+                                    const updated = {...s, status: msg.value!};
+                                    /* [124A-CHAT1] Sincronizar ai_enabled con el status de IA
+                                     * para feedback visual inmediato en el botón toggle. */
+                                    if (msg.value === 'ai_handling') updated.ai_enabled = true;
+                                    else if (msg.value === 'staff_handling') updated.ai_enabled = false;
+                                    return updated;
+                                }),
                             );
                         }
                         break;

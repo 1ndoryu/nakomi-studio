@@ -132,7 +132,9 @@ impl ChatRepository {
         .await
     }
 
-    /// Staff toma una sesión
+    /// Staff toma una sesión (solo asigna ID, NO desactiva `ai_enabled`).
+    /* [124A-CHAT1] Separar "staff ve la sesión" de "staff desactiva IA".
+     * La IA se controla exclusivamente via toggle_ai; el join solo establece routing de notifs. */
     pub async fn assign_staff(
         pool: &PgPool,
         session_id: Uuid,
@@ -140,7 +142,6 @@ impl ChatRepository {
     ) -> Result<ChatSession, sqlx::Error> {
         sqlx::query_as::<_, ChatSession>(
             "UPDATE chat_sessions SET assigned_staff_id = $2, \
-             status = 'staff_handling', ai_enabled = false, \
              updated_at = NOW() WHERE id = $1 \
              RETURNING id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \

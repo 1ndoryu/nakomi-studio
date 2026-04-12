@@ -176,7 +176,9 @@ pub async fn send_message(
                 spawn_intermediary_if_enabled(
                     &state, session_id, order_id, auth.user_id, &req.content,
                 );
-            } else if s.ai_enabled && s.assigned_staff_id.is_none() {
+            /* [124A-CHAT1] Solo verificar ai_enabled — assigned_staff_id no bloquea la IA.
+             * El toggle de IA es explícito via WS ToggleAi o el botón del panel. */
+            } else if s.ai_enabled {
                 let ai_resp = AiChatService::generate_response(
                     &state.pool,
                     &state.ai_config,
