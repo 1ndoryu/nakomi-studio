@@ -61,6 +61,11 @@ export const SubTabServicios: React.FC = () => {
         await eliminarServicio(id);
     }, [eliminarServicio]);
 
+    /* [124A-CMS4] Toggle visibilidad en home (is_active) */
+    const handleToggleHome = useCallback(async (id: string, visible: boolean) => {
+        await actualizar(id, {is_active: visible} as UpdateServiceBody);
+    }, [actualizar]);
+
     return (
         <>
             {error && <div className="contenidoError">{error}</div>}
@@ -73,6 +78,7 @@ export const SubTabServicios: React.FC = () => {
                 onDesarchivar={handleDesarchivar}
                 onEliminar={handleEliminar}
                 onPublicar={handlePublicar}
+                onToggleHome={handleToggleHome}
             />
             <EditorServicio
                 abierto={editorAbierto}

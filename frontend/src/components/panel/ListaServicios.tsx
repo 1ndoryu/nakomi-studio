@@ -2,7 +2,7 @@
  * Grid de cards con status, título, precio. Click para editar.
  * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar. */
 import React, {useState} from 'react';
-import {Plus, Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
+import {Plus, Archive, ArchiveRestore, Trash2, Globe, Eye, EyeOff} from 'lucide-react';
 import {Button} from '../ui/Button';
 import OptimizedImage from '../ui/OptimizedImage';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
@@ -18,6 +18,7 @@ interface ListaServiciosProps {
     onDesarchivar?: (id: string) => void;
     onEliminar?: (id: string) => void;
     onPublicar?: (id: string) => void;
+    onToggleHome?: (id: string, visible: boolean) => void;
 }
 
 /* Badge de status con color semántico */
@@ -40,6 +41,7 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
     onDesarchivar,
     onEliminar,
     onPublicar,
+    onToggleHome,
 }) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
 
@@ -60,6 +62,15 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
             <div className="listaServiciosGrid">
                 {servicios.map(svc => {
                     const items: MenuContextualItem[] = [];
+                    /* [124A-CMS4] Toggle visibilidad en home (is_active) */
+                    if (onToggleHome) {
+                        items.push({
+                            id: 'toggle-home',
+                            label: svc.is_active ? 'Ocultar del Home' : 'Mostrar en Home',
+                            icon: svc.is_active ? <EyeOff size={14} /> : <Eye size={14} />,
+                            onSelect: () => onToggleHome(svc.id, !svc.is_active),
+                        });
+                    }
                     /* [084A-10] Publicar: solo si no está ya publicado */
                     if (svc.status !== 'published' && onPublicar) {
                         items.push({id: 'publicar', label: 'Publicar', icon: <Globe size={14} />, onSelect: () => onPublicar(svc.id)});
