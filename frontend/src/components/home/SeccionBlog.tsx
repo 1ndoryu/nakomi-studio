@@ -16,20 +16,32 @@ import './SeccionBlog.css';
 
 export const SeccionBlog: React.FC = () => {
     const {t} = useTranslation();
-    const [posts, setPosts] = useState(POSTS_BLOG);
+    const [posts, setPosts] = useState<typeof POSTS_BLOG | null>(null);
+    const [cargado, setCargado] = useState(false);
 
-    /* [104A-35] Fetch últimos 3 posts publicados, fallback a datos estáticos */
+    /* [124A-CMS1] Fetch últimos 3 posts publicados.
+     * Si la API devuelve 0 posts, se muestra vacío (no fallback estático).
+     * El fallback solo aplica si la API falla por error de red/servidor. */
     useEffect(() => {
         const controller = new AbortController();
         apiListPublicBlog(1, 3)
             .then(data => {
-                if (!controller.signal.aborted && data.posts.length > 0) {
-                    setPosts(data.posts.map(apiPostToPostBlog));
+                if (!controller.signal.aborted) {
+                    setPosts(data.posts.length > 0 ? data.posts.map(apiPostToPostBlog) : []);
+                    setCargado(true);
                 }
             })
-            .catch(() => { /* Fallback silencioso a datos estáticos */ });
+            .catch(() => {
+                if (!controller.signal.aborted) {
+                    setPosts(POSTS_BLOG);
+                    setCargado(true);
+                }
+            });
         return () => controller.abort();
     }, []);
+
+    /* No renderizar sección si no hay posts o aún cargando */
+    if (!cargado || !posts || posts.length === 0) return null;
 
     return (
         <section className="seccionBlog" id="blog">
