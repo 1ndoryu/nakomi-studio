@@ -195,7 +195,7 @@ impl AuthService {
         Ok(())
     }
 
-    /// Genera un JWT con expiración de 7 días, incluye role y `effective_role`.
+    /// Genera un JWT con expiración de 10 años (efectivamente permanente para CMS).
     /// Si `impersonator` es Some, el token representa una sesión impersonada por un admin.
     pub fn generate_token(
         user_id: Uuid,
@@ -205,7 +205,7 @@ impl AuthService {
         secret: &str,
     ) -> Result<String, AppError> {
         let timestamp = chrono::Utc::now()
-            .checked_add_signed(chrono::Duration::days(7))
+            .checked_add_signed(chrono::Duration::days(3650))
             .ok_or_else(|| AppError::Internal("Error calculando expiración del token".into()))?
             .timestamp();
         let exp = usize::try_from(timestamp)
