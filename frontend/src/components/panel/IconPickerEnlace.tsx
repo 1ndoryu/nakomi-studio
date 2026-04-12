@@ -6,6 +6,7 @@
  * y search input — <Button>/<Input> estándar no aplican a este patrón de icon picker.
  * sentinel-disable-file menu-contextual-artesanal: Es un icon picker popover, no un menú contextual. */
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useClickOutside } from '../../hooks/useClickOutside';
 import {
     Globe, ExternalLink, Package, GitBranch,
     AtSign, Briefcase, PlayCircle, Camera, Share2,
@@ -23,8 +24,9 @@ export interface TipoEnlace {
     keywords: string[];
 }
 
-/* Catálogo de tipos de enlace soportados */
-export const TIPOS_ENLACE: TipoEnlace[] = [
+/* [124A-SENT-R10] as const previene mutación accidental del catálogo de tipos de enlace.
+ * También mejora el narrowing de tipos en TypeScript. */
+export const TIPOS_ENLACE = [
     { id: 'web', label: 'Web', icon: Globe, keywords: ['sitio', 'website', 'pagina', 'url'] },
     { id: 'github', label: 'GitHub', icon: GitBranch, keywords: ['git', 'repo', 'repositorio', 'codigo'] },
     { id: 'npm', label: 'npm', icon: Package, keywords: ['paquete', 'libreria', 'node'] },
@@ -50,10 +52,10 @@ export const TIPOS_ENLACE: TipoEnlace[] = [
     { id: 'tienda', label: 'Tienda', icon: ShoppingBag, keywords: ['shop', 'ecommerce', 'store'] },
     { id: 'git', label: 'Git', icon: GitBranch, keywords: ['branch', 'repositorio', 'version'] },
     { id: 'otro', label: 'Otro', icon: Pen, keywords: ['custom', 'personalizado'] },
-];
+] as const satisfies TipoEnlace[];
 
-/* Mapa para lookup rápido por id */
-export const TIPO_ENLACE_MAP = new Map(TIPOS_ENLACE.map(t => [t.id, t]));
+/* Mapa para lookup rápido por id. Typed con string key para aceptar valores dinámicos. */
+export const TIPO_ENLACE_MAP = new Map<string, TipoEnlace>(TIPOS_ENLACE.map(t => [t.id, t]));
 
 interface IconPickerEnlaceProps {
     value: string;
@@ -66,17 +68,8 @@ export const IconPickerEnlace: React.FC<IconPickerEnlaceProps> = ({ value, onCha
     const contenedorRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    /* Cerrar al hacer click fuera */
-    useEffect(() => {
-        if (!abierto) return;
-        const handler = (e: MouseEvent) => {
-            if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) {
-                setAbierto(false);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [abierto]);
+    /* [124A-SENT-R7] Cerrar al hacer click fuera */
+    useClickOutside(contenedorRef, () => setAbierto(false), abierto);
 
     /* Focus en el input de búsqueda al abrir */
     useEffect(() => {

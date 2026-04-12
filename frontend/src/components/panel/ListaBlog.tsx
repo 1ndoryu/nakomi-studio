@@ -112,14 +112,15 @@ function FilaBlogPost({
             </div>
 
             {/* [124A-BLOG1] Toggle featured: estrella clickeable */}
-            <button
+            <Button
+                variante="texto"
                 className={`listaBlogStar ${post.is_featured ? 'listaBlogStar--activo' : ''}`}
                 onClick={() => onToggleFeatured?.(post.id, !post.is_featured)}
                 title={post.is_featured ? 'Quitar de destacados' : 'Marcar como destacado'}
                 aria-label={post.is_featured ? 'Quitar de destacados' : 'Marcar como destacado'}
             >
                 <Star size={16} fill={post.is_featured ? 'currentColor' : 'none'} />
-            </button>
+            </Button>
 
             {post.featured_image && (
                 <div className="listaBlogMiniatura">

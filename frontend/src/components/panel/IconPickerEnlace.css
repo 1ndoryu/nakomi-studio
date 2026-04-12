@@ -1,6 +1,9 @@
 /* [154A-10] Estilos del selector de iconos para enlaces
  * sentinel-disable-file cursor-pointer-fuera-de-button: Elementos interactivos de selección
- * en popover (trigger, items) requieren cursor:pointer; no son Button del sistema UI. */
+ * en popover (trigger, items) requieren cursor:pointer; no son Button del sistema UI.
+ * sentinel-disable-file css-adhoc-button-style: .iconPickerEnlaceBoton es el trigger de un
+ * popover especializado (ancho fijo 120px, h 38px, layout flex con icono+texto). Los estilos
+ * no duplican Button.css — son específicos del icon picker y no tienen variante equivalente. */
 
 .iconPickerEnlace {
     position: relative;

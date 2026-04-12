@@ -4,9 +4,10 @@
  * Muestra avatar, nombre, rol y links de navegacion con iconos.
  * [044A-38 Fase 1] Tabs dinámicos por rol + botón switch-role para admin.
  */
-import React, {useState, useCallback, useRef, useEffect} from 'react';
+import React, {useState, useCallback, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, Banknote, Menu} from 'lucide-react';
+import { useClickOutside } from '../../hooks/useClickOutside';
 import {obtenerTabsPorRol, type SeccionPanel} from '../../data/panel';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {useAuthStore} from '../../stores/authStore';
@@ -68,22 +69,8 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
     const visibleTabs = tabs.slice(0, MAX_BOTTOM_NAV);
     const overflowTabs = tabs.slice(MAX_BOTTOM_NAV);
 
-    /* [204A-16] Cerrar el menú overflow al hacer click/touch fuera.
-     * Se escucha touchstart además de mousedown para que funcione en móvil. */
-    useEffect(() => {
-        if (!menuAbierto) return;
-        const handleOutside = (e: MouseEvent | TouchEvent) => {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-                setMenuAbierto(false);
-            }
-        };
-        document.addEventListener('mousedown', handleOutside);
-        document.addEventListener('touchstart', handleOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleOutside);
-            document.removeEventListener('touchstart', handleOutside);
-        };
-    }, [menuAbierto]);
+    /* [124A-SENT-R7] Cerrar el menú overflow al hacer click/touch fuera. */
+    useClickOutside(menuRef, () => setMenuAbierto(false), menuAbierto);
 
     const handleOverflowSelect = useCallback((seccion: SeccionPanel) => {
         onCambiarSeccion(seccion);

@@ -4,6 +4,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Camera, X } from 'lucide-react';
 import { apiUploadImage } from '../../api/uploads';
+import { Button } from './Button';
 import './UploadImage.css';
 
 interface UploadImageProps {
@@ -89,14 +90,15 @@ export const UploadImage: React.FC<UploadImageProps> = ({
                 {valor ? (
                     <div className="uploadImagenPreview">
                         <img src={valor} alt="Preview" loading="lazy" />
-                        <button
+                        <Button
                             type="button"
+                            variante="texto"
                             className="uploadImagenEliminar"
                             onClick={handleRemove}
                             aria-label="Eliminar imagen"
                         >
                             <X size={14} />
-                        </button>
+                        </Button>
                     </div>
                 ) : (
                     <div className="uploadImagenPlaceholder">

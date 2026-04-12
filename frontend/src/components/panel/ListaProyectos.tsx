@@ -114,14 +114,15 @@ function FilaProyecto({
             </div>
 
             {/* [124A-CMS2] Toggle featured: estrella clickeable */}
-            <button
+            <Button
+                variante="texto"
                 className={`listaProyectosStar ${proyecto.is_featured ? 'listaProyectosStar--activo' : ''}`}
                 onClick={() => onToggleFeatured?.(proyecto.id, !proyecto.is_featured)}
                 title={proyecto.is_featured ? 'Quitar de Selected Work' : 'Agregar a Selected Work'}
                 aria-label={proyecto.is_featured ? 'Quitar de Selected Work' : 'Agregar a Selected Work'}
             >
                 <Star size={16} fill={proyecto.is_featured ? 'currentColor' : 'none'} />
-            </button>
+            </Button>
 
             {proyecto.featured_image && (
                 <div className="listaProyectosMiniatura">
