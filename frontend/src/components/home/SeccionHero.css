@@ -59,6 +59,10 @@
     margin-top: var(--spacing-lg);
 }
 
+.heroImagenFondo {
+    padding: var(--spacing-xl) var(--spacing-lg);
+}
+
 @media (max-width: 768px) {
     .heroContenido {
         grid-template-columns: 1fr;
