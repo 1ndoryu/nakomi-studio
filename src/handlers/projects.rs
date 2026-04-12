@@ -115,7 +115,8 @@ pub async fn create(
     let description = body.description.as_deref().unwrap_or("");
     let status = body.status.as_deref().unwrap_or("published");
     let sort_order = body.sort_order.unwrap_or(0);
-    let is_featured = body.is_featured.unwrap_or(false);
+    let is_featured = body.is_featured.unwrap_or(true);
+    let in_carousel = body.in_carousel.unwrap_or(true);
 
     let gallery =
         serde_json::to_value(body.gallery.unwrap_or_default())
@@ -149,6 +150,7 @@ pub async fn create(
             status,
             sort_order,
             is_featured,
+            in_carousel,
             showcase_category: body.showcase_category.as_deref(),
             detail_title: body.detail_title.as_deref(),
             use_first_gallery_image: body.use_first_gallery_image.unwrap_or(false),
@@ -235,6 +237,7 @@ pub async fn update(
             status: body.status.as_deref(),
             sort_order: body.sort_order,
             is_featured: body.is_featured,
+            in_carousel: body.in_carousel,
             showcase_category: body.showcase_category.as_deref(),
             detail_title: body.detail_title.as_deref(),
             use_first_gallery_image: body.use_first_gallery_image,

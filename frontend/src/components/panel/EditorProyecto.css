@@ -88,6 +88,17 @@
     cursor: pointer;
 }
 
+/* [124A-PROJ] Sección de visibilidad con múltiples checkboxes */
+.editorProyectoVisibilidad {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.editorProyectoVisibilidad .editorProyectoLabel {
+    margin-bottom: var(--spacing-xs);
+}
+
 .editorProyectoTextarea {
     font-family: var(--font-primary);
     font-size: var(--text-sm);

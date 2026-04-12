@@ -30,6 +30,7 @@ export interface AdminProject {
     status: string;
     sort_order: number;
     is_featured: boolean;
+    in_carousel: boolean;
     showcase_category: string | null;
     detail_title: string | null;
     use_first_gallery_image: boolean;
@@ -53,6 +54,7 @@ export interface CreateProjectBody {
     status?: string;
     sort_order?: number;
     is_featured?: boolean;
+    in_carousel?: boolean;
     showcase_category?: string;
     detail_title?: string;
     use_first_gallery_image?: boolean;
@@ -74,6 +76,7 @@ export interface UpdateProjectBody {
     status?: string;
     sort_order?: number;
     is_featured?: boolean;
+    in_carousel?: boolean;
     showcase_category?: string;
     detail_title?: string;
     use_first_gallery_image?: boolean;

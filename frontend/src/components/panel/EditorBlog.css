@@ -182,3 +182,31 @@
         border-radius: 0;
     }
 }
+
+/* [124A-PROJ] Botón estrella para destacar post en el inicio */
+.editorBlogStarBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    font-family: var(--font-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    align-self: flex-start;
+}
+
+.editorBlogStarBtn:hover {
+    border-color: var(--text-secondary);
+    color: var(--text-secondary);
+}
+
+.editorBlogStarBtn--activo {
+    border-color: var(--brand-primary);
+    color: var(--brand-primary);
+    background: var(--bg-item-active);
+}

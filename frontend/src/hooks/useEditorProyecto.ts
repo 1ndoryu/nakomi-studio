@@ -30,6 +30,9 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
     /* [124A-DETAIL1] Título alternativo para detalle y toggle usar primera imagen de galería */
     const [detailTitle, setDetailTitle] = useState('');
     const [useFirstGalleryImage, setUseFirstGalleryImage] = useState(false);
+    /* [124A-PROJ] Visibilidad: aparece en Selected Work y en carrusel del inicio */
+    const [isFeatured, setIsFeatured] = useState(true);
+    const [inCarousel, setInCarousel] = useState(true);
 
     const resetear = useCallback(() => {
         setTitulo(''); setSlug(''); setCliente(''); setDescripcion('');
@@ -38,6 +41,7 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
         setStatus('published'); setSortOrder(0);
         setMetaTitle(''); setMetaDescription(''); setShowcaseCategory('');
         setDetailTitle(''); setUseFirstGalleryImage(false);
+        setIsFeatured(true); setInCarousel(true);
     }, []);
 
     useEffect(() => {
@@ -60,6 +64,8 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
             setShowcaseCategory(proyecto.showcase_category ?? '');
             setDetailTitle(proyecto.detail_title ?? '');
             setUseFirstGalleryImage(proyecto.use_first_gallery_image ?? false);
+            setIsFeatured(proyecto.is_featured ?? true);
+            setInCarousel(proyecto.in_carousel ?? true);
         } else {
             resetear();
         }
@@ -83,9 +89,11 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
         showcase_category: showcaseCategory || undefined,
         detail_title: detailTitle || undefined,
         use_first_gallery_image: useFirstGalleryImage,
+        is_featured: isFeatured,
+        in_carousel: inCarousel,
     }), [titulo, slug, cliente, descripcion, imagenUrl, galeria, categorias,
         tecnologias, enlaces, skills, status, sortOrder, metaTitle, metaDescription, showcaseCategory,
-        detailTitle, useFirstGalleryImage]);
+        detailTitle, useFirstGalleryImage, isFeatured, inCarousel]);
 
     return {
         titulo, slug, cliente, descripcion, contenido, imagenUrl,
@@ -97,6 +105,7 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
         setEnlaces, setSkills, setStatus, setSortOrder,
         setMetaTitle, setMetaDescription, setShowcaseCategory,
         setDetailTitle, setUseFirstGalleryImage,
+        isFeatured, setIsFeatured, inCarousel, setInCarousel,
         buildBody, resetear,
     };
 }

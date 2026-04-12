@@ -14,6 +14,7 @@ export interface EditorBlogState {
     tags: string[];
     metaTitle: string;
     metaDescription: string;
+    isFeatured: boolean;
     setTitulo: (v: string) => void;
     setSlug: (v: string) => void;
     setExtracto: (v: string) => void;
@@ -23,6 +24,7 @@ export interface EditorBlogState {
     setTags: (v: string[]) => void;
     setMetaTitle: (v: string) => void;
     setMetaDescription: (v: string) => void;
+    setIsFeatured: (v: boolean) => void;
     buildBody: () => CreateBlogPostBody | UpdateBlogPostBody;
     resetear: () => void;
 }
@@ -37,6 +39,8 @@ export function useEditorBlog(post: AdminBlogPost | null, abierto: boolean): Edi
     const [tags, setTags] = useState<string[]>([]);
     const [metaTitle, setMetaTitle] = useState('');
     const [metaDescription, setMetaDescription] = useState('');
+    /* [124A-PROJ] is_featured: controla si el post aparece destacado en el inicio */
+    const [isFeatured, setIsFeatured] = useState(false);
 
     const resetear = useCallback(() => {
         setTitulo('');
@@ -48,6 +52,7 @@ export function useEditorBlog(post: AdminBlogPost | null, abierto: boolean): Edi
         setTags([]);
         setMetaTitle('');
         setMetaDescription('');
+        setIsFeatured(false);
     }, []);
 
     /* Sincronizar con post seleccionado */
@@ -62,6 +67,7 @@ export function useEditorBlog(post: AdminBlogPost | null, abierto: boolean): Edi
             setTags(post.tags);
             setMetaTitle(post.meta_title ?? '');
             setMetaDescription(post.meta_description ?? '');
+            setIsFeatured(post.is_featured ?? false);
         } else {
             resetear();
         }
@@ -77,13 +83,14 @@ export function useEditorBlog(post: AdminBlogPost | null, abierto: boolean): Edi
         tags: tags.length > 0 ? tags : undefined,
         meta_title: metaTitle || undefined,
         meta_description: metaDescription || undefined,
-    }), [titulo, slug, extracto, contenido, imagenUrl, status, tags, metaTitle, metaDescription]);
+        is_featured: isFeatured,
+    }), [titulo, slug, extracto, contenido, imagenUrl, status, tags, metaTitle, metaDescription, isFeatured]);
 
     return {
         titulo, slug, extracto, contenido, imagenUrl, status, tags,
-        metaTitle, metaDescription,
+        metaTitle, metaDescription, isFeatured,
         setTitulo, setSlug, setExtracto, setContenido, setImagenUrl,
-        setStatus, setTags, setMetaTitle, setMetaDescription,
+        setStatus, setTags, setMetaTitle, setMetaDescription, setIsFeatured,
         buildBody, resetear,
     };
 }

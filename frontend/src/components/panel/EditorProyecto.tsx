@@ -142,6 +142,27 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                             </span>
                         </label>
 
+                        {/* [124A-PROJ] Visibilidad: controla dónde aparece el proyecto en el sitio */}
+                        <div className="editorProyectoVisibilidad">
+                            <span className="editorProyectoLabel">Visibilidad</span>
+                            <label className="editorProyectoCheckboxLabel">
+                                <input
+                                    type="checkbox"
+                                    checked={form.inCarousel}
+                                    onChange={e => form.setInCarousel(e.target.checked)}
+                                />
+                                Aparece en el carrusel del inicio
+                            </label>
+                            <label className="editorProyectoCheckboxLabel">
+                                <input
+                                    type="checkbox"
+                                    checked={form.isFeatured}
+                                    onChange={e => form.setIsFeatured(e.target.checked)}
+                                />
+                                Aparece en Selected Work
+                            </label>
+                        </div>
+
                     </div>
                 )}
 

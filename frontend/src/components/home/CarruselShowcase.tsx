@@ -26,7 +26,8 @@ export const CarruselShowcase: React.FC = () => {
     });
 
     const baseProyectos = useMemo(
-        () => mapAdminProjectsToProyectos(apiProjects || []),
+        /* [124A-PROJ] Solo proyectos con in_carousel=true aparecen en el carrusel */
+        () => mapAdminProjectsToProyectos((apiProjects || []).filter(p => p.in_carousel)),
         [apiProjects]
     );
 

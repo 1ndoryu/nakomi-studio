@@ -4,6 +4,7 @@
  * sentinel-disable-file html-nativo-en-vez-de-componente: Tabs del editor y status toggles usan
  * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón EditorServicio). */
 import React, {useState, useCallback} from 'react';
+import {Star} from 'lucide-react';
 import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';
 import {Textarea} from '../ui/Textarea';
@@ -108,6 +109,17 @@ export const EditorBlog: React.FC<EditorBlogProps> = ({
                                 placeholder="IA, desarrollo web, branding"
                             />
                         </label>
+
+                        {/* [124A-PROJ] Toggle destacado: controla si el post aparece en el inicio */}
+                        <button
+                            type="button"
+                            className={`editorBlogStarBtn ${form.isFeatured ? 'editorBlogStarBtn--activo' : ''}`}
+                            onClick={() => form.setIsFeatured(!form.isFeatured)}
+                            title={form.isFeatured ? 'Quitar de inicio' : 'Mostrar en inicio'}
+                        >
+                            <Star size={16} fill={form.isFeatured ? 'currentColor' : 'none'} />
+                            {form.isFeatured ? 'Aparece en inicio' : 'No aparece en inicio'}
+                        </button>
                     </div>
                 )}
 
