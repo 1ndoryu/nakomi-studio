@@ -25,8 +25,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- Hacer una auditoría de rendimiento, fuga de ram las extensiones de sentinel y varsense, una auditoría profunda. 
-- Sentinel definitavamente no esta generando reportes para archivos rust. (Instalala de nuevo despues que arregles pero no intentes reiniciar vscode)
+- Hacer una auditoría de rendimiento, fuga de ram las extensiones de sentinel y varsense, una auditoría profunda.
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 
