@@ -79,7 +79,7 @@ pub async fn create_session(
             .unwrap_or_else(|| auth.user_id.to_string());
         state
             .chat_hub
-            .get_or_create_visitor_session(&vid, req.visitor_name.as_deref(), None, None)
+            .get_or_create_visitor_session(&vid, req.visitor_name.as_deref(), None, None, None)
             .await?
     };
 

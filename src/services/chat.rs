@@ -115,19 +115,23 @@ impl ChatHub {
         visitor_name: Option<&str>,
         visitor_ip: Option<&str>,
         visitor_user_agent: Option<&str>,
+        visitor_country: Option<&str>,
     ) -> Result<ChatSession, AppError> {
         if let Some(existing) =
             ChatRepository::find_session_by_visitor(&self.pool, visitor_id).await?
         {
             /* [064A-72] Actualizar IP/UA si cambió (reconexiones) */
-            if visitor_ip.is_some() || visitor_user_agent.is_some() {
+            /* [124A-PAIS] También actualizar country si se obtuvo ahora */
+            if visitor_ip.is_some() || visitor_user_agent.is_some() || visitor_country.is_some() {
                 let _ = sqlx::query(
                     "UPDATE chat_sessions SET visitor_ip = COALESCE($2, visitor_ip), \
-                     visitor_user_agent = COALESCE($3, visitor_user_agent) WHERE id = $1",
+                     visitor_user_agent = COALESCE($3, visitor_user_agent), \
+                     visitor_country = COALESCE($4, visitor_country) WHERE id = $1",
                 )
                 .bind(existing.id)
                 .bind(visitor_ip)
                 .bind(visitor_user_agent)
+                .bind(visitor_country)
                 .execute(&self.pool)
                 .await;
             }
@@ -143,13 +147,16 @@ impl ChatHub {
         .await?;
 
         /* [064A-72] Guardar IP y user-agent en la nueva sesión */
-        if visitor_ip.is_some() || visitor_user_agent.is_some() {
+        /* [124A-PAIS] También guardar country */
+        if visitor_ip.is_some() || visitor_user_agent.is_some() || visitor_country.is_some() {
             let _ = sqlx::query(
-                "UPDATE chat_sessions SET visitor_ip = $2, visitor_user_agent = $3 WHERE id = $1",
+                "UPDATE chat_sessions SET visitor_ip = $2, visitor_user_agent = $3, \
+                 visitor_country = $4 WHERE id = $1",
             )
             .bind(session.id)
             .bind(visitor_ip)
             .bind(visitor_user_agent)
+            .bind(visitor_country)
             .execute(&self.pool)
             .await;
         }

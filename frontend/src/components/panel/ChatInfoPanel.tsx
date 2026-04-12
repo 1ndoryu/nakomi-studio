@@ -142,6 +142,16 @@ export const ChatInfoPanel: React.FC<ChatInfoPanelProps> = ({session, onClose}) 
                     </div>
                 )}
 
+                {/* País */}
+                {session.visitor_country && (
+                    <div className="chatInfoSeccion">
+                        <div className="chatInfoLabel">
+                            <Globe size={14} /> País
+                        </div>
+                        <div className="chatInfoValor">{session.visitor_country}</div>
+                    </div>
+                )}
+
                 {/* Dispositivo */}
                 {parsed && (
                     <div className="chatInfoSeccion">

@@ -47,13 +47,55 @@ async fn ws_visitor(
         .and_then(|v| v.to_str().ok())
         .map(String::from);
 
-    ws.on_upgrade(move |socket| {
-        handle_visitor_ws(socket, state, params, visitor_ip, visitor_ua)
+    /* [124A-PAIS] País: CF-IPCountry header (Cloudflare) → fallback geo-lookup por IP.
+     * "XX" = Cloudflare no reconoce el país — tratar como None. */
+    let visitor_country = headers
+        .get("cf-ipcountry")
+        .and_then(|v| v.to_str().ok())
+        .filter(|&c| c != "XX" && c != "T1") /* T1 = Tor */
+        .map(String::from);
+    let visitor_country_clone = visitor_country.clone();
+    let visitor_ip_clone = visitor_ip.clone();
+    let http_client_clone = state.http_client.clone();
+
+    ws.on_upgrade(move |socket| async move {
+        /* Geo-lookup asíncrono solo si CF no dio el país */
+        let country = if visitor_country_clone.is_some() {
+            visitor_country_clone
+        } else {
+            lookup_country_from_ip(&http_client_clone, visitor_ip_clone.as_deref()).await
+        };
+        handle_visitor_ws(socket, state, params, visitor_ip, visitor_ua, country).await;
     })
 }
 
-/* [T-9] Verificar JWT opcional y extraer user_id si es válido.
- * No bloquea la conexión si falla — simplemente trata al usuario como anónimo. */
+/* [124A-PAIS] Geo-lookup por IP via ipapi.co (fallback cuando no hay CF-IPCountry).
+ * Timeout 2s para no bloquear. Ignora IPs locales/privadas. */
+async fn lookup_country_from_ip(client: &reqwest::Client, ip: Option<&str>) -> Option<String> {
+    let ip = ip?;
+    /* Saltar IPs privadas/loopback */
+    if ip == "127.0.0.1" || ip.starts_with("192.168.") || ip.starts_with("10.")
+        || ip.starts_with("172.16.") || ip == "::1" {
+        return None;
+    }
+    let url = format!("https://ipapi.co/{ip}/country_name/");
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        client.get(&url).header("User-Agent", "nakomi-studio/1.0").send(),
+    )
+    .await
+    {
+        Ok(Ok(resp)) if resp.status().is_success() => resp
+            .text()
+            .await
+            .ok()
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty() && !t.to_lowercase().contains("error")),
+        _ => None,
+    }
+}
+
+
 fn try_extract_user_id(token: Option<&str>, jwt_secret: &str) -> Option<uuid::Uuid> {
     token.and_then(|t| {
         crate::services::AuthService::verify_token(t, jwt_secret)
@@ -69,6 +111,7 @@ async fn handle_visitor_ws(
     params: VisitorWsParams,
     visitor_ip: Option<String>,
     visitor_ua: Option<String>,
+    visitor_country: Option<String>,
 ) {
     /* [084A-42] Anti-bot: verificar límite de conexiones WS por IP */
     let ip_for_tracking = visitor_ip.clone().unwrap_or_default();
@@ -90,6 +133,7 @@ async fn handle_visitor_ws(
             params.visitor_name.as_deref(),
             visitor_ip.as_deref(),
             visitor_ua.as_deref(),
+            visitor_country.as_deref(),
         )
         .await
     {

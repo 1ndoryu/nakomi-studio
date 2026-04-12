@@ -38,6 +38,10 @@ pub struct ChatSession {
      * Actualizado en cada conexión WS del visitor. Default para queries legacy. */
     #[sqlx(default)]
     pub visitor_last_connected_at: Option<DateTime<Utc>>,
+    /* [124A-PAIS] País del visitante: CF-IPCountry header (si hay Cloudflare) o
+     * lookup a ipapi.co al crear sesión. Default para queries legacy. */
+    #[sqlx(default)]
+    pub visitor_country: Option<String>,
 }
 
 /* [P-2] Perfil de visitante — memoria persistente entre sesiones.

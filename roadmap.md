@@ -26,25 +26,15 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 ## Tareas pendientes 
 
 - Corregir ~126 problemas reales del sentinel-report → ver plan detallado en `Agente/planes/plan-sentinel-problemas-reales-2026-04-12.md`
+- El input orden dentro dentro de los contenido de cms es innecesario. 
+- Los proyectos elegir si aparecen en el carrusel o si aparecen en Selected Work es confuso, tiene que ser interno en el modal, puede aparecer en ambos o en ninguno y por defecto todo tiene que aparecer. Igualmente un blog no tiene opcion aparente para mostrarse dentro de la pagina de inicio o no, tiene que interno, con el icono de estrella.
+- Las env del chatbot ya están en producción. El fix de IA (asign_staff + toggle panel) requiere un deploy (commit 465f2eb).
+- Cuando la IA hace una escalación: notificación push + correo. En el panel: verificar/mostrar indicador y toggle de IA apagado cuando hay escalación activa.
+- Hay que asegurar que una vez que el chatbot le envía la factura, detectar cuando la factura se pague, notificar al admin, y avisarle al cliente que se registre con el correo con el que hizo el pago.
+- En chat del panel en info de visitante falta que diga el país.
+- Las imágenes de proyectos tienen problema: la misma imagen carga 2 veces (carrusel = carruselImagen + Selected Work = proyectoImagen con srcset diferente). La resolución del carrusel es mala y el peso es excesivo. Hay que unificar el pipeline de imágenes y optimizar srcset/sizes para LCP.
 
-### Delegaciones y pedidos — ✅ COMPLETADO
 
-> Todo implementado: Wallet, retiros, cancelación con solicitud, ventana 48h, delegaciones, admin assignment UI, activity audit, wallet header, chat auto-greeting al crear orden, email de confirmación, restricción chat 2 personas (cliente+empleado), auto-disable IA cuando empleado responde. 
-> Verificado en código: `rest_messages.rs` líneas 104-132, `orders.rs` líneas 88-107.
-
-### Hosting / Infraestructura — bloqueados por dependencias externas
-
-> Todos estos items requieren acceso a servidores remotos, APIs de terceros o credenciales que necesitan revisión manual.
-
-- Hosting/SSH seguro Fase 1: verificación VFS disco en VPS2 (requiere ops en servidor).
-- Seguridad hosting Fase 4.1: DNS ownership (requiere definir API provider).
-- Contabo rechazó autenticación. Revisar CONTABO_API_PASSWORD y credenciales OAuth2.
-- Hosting Automation Fase 4: Dominios y DNS — bloqueado por API DNS provider + Contabo auth.
-- COOLIFY_PROJECT_UUID: verificar si el valor en prod coincide con el actual de Coolify (task de ops remota).
-
-### Planes activos — ✅ TODOS COMPLETADOS
-
-> Chatbot v2 (Fases I-II + testing), SEO (Fases 2-3), Seed system (Fase 5) — todo completado y verificado en código.
 
 ## Notas de infraestructura
 
