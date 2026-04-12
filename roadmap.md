@@ -100,3 +100,18 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 - ~~Sitio deja de cargar después de ~1h (503): deadlock por APIs de IA sin timeout~~ (124A-1: timeouts HTTP 30s en todas las llamadas a Groq/Gemini + timeout global 90s en generate_ai_response)
 
 - ~~veo un problema con el prerender que hiciste, los contenidos del cms no pueden prendererizarse asi, tiene que ser dinamico, tuviste eso en cuenta con el prerender? los proyectos, los servicios son modificables desde el cms.~~ (214A-2: SEO dinámico desde BD)
+
+- Limpia el roadmap de todo lo completado
+- agrega estos estilos
+.heroImagenFondo {
+    padding: var(--spacing-xl) var(--spacing-lg);
+}
+- inconsistencias entre el cms y blog, borre los blog del cms pero en el inicio no aparece, aparece uno viejo y hay que revisar que las imagenes de los blog se esten optimizando. Tambien hay inconsistencia en Selected Work, en el cms no hay forma de elegir cuales son Selected Work y su categoría, cuales aparecen en el inicio en el carrusell, además la forma en la que se elige el orden es muy mala, tiene que ser desde la lista que se pueda cambiar el orden de las cosas arrastrando, como es un grid, haremos que en el cms los elementos sean una lista, asi se puede cambiar el orden mas facil de arriba abajo. 
+
+- ~~este es un problema grave, lo has intentado solucionar ya 6 veces y no funciona, las imagenes siguen desapareciendo con 404, no se si sucede al rato automaticamente o despues del deploy, ya estoy harta de este problema, no requiere un parche, necesito una solución real, 6 intentos fallido ya!! {"error":"not_found","message":"Imagen no encontrada"}~~ (124A-IMAGE404: root cause = Coolify normaliza bind mounts a named volumes. Fix: volume_manager::ensure_uploads_bind_mount() fuerza bind mount en cada deploy/redeploy/restart via sed en compose on-disk)
+
+- ~~Tienes que documentar coolify con la solución anterior por si sucede en otros despliegues, y actualizar el readme.~~ (124A-IMAGE404: documentado en `Agente/documentacion/hosting/coolify-volumenes-persistencia-2026-04-12.md` + README coolify-manager-rs actualizado)
+
+- ~~Con el problema de las imagenes revisa e investiga si hay relacion con la persistencia de las bases de datos, puesto que antes habia un problema asi, documentate bien para que este problema no suceda ni haya perdida de datos con bases de datos de nuevo que se borran al redeploy.~~ (124A-IMAGE404: PostgreSQL usa named volume `UUID_pg-data` que persiste correctamente. El problema era específico de uploads porque Coolify cambiaba el tipo de mount. BD documentada en la misma doc de persistencia.)
+
+- En el cms tambien se debería poder elegir que servicios salen en el home en la pagina principal y cuales no
