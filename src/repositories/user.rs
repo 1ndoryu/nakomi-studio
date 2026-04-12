@@ -469,4 +469,26 @@ impl UserRepository {
         .fetch_optional(pool)
         .await
     }
+
+    /* [124A-SENT-R1] Info de avatar y nombre de múltiples usuarios por sus IDs.
+     * Usado en chat/mod.rs para enriquecer mensajes con datos del sender.
+     * runtime query (sin macro) — ANY($1) con &[Uuid] no requiere sqlx prepare. */
+    pub async fn info_by_ids(
+        pool: &PgPool,
+        ids: &[Uuid],
+    ) -> Result<Vec<(Uuid, Option<String>, Option<String>)>, sqlx::Error> {
+        #[derive(sqlx::FromRow)]
+        struct Row {
+            id: Uuid,
+            avatar_url: Option<String>,
+            display_name: Option<String>,
+        }
+        let rows = sqlx::query_as::<_, Row>(
+            "SELECT id, avatar_url, display_name FROM users WHERE id = ANY($1)"
+        )
+        .bind(ids)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows.into_iter().map(|r| (r.id, r.avatar_url, r.display_name)).collect())
+    }
 }

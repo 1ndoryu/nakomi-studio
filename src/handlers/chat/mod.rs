@@ -26,6 +26,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::models::{ChatMessage, ChatMessageResponse};
+use crate::repositories::UserRepository;
 
 /* ============================================================
    TIPOS COMPARTIDOS ENTRE SUBMÓDULOS
@@ -70,22 +71,9 @@ async fn enrich_messages(
 
     let mut avatar_map: HashMap<Uuid, (Option<String>, Option<String>)> = HashMap::new();
     if !user_ids.is_empty() {
-        #[derive(sqlx::FromRow)]
-        struct UserInfo {
-            id: Uuid,
-            avatar_url: Option<String>,
-            display_name: Option<String>,
-        }
-        if let Ok(rows) = sqlx::query_as!(
-            UserInfo,
-            "SELECT id, avatar_url, display_name FROM users WHERE id = ANY($1)",
-            &user_ids[..]
-        )
-        .fetch_all(pool)
-        .await
-        {
-            for row in rows {
-                avatar_map.insert(row.id, (row.avatar_url, row.display_name));
+        if let Ok(rows) = UserRepository::info_by_ids(pool, &user_ids).await {
+            for (id, avatar_url, display_name) in rows {
+                avatar_map.insert(id, (avatar_url, display_name));
             }
         }
     }

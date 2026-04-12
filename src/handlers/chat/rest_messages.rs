@@ -13,6 +13,7 @@ use crate::middleware::AuthUser;
 use crate::models::{
     ChatMessage, ChatMessageResponse, CreateNotification, SendMessageRequest, NOTIF_NEW_MESSAGE,
 };
+use crate::repositories::OrderRepository;
 use crate::services::AiChatService;
 use crate::AppState;
 
@@ -95,23 +96,14 @@ pub async fn send_message(
         crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
     {
         if let Some(order_id) = sess.order_id {
-            #[derive(sqlx::FromRow)]
-            struct OrderParticipants {
-                client_id: Uuid,
-                assigned_employee_id: Option<Uuid>,
-            }
-            let participants = sqlx::query_as::<_, OrderParticipants>(
-                "SELECT client_id, assigned_employee_id FROM orders WHERE id = $1",
-            )
-            .bind(order_id)
-            .fetch_optional(&state.pool)
-            .await
-            .ok()
-            .flatten();
+            let participants = OrderRepository::get_order_participants(&state.pool, order_id)
+                .await
+                .ok()
+                .flatten();
 
             if let Some(p) = &participants {
-                let is_client = auth.user_id == p.client_id;
-                let is_assigned = p.assigned_employee_id == Some(auth.user_id);
+                let is_client = auth.user_id == p.0;
+                let is_assigned = p.1 == Some(auth.user_id);
                 if !is_client && !is_assigned {
                     return Err(AppError::Forbidden(
                         "Solo el cliente y el empleado asignado pueden enviar mensajes en este chat."
@@ -143,12 +135,7 @@ pub async fn send_message(
         let recipient_id = if sender_type == "client" {
             session.assigned_staff_id
         } else if let Some(oid) = session.order_id {
-            sqlx::query_scalar::<_, Uuid>("SELECT client_id FROM orders WHERE id = $1")
-                .bind(oid)
-                .fetch_optional(&state.pool)
-                .await
-                .ok()
-                .flatten()
+            OrderRepository::client_id_by_id(&state.pool, oid).await.ok().flatten()
         } else {
             None
         };

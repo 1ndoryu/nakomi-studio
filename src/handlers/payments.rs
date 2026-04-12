@@ -122,13 +122,7 @@ pub async fn stripe_webhook(
         .as_str()
         .ok_or_else(|| AppError::BadRequest("Missing event id".into()))?;
 
-    let already_processed: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM stripe_processed_events WHERE event_id = $1)"
-    )
-    .bind(event_id)
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(false);
+    let already_processed: bool = PaymentRepository::is_event_processed(&state.pool, event_id).await;
 
     if already_processed {
         tracing::info!("Webhook duplicado ignorado: {event_id}");
@@ -265,14 +259,9 @@ pub async fn stripe_webhook(
     .await;
 
     /* Registrar evento como procesado */
-    sqlx::query(
-        "INSERT INTO stripe_processed_events (event_id, event_type) VALUES ($1, $2) ON CONFLICT DO NOTHING"
-    )
-    .bind(event_id)
-    .bind(event_type)
-    .execute(&state.pool)
-    .await
-    .map_err(AppError::Database)?;
+    PaymentRepository::mark_event_processed(&state.pool, event_id, event_type)
+        .await
+        .map_err(AppError::Database)?;
 
     Ok(StatusCode::OK)
 }

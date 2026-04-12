@@ -6,7 +6,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
-use sqlx;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -17,6 +16,7 @@ use crate::models::{
     OrderResponse, RespondDelegationRequest, UserRole,
     NOTIF_ORDER_ASSIGNED, NOTIF_DELEGATION_RECEIVED, NOTIF_DELEGATION_RESOLVED,
 };
+use crate::repositories::ActivityLogRepository;
 use crate::services::AssignmentService;
 use crate::AppState;
 
@@ -58,14 +58,10 @@ pub async fn take_order(
     }).await;
 
     /* [154A-15d] Registrar en activity_log que empleado tomó la orden */
-    let _ = sqlx::query(
-        r"INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
-           VALUES ($1, 'order_assigned', 'order', $2, $3::jsonb)",
+    let _ = ActivityLogRepository::log(
+        &state.pool, auth.user_id, "order_assigned", "order", order_id,
+        Some(serde_json::json!({"source": "employee_take"})),
     )
-    .bind(auth.user_id)
-    .bind(order_id)
-    .bind(serde_json::json!({"source": "employee_take"}))
-    .execute(&state.pool)
     .await;
 
     Ok(Json(order))

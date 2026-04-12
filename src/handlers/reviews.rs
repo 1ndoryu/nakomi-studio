@@ -121,16 +121,8 @@ pub async fn respond_review(
     /* Buscar la review por ID — necesitamos iterar o añadir find_by_id.
      * Como no hay find_by_id directo, consultamos por order y filtramos.
      * Alternativa: query directa aquí. */
-    let review = sqlx::query_as!(
-        crate::models::OrderReview,
-        r#"SELECT id, order_id, client_id, employee_id, rating, comment,
-                  employee_response, employee_responded_at, created_at
-           FROM order_reviews WHERE id = $1"#,
-        review_id,
-    )
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Error buscando review: {e}")))?
+    let review = ReviewRepository::find_by_id(&state.pool, review_id)
+        .await?
     .ok_or_else(|| AppError::NotFound("Review no encontrada".into()))?;
 
     /* Solo el empleado de la review puede responder */

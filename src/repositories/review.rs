@@ -141,4 +141,21 @@ impl ReviewRepository {
 
         Ok(reviews)
     }
+
+    /* [124A-SENT-R1] Buscar review por ID.
+     * runtime query (sin macro) para no requerir sqlx prepare contra BD en vivo. */
+    pub async fn find_by_id(
+        pool: &PgPool,
+        review_id: Uuid,
+    ) -> Result<Option<OrderReview>, AppError> {
+        sqlx::query_as::<_, OrderReview>(
+            r#"SELECT id, order_id, client_id, employee_id, rating, comment,
+                      employee_response, employee_responded_at, created_at
+               FROM order_reviews WHERE id = $1"#
+        )
+        .bind(review_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Error buscando review: {e}")))
+    }
 }

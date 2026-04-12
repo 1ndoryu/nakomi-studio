@@ -13,6 +13,7 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{ChatSessionResponse, CreateChatSessionRequest};
+use crate::repositories::OrderRepository;
 use crate::AppState;
 
 pub use super::rest_messages::{get_messages, send_message};
@@ -85,11 +86,7 @@ pub async fn create_session(
 
     /* [064A-31] Obtener order_number si la sesión está vinculada a una orden */
     let order_number: Option<i32> = if let Some(oid) = session.order_id {
-        sqlx::query_scalar("SELECT order_number FROM orders WHERE id = $1")
-            .bind(oid)
-            .fetch_optional(&state.pool)
-            .await
-            .unwrap_or(None)
+        OrderRepository::order_number_by_id(&state.pool, oid).await.unwrap_or(None)
     } else {
         None
     };

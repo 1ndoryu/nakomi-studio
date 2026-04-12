@@ -9,7 +9,6 @@ use axum::{
     routing::{get, patch, post},
     Json, Router,
 };
-use sqlx;
 use uuid::Uuid;
 
 use crate::errors::AppError;
@@ -19,7 +18,7 @@ use crate::models::{
     RequestRefundBody, ReviewAction, ReviewRefundBody, UserRole,
     NOTIF_REFUND_REQUESTED, NOTIF_REFUND_RESOLVED,
 };
-use crate::repositories::{OrderRepository, PaymentRepository, RefundRepository};
+use crate::repositories::{OrderRepository, PaymentRepository, RefundRepository, UserRepository};
 use crate::services::PaymentService;
 use crate::AppState;
 
@@ -86,12 +85,7 @@ pub async fn request_refund(
     .await?;
 
     /* [104A-38] Notificar a admins sobre solicitud de reembolso */
-    let admins = sqlx::query_scalar::<_, Uuid>(
-        "SELECT id FROM users WHERE role = 'admin' AND is_active = true",
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    let admins = UserRepository::admin_ids(&state.pool).await.unwrap_or_default();
     let base = CreateNotification {
         user_id: Uuid::nil(),
         notification_type: NOTIF_REFUND_REQUESTED.to_string(),

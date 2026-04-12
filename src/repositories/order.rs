@@ -969,4 +969,58 @@ impl OrderRepository {
         Ok(())
     }
 
+    /* [124A-SENT-R1] order_id de una fase — usado en deliverables para verificar acceso.
+     * runtime query (sin macro). */
+    pub async fn phase_order_id(pool: &PgPool, phase_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar::<_, Uuid>(
+            "SELECT order_id FROM order_phases WHERE id = $1"
+        )
+        .bind(phase_id)
+        .fetch_optional(pool)
+        .await
+    }
+
+    /* [124A-SENT-R1] order_number de una orden — usado en chat/rest.rs.
+     * runtime query (sin macro). */
+    pub async fn order_number_by_id(pool: &PgPool, order_id: Uuid) -> Result<Option<i32>, sqlx::Error> {
+        sqlx::query_scalar::<_, i32>(
+            "SELECT order_number FROM orders WHERE id = $1"
+        )
+        .bind(order_id)
+        .fetch_optional(pool)
+        .await
+    }
+
+    /* [124A-SENT-R1] client_id de una orden — usado en chat/rest_messages.rs.
+     * runtime query (sin macro). */
+    pub async fn client_id_by_id(pool: &PgPool, order_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar::<_, Uuid>(
+            "SELECT client_id FROM orders WHERE id = $1"
+        )
+        .bind(order_id)
+        .fetch_optional(pool)
+        .await
+    }
+
+    /* [124A-SENT-R1] Participantes de una orden (client_id + assigned_employee_id).
+     * Devuelve (client_id, assigned_employee_id) para verificar acceso en chat.
+     * runtime query (sin macro). */
+    pub async fn get_order_participants(
+        pool: &PgPool,
+        order_id: Uuid,
+    ) -> Result<Option<(Uuid, Option<Uuid>)>, sqlx::Error> {
+        #[derive(sqlx::FromRow)]
+        struct Row {
+            client_id: Uuid,
+            assigned_employee_id: Option<Uuid>,
+        }
+        let row = sqlx::query_as::<_, Row>(
+            "SELECT client_id, assigned_employee_id FROM orders WHERE id = $1"
+        )
+        .bind(order_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|r| (r.client_id, r.assigned_employee_id)))
+    }
+
 }

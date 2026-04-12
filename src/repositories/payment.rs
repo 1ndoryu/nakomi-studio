@@ -171,4 +171,33 @@ impl PaymentRepository {
         .fetch_all(pool)
         .await
     }
+
+    /* [124A-SENT-R1] Comprueba si un evento Stripe ya fue procesado (deduplicación idempotente).
+     * runtime query (sin macro). Retorna false ante cualquier error de BD. */
+    pub async fn is_event_processed(pool: &PgPool, event_id: &str) -> bool {
+        sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM stripe_processed_events WHERE event_id = $1)"
+        )
+        .bind(event_id)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(false)
+    }
+
+    /* [124A-SENT-R1] Marca un evento Stripe como procesado.
+     * ON CONFLICT DO NOTHING garantiza idempotencia sin panic. */
+    pub async fn mark_event_processed(
+        pool: &PgPool,
+        event_id: &str,
+        event_type: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "INSERT INTO stripe_processed_events (event_id, event_type) VALUES ($1, $2) ON CONFLICT DO NOTHING"
+        )
+        .bind(event_id)
+        .bind(event_type)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
 }
