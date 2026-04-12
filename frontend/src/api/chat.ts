@@ -21,6 +21,8 @@ export interface ChatSession {
     visitor_user_agent: string | null;
     /* [124A-PAIS] País del visitante (CF-IPCountry o geo-lookup al crear sesión) */
     visitor_country: string | null;
+    /* [124A-ESC] true cuando la IA detectó que se necesita intervención humana */
+    is_escalated: boolean;
     /* [104A-39] Cuándo se vio por última vez (para badge unread) */
     last_viewed_at: string | null;
     /* [104A-40] Cuándo se conectó el visitante por última vez via WS */

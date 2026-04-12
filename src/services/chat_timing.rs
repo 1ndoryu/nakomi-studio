@@ -657,6 +657,16 @@ async fn send_escalation(
     email_config: Option<&crate::services::EmailConfig>,
 ) {
     let name = visitor_name.unwrap_or("Visitante");
+
+    /* [124A-ESC] Persistir is_escalated = true para que el panel muestre
+     * el indicador al recargar sin depender solo del estado WS en memoria. */
+    let _ = sqlx::query(
+        "UPDATE chat_sessions SET is_escalated = true, updated_at = NOW() WHERE id = $1"
+    )
+    .bind(session_id)
+    .execute(pool)
+    .await;
+
     if let Ok(admin_ids) = UserRepository::admin_ids(pool).await {
         if !admin_ids.is_empty() {
             let base = CreateNotification {

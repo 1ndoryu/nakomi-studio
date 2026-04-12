@@ -48,7 +48,7 @@ impl ChatRepository {
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
                visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at, \
-               visitor_country \
+               visitor_country, is_escalated \
              FROM chat_sessions WHERE id = $1",
         )
         .bind(id)
@@ -106,7 +106,7 @@ impl ChatRepository {
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
                visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at, \
-               visitor_country \
+               visitor_country, is_escalated \
              FROM chat_sessions \
              WHERE visitor_id = $1 AND status != 'closed' \
              ORDER BY created_at DESC LIMIT 1",
@@ -125,7 +125,7 @@ impl ChatRepository {
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
                visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at, \
-               visitor_country \
+               visitor_country, is_escalated \
              FROM chat_sessions \
              WHERE status != 'closed' \
              AND EXISTS (SELECT 1 FROM chat_messages WHERE session_id = chat_sessions.id) \
@@ -149,7 +149,7 @@ impl ChatRepository {
              RETURNING id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
                visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at, \
-               visitor_country",
+               visitor_country, is_escalated",
         )
         .bind(session_id)
         .bind(staff_id)
@@ -170,7 +170,7 @@ impl ChatRepository {
              RETURNING id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
                visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at, \
-               visitor_country",
+               visitor_country, is_escalated",
         )
         .bind(session_id)
         .bind(enabled)
@@ -190,7 +190,7 @@ impl ChatRepository {
              RETURNING id, visitor_id, visitor_name, user_id, order_id, status, \
                assigned_staff_id, ai_enabled, created_at, updated_at, \
                visitor_ip, visitor_user_agent, last_viewed_at, visitor_last_connected_at, \
-               visitor_country",
+               visitor_country, is_escalated",
         )
         .bind(session_id)
         .fetch_one(pool)

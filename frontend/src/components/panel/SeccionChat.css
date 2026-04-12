@@ -223,6 +223,21 @@
     background: var(--text-muted);
 }
 
+/* [124A-ESC] Badge de escalación en el header del chat — color advertencia */
+.chatEscaladoBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full, 9999px);
+    color: var(--color-warning-text, #92400e);
+    background: var(--color-warning-bg, #fef3c7);
+    white-space: nowrap;
+    cursor: default;
+}
+
 /* [124A-CSS1] Sin max-width: el chat ocupa todo el ancho disponible */
 .chatMensajes {
     flex: 1;

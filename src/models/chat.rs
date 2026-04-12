@@ -42,6 +42,10 @@ pub struct ChatSession {
      * lookup a ipapi.co al crear sesión. Default para queries legacy. */
     #[sqlx(default)]
     pub visitor_country: Option<String>,
+    /* [124A-ESC] true cuando la IA detectó que se necesita intervención humana.
+     * Se persiste en BD para que el panel muestre el indicador al recargar. */
+    #[sqlx(default)]
+    pub is_escalated: bool,
 }
 
 /* [P-2] Perfil de visitante — memoria persistente entre sesiones.
