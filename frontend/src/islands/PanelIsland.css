@@ -93,7 +93,7 @@
     }
 
     .panelContenido {
-        /* [204A-16] Sin padding lateral innecesario en móvil */
-        padding: var(--spacing-md) 0;
+        /* [124A-CSS5] Padding lateral md en móvil para no pegar contenido al borde */
+        padding: var(--spacing-md) var(--spacing-md);
     }
 }

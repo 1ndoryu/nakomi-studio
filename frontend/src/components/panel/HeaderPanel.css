@@ -70,7 +70,8 @@
     padding: var(--spacing-xs) var(--spacing-sm);
     font-family: var(--font-mono, var(--font-primary));
     font-size: var(--text-sm);
-    font-weight: 600;
+    /* [124A-CSS6] Sin negrita en el contador de saldo */
+    font-weight: 400;
     color: var(--text-dark);
     cursor: pointer;
     transition: background var(--transicion-rapida), border-color var(--transicion-rapida);

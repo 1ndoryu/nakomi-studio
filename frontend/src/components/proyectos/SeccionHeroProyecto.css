@@ -143,13 +143,16 @@
 
 /* === RESPONSIVE === */
 @media (max-width: 768px) {
+    /* [124A-CSS4] Padding lateral md, sin gap, texto izquierda en móvil */
     .proyectoHeroContenido {
         grid-template-columns: 1fr;
-        padding: 10vh var(--spacing-lg) var(--spacing-xl);
+        padding: 10vh var(--spacing-md) var(--spacing-xl);
+        gap: 0;
     }
 
     .proyectoHeroTitulo {
         font-size: var(--text-3xl);
+        text-align: left;
     }
 
     .proyectoCaseIntroContenido {
