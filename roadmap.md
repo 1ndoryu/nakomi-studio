@@ -26,8 +26,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 ## Tareas pendientes 
 
 - Revisar que imágenes de blogs se optimicen (pasen por /api/img/ con WebP).
-- Selected Work: no hay forma de elegir cuáles son Selected Work, su categoría, ni cuáles aparecen en el carrusel del inicio.
 - Las imagenes del carrusel del inicio que ya no tengan una proporción fija, si una altura fija la que tienen ahora pero ahora la proporción es libre y ajusta a la imagen
+- AL mover los proyectos da 400, y todo debería ser una lista incluyendo los servicios, blog y equipo.
+- Se puede optimizar rust? es que me relentiza mucho la pc y ocupa mucho espacio con cada compilación, no hay forma que puqeda limpiarse?
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 
