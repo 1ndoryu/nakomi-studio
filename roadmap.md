@@ -25,7 +25,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- EN EL CMS DONDE CARAJO SE MODIFICA EL showcaseTituloCategoria!!!  O SEA NO SE PUEDE NECESITA ESPECIFICARSE EN CADA PROYECTO Y SI TIENEN El MISMOS PUES SE AGRUPAAAN Y YA!
 - Hace falta un buscador en cada tab del cms, que funcione en tiempo real.
 - Los blog tambien deben poder elegirse cual aparece en el inicio, igual que los servicios, proyectos destacados y cuales proyectos aparecen el carrusel de inicio.
 - Tambien debería poder elegirse entre la imagen de portada externa y la primera imagen dentro de la pagina individual de proyecto
