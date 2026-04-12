@@ -269,4 +269,15 @@ impl ProjectRepository {
         Ok(())
     }
 
+    /* [124A-SENT-R1] Slugs de proyectos públicos para sitemap.xml.
+     * runtime query (sin macro) para no requerir sqlx prepare contra BD en vivo. */
+    pub async fn public_slugs(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
+        let rows = sqlx::query_scalar::<_, String>(
+            "SELECT slug FROM projects WHERE slug IS NOT NULL AND slug != ''"
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
 }

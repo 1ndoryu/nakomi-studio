@@ -17,7 +17,7 @@ use crate::models::{
     CreateNotification, ProblemAction, ProblemResponse, ProblemStatus,
     ReportProblemRequest, ResolveProblemRequest, UserRole,
 };
-use crate::repositories::{OrderRepository, ProblemRepository};
+use crate::repositories::{OrderRepository, ProblemRepository, UserRepository};
 use crate::AppState;
 
 /* ============================================================
@@ -78,12 +78,7 @@ pub async fn report_problem(
     .await?;
 
     /* Notificar a todos los admins */
-    let admins = sqlx::query_scalar::<_, Uuid>(
-        "SELECT id FROM users WHERE role = 'admin' AND is_active = true",
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    let admins = UserRepository::admin_ids(&state.pool).await.unwrap_or_default();
 
     let base_notif = CreateNotification {
         user_id: Uuid::nil(),
@@ -96,13 +91,9 @@ pub async fn report_problem(
     };
     let _ = state.notification_hub.notify_many(&admins, &base_notif).await;
 
-    let reporter_name = sqlx::query_scalar::<_, String>(
-        "SELECT COALESCE(display_name, email) FROM users WHERE id = $1",
-    )
-    .bind(auth.user_id)
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or_else(|_| "Desconocido".to_string());
+    let reporter_name = UserRepository::display_name_or_email(&state.pool, auth.user_id)
+        .await
+        .unwrap_or_else(|_| "Desconocido".to_string());
 
     let resp = ProblemResponse {
         id: problem.id,
@@ -285,13 +276,9 @@ pub async fn resolve_problem(
     };
     let _ = state.notification_hub.notify(notif).await;
 
-    let reporter_name = sqlx::query_scalar::<_, String>(
-        "SELECT COALESCE(display_name, email) FROM users WHERE id = $1",
-    )
-    .bind(existing.reporter_id)
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or_else(|_| "Desconocido".to_string());
+    let reporter_name = UserRepository::display_name_or_email(&state.pool, existing.reporter_id)
+        .await
+        .unwrap_or_else(|_| "Desconocido".to_string());
 
     let resp = ProblemResponse {
         id: updated.id,

@@ -392,6 +392,23 @@ impl UserRepository {
         Ok(rows)
     }
 
+    /* [124A-SENT-R1] Nombre para mostrar de un usuario: display_name o email como fallback.
+     * Usado en problems.rs para construir ProblemResponse con nombre legible del reporter.
+     * Retorna "Desconocido" si el usuario no existe. runtime query (sin macro). */
+    pub async fn display_name_or_email(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<String, sqlx::Error> {
+        let name = sqlx::query_scalar::<_, String>(
+            "SELECT COALESCE(display_name, email) FROM users WHERE id = $1"
+        )
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?
+        .unwrap_or_else(|| "Desconocido".to_string());
+        Ok(name)
+    }
+
     /* [124A-SENT-R1] IDs de empleados con disponibilidad 'available'.
      * Usado al reabrir una orden para notificar empleados que pueden tomarla.
      * runtime query (sin macro) para no requerir sqlx prepare. */

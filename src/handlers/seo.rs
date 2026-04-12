@@ -1,9 +1,11 @@
 /* [044A-28] Handlers SEO: robots.txt y sitemap.xml.
- * [114A-SEO3] sitemap.xml ahora incluye rutas dinámicas (servicios, proyectos) desde BD. */
+ * [114A-SEO3] sitemap.xml ahora incluye rutas dinámicas (servicios, proyectos) desde BD.
+ * [124A-SENT-R1] Queries directas → ServiceRepository::public_slugs y ProjectRepository::public_slugs. */
 use axum::{extract::State, response::IntoResponse, routing::get, Router};
 use axum::http::header;
 
 use crate::AppState;
+use crate::repositories::{ProjectRepository, ServiceRepository};
 
 const SITE_URL: &str = "https://nakomi.studio";
 
@@ -38,25 +40,15 @@ async fn sitemap_xml(State(state): State<AppState>) -> impl IntoResponse {
     ];
 
     /* [114A-SEO3] Rutas dinámicas desde BD: servicios con slug público */
-    if let Ok(rows) = sqlx::query_as::<_, (String,)>(
-        "SELECT slug FROM services WHERE slug IS NOT NULL AND slug != ''"
-    )
-    .fetch_all(&state.pool)
-    .await
-    {
-        for (slug,) in rows {
+    if let Ok(slugs) = ServiceRepository::public_slugs(&state.pool).await {
+        for slug in slugs {
             rutas.push((format!("/servicios/{slug}"), "0.8", "monthly"));
         }
     }
 
     /* [114A-SEO3] Rutas dinámicas: proyectos con slug público */
-    if let Ok(rows) = sqlx::query_as::<_, (String,)>(
-        "SELECT slug FROM projects WHERE slug IS NOT NULL AND slug != ''"
-    )
-    .fetch_all(&state.pool)
-    .await
-    {
-        for (slug,) in rows {
+    if let Ok(slugs) = ProjectRepository::public_slugs(&state.pool).await {
+        for slug in slugs {
             rutas.push((format!("/proyectos/{slug}"), "0.7", "monthly"));
         }
     }
