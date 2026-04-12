@@ -611,3 +611,98 @@ async fn exec_create_support_ticket(
         }),
     }
 }
+
+/* [214A-5] Unit tests para tool_definitions y execute_tool (unknown tool).
+ * Valida estructura JSON, conteo de tools, campos obligatorios por tool,
+ * y el dispatch de tools desconocidas. */
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tool_definitions_returns_valid_json_array() {
+        let defs = tool_definitions();
+        assert!(defs.is_array(), "tool_definitions debe retornar un JSON array");
+    }
+
+    #[test]
+    fn tool_definitions_has_five_tools() {
+        let defs = tool_definitions();
+        let arr = defs.as_array().unwrap();
+        /* 2 service (create_invoice, request_human_assistance)
+         * + 2 visitor (capture_email, save_client_info)
+         * + 1 registered (create_support_ticket) = 5 */
+        assert_eq!(arr.len(), 5, "Se esperan 5 tools, encontradas {}", arr.len());
+    }
+
+    #[test]
+    fn tool_definitions_each_has_required_structure() {
+        let defs = tool_definitions();
+        let arr = defs.as_array().unwrap();
+        for tool in arr {
+            assert_eq!(tool["type"], "function", "type debe ser 'function'");
+            let func = &tool["function"];
+            assert!(func["name"].is_string(), "function.name debe ser string");
+            assert!(func["description"].is_string(), "function.description debe ser string");
+            assert!(func["parameters"].is_object(), "function.parameters debe ser object");
+            assert!(!func["name"].as_str().unwrap().is_empty(), "function.name no debe estar vacío");
+            assert!(!func["description"].as_str().unwrap().is_empty(), "function.description no vacía");
+        }
+    }
+
+    #[test]
+    fn tool_definitions_expected_names() {
+        let defs = tool_definitions();
+        let names: Vec<&str> = defs
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["function"]["name"].as_str().unwrap())
+            .collect();
+        assert!(names.contains(&"create_invoice"));
+        assert!(names.contains(&"request_human_assistance"));
+        assert!(names.contains(&"capture_email"));
+        assert!(names.contains(&"save_client_info"));
+        assert!(names.contains(&"create_support_ticket"));
+    }
+
+    #[test]
+    fn tool_definitions_create_invoice_has_required_params() {
+        let defs = tool_definitions();
+        let invoice_tool = defs
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["function"]["name"] == "create_invoice")
+            .expect("create_invoice debe existir");
+        let params = &invoice_tool["function"]["parameters"];
+        let required = params["required"].as_array().unwrap();
+        let req_strs: Vec<&str> = required.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(req_strs.contains(&"amount_cents"));
+        assert!(req_strs.contains(&"description"));
+        assert!(req_strs.contains(&"client_email"));
+    }
+
+    #[test]
+    fn tool_definitions_no_duplicate_names() {
+        let defs = tool_definitions();
+        let names: Vec<&str> = defs
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["function"]["name"].as_str().unwrap())
+            .collect();
+        let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
+        assert_eq!(names.len(), unique.len(), "No debe haber tools duplicadas");
+    }
+
+    #[tokio::test]
+    async fn execute_tool_unknown_returns_error() {
+        let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
+        let http = reqwest::Client::new();
+        let result = execute_tool(&pool, &http, None, None, "nonexistent_tool", &json!({})).await;
+        let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
+        assert!(parsed["error"].is_string());
+        assert!(result.rich_message.is_none());
+    }
+}

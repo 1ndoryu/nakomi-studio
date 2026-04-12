@@ -802,3 +802,194 @@ async fn call_summary_api(
         }
     }
 }
+
+/* [214A-5] Unit tests para ChatTimingService: rate limiting, IP rate limiting,
+ * conexiones WS, constantes de seguridad, y max_message_length.
+ * No se testea session_timing_loop (async FSM con muchas dependencias). */
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_rate_allows_under_limit() {
+        let svc = ChatTimingService::new();
+        for i in 1..=RATE_LIMIT_PER_MIN {
+            let (result, msg) = svc.check_rate("visitor-1");
+            assert!(
+                matches!(result, RateCheckResult::Ok),
+                "Mensaje {i} debería ser Ok"
+            );
+            assert!(msg.is_none());
+        }
+    }
+
+    #[test]
+    fn check_rate_warns_on_first_excess() {
+        let svc = ChatTimingService::new();
+        for _ in 0..RATE_LIMIT_PER_MIN {
+            svc.check_rate("visitor-2");
+        }
+        let (result, msg) = svc.check_rate("visitor-2");
+        assert!(matches!(result, RateCheckResult::Warning));
+        assert!(msg.is_some());
+    }
+
+    #[test]
+    fn check_rate_mutes_on_second_excess() {
+        let svc = ChatTimingService::new();
+        /* 10 ok + 1 warning = 11 */
+        for _ in 0..=RATE_LIMIT_PER_MIN {
+            svc.check_rate("visitor-3");
+        }
+        /* Siguiente es mute */
+        let (result, msg) = svc.check_rate("visitor-3");
+        assert!(matches!(result, RateCheckResult::Muted));
+        assert!(msg.unwrap().contains("30 segundos"));
+    }
+
+    #[test]
+    fn check_rate_closes_on_third_excess() {
+        let svc = ChatTimingService::new();
+        /* 10 ok + 1 warning (cooldown_level=1) */
+        for _ in 0..=RATE_LIMIT_PER_MIN {
+            svc.check_rate("visitor-4");
+        }
+        /* +1 muted (cooldown_level=2, mute_until=30s) */
+        let (r2, _) = svc.check_rate("visitor-4");
+        assert!(matches!(r2, RateCheckResult::Muted));
+        /* Forzar que el mute ya expiró y resetear count para provocar nuevo exceso */
+        {
+            let mut entry = svc.rate_limits.get_mut("visitor-4").unwrap();
+            entry.mute_until = Some(Instant::now() - Duration::from_secs(1));
+            entry.count = RATE_LIMIT_PER_MIN;
+        }
+        /* Siguiente exceso → cooldown_level=3 → Closed */
+        let (result, msg) = svc.check_rate("visitor-4");
+        assert!(matches!(result, RateCheckResult::Closed));
+        assert!(msg.is_some());
+    }
+
+    #[test]
+    fn check_rate_muted_stays_muted() {
+        let svc = ChatTimingService::new();
+        /* Llegar a muted (10 ok + 1 warning + 1 muted) */
+        for _ in 0..RATE_LIMIT_PER_MIN + 2 {
+            svc.check_rate("visitor-5");
+        }
+        /* Mientras está muteado, sigue retornando Muted sin escalar */
+        let (result, _) = svc.check_rate("visitor-5");
+        /* mute_until está activo → se retorna Muted antes del match de cooldown */
+        assert!(matches!(result, RateCheckResult::Muted | RateCheckResult::Closed));
+    }
+
+    #[test]
+    fn check_rate_independent_per_visitor() {
+        let svc = ChatTimingService::new();
+        for _ in 0..RATE_LIMIT_PER_MIN {
+            svc.check_rate("visitor-a");
+        }
+        /* visitor-b debe empezar limpio */
+        let (result, _) = svc.check_rate("visitor-b");
+        assert!(matches!(result, RateCheckResult::Ok));
+    }
+
+    /* --- IP rate limiting --- */
+
+    #[test]
+    fn check_ip_rate_allows_under_limit() {
+        let svc = ChatTimingService::new();
+        for i in 1..=IP_RATE_LIMIT_PER_MIN {
+            let (result, _) = svc.check_ip_rate("192.168.1.1");
+            assert!(
+                matches!(result, RateCheckResult::Ok),
+                "IP msg {i} debería ser Ok"
+            );
+        }
+    }
+
+    #[test]
+    fn check_ip_rate_warns_on_excess() {
+        let svc = ChatTimingService::new();
+        for _ in 0..IP_RATE_LIMIT_PER_MIN {
+            svc.check_ip_rate("10.0.0.1");
+        }
+        let (result, _) = svc.check_ip_rate("10.0.0.1");
+        assert!(matches!(result, RateCheckResult::Warning));
+    }
+
+    #[test]
+    fn check_ip_rate_mutes_60s_on_second_excess() {
+        let svc = ChatTimingService::new();
+        for _ in 0..=IP_RATE_LIMIT_PER_MIN {
+            svc.check_ip_rate("10.0.0.2");
+        }
+        let (result, msg) = svc.check_ip_rate("10.0.0.2");
+        assert!(matches!(result, RateCheckResult::Muted));
+        assert!(msg.unwrap().contains("un minuto"));
+    }
+
+    /* --- Conexiones WS por IP --- */
+
+    #[test]
+    fn track_ip_connect_allows_under_max() {
+        let svc = ChatTimingService::new();
+        for _ in 0..MAX_WS_CONNECTIONS_PER_IP {
+            assert!(svc.track_ip_connect("1.2.3.4"));
+        }
+    }
+
+    #[test]
+    fn track_ip_connect_rejects_over_max() {
+        let svc = ChatTimingService::new();
+        for _ in 0..MAX_WS_CONNECTIONS_PER_IP {
+            svc.track_ip_connect("5.6.7.8");
+        }
+        assert!(!svc.track_ip_connect("5.6.7.8"));
+    }
+
+    #[test]
+    fn track_ip_disconnect_frees_slot() {
+        let svc = ChatTimingService::new();
+        for _ in 0..MAX_WS_CONNECTIONS_PER_IP {
+            svc.track_ip_connect("9.8.7.6");
+        }
+        assert!(!svc.track_ip_connect("9.8.7.6"));
+        svc.track_ip_disconnect("9.8.7.6");
+        assert!(svc.track_ip_connect("9.8.7.6"));
+    }
+
+    #[test]
+    fn track_ip_disconnect_saturating() {
+        let svc = ChatTimingService::new();
+        /* Disconnect sin connect previo no debe panic */
+        svc.track_ip_disconnect("never-connected");
+        /* También funciona con una sola conexión */
+        svc.track_ip_connect("once");
+        svc.track_ip_disconnect("once");
+        svc.track_ip_disconnect("once"); /* doble disconnect no causa underflow */
+    }
+
+    #[test]
+    fn track_ip_independent_per_ip() {
+        let svc = ChatTimingService::new();
+        for _ in 0..MAX_WS_CONNECTIONS_PER_IP {
+            svc.track_ip_connect("ip-a");
+        }
+        assert!(!svc.track_ip_connect("ip-a"));
+        assert!(svc.track_ip_connect("ip-b"));
+    }
+
+    /* --- Constantes de seguridad --- */
+
+    #[test]
+    fn max_message_length_is_2000() {
+        assert_eq!(ChatTimingService::max_message_length(), 2000);
+    }
+
+    #[test]
+    fn rate_constants_sane() {
+        assert!(RATE_LIMIT_PER_MIN > 0);
+        assert!(IP_RATE_LIMIT_PER_MIN > RATE_LIMIT_PER_MIN);
+        assert!(MAX_WS_CONNECTIONS_PER_IP > 0);
+    }
+}
