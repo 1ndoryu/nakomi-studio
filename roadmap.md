@@ -29,7 +29,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 - Selected Work: no hay forma de elegir cuáles son Selected Work, su categoría, ni cuáles aparecen en el carrusel del inicio.
 - Reordenamiento: cambiar de grid a lista en CMS para poder cambiar orden arrastrando (drag-to-reorder de arriba a abajo).
 - En el CMS poder elegir qué servicios salen en el home y cuáles no.
-- En el protocolo de desarrollo hay que agregar una regla de que para cualquier despliegue o chequeo del despliegue tiene que usarse obligatoriamente coolify-manager-rs, no usar comandos directos para desplegar o subir cosas, prohibido totalmente.
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 

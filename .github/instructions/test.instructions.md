@@ -128,6 +128,11 @@ Sin este anuncio, no se inicia ninguna tarea. Esta regla existe para que el agen
   - Toda mejora que reduzca la probabilidad de alucinar, saltarse reglas o producir trabajo incompleto es bienvenida y debe aplicarse naturalmente.
   - El objetivo es que el agente sea cada vez mas preciso, no que sea obediente. La proactividad es una cualidad, no un riesgo.
 
+**19. Deploy exclusivamente via coolify-manager-rs.**
+  - Todo despliegue, chequeo de estado, reinicio, logs, backup y cualquier operacion contra el servidor de produccion DEBE hacerse a traves de `coolify-manager-rs`. Prohibido usar comandos directos (ssh, docker, docker compose, scp, curl al servidor) para desplegar, subir archivos, reiniciar contenedores o modificar el entorno de produccion.
+  - Excepciones: diagnostico puntual de emergencia donde coolify-manager-rs no cubra el caso (y en ese caso, documentar la carencia para mejorar la herramienta).
+  - Esta regla existe porque los comandos directos eluden las protecciones de bind mount, health check y flujo de deploy que coolify-manager-rs implementa.
+
 ---
 
 ## II. FLUJO DE TRABAJO (ciclo continuo)
@@ -192,7 +197,7 @@ Leer `Agente/prevencion/`. Si hay MDs pendientes de implementar:
 - Si no hay pendientes, saltar este paso.
 
 ### Paso 9 — Commit, push y deploy
-Hacer commit final. Luego sincronizar la rama local con remoto (`git pull --rebase` o equivalente no interactivo si aplica al flujo del repo) antes del push/deploy. Si el roadmap del proyecto indica que aplica deploy, usar `.agent/coolify-manager-rs` para subir al servidor. **Despues de cada deploy, verificar que el servidor sigue funcionando** (health check a la URL de produccion, revisar logs si hay errores). Si el deploy rompe algo, revertir antes de continuar.
+Hacer commit final. Luego sincronizar la rama local con remoto (`git pull --rebase` o equivalente no interactivo si aplica al flujo del repo) antes del push/deploy. Si el roadmap del proyecto indica que aplica deploy, usar `.agent/coolify-manager-rs` para subir al servidor. **Prohibido usar comandos directos (ssh, docker, scp, curl) para desplegar o modificar produccion — todo debe pasar por coolify-manager-rs (ver regla 19).** Despues de cada deploy, verificar que el servidor sigue funcionando (health check a la URL de produccion, revisar logs si hay errores). Si el deploy rompe algo, revertir antes de continuar.
 
 `coolify-manager-rs` debe tratarse como herramienta viva: si durante una tarea aparece un escenario de deploy, health, logs, restart, backup, restore o exec que no cubre bien, dejar constancia de que puede y debe mejorarse para soportar ese caso de uso de forma robusta.
 
