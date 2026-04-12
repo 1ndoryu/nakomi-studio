@@ -4,7 +4,7 @@
  * Carrusel infinito de proyectos con desplazamiento automatico y soporte drag.
  * [084A-11] Ahora consume API pública.
  * [094A-20] Sin fallback estático: home debe reflejar el CMS o quedar vacío. */
-import React, {useMemo} from 'react';
+import React, {useMemo, useRef, useState, useLayoutEffect} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {Badge} from '../ui/Badge';
 import OptimizedImage from '../ui/OptimizedImage';
@@ -45,16 +45,40 @@ export const CarruselShowcase: React.FC = () => {
         tiempoTransicion: 800
     });
 
+    /* [124A-CMS5] Medir offsets reales del DOM para items de ancho variable.
+     * ResizeObserver re-mide cuando imágenes terminan de cargar y cambian el ancho. */
+    const pistaRef = useRef<HTMLDivElement>(null);
+    const [offsetX, setOffsetX] = useState(0);
+
+    useLayoutEffect(() => {
+        const pista = pistaRef.current;
+        if (!pista) return;
+
+        const medir = () => {
+            const items = pista.children;
+            if (indiceActual >= 0 && indiceActual < items.length) {
+                setOffsetX((items[indiceActual] as HTMLElement).offsetLeft);
+            }
+        };
+
+        medir();
+
+        const observer = new ResizeObserver(medir);
+        observer.observe(pista);
+        return () => observer.disconnect();
+    }, [indiceActual, itemsTotales.length]);
+
     if (proyectosConImagen.length === 0) return null;
 
     return (
         <div className="carruselContenedorPrincipal">
             <div
                 className="carruselPista"
+                ref={pistaRef}
                 {...handlers}
                 style={
                     {
-                        transform: `translateX(calc( -1 * (var(--carrusel-item-width) + var(--carrusel-item-gap)) * ${indiceActual} + ${dragOffset}px))`,
+                        transform: `translateX(${-offsetX + dragOffset}px)`,
                         transition: conTransicion ? 'transform 800ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
                         cursor: 'grab',
                         touchAction: 'pan-y'
@@ -73,9 +97,7 @@ export const CarruselShowcase: React.FC = () => {
                                         src={proyecto.imagen}
                                         alt={proyecto.titulo}
                                         className="carruselImagen"
-                                        width={450}
-                                        height={600}
-                                        sizes="300px"
+                                        sizes="(min-width: 768px) 450px, 300px"
                                         draggable={false}
                                     />
                                 )}
