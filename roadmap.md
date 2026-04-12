@@ -25,10 +25,11 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- Tambien debería poder elegirse entre la imagen de portada externa y la primera imagen dentro de la pagina individual de proyecto
 - Hacer una auditoría de rendimiento, fuga de ram las extensiones de sentinel y varsense, una auditoría profunda. 
 - Sentinel definitavamente no esta generando reportes para archivos rust. (Instalala de nuevo despues que arregles pero no intentes reiniciar vscode)
-- proyectoHeroTitulo debería poder elegirse el titulo dentro la pagina detalle y el de afuera. 
+- En movil los padding a los lados de proyectoHeroContenido deben ser md y todo el texto a la izquierda, y sin gag.
+- panelSidebar en movil aparece en la parte superior en vez de estar en la parte inferior, y panelContenidoPrincipal en movil necesita padding md a los lados, y el boton hamburgueza de panelSidebar en movil no funciona
+- en headerPanelAcciones el span de dinero, del contador de dinero se ve con negrita, no tiene que ir con negrita.
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 
