@@ -67,6 +67,31 @@
     cursor: grabbing;
 }
 
+/* [124A-BLOG1] Estrella de featured/destacado */
+.listaBlogStar {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.listaBlogStar:hover {
+    color: var(--brand-primary);
+}
+
+.listaBlogStar--activo {
+    color: #f59e0b;
+}
+
+.listaBlogStar--activo:hover {
+    color: #d97706;
+}
+
 /* Miniatura compacta */
 .listaBlogMiniatura {
     width: 48px;

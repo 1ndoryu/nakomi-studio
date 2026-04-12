@@ -52,6 +52,11 @@ export const SubTabBlog: React.FC = () => {
         await eliminar(id);
     }, [eliminar]);
 
+    /* [124A-BLOG1] Toggle featured: marcar/desmarcar como destacado */
+    const handleToggleFeatured = useCallback(async (id: string, featured: boolean) => {
+        await actualizar(id, {is_featured: featured} as UpdateBlogPostBody);
+    }, [actualizar]);
+
     return (
         <>
             {error && <div className="contenidoError">{error}</div>}
@@ -65,6 +70,7 @@ export const SubTabBlog: React.FC = () => {
                 onEliminar={handleEliminar}
                 onPublicar={handlePublicar}
                 onReordenar={reordenar}
+                onToggleFeatured={handleToggleFeatured}
             />
             <EditorBlog
                 abierto={editorAbierto}

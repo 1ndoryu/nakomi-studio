@@ -1,0 +1,1 @@
+ALTER TABLE blog_posts ADD COLUMN is_featured BOOLEAN NOT NULL DEFAULT false;

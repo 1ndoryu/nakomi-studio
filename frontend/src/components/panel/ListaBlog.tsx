@@ -3,7 +3,7 @@
  * [124A-CMS7] Convertido de grid a lista vertical, mismo patrón que ListaServicios/ListaProyectos.
  * [124A-CMS10] Drag-to-reorder via @dnd-kit. */
 import React, {useState} from 'react';
-import {Plus, Archive, ArchiveRestore, Trash2, Globe, GripVertical, Search} from 'lucide-react';
+import {Plus, Archive, ArchiveRestore, Trash2, Globe, GripVertical, Star, Search} from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -39,6 +39,7 @@ interface ListaBlogProps {
     onEliminar?: (id: string) => void;
     onPublicar?: (id: string) => void;
     onReordenar?: (items: {id: string; sort_order: number}[]) => void;
+    onToggleFeatured?: (id: string, featured: boolean) => void;
 }
 
 /* Badge de status con color semántico */
@@ -71,6 +72,7 @@ function FilaBlogPost({
     onDesarchivar,
     onEliminar,
     onPublicar,
+    onToggleFeatured,
 }: {
     post: AdminBlogPost;
     menuActivo: string | null;
@@ -80,6 +82,7 @@ function FilaBlogPost({
     onDesarchivar?: (id: string) => void;
     onEliminar?: (id: string) => void;
     onPublicar?: (id: string) => void;
+    onToggleFeatured?: (id: string, featured: boolean) => void;
 }) {
     const {attributes, listeners, setNodeRef, transform, transition, isDragging} = useSortable({id: post.id});
     const style = {transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1};
@@ -107,6 +110,16 @@ function FilaBlogPost({
             <div className="listaBlogGrip" {...attributes} {...listeners}>
                 <GripVertical size={16} />
             </div>
+
+            {/* [124A-BLOG1] Toggle featured: estrella clickeable */}
+            <button
+                className={`listaBlogStar ${post.is_featured ? 'listaBlogStar--activo' : ''}`}
+                onClick={() => onToggleFeatured?.(post.id, !post.is_featured)}
+                title={post.is_featured ? 'Quitar de destacados' : 'Marcar como destacado'}
+                aria-label={post.is_featured ? 'Quitar de destacados' : 'Marcar como destacado'}
+            >
+                <Star size={16} fill={post.is_featured ? 'currentColor' : 'none'} />
+            </button>
 
             {post.featured_image && (
                 <div className="listaBlogMiniatura">
@@ -156,6 +169,7 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
     onEliminar,
     onPublicar,
     onReordenar,
+    onToggleFeatured,
 }) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
     /* [124A-SEARCH1] Búsqueda en tiempo real */
@@ -216,6 +230,7 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
                                 onDesarchivar={onDesarchivar}
                                 onEliminar={onEliminar}
                                 onPublicar={onPublicar}
+                                onToggleFeatured={onToggleFeatured}
                             />
                         ))}
                     </div>

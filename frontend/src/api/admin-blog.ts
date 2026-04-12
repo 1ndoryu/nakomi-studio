@@ -17,6 +17,7 @@ export interface AdminBlogPost {
     meta_title: string | null;
     meta_description: string | null;
     sort_order: number;
+    is_featured: boolean;
     published_at: string | null;
     created_at: string;
     updated_at: string;
@@ -49,6 +50,7 @@ export interface UpdateBlogPostBody {
     featured_image?: string;
     status?: string;
     tags?: string[];
+    is_featured?: boolean;
     meta_title?: string;
     meta_description?: string;
 }

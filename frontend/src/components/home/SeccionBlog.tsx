@@ -19,15 +19,19 @@ export const SeccionBlog: React.FC = () => {
     const [posts, setPosts] = useState<typeof POSTS_BLOG | null>(null);
     const [cargado, setCargado] = useState(false);
 
-    /* [124A-CMS1] Fetch últimos 3 posts publicados.
-     * Si la API devuelve 0 posts, se muestra vacío (no fallback estático).
-     * El fallback solo aplica si la API falla por error de red/servidor. */
+    /* [124A-CMS1] Fetch posts publicados.
+     * [124A-BLOG1] Prioriza posts marcados como featured (is_featured).
+     * Si no hay ninguno featured, muestra los 3 más recientes como fallback.
+     * El fallback estático solo aplica si la API falla por error de red/servidor. */
     useEffect(() => {
         const controller = new AbortController();
-        apiListPublicBlog(1, 3)
+        apiListPublicBlog(1, 20)
             .then(data => {
                 if (!controller.signal.aborted) {
-                    setPosts(data.posts.length > 0 ? data.posts.map(apiPostToPostBlog) : []);
+                    const all = data.posts;
+                    const featured = all.filter(p => p.is_featured);
+                    const selection = featured.length > 0 ? featured.slice(0, 3) : all.slice(0, 3);
+                    setPosts(selection.length > 0 ? selection.map(apiPostToPostBlog) : []);
                     setCargado(true);
                 }
             })

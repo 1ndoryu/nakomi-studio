@@ -18,6 +18,7 @@ pub struct CreateBlogPostParams<'a> {
     pub featured_image: Option<&'a str>,
     pub status: &'a str,
     pub tags: &'a serde_json::Value,
+    pub is_featured: bool,
     pub meta_title: Option<&'a str>,
     pub meta_description: Option<&'a str>,
 }
@@ -31,6 +32,7 @@ pub struct UpdateBlogPostParams<'a> {
     pub featured_image: Option<&'a str>,
     pub status: Option<&'a str>,
     pub tags: Option<&'a serde_json::Value>,
+    pub is_featured: Option<bool>,
     pub meta_title: Option<&'a str>,
     pub meta_description: Option<&'a str>,
 }
@@ -55,7 +57,7 @@ impl BlogRepository {
         let posts = sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
-                    sort_order, created_at, updated_at
+                    sort_order, is_featured, created_at, updated_at
              FROM blog_posts
              WHERE status = 'published'
              ORDER BY published_at DESC NULLS LAST
@@ -77,7 +79,7 @@ impl BlogRepository {
         sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
-                    sort_order, created_at, updated_at
+                    sort_order, is_featured, created_at, updated_at
              FROM blog_posts
              WHERE slug = $1 AND status = 'published'"
         )
@@ -91,7 +93,7 @@ impl BlogRepository {
         sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
-                    sort_order, created_at, updated_at
+                    sort_order, is_featured, created_at, updated_at
              FROM blog_posts
              ORDER BY sort_order, created_at DESC"
         )
@@ -107,7 +109,7 @@ impl BlogRepository {
         sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
-                    sort_order, created_at, updated_at
+                    sort_order, is_featured, created_at, updated_at
              FROM blog_posts
              WHERE id = $1"
         )
@@ -130,11 +132,11 @@ impl BlogRepository {
         sqlx::query_as::<_, BlogPost>(
             "INSERT INTO blog_posts
                 (author_id, title, slug, excerpt, content, featured_image,
-                 status, tags, meta_title, meta_description, published_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 status, tags, is_featured, meta_title, meta_description, published_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              RETURNING id, author_id, title, slug, excerpt, content, featured_image,
                        status, tags, meta_title, meta_description, published_at,
-                       sort_order, created_at, updated_at"
+                       sort_order, is_featured, created_at, updated_at"
         )
         .bind(params.author_id)
         .bind(params.title)
@@ -144,6 +146,7 @@ impl BlogRepository {
         .bind(params.featured_image)
         .bind(params.status)
         .bind(params.tags)
+        .bind(params.is_featured)
         .bind(params.meta_title)
         .bind(params.meta_description)
         .bind(published_at)
@@ -167,8 +170,9 @@ impl BlogRepository {
                 featured_image = COALESCE($6, featured_image),
                 status = COALESCE($7, status),
                 tags = COALESCE($8, tags),
-                meta_title = COALESCE($9, meta_title),
-                meta_description = COALESCE($10, meta_description),
+                is_featured = COALESCE($9, is_featured),
+                meta_title = COALESCE($10, meta_title),
+                meta_description = COALESCE($11, meta_description),
                 published_at = CASE
                     WHEN COALESCE($7, status) = 'published' AND published_at IS NULL
                     THEN NOW()
@@ -178,7 +182,7 @@ impl BlogRepository {
              WHERE id = $1
              RETURNING id, author_id, title, slug, excerpt, content, featured_image,
                        status, tags, meta_title, meta_description, published_at,
-                       sort_order, created_at, updated_at"
+                       sort_order, is_featured, created_at, updated_at"
         )
         .bind(id)
         .bind(params.title)
@@ -188,6 +192,7 @@ impl BlogRepository {
         .bind(params.featured_image)
         .bind(params.status)
         .bind(params.tags)
+        .bind(params.is_featured)
         .bind(params.meta_title)
         .bind(params.meta_description)
         .fetch_one(pool)

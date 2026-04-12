@@ -24,6 +24,7 @@ pub struct BlogPost {
     pub meta_description: Option<String>,
     pub published_at: Option<DateTime<Utc>>,
     pub sort_order: i32,
+    pub is_featured: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -43,6 +44,7 @@ pub struct BlogPostResponse {
     pub meta_title: Option<String>,
     pub meta_description: Option<String>,
     pub sort_order: i32,
+    pub is_featured: bool,
     pub published_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -81,6 +83,7 @@ pub struct UpdateBlogPostRequest {
     pub featured_image: Option<String>,
     pub status: Option<String>,
     pub tags: Option<Vec<String>>,
+    pub is_featured: Option<bool>,
     pub meta_title: Option<String>,
     pub meta_description: Option<String>,
 }
@@ -104,6 +107,7 @@ impl BlogPost {
             meta_title: self.meta_title,
             meta_description: self.meta_description,
             sort_order: self.sort_order,
+            is_featured: self.is_featured,
             published_at: self.published_at,
             created_at: self.created_at,
             updated_at: self.updated_at,
