@@ -47,6 +47,7 @@
     line-height: 0.95;
     letter-spacing: -0.03em;
     margin: 0;
+    text-align: right;
 }
 
 /* === PORTADA FULL-WIDTH === */
@@ -153,6 +154,12 @@
 
     .proyectoCaseIntroContenido {
         grid-template-columns: 1fr;
+        padding: 0 var(--spacing-md);
+    }
+
+    /* [124A-CSS3] Portada padding reducido en móvil */
+    .proyectoPortada {
+        padding: var(--spacing-md);
     }
 
     .proyectoCaseIntroMeta {
