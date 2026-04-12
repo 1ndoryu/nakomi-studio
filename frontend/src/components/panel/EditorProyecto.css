@@ -78,6 +78,16 @@
     font-weight: 400;
 }
 
+/* [124A-DETAIL1] Checkbox inline con label */
+.editorProyectoCheckboxLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
 .editorProyectoTextarea {
     font-family: var(--font-primary);
     font-size: var(--text-sm);

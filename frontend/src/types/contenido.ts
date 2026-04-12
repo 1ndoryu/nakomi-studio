@@ -53,6 +53,9 @@ export interface Proyecto {
     adminId?: string;
     /* [124A-SHOW1] Categoría showcase editable desde CMS */
     showcaseCategory?: string;
+    /* [124A-DETAIL1] Título alternativo para página de detalle y opción de usar primera imagen de galería */
+    detailTitle?: string;
+    useFirstGalleryImage?: boolean;
 }
 
 /* [124A-PROJ1] Imagen de galería con layout */

@@ -2,7 +2,9 @@
  * Más campos que EditorBlog: cliente, categorías, tecnologías, enlaces, skills.
  * Lógica de formulario extraída a useEditorProyecto.
  * sentinel-disable-file html-nativo-en-vez-de-componente: Tabs del editor y status toggles usan
- * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón EditorBlog). */
+ * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón EditorBlog).
+ * sentinel-disable-file limite-lineas: Editor modal con 4 tabs (General/Media/Tech/SEO) — dividir
+ * cada tab en componente aparte añadiría prop-drilling sin beneficio real, el archivo es cohesivo. */
 import React, { useState, useCallback } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
@@ -127,6 +129,19 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                             </span>
                         </label>
 
+                        {/* [124A-DETAIL1] Título alternativo para la página de detalle del proyecto */}
+                        <label className="editorProyectoLabel">
+                            Título de detalle
+                            <Input
+                                value={form.detailTitle}
+                                onChange={e => form.setDetailTitle(e.target.value)}
+                                placeholder="Título alternativo para la página individual"
+                            />
+                            <span className="editorProyectoHint">
+                                Si se deja vacío, se usa el título principal del proyecto.
+                            </span>
+                        </label>
+
                         <label className="editorProyectoLabel">
                             Orden
                             <Input
@@ -146,6 +161,16 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                             onChange={form.setImagenUrl}
                             etiqueta="Imagen destacada"
                         />
+
+                        {/* [124A-DETAIL1] Toggle: usar primera imagen de galería como portada en detalle */}
+                        <label className="editorProyectoCheckboxLabel">
+                            <input
+                                type="checkbox"
+                                checked={form.useFirstGalleryImage}
+                                onChange={e => form.setUseFirstGalleryImage(e.target.checked)}
+                            />
+                            Usar primera imagen de galería como portada en la página de detalle
+                        </label>
 
                         {/* [154A-10] Galería de imágenes del proyecto */}
                         <GaleriaEditor

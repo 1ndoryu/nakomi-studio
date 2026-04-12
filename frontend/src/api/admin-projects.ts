@@ -31,6 +31,8 @@ export interface AdminProject {
     sort_order: number;
     is_featured: boolean;
     showcase_category: string | null;
+    detail_title: string | null;
+    use_first_gallery_image: boolean;
     meta_title: string | null;
     meta_description: string | null;
     created_at: string;
@@ -52,6 +54,8 @@ export interface CreateProjectBody {
     sort_order?: number;
     is_featured?: boolean;
     showcase_category?: string;
+    detail_title?: string;
+    use_first_gallery_image?: boolean;
     meta_title?: string;
     meta_description?: string;
 }
@@ -71,6 +75,8 @@ export interface UpdateProjectBody {
     sort_order?: number;
     is_featured?: boolean;
     showcase_category?: string;
+    detail_title?: string;
+    use_first_gallery_image?: boolean;
     meta_title?: string;
     meta_description?: string;
 }

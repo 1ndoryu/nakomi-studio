@@ -27,6 +27,9 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
     const [metaDescription, setMetaDescription] = useState('');
     /* [124A-SHOW1] Categoría showcase editable desde CMS */
     const [showcaseCategory, setShowcaseCategory] = useState('');
+    /* [124A-DETAIL1] Título alternativo para detalle y toggle usar primera imagen de galería */
+    const [detailTitle, setDetailTitle] = useState('');
+    const [useFirstGalleryImage, setUseFirstGalleryImage] = useState(false);
 
     const resetear = useCallback(() => {
         setTitulo(''); setSlug(''); setCliente(''); setDescripcion('');
@@ -34,6 +37,7 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
         setTecnologias([]); setEnlaces([]); setSkills([]);
         setStatus('published'); setSortOrder(0);
         setMetaTitle(''); setMetaDescription(''); setShowcaseCategory('');
+        setDetailTitle(''); setUseFirstGalleryImage(false);
     }, []);
 
     useEffect(() => {
@@ -54,6 +58,8 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
             setMetaTitle(proyecto.meta_title ?? '');
             setMetaDescription(proyecto.meta_description ?? '');
             setShowcaseCategory(proyecto.showcase_category ?? '');
+            setDetailTitle(proyecto.detail_title ?? '');
+            setUseFirstGalleryImage(proyecto.use_first_gallery_image ?? false);
         } else {
             resetear();
         }
@@ -75,17 +81,22 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
         meta_title: metaTitle || undefined,
         meta_description: metaDescription || undefined,
         showcase_category: showcaseCategory || undefined,
+        detail_title: detailTitle || undefined,
+        use_first_gallery_image: useFirstGalleryImage,
     }), [titulo, slug, cliente, descripcion, imagenUrl, galeria, categorias,
-        tecnologias, enlaces, skills, status, sortOrder, metaTitle, metaDescription, showcaseCategory]);
+        tecnologias, enlaces, skills, status, sortOrder, metaTitle, metaDescription, showcaseCategory,
+        detailTitle, useFirstGalleryImage]);
 
     return {
         titulo, slug, cliente, descripcion, contenido, imagenUrl,
         galeria, categorias, tecnologias, enlaces, skills,
         status, sortOrder, metaTitle, metaDescription, showcaseCategory,
+        detailTitle, useFirstGalleryImage,
         setTitulo, setSlug, setCliente, setDescripcion, setContenido,
         setImagenUrl, setGaleria, setCategorias, setTecnologias,
         setEnlaces, setSkills, setStatus, setSortOrder,
         setMetaTitle, setMetaDescription, setShowcaseCategory,
+        setDetailTitle, setUseFirstGalleryImage,
         buildBody, resetear,
     };
 }

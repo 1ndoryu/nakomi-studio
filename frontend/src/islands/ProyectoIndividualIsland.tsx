@@ -37,14 +37,16 @@ interface ProyectoDetalle {
     enlaces: EnlaceProyecto[];
 }
 
-/* [074A-12] Convierte AdminProject (API) → ProyectoDetalle */
+/* [074A-12] Convierte AdminProject (API) → ProyectoDetalle
+ * [124A-DETAIL1] Usa detail_title si existe, y primera imagen de galería si use_first_gallery_image */
 function convertirDesdeApi(p: AdminProject): ProyectoDetalle {
+    const usarPrimeraGaleria = p.use_first_gallery_image && p.gallery.length > 0;
     return {
-        titulo: p.title,
+        titulo: p.detail_title || p.title,
         descripcion: p.description,
         cliente: p.client || '',
         categorias: p.categories.join(', '),
-        imagenPortada: p.featured_image || '',
+        imagenPortada: usarPrimeraGaleria ? p.gallery[0].url : (p.featured_image || ''),
         galeria: p.gallery,
         tecnologias: p.technologies,
         enlaces: p.links.map(l => ({tipo: l.tipo as EnlaceProyecto['tipo'], url: l.url, etiqueta: l.etiqueta})),

@@ -24,6 +24,8 @@ pub struct CreateProjectParams<'a> {
     pub sort_order: i32,
     pub is_featured: bool,
     pub showcase_category: Option<&'a str>,
+    pub detail_title: Option<&'a str>,
+    pub use_first_gallery_image: bool,
     pub meta_title: Option<&'a str>,
     pub meta_description: Option<&'a str>,
 }
@@ -44,6 +46,8 @@ pub struct UpdateProjectParams<'a> {
     pub sort_order: Option<i32>,
     pub is_featured: Option<bool>,
     pub showcase_category: Option<&'a str>,
+    pub detail_title: Option<&'a str>,
+    pub use_first_gallery_image: Option<bool>,
     pub meta_title: Option<&'a str>,
     pub meta_description: Option<&'a str>,
 }
@@ -56,7 +60,7 @@ impl ProjectRepository {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image,
                     gallery, categories, technologies, links, skills,
-                    status, sort_order, is_featured, showcase_category, meta_title, meta_description,
+                    status, sort_order, is_featured, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                     created_at, updated_at
              FROM projects
              WHERE status = 'published'
@@ -74,7 +78,7 @@ impl ProjectRepository {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image,
                     gallery, categories, technologies, links, skills,
-                    status, sort_order, is_featured, showcase_category, meta_title, meta_description,
+                    status, sort_order, is_featured, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                     created_at, updated_at
              FROM projects
              WHERE slug = $1 AND status = 'published'"
@@ -89,7 +93,7 @@ impl ProjectRepository {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image,
                     gallery, categories, technologies, links, skills,
-                    status, sort_order, is_featured, showcase_category, meta_title, meta_description,
+                    status, sort_order, is_featured, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                     created_at, updated_at
              FROM projects
              ORDER BY sort_order ASC, updated_at DESC"
@@ -106,7 +110,7 @@ impl ProjectRepository {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image,
                     gallery, categories, technologies, links, skills,
-                    status, sort_order, is_featured, showcase_category, meta_title, meta_description,
+                    status, sort_order, is_featured, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                     created_at, updated_at
              FROM projects
              WHERE id = $1"
@@ -125,11 +129,12 @@ impl ProjectRepository {
             "INSERT INTO projects
                 (title, slug, client, description, featured_image,
                  gallery, categories, technologies, links, skills,
-                 status, sort_order, is_featured, showcase_category, meta_title, meta_description)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                 status, sort_order, is_featured, showcase_category,
+                 detail_title, use_first_gallery_image, meta_title, meta_description)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
              RETURNING id, title, slug, client, description, featured_image,
                        gallery, categories, technologies, links, skills,
-                       status, sort_order, is_featured, showcase_category, meta_title, meta_description,
+                       status, sort_order, is_featured, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                        created_at, updated_at"
         )
         .bind(params.title)
@@ -146,6 +151,8 @@ impl ProjectRepository {
         .bind(params.sort_order)
         .bind(params.is_featured)
         .bind(params.showcase_category)
+        .bind(params.detail_title)
+        .bind(params.use_first_gallery_image)
         .bind(params.meta_title)
         .bind(params.meta_description)
         .fetch_one(pool)
@@ -174,13 +181,15 @@ impl ProjectRepository {
                 sort_order = COALESCE($13, sort_order),
                 is_featured = COALESCE($14, is_featured),
                 showcase_category = COALESCE($15, showcase_category),
-                meta_title = COALESCE($16, meta_title),
-                meta_description = COALESCE($17, meta_description),
+                detail_title = COALESCE($16, detail_title),
+                use_first_gallery_image = COALESCE($17, use_first_gallery_image),
+                meta_title = COALESCE($18, meta_title),
+                meta_description = COALESCE($19, meta_description),
                 updated_at = NOW()
              WHERE id = $1
              RETURNING id, title, slug, client, description, featured_image,
                        gallery, categories, technologies, links, skills,
-                       status, sort_order, is_featured, showcase_category, meta_title, meta_description,
+                       status, sort_order, is_featured, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                        created_at, updated_at"
         )
         .bind(id)
@@ -198,6 +207,8 @@ impl ProjectRepository {
         .bind(params.sort_order)
         .bind(params.is_featured)
         .bind(params.showcase_category)
+        .bind(params.detail_title)
+        .bind(params.use_first_gallery_image)
         .bind(params.meta_title)
         .bind(params.meta_description)
         .fetch_one(pool)
