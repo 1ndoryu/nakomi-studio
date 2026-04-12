@@ -53,6 +53,7 @@
 .proyectoPortada {
     width: 100%;
     overflow: hidden;
+    padding: var(--spacing-lg);
 }
 
 .proyectoPortadaImagen {
@@ -77,8 +78,8 @@
 
 .proyectoCaseIntroMeta {
     display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
+    flex-direction: row;
+    gap: var(--spacing-2xl);
 }
 
 .proyectoCaseIntroBloque {
@@ -152,6 +153,11 @@
 
     .proyectoCaseIntroContenido {
         grid-template-columns: 1fr;
+    }
+
+    .proyectoCaseIntroMeta {
+        flex-direction: column;
+        gap: var(--spacing-lg);
     }
 
     .proyectoCaseIntroDescripcion p {
