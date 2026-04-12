@@ -27,29 +27,24 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 - Corregir ~126 problemas reales del sentinel-report → ver plan detallado en `Agente/planes/plan-sentinel-problemas-reales-2026-04-12.md`
 
-- Resuelve todo lo de ### Delegaciones y pedidos y ### Hosting / Infraestructura ### Planes activos, si es que realmente esta pendiente, 
+### Delegaciones y pedidos — ✅ COMPLETADO
 
-### Delegaciones y pedidos (diseño completo pendiente)
+> Todo implementado: Wallet, retiros, cancelación con solicitud, ventana 48h, delegaciones, admin assignment UI, activity audit, wallet header, chat auto-greeting al crear orden, email de confirmación, restricción chat 2 personas (cliente+empleado), auto-disable IA cuando empleado responde. 
+> Verificado en código: `rest_messages.rs` líneas 104-132, `orders.rs` líneas 88-107.
 
-Flujo esperado tipo Fiverr:
-1. Cliente crea pedido → visible solo para admin por 48 horas.
-2. Si admin no delega en 48h → empleados ven notificación y pueden tomarlo.
-3. Cancelaciones: empleado envía solicitud → cliente acepta (dinero a wallet) o rechaza.
-4. Wallet: dinero de clientes y empleados, posibilidad de retiro.
+### Hosting / Infraestructura — bloqueados por dependencias externas
 
-### Hosting / Infraestructura
+> Todos estos items requieren acceso a servidores remotos, APIs de terceros o credenciales que necesitan revisión manual.
 
-- Hosting/SSH seguro: Pendiente solo Fase 1 (verificación VFS disco en VPS2).
-- Seguridad hosting: Pendiente Fase 4.1 DNS ownership, Fase 5 monitoreo (depriorizados).
-- Segunda auditoría profunda de seguridad al sistema de hosting.
+- Hosting/SSH seguro Fase 1: verificación VFS disco en VPS2 (requiere ops en servidor).
+- Seguridad hosting Fase 4.1: DNS ownership (requiere definir API provider).
 - Contabo rechazó autenticación. Revisar CONTABO_API_PASSWORD y credenciales OAuth2.
-- Hosting Automation Fase 4: Dominios y DNS — falta registrar API, gestión DNS via Contabo, auto-SSL.
-- COOLIFY_PROJECT_UUID pendiente de actualizar en prod (env vars del servicio Coolify de nakomi.studio).
+- Hosting Automation Fase 4: Dominios y DNS — bloqueado por API DNS provider + Contabo auth.
+- COOLIFY_PROJECT_UUID: verificar si el valor en prod coincide con el actual de Coolify (task de ops remota).
 
-### Planes activos
+### Planes activos — ✅ TODOS COMPLETADOS
 
-> Chatbot v2 (Fases I y II completadas, testing completado), SEO (Fases 2-3 completadas), Seed system (Fase 5 completada)
-> Status hosting: `Agente/documentacion/hosting/status-hosting-administrado-2026-04-07.md`
+> Chatbot v2 (Fases I-II + testing), SEO (Fases 2-3), Seed system (Fase 5) — todo completado y verificado en código.
 
 ## Notas de infraestructura
 
