@@ -25,10 +25,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- Inconsistencias CMS/Blog: borré blogs del CMS pero en el inicio aparece uno viejo. Revisar que imágenes de blogs se optimicen.
+- Revisar que imágenes de blogs se optimicen (pasen por /api/img/ con WebP).
 - Selected Work: no hay forma de elegir cuáles son Selected Work, su categoría, ni cuáles aparecen en el carrusel del inicio.
-- Reordenamiento: cambiar de grid a lista en CMS para poder cambiar orden arrastrando (drag-to-reorder de arriba a abajo).
-- En el CMS poder elegir qué servicios salen en el home y cuáles no.
+- Las imagenes del carrusel del inicio que ya no tengan una proporción fija, si una altura fija la que tienen ahora pero ahora la proporción es libre y ajusta a la imagen
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 
