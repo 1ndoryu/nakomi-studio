@@ -1,5 +1,6 @@
 /* [074A-13] Lista de miembros del equipo para el panel admin CMS.
- * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar. */
+ * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar.
+ * [124A-CMS7] Convertido de grid a lista vertical, mismo patrón que ListaServicios/ListaBlog. */
 
 import React, {useState} from 'react';
 import {Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
@@ -32,7 +33,7 @@ export const ListaEquipo: React.FC<ListaEquipoProps> = ({miembros, cargando, onE
                 <Button variante="primario" tamano="pequeno" onClick={onCrear}>+ Nuevo miembro</Button>
             </div>
             {miembros.length === 0 && <p className="equipoListaVacia">No hay miembros del equipo.</p>}
-            <div className="equipoListaGrid">
+            <div className="equipoListaLista">
             {miembros.map(m => {
                 const items: MenuContextualItem[] = [];
                 /* [084A-10] Publicar: solo si no está ya publicado */
@@ -50,18 +51,24 @@ export const ListaEquipo: React.FC<ListaEquipoProps> = ({miembros, cargando, onE
                 }
 
                 return (
-                    <article key={m.id} className="equipoListaCard" onClick={() => onEditar(m)}>
+                    <article key={m.id} className="equipoListaFila">
                         <div className="equipoListaAvatar">
                             {m.avatar && <OptimizedImage src={m.avatar} alt={m.name} loading="lazy" />}
                         </div>
-                        <div className="equipoListaInfo">
-                            <h4 className="equipoListaNombre">{m.name}</h4>
+
+                        <div
+                            className="equipoListaFilaInfo"
+                            onClick={() => onEditar(m)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={e => { if (e.key === 'Enter') onEditar(m); }}
+                        >
+                            <span className="equipoListaNombre">{m.name}</span>
                             <span className="equipoListaCargo">{m.role}</span>
-                            <div className="equipoListaMeta">
-                                <Badge label={m.status} />
-                                <span className="equipoListaOrden">#{m.sort_order}</span>
-                            </div>
+                            <Badge label={m.status} />
+                            <span className="equipoListaOrden">#{m.sort_order}</span>
                         </div>
+
                         <div className="equipoListaMenu" onClick={e => e.stopPropagation()}>
                             <MenuContextual
                                 abierto={menuActivo === m.id}

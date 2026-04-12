@@ -1,6 +1,6 @@
 /* [074A-9] Lista de servicios en el CMS admin.
- * Grid de cards con status, título, precio. Click para editar.
- * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar. */
+ * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar.
+ * [124A-CMS7] Convertido de grid a lista vertical, mismo patrón que ListaProyectos. */
 import React, {useState} from 'react';
 import {Plus, Archive, ArchiveRestore, Trash2, Globe, Eye, EyeOff} from 'lucide-react';
 import {Button} from '../ui/Button';
@@ -59,7 +59,7 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
                 </Button>
             </div>
 
-            <div className="listaServiciosGrid">
+            <div className="listaServiciosLista">
                 {servicios.map(svc => {
                     const items: MenuContextualItem[] = [];
                     /* [124A-CMS4] Toggle visibilidad en home (is_active) */
@@ -71,7 +71,6 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
                             onSelect: () => onToggleHome(svc.id, !svc.is_active),
                         });
                     }
-                    /* [084A-10] Publicar: solo si no está ya publicado */
                     if (svc.status !== 'published' && onPublicar) {
                         items.push({id: 'publicar', label: 'Publicar', icon: <Globe size={14} />, onSelect: () => onPublicar(svc.id)});
                     }
@@ -88,36 +87,31 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
                     return (
                         <div
                             key={svc.id}
-                            className={`listaServiciosCard ${!svc.is_active ? 'listaServiciosCard--inactivo' : ''}`}
-                            onClick={() => onEditar(svc)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={e => { if (e.key === 'Enter') onEditar(svc); }}
+                            className={`listaServiciosFila ${!svc.is_active ? 'listaServiciosFila--inactivo' : ''}`}
                         >
                             {svc.image_url && (
-                                <div className="listaServiciosImagen">
+                                <div className="listaServiciosMiniatura">
                                     <OptimizedImage src={svc.image_url} alt={svc.title} loading="lazy" />
                                 </div>
                             )}
-                            <div className="listaServiciosInfo">
-                                <div className="listaServiciosCardHeader">
-                                    <span className="listaServiciosNombre">{svc.title}</span>
-                                    <BadgeStatus status={svc.status} />
-                                </div>
-                                <span className="listaServiciosSlug">/{svc.slug}</span>
-                                {svc.description && (
-                                    <span className="listaServiciosDesc">{svc.description}</span>
-                                )}
-                                <div className="listaServiciosCardFooter">
-                                    <span className="listaServiciosPrecio">
-                                        ${(svc.base_price_cents / 100).toFixed(0)} {svc.currency}
-                                    </span>
-                                    <span className="listaServiciosPlanes">
-                                        {svc.plans.length} plan{svc.plans.length !== 1 ? 'es' : ''}
-                                    </span>
-                                </div>
+
+                            <div
+                                className="listaServiciosFilaInfo"
+                                onClick={() => onEditar(svc)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={e => { if (e.key === 'Enter') onEditar(svc); }}
+                            >
+                                <span className="listaServiciosNombre">{svc.title}</span>
+                                <BadgeStatus status={svc.status} />
+                                <span className="listaServiciosPrecio">
+                                    ${(svc.base_price_cents / 100).toFixed(0)} {svc.currency}
+                                </span>
+                                <span className="listaServiciosPlanes">
+                                    {svc.plans.length} plan{svc.plans.length !== 1 ? 'es' : ''}
+                                </span>
                             </div>
-                            {/* [114A-7] Menú 3 puntos con acciones contextuales */}
+
                             <div className="listaServiciosMenu" onClick={e => e.stopPropagation()}>
                                 <MenuContextual
                                     abierto={menuActivo === svc.id}

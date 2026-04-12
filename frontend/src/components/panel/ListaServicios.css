@@ -1,4 +1,5 @@
-/* [074A-9] Estilos de la lista de servicios CMS. */
+/* [074A-9] Estilos de la lista de servicios CMS.
+ * [124A-CMS7] Convertido de grid a lista vertical. */
 
 .listaServicios {
     display: flex;
@@ -21,105 +22,82 @@
 
 .listaServiciosTitulo {
     font-size: var(--text-lg);
-    
     color: var(--text-primary);
     margin: 0;
 }
 
-.listaServiciosGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--spacing-md);
-}
-
-.listaServiciosCard {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    background: var(--bg-primary);
-    cursor: pointer;
-    transition: border-color 0.2s;
-    /* [154A-4] overflow: visible para que el menú contextual no quede recortado.
-     * .listaServiciosImagen tiene su propio overflow: hidden para contener la imagen. */
-}
-
-.listaServiciosCard:hover {
-    border-color: var(--brand-primary);
-}
-
-.listaServiciosCard--inactivo {
-    opacity: 0.6;
-}
-
-.listaServiciosImagen {
-    width: 100%;
-    height: 120px;
-    overflow: hidden;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-
-.listaServiciosImagen img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.listaServiciosInfo {
-    padding: var(--spacing-md);
+/* [124A-CMS7] Lista vertical */
+.listaServiciosLista {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
 }
 
-.listaServiciosCardHeader {
+.listaServiciosFila {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.listaServiciosFila:hover {
+    border-color: var(--brand-primary);
+}
+
+.listaServiciosFila--inactivo {
+    opacity: 0.6;
+}
+
+/* Miniatura compacta */
+.listaServiciosMiniatura {
+    width: 48px;
+    height: 48px;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.listaServiciosMiniatura img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Info clickable */
+.listaServiciosFilaInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    padding: var(--spacing-xs) 0;
 }
 
 .listaServiciosNombre {
-    
     font-size: var(--text-sm);
     color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.listaServiciosSlug {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    font-family: monospace;
-}
-
-.listaServiciosDesc {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.listaServiciosCardFooter {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: var(--spacing-xs);
+    font-weight: 500;
 }
 
 .listaServiciosPrecio {
-    font-size: var(--text-sm);
-    
+    font-size: var(--text-xs);
     color: var(--text-primary);
+    white-space: nowrap;
 }
 
 .listaServiciosPlanes {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
+    white-space: nowrap;
 }
 
 /* Badge de status */
@@ -131,7 +109,7 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
     white-space: nowrap;
-    filter: grayscale(100%);
+    flex-shrink: 0;
 }
 
 .listaServiciosBadge--published {
@@ -150,22 +128,25 @@
     opacity: 0.7;
 }
 
-/* [114A-7] Menú contextual 3 puntos */
+/* Menú contextual */
 .listaServiciosMenu {
-    position: absolute;
-    top: var(--spacing-sm);
-    right: var(--spacing-sm);
+    flex-shrink: 0;
     opacity: 0;
     transition: opacity 0.2s;
 }
 
-.listaServiciosCard:hover .listaServiciosMenu {
+.listaServiciosFila:hover .listaServiciosMenu {
     opacity: 1;
 }
 
 /* Responsive */
 @media (max-width: 640px) {
-    .listaServiciosGrid {
-        grid-template-columns: 1fr;
+    .listaServiciosFila {
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .listaServiciosMiniatura {
+        width: 36px;
+        height: 36px;
     }
 }

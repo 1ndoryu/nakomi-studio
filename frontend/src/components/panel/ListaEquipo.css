@@ -1,4 +1,5 @@
-/* [074A-13] Estilos de la lista de miembros del equipo admin. */
+/* [074A-13] Estilos de la lista de miembros del equipo admin.
+ * [124A-CMS7] Convertido de grid a lista vertical. */
 
 .equipoListaContenedor {
     display: flex;
@@ -11,12 +12,6 @@
     justify-content: flex-end;
 }
 
-.equipoListaGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--spacing-md);
-}
-
 .equipoListaCargando,
 .equipoListaVacia {
     color: var(--text-tertiary);
@@ -24,26 +19,32 @@
     padding: var(--spacing-xl) 0;
 }
 
-.equipoListaCard {
+/* [124A-CMS7] Lista vertical */
+.equipoListaLista {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.equipoListaFila {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-primary);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
-    cursor: pointer;
     transition: border-color 0.2s;
-    position: relative;
 }
 
-.equipoListaCard:hover {
+.equipoListaFila:hover {
     border-color: var(--brand-primary);
 }
 
+/* Avatar compacto */
 .equipoListaAvatar {
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
@@ -56,28 +57,31 @@
     object-fit: cover;
 }
 
-.equipoListaInfo {
+/* Info clickable */
+.equipoListaFilaInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
     flex: 1;
     min-width: 0;
+    cursor: pointer;
+    padding: var(--spacing-xs) 0;
 }
 
 .equipoListaNombre {
-    font-size: var(--text-base);
-    
+    font-size: var(--text-sm);
     color: var(--text-primary);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     margin: 0;
 }
 
 .equipoListaCargo {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--text-tertiary);
-}
-
-.equipoListaMeta {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    margin-top: var(--spacing-xs);
+    white-space: nowrap;
 }
 
 .equipoListaOrden {
@@ -85,17 +89,25 @@
     color: var(--text-tertiary);
 }
 
-/* [114A-7] Menú contextual 3 puntos */
+/* Menú contextual */
 .equipoListaMenu {
-    position: absolute;
-    top: var(--spacing-sm);
-    right: var(--spacing-sm);
+    flex-shrink: 0;
     opacity: 0;
     transition: opacity 0.2s;
 }
 
-.equipoListaCard:hover .equipoListaMenu {
+.equipoListaFila:hover .equipoListaMenu {
     opacity: 1;
 }
 
+/* Responsive */
+@media (max-width: 640px) {
+    .equipoListaFila {
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
 
+    .equipoListaAvatar {
+        width: 36px;
+        height: 36px;
+    }
+}

@@ -1,5 +1,6 @@
 /* [074A-11] Lista de blog posts en el CMS admin.
- * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar. */
+ * [114A-7] Menú 3 puntos con archivar/desarchivar/eliminar.
+ * [124A-CMS7] Convertido de grid a lista vertical, mismo patrón que ListaServicios/ListaProyectos. */
 import React, {useState} from 'react';
 import {Plus, Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
 import {Button} from '../ui/Button';
@@ -65,7 +66,7 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
                 </Button>
             </div>
 
-            <div className="listaBlogGrid">
+            <div className="listaBlogLista">
                 {posts.map(post => {
                     const items: MenuContextualItem[] = [];
                     /* [084A-10] Publicar: solo si no está ya publicado */
@@ -85,37 +86,33 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
                     return (
                         <div
                             key={post.id}
-                            className={`listaBlogCard ${post.status === 'archived' ? 'listaBlogCard--inactivo' : ''}`}
-                            onClick={() => onEditar(post)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={e => { if (e.key === 'Enter') onEditar(post); }}
+                            className={`listaBlogFila ${post.status === 'archived' ? 'listaBlogFila--inactivo' : ''}`}
                         >
                             {post.featured_image && (
-                                <div className="listaBlogImagen">
+                                <div className="listaBlogMiniatura">
                                     <OptimizedImage src={post.featured_image} alt={post.title} loading="lazy" />
                                 </div>
                             )}
-                            <div className="listaBlogInfo">
-                                <div className="listaBlogCardHeader">
-                                    <span className="listaBlogNombre">{post.title}</span>
-                                    <BadgeStatus status={post.status} />
-                                </div>
-                                <span className="listaBlogSlug">/{post.slug}</span>
-                                {post.excerpt && (
-                                    <span className="listaBlogDesc">{post.excerpt}</span>
-                                )}
-                                <div className="listaBlogCardFooter">
-                                    <span className="listaBlogFecha">
-                                        {formatearFecha(post.created_at)}
+
+                            <div
+                                className="listaBlogFilaInfo"
+                                onClick={() => onEditar(post)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={e => { if (e.key === 'Enter') onEditar(post); }}
+                            >
+                                <span className="listaBlogNombre">{post.title}</span>
+                                <BadgeStatus status={post.status} />
+                                <span className="listaBlogFecha">
+                                    {formatearFecha(post.created_at)}
+                                </span>
+                                {post.tags.length > 0 && (
+                                    <span className="listaBlogTags">
+                                        {post.tags.slice(0, 3).join(', ')}
                                     </span>
-                                    {post.tags.length > 0 && (
-                                        <span className="listaBlogTags">
-                                            {post.tags.slice(0, 3).join(', ')}
-                                        </span>
-                                    )}
-                                </div>
+                                )}
                             </div>
+
                             <div className="listaBlogMenu" onClick={e => e.stopPropagation()}>
                                 <MenuContextual
                                     abierto={menuActivo === post.id}
