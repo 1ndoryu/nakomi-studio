@@ -28,7 +28,10 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 - EN EL CMS DONDE CARAJO SE MODIFICA EL showcaseTituloCategoria!!!  O SEA NO SE PUEDE NECESITA ESPECIFICARSE EN CADA PROYECTO Y SI TIENEN El MISMOS PUES SE AGRUPAAAN Y YA!
 - Hace falta un buscador en cada tab del cms, que funcione en tiempo real.
 - Los blog tambien deben poder elegirse cual aparece en el inicio, igual que los servicios, proyectos destacados y cuales proyectos aparecen el carrusel de inicio.
-- En el cms cuando se elige imagenes para la galería debería permitir selecionar varias en vez de una por una.
+- Tambien debería poder elegirse entre la imagen de portada externa y la primera imagen dentro de la pagina individual de proyecto
+- Las imagenes de la galería dentro de los proyectos no se estan ordenando como te dije 1/1 una y luego 2 1/2, y asi.
+- proyectoCaseIntroDescripcion maxmo debería ocupar 1/2 de la pantalla.
+- El boton de eliminar uploadImagenPreview se ve mal, no se ve el icono
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 

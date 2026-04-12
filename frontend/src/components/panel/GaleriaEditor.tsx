@@ -1,9 +1,14 @@
 /* [154A-10] Editor de galería de imágenes del proyecto.
  * [124A-PROJ1] Soporta GaleriaImagen con layout full/half (1/1 o 1/2 ancho).
+ * [124A-GAL1] Drag-to-reorder con @dnd-kit para reorganizar imágenes.
  * sentinel-disable-file html-nativo-en-vez-de-componente: El botón × de eliminar sobre thumbnail
  * y el input[type=file] oculto no aplican a los componentes UI estándar (Button/Input). */
 import React, { useCallback, useRef, useState } from 'react';
-import { X, Maximize2, Columns2 } from 'lucide-react';
+import { X, Maximize2, Columns2, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { DragEndEvent } from '@dnd-kit/core';
 import { Button } from '../ui/Button';
 import { apiUploadImage } from '../../api/uploads';
 import type { GaleriaImagen } from '../../types/contenido';
@@ -14,9 +19,75 @@ interface GaleriaEditorProps {
     onChange: (galeria: GaleriaImagen[]) => void;
 }
 
+/* [124A-GAL1] Item sortable individual de la galería */
+const GaleriaItemSortable: React.FC<{
+    img: GaleriaImagen;
+    idx: number;
+    id: string;
+    onToggleLayout: (idx: number) => void;
+    onRemove: (idx: number) => void;
+}> = ({ img, idx, id, onToggleLayout, onRemove }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`editorProyectoGaleriaItem ${img.layout === 'half' ? 'editorProyectoGaleriaItem--half' : ''}`}
+        >
+            <div className="editorProyectoGaleriaGrip" {...attributes} {...listeners}>
+                <GripVertical size={14} />
+            </div>
+            <img src={img.url} alt={`Galería ${idx + 1}`} loading="lazy" />
+            <div className="editorProyectoGaleriaControles">
+                <button
+                    type="button"
+                    className="editorProyectoGaleriaLayout"
+                    onClick={() => onToggleLayout(idx)}
+                    title={img.layout === 'full' ? 'Cambiar a 1/2 ancho' : 'Cambiar a ancho completo'}
+                >
+                    {img.layout === 'full' ? <Maximize2 size={14} /> : <Columns2 size={14} />}
+                    <span>{img.layout === 'full' ? '1/1' : '1/2'}</span>
+                </button>
+                <button
+                    type="button"
+                    className="editorProyectoGaleriaEliminar"
+                    onClick={() => onRemove(idx)}
+                    title="Eliminar imagen"
+                >
+                    <X size={14} />
+                </button>
+            </div>
+        </div>
+    );
+};
+
 export const GaleriaEditor: React.FC<GaleriaEditorProps> = ({ galeria, onChange }) => {
     const [subiendo, setSubiendo] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    );
+
+    /* IDs estables para dnd-kit basados en url+index */
+    const itemIds = galeria.map((img, idx) => `gal-${idx}-${img.url}`);
+
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = itemIds.indexOf(active.id as string);
+        const newIndex = itemIds.indexOf(over.id as string);
+        if (oldIndex !== -1 && newIndex !== -1) {
+            onChange(arrayMove([...galeria], oldIndex, newIndex));
+        }
+    }, [galeria, onChange, itemIds]);
 
     const handleUpload = useCallback(async (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -52,32 +123,22 @@ export const GaleriaEditor: React.FC<GaleriaEditorProps> = ({ galeria, onChange 
             <span className="editorProyectoLabel">Galería</span>
 
             {galeria.length > 0 && (
-                <div className="editorProyectoGaleriaGrid">
-                    {galeria.map((img, idx) => (
-                        <div key={`gal-${img.url}-${idx}`} className={`editorProyectoGaleriaItem ${img.layout === 'half' ? 'editorProyectoGaleriaItem--half' : ''}`}>
-                            <img src={img.url} alt={`Galería ${idx + 1}`} loading="lazy" />
-                            <div className="editorProyectoGaleriaControles">
-                                <button
-                                    type="button"
-                                    className="editorProyectoGaleriaLayout"
-                                    onClick={() => handleToggleLayout(idx)}
-                                    title={img.layout === 'full' ? 'Cambiar a 1/2 ancho' : 'Cambiar a ancho completo'}
-                                >
-                                    {img.layout === 'full' ? <Maximize2 size={14} /> : <Columns2 size={14} />}
-                                    <span>{img.layout === 'full' ? '1/1' : '1/2'}</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    className="editorProyectoGaleriaEliminar"
-                                    onClick={() => handleRemove(idx)}
-                                    title="Eliminar imagen"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={itemIds} strategy={rectSortingStrategy}>
+                        <div className="editorProyectoGaleriaGrid">
+                            {galeria.map((img, idx) => (
+                                <GaleriaItemSortable
+                                    key={itemIds[idx]}
+                                    id={itemIds[idx]}
+                                    img={img}
+                                    idx={idx}
+                                    onToggleLayout={handleToggleLayout}
+                                    onRemove={handleRemove}
+                                />
+                            ))}
                         </div>
-                    ))}
-                </div>
+                    </SortableContext>
+                </DndContext>
             )}
 
             <input
