@@ -356,7 +356,13 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         pool,
         jwt_secret: config.jwt_secret,
         static_dir: config.static_dir.clone(),
-        http_client: reqwest::Client::new(),
+        /* [114A-6] Timeout global 30s para todo request HTTP saliente.
+         * Previene deadlocks cuando APIs externas se cuelgan y retienen
+         * conexiones DB, agotando el pool (max 10) y congelando la app. */
+        http_client: reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .expect("HTTP client"),
         stripe_secret_key: config.stripe_secret_key,
         stripe_webhook_secret: config.stripe_webhook_secret,
         chat_hub,

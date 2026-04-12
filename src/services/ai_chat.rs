@@ -405,7 +405,13 @@ async fn call_groq_api(
     messages: &[Value],
     tools: Option<&Value>,
 ) -> Result<Value, String> {
-    let client = reqwest::Client::new();
+    /* [114A-6] Timeout por request: 30s. Previene deadlock cuando APIs
+     * externas se cuelgan — sin timeout, las tareas bloquean indefinidamente
+     * y agotan el pool de conexiones DB (max 10), congelando toda la app. */
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .unwrap_or_default();
     let mut last_error = String::new();
 
     /* Fase 1: Groq — rotación de modelos × keys */

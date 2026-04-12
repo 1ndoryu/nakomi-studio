@@ -58,7 +58,11 @@ async fn process_image_vision(
         "max_tokens": 300
     });
 
-    let resp = reqwest::Client::new()
+    /* [114A-6] Timeout 30s para vision API — previene deadlock por API colgada */
+    let resp = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .unwrap_or_default()
         .post("https://api.groq.com/openai/v1/chat/completions")
         .header("Authorization", format!("Bearer {api_key}"))
         .header("Content-Type", "application/json")
@@ -116,7 +120,11 @@ async fn process_audio_whisper(
         .text("language", "es")
         .part("file", file_part);
 
-    let resp = reqwest::Client::new()
+    /* [114A-6] Timeout 30s para whisper API — previene deadlock por API colgada */
+    let resp = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .unwrap_or_default()
         .post("https://api.groq.com/openai/v1/audio/transcriptions")
         .header("Authorization", format!("Bearer {api_key}"))
         .multipart(form)

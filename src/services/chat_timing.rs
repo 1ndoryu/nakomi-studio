@@ -510,20 +510,37 @@ async fn generate_ai_response(
     /* Relevante: reset streak y generar respuesta principal */
     irrelevant_count = 0;
 
-    let ai_resp = AiChatService::generate_response(
-        pool, ai_config, http_client, stripe_key,
-        crate::services::AiSessionContext {
-            session_id, visitor_id: Some(visitor_id), user_id,
-            context: page_ctx,
-        },
-        combined,
+    /* [114A-6] Timeout global 90s para toda la cadena de retries de IA.
+     * Sin esto, la cadena Groq (3 keys × 3 modelos) + Gemini (6 modelos)
+     * podría bloquear hasta 7+ minutos reteniendo conexión DB. */
+    let ai_result = tokio::time::timeout(
+        std::time::Duration::from_secs(90),
+        AiChatService::generate_response(
+            pool, ai_config, http_client, stripe_key,
+            crate::services::AiSessionContext {
+                session_id, visitor_id: Some(visitor_id), user_id,
+                context: page_ctx,
+            },
+            combined,
+        ),
     )
-    .await
-    .unwrap_or_else(|e| AiResponse {
-        text: format!("Error IA: {e}"),
-        needs_escalation: true,
-        rich_messages: Vec::new(),
-    });
+    .await;
+
+    let ai_resp = if let Ok(result) = ai_result {
+        result.unwrap_or_else(|e| AiResponse {
+            text: format!("Error IA: {e}"),
+            needs_escalation: true,
+            rich_messages: Vec::new(),
+        })
+    } else {
+        tracing::error!("AI response timeout (90s) para sesión {session_id}");
+        AiResponse {
+            text: "Disculpa, estoy tardando más de lo normal. Un miembro del equipo \
+                   te asistirá en breve.".to_string(),
+            needs_escalation: true,
+            rich_messages: Vec::new(),
+        }
+    };
 
     /* [T-2] Enviar rich messages (service_cards, invoices) antes del texto */
     for rm in &ai_resp.rich_messages {
@@ -598,7 +615,13 @@ async fn check_relevance(
         "max_tokens": 5
     });
 
-    let client = reqwest::Client::new();
+    /* [114A-6] Timeout 15s para clasificador de relevancia (modelo ligero).
+     * Sin timeout, una API colgada bloquea el thread y eventualmente agota
+     * el pool de conexiones DB, causando deadlock en toda la app. */
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .unwrap_or_default();
     let resp = client
         .post(&config.api_url)
         .header("Authorization", format!("Bearer {api_key}"))
@@ -774,7 +797,11 @@ async fn call_summary_api(
     });
 
     let key = config.next_key()?;
-    let client = reqwest::Client::new();
+    /* [114A-6] Timeout 15s para resumen de sesión con modelo ligero. */
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .unwrap_or_default();
     let resp = client
         .post(&config.api_url)
         .header("Authorization", format!("Bearer {key}"))
