@@ -25,13 +25,15 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
     const [sortOrder, setSortOrder] = useState(0);
     const [metaTitle, setMetaTitle] = useState('');
     const [metaDescription, setMetaDescription] = useState('');
+    /* [124A-SHOW1] Categoría showcase editable desde CMS */
+    const [showcaseCategory, setShowcaseCategory] = useState('');
 
     const resetear = useCallback(() => {
         setTitulo(''); setSlug(''); setCliente(''); setDescripcion('');
         setContenido(''); setImagenUrl(''); setGaleria([]); setCategorias([]);
         setTecnologias([]); setEnlaces([]); setSkills([]);
         setStatus('published'); setSortOrder(0);
-        setMetaTitle(''); setMetaDescription('');
+        setMetaTitle(''); setMetaDescription(''); setShowcaseCategory('');
     }, []);
 
     useEffect(() => {
@@ -51,6 +53,7 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
             setSortOrder(proyecto.sort_order);
             setMetaTitle(proyecto.meta_title ?? '');
             setMetaDescription(proyecto.meta_description ?? '');
+            setShowcaseCategory(proyecto.showcase_category ?? '');
         } else {
             resetear();
         }
@@ -71,17 +74,18 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
         sort_order: sortOrder,
         meta_title: metaTitle || undefined,
         meta_description: metaDescription || undefined,
+        showcase_category: showcaseCategory || undefined,
     }), [titulo, slug, cliente, descripcion, imagenUrl, galeria, categorias,
-        tecnologias, enlaces, skills, status, sortOrder, metaTitle, metaDescription]);
+        tecnologias, enlaces, skills, status, sortOrder, metaTitle, metaDescription, showcaseCategory]);
 
     return {
         titulo, slug, cliente, descripcion, contenido, imagenUrl,
         galeria, categorias, tecnologias, enlaces, skills,
-        status, sortOrder, metaTitle, metaDescription,
+        status, sortOrder, metaTitle, metaDescription, showcaseCategory,
         setTitulo, setSlug, setCliente, setDescripcion, setContenido,
         setImagenUrl, setGaleria, setCategorias, setTecnologias,
         setEnlaces, setSkills, setStatus, setSortOrder,
-        setMetaTitle, setMetaDescription,
+        setMetaTitle, setMetaDescription, setShowcaseCategory,
         buildBody, resetear,
     };
 }

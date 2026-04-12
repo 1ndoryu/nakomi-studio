@@ -51,6 +51,8 @@ export interface Proyecto {
     enlaces?: EnlaceProyecto[];
     /* [084A-29] UUID original del backend para edición admin inline */
     adminId?: string;
+    /* [124A-SHOW1] Categoría showcase editable desde CMS */
+    showcaseCategory?: string;
 }
 
 /* [124A-PROJ1] Imagen de galería con layout */

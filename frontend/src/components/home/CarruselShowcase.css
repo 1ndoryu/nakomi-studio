@@ -75,7 +75,7 @@
     height: 100%;
     pointer-events: none;
     /* Degradado sutil en los bordes */
-    background: linear-gradient(90deg, var(--bg-primary) 0%, transparent 10%, transparent 90%, var(--bg-primary) 100%);
+    background: linear-gradient(90deg, var(--bg-primary) -40%, transparent 10%, transparent 90%, var(--bg-primary) 100%);
     z-index: 10;
 }
 

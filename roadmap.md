@@ -29,9 +29,11 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 - Hace falta un buscador en cada tab del cms, que funcione en tiempo real.
 - Los blog tambien deben poder elegirse cual aparece en el inicio, igual que los servicios, proyectos destacados y cuales proyectos aparecen el carrusel de inicio.
 - Tambien debería poder elegirse entre la imagen de portada externa y la primera imagen dentro de la pagina individual de proyecto
-- Las imagenes de la galería dentro de los proyectos no se estan ordenando como te dije 1/1 una y luego 2 1/2, y asi.
-- proyectoCaseIntroDescripcion maxmo debería ocupar 1/2 de la pantalla.
-- El boton de eliminar uploadImagenPreview se ve mal, no se ve el icono
+- Hacer una auditoría de rendimiento, fuga de ram las extensiones de sentinel y varsense, una auditoría profunda. 
+- Sentinel definitavamente no esta generando reportes para archivos rust. (Instalala de nuevo despues que arregles pero no intentes reiniciar vscode)
+- Agrega una regla de en el protocolo de desarrollo de no intentar reiniciar vscode cuando se modifique o reinstale una extension.
+- proyectoHeroTitulo tiene que estar alineado a la derecha, y debería poder elegirse el titulo dentro la pagina detalle y el de afuera. 
+- el padding de proyectoCaseIntroContenido y proyectoPortada tienen que pasar de lg a md en movil
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 

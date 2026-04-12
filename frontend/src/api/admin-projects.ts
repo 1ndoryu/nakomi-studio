@@ -30,6 +30,7 @@ export interface AdminProject {
     status: string;
     sort_order: number;
     is_featured: boolean;
+    showcase_category: string | null;
     meta_title: string | null;
     meta_description: string | null;
     created_at: string;
@@ -50,6 +51,7 @@ export interface CreateProjectBody {
     status?: string;
     sort_order?: number;
     is_featured?: boolean;
+    showcase_category?: string;
     meta_title?: string;
     meta_description?: string;
 }
@@ -68,6 +70,7 @@ export interface UpdateProjectBody {
     status?: string;
     sort_order?: number;
     is_featured?: boolean;
+    showcase_category?: string;
     meta_title?: string;
     meta_description?: string;
 }

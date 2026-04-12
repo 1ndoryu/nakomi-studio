@@ -118,6 +118,7 @@ export function mapAdminProjectsToProyectos(projects: AdminProject[]): Proyecto[
             skills: p.skills.map((s, i) => ({id: i + 1, titulo: s.titulo, descripcion: s.descripcion})),
             galeria: p.gallery,
             tecnologias: p.technologies,
+            showcaseCategory: p.showcase_category || undefined,
             enlaces: p.links.map(l => ({
                 tipo: l.tipo as EnlaceProyecto['tipo'],
                 url: l.url,
@@ -130,14 +131,14 @@ export function mapAdminProjectsToProyectos(projects: AdminProject[]): Proyecto[
  * Agrupar proyectos en categorías para la sección showcase del home.
  * [084A-11] Ahora recibe datos opcionales para usar API cuando esté disponible.
  * [094A-20] Un array vacío es un resultado válido del CMS y no debe caer al fallback.
- * [124A-CMS2] Categorías dinámicas: agrupa por las categorías reales de cada proyecto
- * en lugar de hard-codear títulos fijos. Solo incluye proyectos marcados como featured
- * cuando la fuente proviene de la API (tienen is_featured). */
+ * [124A-SHOW1] Usa showcase_category del proyecto si existe (editable desde CMS).
+ * Fallback al diccionario antiguo solo si showcase_category está vacío. */
 export const buildCategoriasShowcase = (datos?: Proyecto[]): CategoriaShowcase[] => {
     const fuente = datos ?? PROYECTOS_DATA;
     const usados = new Set<string | number>();
 
-    /* [124A-CMS2] Mapa legible de categoría interna → título para UI */
+    /* Fallback: mapa legible de categoría interna → título para UI.
+     * Solo se usa cuando un proyecto NO tiene showcaseCategory definido. */
     const tituloCategoria: Record<string, string> = {
         web: 'Website & Digital Experiences',
         app: 'Website & Digital Experiences',
@@ -146,16 +147,19 @@ export const buildCategoriasShowcase = (datos?: Proyecto[]): CategoriaShowcase[]
         software: 'Software Development',
     };
 
-    /* Agrupar proyectos por categoría, respetando orden de sort_order */
+    /* Agrupar proyectos por showcaseCategory (prioridad) o primera categoría (fallback) */
     const grupos = new Map<string, Proyecto[]>();
     for (const p of fuente) {
         if (usados.has(p.id)) continue;
-        const cats = Array.isArray(p.categorias) ? p.categorias : [p.categorias];
-        if (cats.length === 0) continue;
 
-        /* Usar la primera categoría como grupo primario */
-        const catPrimaria = cats[0];
-        const titulo = tituloCategoria[catPrimaria] ?? catPrimaria;
+        /* [124A-SHOW1] showcaseCategory tiene prioridad absoluta sobre el diccionario */
+        let titulo = p.showcaseCategory?.trim() || '';
+        if (!titulo) {
+            const cats = Array.isArray(p.categorias) ? p.categorias : [p.categorias];
+            if (cats.length === 0) continue;
+            const catPrimaria = cats[0];
+            titulo = tituloCategoria[catPrimaria] ?? catPrimaria;
+        }
 
         if (!grupos.has(titulo)) grupos.set(titulo, []);
         const grupo = grupos.get(titulo)!;

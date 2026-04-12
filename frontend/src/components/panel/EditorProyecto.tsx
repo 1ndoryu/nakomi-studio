@@ -114,6 +114,19 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                             />
                         </label>
 
+                        {/* [124A-SHOW1] Categoría showcase: agrupa proyectos en el home */}
+                        <label className="editorProyectoLabel">
+                            Showcase Category
+                            <Input
+                                value={form.showcaseCategory}
+                                onChange={e => form.setShowcaseCategory(e.target.value)}
+                                placeholder="Website & Digital Experiences"
+                            />
+                            <span className="editorProyectoHint">
+                                Proyectos con la misma categoría showcase se agrupan juntos en el inicio.
+                            </span>
+                        </label>
+
                         <label className="editorProyectoLabel">
                             Orden
                             <Input
