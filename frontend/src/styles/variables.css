@@ -44,7 +44,7 @@
     --font-sans-alt: 'Anthropic Sans', sans-serif;
 
     /* Spacing & Sizing */
-    --container-width: 78rem;
+    --container-width: unset;
     --spacing-xs: 0.5rem;
     --spacing-sm: 0.5rem;
     --spacing-md: 1rem;

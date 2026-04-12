@@ -96,7 +96,7 @@ Pendiente: sistema robusto de delegación tipo Fiverr. Flujo esperado:
 - ~~retiroAdminContenedor se ve mal, no tiene la estructura de los otros paneles, presiento.~~ (204A-17)
 
 - ~~URGENTE; LAS IMAGENES FALLAN https://nakomi.studio/api/img/content/cdc038b3-61bf-4c8b-b7b7-efedb2cef5d8.jpg?w=480&q=80&fmt=webp {"error":"not_found","message":"Imagen no encontrada"}~~ (214A-1: volumen persistente)
-- Las imagenes desaparecen al rato o con el despliegue, URGENTE (114A-6: bind mount persistente en host, no named volume Docker)
+- ~~Las imagenes desaparecen al rato o con el despliegue, URGENTE~~ (114A-6: bind mount `/data/uploads/studio` persistente en host + Coolify DB actualizada)
 - ~~Sitio deja de cargar después de ~1h (503): deadlock por APIs de IA sin timeout~~ (124A-1: timeouts HTTP 30s en todas las llamadas a Groq/Gemini + timeout global 90s en generate_ai_response)
 
 - ~~veo un problema con el prerender que hiciste, los contenidos del cms no pueden prendererizarse asi, tiene que ser dinamico, tuviste eso en cuenta con el prerender? los proyectos, los servicios son modificables desde el cms.~~ (214A-2: SEO dinámico desde BD)
