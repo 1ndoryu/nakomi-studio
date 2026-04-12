@@ -25,7 +25,9 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-(sin tareas pendientes)
+- Corregir ~126 problemas reales del sentinel-report → ver plan detallado en `Agente/planes/plan-sentinel-problemas-reales-2026-04-12.md`
+
+- Resuelve todo lo de ### Delegaciones y pedidos y ### Hosting / Infraestructura ### Planes activos, si es que realmente esta pendiente, 
 
 ### Delegaciones y pedidos (diseño completo pendiente)
 
