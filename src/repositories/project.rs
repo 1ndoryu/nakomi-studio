@@ -22,6 +22,7 @@ pub struct CreateProjectParams<'a> {
     pub skills: &'a serde_json::Value,
     pub status: &'a str,
     pub sort_order: i32,
+    pub is_featured: bool,
     pub meta_title: Option<&'a str>,
     pub meta_description: Option<&'a str>,
 }
@@ -40,6 +41,7 @@ pub struct UpdateProjectParams<'a> {
     pub skills: Option<&'a serde_json::Value>,
     pub status: Option<&'a str>,
     pub sort_order: Option<i32>,
+    pub is_featured: Option<bool>,
     pub meta_title: Option<&'a str>,
     pub meta_description: Option<&'a str>,
 }
@@ -52,7 +54,7 @@ impl ProjectRepository {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image,
                     gallery, categories, technologies, links, skills,
-                    status, sort_order, meta_title, meta_description,
+                    status, sort_order, is_featured, meta_title, meta_description,
                     created_at, updated_at
              FROM projects
              WHERE status = 'published'
@@ -70,7 +72,7 @@ impl ProjectRepository {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image,
                     gallery, categories, technologies, links, skills,
-                    status, sort_order, meta_title, meta_description,
+                    status, sort_order, is_featured, meta_title, meta_description,
                     created_at, updated_at
              FROM projects
              WHERE slug = $1 AND status = 'published'"
@@ -85,7 +87,7 @@ impl ProjectRepository {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image,
                     gallery, categories, technologies, links, skills,
-                    status, sort_order, meta_title, meta_description,
+                    status, sort_order, is_featured, meta_title, meta_description,
                     created_at, updated_at
              FROM projects
              ORDER BY sort_order ASC, updated_at DESC"
@@ -102,7 +104,7 @@ impl ProjectRepository {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image,
                     gallery, categories, technologies, links, skills,
-                    status, sort_order, meta_title, meta_description,
+                    status, sort_order, is_featured, meta_title, meta_description,
                     created_at, updated_at
              FROM projects
              WHERE id = $1"
@@ -121,11 +123,11 @@ impl ProjectRepository {
             "INSERT INTO projects
                 (title, slug, client, description, featured_image,
                  gallery, categories, technologies, links, skills,
-                 status, sort_order, meta_title, meta_description)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                 status, sort_order, is_featured, meta_title, meta_description)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
              RETURNING id, title, slug, client, description, featured_image,
                        gallery, categories, technologies, links, skills,
-                       status, sort_order, meta_title, meta_description,
+                       status, sort_order, is_featured, meta_title, meta_description,
                        created_at, updated_at"
         )
         .bind(params.title)
@@ -140,6 +142,7 @@ impl ProjectRepository {
         .bind(params.skills)
         .bind(params.status)
         .bind(params.sort_order)
+        .bind(params.is_featured)
         .bind(params.meta_title)
         .bind(params.meta_description)
         .fetch_one(pool)
@@ -166,13 +169,14 @@ impl ProjectRepository {
                 skills = COALESCE($11, skills),
                 status = COALESCE($12, status),
                 sort_order = COALESCE($13, sort_order),
-                meta_title = COALESCE($14, meta_title),
-                meta_description = COALESCE($15, meta_description),
+                is_featured = COALESCE($14, is_featured),
+                meta_title = COALESCE($15, meta_title),
+                meta_description = COALESCE($16, meta_description),
                 updated_at = NOW()
              WHERE id = $1
              RETURNING id, title, slug, client, description, featured_image,
                        gallery, categories, technologies, links, skills,
-                       status, sort_order, meta_title, meta_description,
+                       status, sort_order, is_featured, meta_title, meta_description,
                        created_at, updated_at"
         )
         .bind(id)
@@ -188,6 +192,7 @@ impl ProjectRepository {
         .bind(params.skills)
         .bind(params.status)
         .bind(params.sort_order)
+        .bind(params.is_featured)
         .bind(params.meta_title)
         .bind(params.meta_description)
         .fetch_one(pool)

@@ -69,6 +69,31 @@
     cursor: grabbing;
 }
 
+/* [124A-CMS2] Estrella de featured/Selected Work */
+.listaProyectosStar {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.listaProyectosStar:hover {
+    color: var(--brand-primary);
+}
+
+.listaProyectosStar--activo {
+    color: #f59e0b;
+}
+
+.listaProyectosStar--activo:hover {
+    color: #d97706;
+}
+
 /* Miniatura de imagen (compacta para la fila) */
 .listaProyectosMiniatura {
     width: 48px;

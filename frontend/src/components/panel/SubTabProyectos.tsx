@@ -52,6 +52,11 @@ export const SubTabProyectos: React.FC = () => {
         await eliminar(id);
     }, [eliminar]);
 
+    /* [124A-CMS2] Toggle featured: marcar/desmarcar como Selected Work */
+    const handleToggleFeatured = useCallback(async (id: string, featured: boolean) => {
+        await actualizar(id, {is_featured: featured} as UpdateProjectBody);
+    }, [actualizar]);
+
     return (
         <>
             {error && <div className="contenidoError">{error}</div>}
@@ -65,6 +70,7 @@ export const SubTabProyectos: React.FC = () => {
                 onEliminar={handleEliminar}
                 onPublicar={handlePublicar}
                 onReordenar={reordenar}
+                onToggleFeatured={handleToggleFeatured}
             />
             <EditorProyecto
                 abierto={editorAbierto}

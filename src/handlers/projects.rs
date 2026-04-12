@@ -115,6 +115,7 @@ pub async fn create(
     let description = body.description.as_deref().unwrap_or("");
     let status = body.status.as_deref().unwrap_or("published");
     let sort_order = body.sort_order.unwrap_or(0);
+    let is_featured = body.is_featured.unwrap_or(false);
 
     let gallery =
         serde_json::to_value(body.gallery.unwrap_or_default())
@@ -147,6 +148,7 @@ pub async fn create(
             skills: &skills,
             status,
             sort_order,
+            is_featured,
             meta_title: body.meta_title.as_deref(),
             meta_description: body.meta_description.as_deref(),
         },
@@ -229,6 +231,7 @@ pub async fn update(
             skills: skills.as_ref(),
             status: body.status.as_deref(),
             sort_order: body.sort_order,
+            is_featured: body.is_featured,
             meta_title: body.meta_title.as_deref(),
             meta_description: body.meta_description.as_deref(),
         },

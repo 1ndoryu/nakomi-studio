@@ -3,7 +3,7 @@
  * [124A-CMS3] Convertido de grid a lista vertical con drag-to-reorder via @dnd-kit.
  * El orden se persiste en BD al soltar (sort_order batch update). */
 import React, {useState} from 'react';
-import { Plus, Archive, ArchiveRestore, Trash2, Globe, GripVertical } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trash2, Globe, GripVertical, Star } from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -37,6 +37,7 @@ interface ListaProyectosProps {
     onEliminar?: (id: string) => void;
     onPublicar?: (id: string) => void;
     onReordenar?: (items: {id: string; sort_order: number}[]) => void;
+    onToggleFeatured?: (id: string, featured: boolean) => void;
 }
 
 function BadgeStatus({ status }: { status: string }) {
@@ -59,6 +60,7 @@ function FilaProyecto({
     onDesarchivar,
     onEliminar,
     onPublicar,
+    onToggleFeatured,
 }: {
     proyecto: AdminProject;
     menuActivo: string | null;
@@ -68,6 +70,7 @@ function FilaProyecto({
     onDesarchivar?: (id: string) => void;
     onEliminar?: (id: string) => void;
     onPublicar?: (id: string) => void;
+    onToggleFeatured?: (id: string, featured: boolean) => void;
 }) {
     const {
         attributes,
@@ -107,6 +110,16 @@ function FilaProyecto({
             <div className="listaProyectosGrip" {...attributes} {...listeners}>
                 <GripVertical size={16} />
             </div>
+
+            {/* [124A-CMS2] Toggle featured: estrella clickeable */}
+            <button
+                className={`listaProyectosStar ${proyecto.is_featured ? 'listaProyectosStar--activo' : ''}`}
+                onClick={() => onToggleFeatured?.(proyecto.id, !proyecto.is_featured)}
+                title={proyecto.is_featured ? 'Quitar de Selected Work' : 'Agregar a Selected Work'}
+                aria-label={proyecto.is_featured ? 'Quitar de Selected Work' : 'Agregar a Selected Work'}
+            >
+                <Star size={16} fill={proyecto.is_featured ? 'currentColor' : 'none'} />
+            </button>
 
             {proyecto.featured_image && (
                 <div className="listaProyectosMiniatura">
@@ -153,6 +166,7 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
     onEliminar,
     onPublicar,
     onReordenar,
+    onToggleFeatured,
 }) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
 
@@ -209,6 +223,7 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
                                 onDesarchivar={onDesarchivar}
                                 onEliminar={onEliminar}
                                 onPublicar={onPublicar}
+                                onToggleFeatured={onToggleFeatured}
                             />
                         ))}
                     </div>

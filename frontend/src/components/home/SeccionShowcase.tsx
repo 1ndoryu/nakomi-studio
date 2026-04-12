@@ -26,10 +26,16 @@ export const SeccionShowcase = (): JSX.Element | null => {
         retry: 1,
     });
 
-    const categorias = useMemo(
-        () => buildCategoriasShowcase(mapAdminProjectsToProyectos(apiProjects || [])),
-        [apiProjects]
-    );
+    /* [124A-CMS2] Solo proyectos marcados como featured aparecen en el home.
+     * Si ninguno está featured, se muestran todos los publicados (backward compatible). */
+    const categorias = useMemo(() => {
+        const allProjects = mapAdminProjectsToProyectos(apiProjects || []);
+        const featured = (apiProjects || []).filter(p => p.is_featured);
+        const source = featured.length > 0
+            ? mapAdminProjectsToProyectos(featured)
+            : allProjects;
+        return buildCategoriasShowcase(source);
+    }, [apiProjects]);
 
     if (categorias.length === 0) return null;
 

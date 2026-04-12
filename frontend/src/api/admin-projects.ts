@@ -28,6 +28,7 @@ export interface AdminProject {
     skills: ProjectSkill[];
     status: string;
     sort_order: number;
+    is_featured: boolean;
     meta_title: string | null;
     meta_description: string | null;
     created_at: string;
@@ -47,6 +48,7 @@ export interface CreateProjectBody {
     skills?: ProjectSkill[];
     status?: string;
     sort_order?: number;
+    is_featured?: boolean;
     meta_title?: string;
     meta_description?: string;
 }
@@ -64,6 +66,7 @@ export interface UpdateProjectBody {
     skills?: ProjectSkill[];
     status?: string;
     sort_order?: number;
+    is_featured?: boolean;
     meta_title?: string;
     meta_description?: string;
 }

@@ -130,35 +130,44 @@ export function mapAdminProjectsToProyectos(projects: AdminProject[]): Proyecto[
  * Agrupar proyectos en categorías para la sección showcase del home.
  * [084A-11] Ahora recibe datos opcionales para usar API cuando esté disponible.
  * [094A-20] Un array vacío es un resultado válido del CMS y no debe caer al fallback.
- */
+ * [124A-CMS2] Categorías dinámicas: agrupa por las categorías reales de cada proyecto
+ * en lugar de hard-codear títulos fijos. Solo incluye proyectos marcados como featured
+ * cuando la fuente proviene de la API (tienen is_featured). */
 export const buildCategoriasShowcase = (datos?: Proyecto[]): CategoriaShowcase[] => {
     const fuente = datos ?? PROYECTOS_DATA;
     const usados = new Set<string | number>();
 
-    const filtrarSinRepetir = (filtro: (cats: string[]) => boolean, max: number): Proyecto[] => {
-        const resultado: Proyecto[] = [];
-        for (const p of fuente) {
-            if (usados.has(p.id)) continue;
-            const cats = Array.isArray(p.categorias) ? p.categorias : [p.categorias];
-            if (filtro(cats)) {
-                resultado.push(p);
-                usados.add(p.id);
-                if (resultado.length >= max) break;
-            }
-        }
-        return resultado;
+    /* [124A-CMS2] Mapa legible de categoría interna → título para UI */
+    const tituloCategoria: Record<string, string> = {
+        web: 'Website & Digital Experiences',
+        app: 'Website & Digital Experiences',
+        branding: 'Brand Identity & Strategy',
+        ai: 'AI & Machine Learning',
+        software: 'Software Development',
     };
 
-    return [
-        {
-            titulo: 'Website & Digital Experiences',
-            proyectos: filtrarSinRepetir(cats => cats.includes('web') || cats.includes('app'), 3)
-        },
-        {
-            titulo: 'Brand Identity & Strategy',
-            proyectos: filtrarSinRepetir(cats => cats.includes('branding'), 3)
+    /* Agrupar proyectos por categoría, respetando orden de sort_order */
+    const grupos = new Map<string, Proyecto[]>();
+    for (const p of fuente) {
+        if (usados.has(p.id)) continue;
+        const cats = Array.isArray(p.categorias) ? p.categorias : [p.categorias];
+        if (cats.length === 0) continue;
+
+        /* Usar la primera categoría como grupo primario */
+        const catPrimaria = cats[0];
+        const titulo = tituloCategoria[catPrimaria] ?? catPrimaria;
+
+        if (!grupos.has(titulo)) grupos.set(titulo, []);
+        const grupo = grupos.get(titulo)!;
+        if (grupo.length < 6) {
+            grupo.push(p);
+            usados.add(p.id);
         }
-    ].filter(categoria => categoria.proyectos.length > 0);
+    }
+
+    return Array.from(grupos.entries())
+        .map(([titulo, proyectos]) => ({titulo, proyectos}))
+        .filter(cat => cat.proyectos.length > 0);
 };
 
 export const CATEGORIAS_SHOWCASE: CategoriaShowcase[] = buildCategoriasShowcase();
