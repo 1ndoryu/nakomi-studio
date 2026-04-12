@@ -10,6 +10,7 @@ import {
     apiUpdateService,
     apiArchiveService,
     apiDestroyService,
+    apiReorderServices,
 } from '../api/admin-services';
 
 export function useContenidoServicios() {
@@ -101,5 +102,24 @@ export function useContenidoServicios() {
         }
     }, []);
 
-    return {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar, recargar: cargar};
+    /* [124A-CMS10] Reordenar servicios con update optimista + rollback */
+    const reordenar = useCallback(async (items: {id: string; sort_order: number}[]): Promise<boolean> => {
+        const prev = [...servicios];
+        const orderMap = new Map(items.map(i => [i.id, i.sort_order]));
+        setServicios(curr =>
+            [...curr].sort((a, b) => (orderMap.get(a.id) ?? a.sort_order) - (orderMap.get(b.id) ?? b.sort_order))
+                .map(s => ({...s, sort_order: orderMap.get(s.id) ?? s.sort_order}))
+        );
+        try {
+            await apiReorderServices(items);
+            return true;
+        } catch (err: unknown) {
+            setServicios(prev);
+            const msg = err instanceof Error ? err.message : 'Error al reordenar servicios';
+            setError(msg);
+            return false;
+        }
+    }, [servicios]);
+
+    return {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar, reordenar, recargar: cargar};
 }

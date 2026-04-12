@@ -23,6 +23,7 @@ pub struct BlogPost {
     pub meta_title: Option<String>,
     pub meta_description: Option<String>,
     pub published_at: Option<DateTime<Utc>>,
+    pub sort_order: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -41,6 +42,7 @@ pub struct BlogPostResponse {
     pub tags: Vec<String>,
     pub meta_title: Option<String>,
     pub meta_description: Option<String>,
+    pub sort_order: i32,
     pub published_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -101,6 +103,7 @@ impl BlogPost {
             tags,
             meta_title: self.meta_title,
             meta_description: self.meta_description,
+            sort_order: self.sort_order,
             published_at: self.published_at,
             created_at: self.created_at,
             updated_at: self.updated_at,

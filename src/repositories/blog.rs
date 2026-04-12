@@ -55,7 +55,7 @@ impl BlogRepository {
         let posts = sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
-                    created_at, updated_at
+                    sort_order, created_at, updated_at
              FROM blog_posts
              WHERE status = 'published'
              ORDER BY published_at DESC NULLS LAST
@@ -77,7 +77,7 @@ impl BlogRepository {
         sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
-                    created_at, updated_at
+                    sort_order, created_at, updated_at
              FROM blog_posts
              WHERE slug = $1 AND status = 'published'"
         )
@@ -91,9 +91,9 @@ impl BlogRepository {
         sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
-                    created_at, updated_at
+                    sort_order, created_at, updated_at
              FROM blog_posts
-             ORDER BY updated_at DESC"
+             ORDER BY sort_order, created_at DESC"
         )
         .fetch_all(pool)
         .await
@@ -107,7 +107,7 @@ impl BlogRepository {
         sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
-                    created_at, updated_at
+                    sort_order, created_at, updated_at
              FROM blog_posts
              WHERE id = $1"
         )
@@ -134,7 +134,7 @@ impl BlogRepository {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING id, author_id, title, slug, excerpt, content, featured_image,
                        status, tags, meta_title, meta_description, published_at,
-                       created_at, updated_at"
+                       sort_order, created_at, updated_at"
         )
         .bind(params.author_id)
         .bind(params.title)
@@ -178,7 +178,7 @@ impl BlogRepository {
              WHERE id = $1
              RETURNING id, author_id, title, slug, excerpt, content, featured_image,
                        status, tags, meta_title, meta_description, published_at,
-                       created_at, updated_at"
+                       sort_order, created_at, updated_at"
         )
         .bind(id)
         .bind(params.title)
@@ -212,6 +212,31 @@ impl BlogRepository {
             .execute(pool)
             .await?;
         Ok(result.rows_affected() > 0)
+    }
+
+    /* [124A-CMS10] Batch reorder — mismo patrón que ProjectRepository::reorder */
+    pub async fn reorder(
+        pool: &PgPool,
+        items: &[(Uuid, i32)],
+    ) -> Result<(), sqlx::Error> {
+        if items.is_empty() {
+            return Ok(());
+        }
+        let ids: Vec<Uuid> = items.iter().map(|(id, _)| *id).collect();
+        let orders: Vec<i32> = items.iter().map(|(_, order)| *order).collect();
+
+        sqlx::query(
+            "UPDATE blog_posts AS p SET
+                sort_order = v.new_order,
+                updated_at = NOW()
+             FROM (SELECT UNNEST($1::uuid[]) AS id, UNNEST($2::int[]) AS new_order) AS v
+             WHERE p.id = v.id"
+        )
+        .bind(&ids)
+        .bind(&orders)
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 
     /// Obtener nombre del autor por user ID (usa `display_name` o email como fallback)

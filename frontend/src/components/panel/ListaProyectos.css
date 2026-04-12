@@ -60,7 +60,6 @@
     align-items: center;
     color: var(--text-tertiary);
     cursor: grab;
-    padding: var(--spacing-xs);
     flex-shrink: 0;
     touch-action: none;
 }

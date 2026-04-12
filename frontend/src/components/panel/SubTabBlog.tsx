@@ -11,7 +11,7 @@ import type {AdminBlogPost, CreateBlogPostBody, UpdateBlogPostBody} from '../../
 export const SubTabBlog: React.FC = () => {
     const {
         posts, cargando, error, guardando,
-        crear, actualizar, archivar, eliminar,
+        crear, actualizar, archivar, eliminar, reordenar,
     } = useContenidoBlog();
     const [editorAbierto, setEditorAbierto] = useState(false);
     const [postEditando, setPostEditando] = useState<AdminBlogPost | null>(null);
@@ -64,6 +64,7 @@ export const SubTabBlog: React.FC = () => {
                 onDesarchivar={handleDesarchivar}
                 onEliminar={handleEliminar}
                 onPublicar={handlePublicar}
+                onReordenar={reordenar}
             />
             <EditorBlog
                 abierto={editorAbierto}

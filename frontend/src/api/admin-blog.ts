@@ -16,6 +16,7 @@ export interface AdminBlogPost {
     tags: string[];
     meta_title: string | null;
     meta_description: string | null;
+    sort_order: number;
     published_at: string | null;
     created_at: string;
     updated_at: string;
@@ -78,6 +79,11 @@ export async function apiArchiveBlogPost(id: string): Promise<void> {
 /* [084A-10] Eliminación permanente de un blog post */
 export async function apiDestroyBlogPost(id: string): Promise<void> {
     await instance.post(`/api/admin/blog/${id}/destroy`);
+}
+
+/* [124A-CMS10] Reordenar blog posts en batch */
+export async function apiReorderBlog(items: {id: string; sort_order: number}[]): Promise<void> {
+    await instance.put('/api/admin/blog/reorder', {items});
 }
 
 /* Público: listar posts publicados con paginación */

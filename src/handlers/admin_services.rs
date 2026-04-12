@@ -13,7 +13,7 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    AdminServiceResponse, CreateServiceRequest, SaveServicePlansRequest,
+    AdminServiceResponse, CreateServiceRequest, ReorderRequest, SaveServicePlansRequest,
     ServicePlanPhaseResponse, ServicePlanResponse, UpdateServiceRequest, UserRole,
 };
 use crate::repositories::OrderRepository;
@@ -22,6 +22,7 @@ use crate::AppState;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/admin/services", get(list_all).post(create))
+        .route("/admin/services/reorder", axum::routing::put(reorder))
         .route("/admin/services/:id", put(update).delete(archive))
         .route("/admin/services/:id/destroy", axum::routing::post(destroy))
         .route("/admin/services/:id/plans", put(save_plans))
@@ -271,6 +272,27 @@ async fn save_plans(
     }
 
     Ok(Json(responses))
+}
+
+/* [124A-CMS10] Reordenar servicios en batch */
+#[utoipa::path(
+    put,
+    path = "/api/admin/services/reorder",
+    request_body = ReorderRequest,
+    responses(
+        (status = 204, description = "Servicios reordenados")
+    ),
+    security(("bearer_auth" = []))
+)]
+async fn reorder(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(body): Json<ReorderRequest>,
+) -> Result<axum::http::StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+    let items: Vec<(uuid::Uuid, i32)> = body.items.iter().map(|i| (i.id, i.sort_order)).collect();
+    OrderRepository::reorder_services(&state.pool, &items).await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 /* [084A-10] Eliminación permanente de un servicio.

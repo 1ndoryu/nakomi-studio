@@ -11,6 +11,7 @@ import {
     apiUpdateBlogPost,
     apiArchiveBlogPost,
     apiDestroyBlogPost,
+    apiReorderBlog,
 } from '../api/admin-blog';
 
 export function useContenidoBlog() {
@@ -102,5 +103,24 @@ export function useContenidoBlog() {
         }
     }, []);
 
-    return {posts, cargando, error, guardando, crear, actualizar, archivar, eliminar, recargar: cargar};
+    /* [124A-CMS10] Reordenar blog posts con update optimista + rollback */
+    const reordenar = useCallback(async (items: {id: string; sort_order: number}[]): Promise<boolean> => {
+        const prev = [...posts];
+        const orderMap = new Map(items.map(i => [i.id, i.sort_order]));
+        setPosts(curr =>
+            [...curr].sort((a, b) => (orderMap.get(a.id) ?? a.sort_order) - (orderMap.get(b.id) ?? b.sort_order))
+                .map(p => ({...p, sort_order: orderMap.get(p.id) ?? p.sort_order}))
+        );
+        try {
+            await apiReorderBlog(items);
+            return true;
+        } catch (err: unknown) {
+            setPosts(prev);
+            const msg = err instanceof Error ? err.message : 'Error al reordenar posts';
+            setError(msg);
+            return false;
+        }
+    }, [posts]);
+
+    return {posts, cargando, error, guardando, crear, actualizar, archivar, eliminar, reordenar, recargar: cargar};
 }

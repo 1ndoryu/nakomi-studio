@@ -131,6 +131,11 @@ export async function apiSaveServicePlans(serviceId: string, plans: SavePlanBody
     return data;
 }
 
+/* [124A-CMS10] Reordenar servicios en batch */
+export async function apiReorderServices(items: {id: string; sort_order: number}[]): Promise<void> {
+    await instance.put('/api/admin/services/reorder', {items});
+}
+
 /* [074A-21] Endpoints públicos de servicios (sin auth)
  * [084A-6] Añadidos content, gallery, meta_title, meta_description
  * para que el frontend público reciba todo lo que el admin edita. */

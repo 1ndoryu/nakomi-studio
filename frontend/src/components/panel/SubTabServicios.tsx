@@ -10,7 +10,7 @@ import type {AdminService, CreateServiceBody, UpdateServiceBody, SavePlanBody} f
 import {apiSaveServicePlans} from '../../api/admin-services';
 
 export const SubTabServicios: React.FC = () => {
-    const {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar: eliminarServicio, recargar} = useContenidoServicios();
+    const {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar: eliminarServicio, reordenar, recargar} = useContenidoServicios();
     const [editorAbierto, setEditorAbierto] = useState(false);
     const [servicioEditando, setServicioEditando] = useState<AdminService | null>(null);
 
@@ -79,6 +79,7 @@ export const SubTabServicios: React.FC = () => {
                 onEliminar={handleEliminar}
                 onPublicar={handlePublicar}
                 onToggleHome={handleToggleHome}
+                onReordenar={reordenar}
             />
             <EditorServicio
                 abierto={editorAbierto}

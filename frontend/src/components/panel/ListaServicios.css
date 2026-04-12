@@ -53,6 +53,20 @@
     opacity: 0.6;
 }
 
+/* [124A-CMS10] Handle de arrastre */
+.listaServiciosGrip {
+    display: flex;
+    align-items: center;
+    color: var(--text-tertiary);
+    cursor: grab;
+    flex-shrink: 0;
+    touch-action: none;
+}
+
+.listaServiciosGrip:active {
+    cursor: grabbing;
+}
+
 /* Miniatura compacta */
 .listaServiciosMiniatura {
     width: 48px;

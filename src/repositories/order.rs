@@ -306,6 +306,30 @@ impl OrderRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    /* [124A-CMS10] Batch reorder de servicios — mismo patrón que ProjectRepository::reorder */
+    pub async fn reorder_services(
+        pool: &PgPool,
+        items: &[(Uuid, i32)],
+    ) -> Result<(), sqlx::Error> {
+        if items.is_empty() {
+            return Ok(());
+        }
+        let ids: Vec<Uuid> = items.iter().map(|(id, _)| *id).collect();
+        let orders: Vec<i32> = items.iter().map(|(_, order)| *order).collect();
+
+        sqlx::query(
+            "UPDATE services AS s SET
+                sort_order = v.new_order
+             FROM (SELECT UNNEST($1::uuid[]) AS id, UNNEST($2::int[]) AS new_order) AS v
+             WHERE s.id = v.id"
+        )
+        .bind(&ids)
+        .bind(&orders)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     /// Verifica si existen órdenes que referencien un servicio
     pub async fn service_has_orders(pool: &PgPool, service_id: Uuid) -> Result<bool, sqlx::Error> {
         let row: (bool,) = sqlx::query_as(

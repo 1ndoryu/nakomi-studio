@@ -118,6 +118,12 @@ pub struct ReorderProjectsRequest {
     pub items: Vec<ReorderItem>,
 }
 
+/* [124A-CMS10] Request genérico de reorder, reutilizable por servicios/blog/cualquier entidad */
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ReorderRequest {
+    pub items: Vec<ReorderItem>,
+}
+
 impl Project {
     /// Convierte a respuesta API deserializando JSONB a tipos tipados
     #[must_use]

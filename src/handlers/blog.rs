@@ -14,7 +14,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    BlogPostResponse, CreateBlogPostRequest, PaginatedBlogPosts, UpdateBlogPostRequest, UserRole,
+    BlogPostResponse, CreateBlogPostRequest, PaginatedBlogPosts, ReorderRequest,
+    UpdateBlogPostRequest, UserRole,
 };
 use crate::repositories::{BlogRepository, CreateBlogPostParams, UpdateBlogPostParams};
 use crate::AppState;
@@ -34,6 +35,7 @@ pub fn public_routes() -> Router<AppState> {
 pub fn admin_routes() -> Router<AppState> {
     Router::new()
         .route("/admin/blog", get(list_all).post(create))
+        .route("/admin/blog/reorder", axum::routing::put(reorder))
         .route("/admin/blog/:id", axum::routing::put(update).delete(archive))
         .route("/admin/blog/:id/destroy", axum::routing::post(destroy))
 }
@@ -247,6 +249,27 @@ pub async fn archive(
         .ok_or(AppError::NotFound("Blog post not found".into()))?;
 
     BlogRepository::archive(&state.pool, id).await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/* [124A-CMS10] Reordenar blog posts en batch */
+#[utoipa::path(
+    put,
+    path = "/api/admin/blog/reorder",
+    request_body = ReorderRequest,
+    responses(
+        (status = 204, description = "Posts reordenados")
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn reorder(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(body): Json<ReorderRequest>,
+) -> Result<axum::http::StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+    let items: Vec<(uuid::Uuid, i32)> = body.items.iter().map(|i| (i.id, i.sort_order)).collect();
+    BlogRepository::reorder(&state.pool, &items).await?;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
