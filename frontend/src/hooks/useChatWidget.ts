@@ -7,6 +7,7 @@
 import {useState, useCallback, useRef, useEffect} from 'react';
 import {buildVisitorWsUrl, apiUploadChatFile, type WsServerMessage, type ChatMessage} from '../api/chat';
 import {useAuthStore} from '../stores/authStore';
+import {playNotificationSound} from '../utils/notificationSound';
 
 const STORAGE_KEY_VISITOR_ID = 'nakomi_visitor_id';
 const STORAGE_KEY_SESSION_ID = 'nakomi_chat_session_id';
@@ -89,6 +90,10 @@ export function useChatWidget() {
                     if (typingTimerRef.current) {
                         clearTimeout(typingTimerRef.current);
                         typingTimerRef.current = null;
+                    }
+                    /* [124A-SOUND] Sonar al recibir mensaje de IA o staff (no de uno mismo) */
+                    if (msg.sender !== 'visitor' && msg.sender !== 'client') {
+                        playNotificationSound();
                     }
                 }
                 break;

@@ -9,6 +9,7 @@ import {apiCloseSession, apiMarkSessionViewed, apiUploadChatFile} from '../api/c
 import {useChat} from './useChat';
 import {useChatWs} from './useChatWs';
 import {toast} from '../stores/toastStore';
+import {playNotificationSound} from '../utils/notificationSound';
 
 export function useSeccionChat() {
     const queryClient = useQueryClient();
@@ -24,11 +25,19 @@ export function useSeccionChat() {
     const ws = useChatWs();
 
     /* [064A-68] Cuando WS recibe nuevos mensajes, invalidar cache REST para refrescar
-     * la UI instantáneamente en vez de esperar el polling de 5s/15s. */
+     * la UI instantáneamente en vez de esperar el polling de 5s/15s.
+     * [124A-SOUND] Sonar al recibir mensajes del visitante en el panel del admin. */
+    const prevWsMsgCountRef = useRef(0);
     useEffect(() => {
-        if (ws.messages.length > 0) {
+        if (ws.messages.length > prevWsMsgCountRef.current) {
             queryClient.invalidateQueries({queryKey: ['chat-messages']});
+            /* Sonar solo si el mensaje más reciente es del visitante */
+            const lastMsg = ws.messages[ws.messages.length - 1];
+            if (lastMsg && (lastMsg.sender_type === 'visitor' || lastMsg.sender_type === 'client')) {
+                playNotificationSound();
+            }
         }
+        prevWsMsgCountRef.current = ws.messages.length;
     }, [ws.messages.length, queryClient]);
 
     useEffect(() => {
