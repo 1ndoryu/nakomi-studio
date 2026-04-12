@@ -88,9 +88,15 @@ export function useChatWs() {
                             setSessions(prev =>
                                 prev.map(s => {
                                     if (s.id !== msg.session_id) return s;
-                                    const updated = {...s, status: msg.value!};
-                                    /* [124A-CHAT1] Sincronizar ai_enabled con el status de IA
-                                     * para feedback visual inmediato en el botón toggle. */
+                                    const updated = {...s};
+                                    /* [BUGFIX] No sobreescribir session.status con valores de
+                                     * gestión de IA — solo actualizar ai_enabled.
+                                     * Antes: updated.status = msg.value corrompia el status real
+                                     * ("open") con "ai_handling"/"staff_handling". */
+                                    if (msg.value !== 'ai_handling' && msg.value !== 'staff_handling') {
+                                        updated.status = msg.value!;
+                                    }
+                                    /* [124A-CHAT1] Sincronizar ai_enabled con el status de IA */
                                     if (msg.value === 'ai_handling') updated.ai_enabled = true;
                                     else if (msg.value === 'staff_handling') updated.ai_enabled = false;
                                     return updated;
@@ -163,8 +169,15 @@ export function useChatWs() {
     );
 
     const toggleAi = useCallback(
-        (sessionId: string, enable: boolean) =>
-            sendWsMessage({type: 'toggle_ai', session_id: sessionId, enable}),
+        (sessionId: string, enable: boolean) => {
+            sendWsMessage({type: 'toggle_ai', session_id: sessionId, enable});
+            /* [BUGFIX] Optimistic update: reflejar el cambio inmediatamente sin esperar
+             * el status WS del servidor. Evita el lag visual y el caso donde el broadcast
+             * no llega (suscripción al canal de sesión aún no activa). */
+            setSessions(prev =>
+                prev.map(s => (s.id === sessionId ? {...s, ai_enabled: enable} : s)),
+            );
+        },
         [sendWsMessage],
     );
 

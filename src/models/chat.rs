@@ -145,10 +145,14 @@ pub struct ChatSessionResponse {
     pub visitor_name: Option<String>,
     pub visitor_ip: Option<String>,
     pub visitor_user_agent: Option<String>,
+    /* [124A-PAIS] País del visitante */
+    pub visitor_country: Option<String>,
     /* [104A-39] Cuándo se vio por última vez esta sesión (para badge unread) */
     pub last_viewed_at: Option<DateTime<Utc>>,
     /* [104A-40] Cuándo se conectó el visitante por última vez via WS */
     pub visitor_last_connected_at: Option<DateTime<Utc>>,
+    /* [124A-ESC] true cuando la IA detectó que se necesita intervención humana */
+    pub is_escalated: bool,
     /* [154A-14] Nombres y avatares de los participantes — enriquecido desde orders+users */
     pub client_name: Option<String>,
     pub client_avatar_url: Option<String>,
