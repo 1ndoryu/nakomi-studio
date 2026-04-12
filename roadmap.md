@@ -25,7 +25,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- Los blog tambien deben poder elegirse cual aparece en el inicio, igual que los servicios, proyectos destacados y cuales proyectos aparecen el carrusel de inicio.
 - Tambien debería poder elegirse entre la imagen de portada externa y la primera imagen dentro de la pagina individual de proyecto
 - Hacer una auditoría de rendimiento, fuga de ram las extensiones de sentinel y varsense, una auditoría profunda. 
 - Sentinel definitavamente no esta generando reportes para archivos rust. (Instalala de nuevo despues que arregles pero no intentes reiniciar vscode)
