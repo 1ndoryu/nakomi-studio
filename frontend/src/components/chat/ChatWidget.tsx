@@ -8,9 +8,8 @@
 
 import React, {useState, useRef, useEffect} from 'react';
 import {useLocation} from 'react-router-dom';
-import {Send, User, Minus, Paperclip, FileText, Palette, Package, AlertTriangle} from 'lucide-react';
+import {Send, Minus, Paperclip, FileText, Palette, Package, AlertTriangle} from 'lucide-react';
 import {useChatWidget} from '../../hooks/useChatWidget';
-import {SENDER_LABELS} from '../../api/chat';
 import {useChatStore} from '../../stores/chatStore';
 import {Input} from '../ui/Input';
 import {Button} from '../ui/Button';
@@ -296,15 +295,18 @@ function ChatWidgetMessages({
 
     return (
         <div className="chatWidgetMessages">
-            {messages.length === 0 && (
-                <p className="chatWidgetEmpty">
-                    Conectando...
-                </p>
-            )}
+            {/* [124A-VISIT1] Saludo de bienvenida UI-only — siempre visible, sin BD ni sesión en panel.
+             * El visitante ve el greeting al abrir. La sesión se crea solo al enviar el primer mensaje. */}
+            <div className="chatWidgetMsg chatWidgetMsgOther">
+                <div className="chatWidgetAiRow">
+                    <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
+                    <div className="chatWidgetMsgBubble chatWidgetMsgBubbleOther">
+                        ¡Hola! Estoy aquí para ayudarte. Puedes preguntarme acerca de nuestros servicios, resolver dudas, o cualquier consulta que tengas.
+                    </div>
+                </div>
+            </div>
             {messages.map((msg) => {
                 const isOwn = msg.sender_type === 'visitor' || msg.sender_type === 'client';
-                const isAi = msg.sender_type === 'ai';
-                const label = SENDER_LABELS[msg.sender_type] || msg.sender_type;
 
                 /* [T-5] Renderizar contenido según message_type */
                 const bubbleContent = renderMessageContent(msg);
@@ -319,12 +321,9 @@ function ChatWidgetMessages({
                         key={msg.id}
                         className={`chatWidgetMsg ${isOwn ? 'chatWidgetMsgOwn' : 'chatWidgetMsgOther'}`}
                     >
-                        {!isOwn && !isAi && (
-                            <span className={`chatWidgetMsgSender chatWidgetSender--${msg.sender_type}`}>
-                                <User size={14} /> {label}
-                            </span>
-                        )}
-                        {isAi ? (
+                        {/* [124A-WIDGET1] Todos los mensajes "other" (IA y staff) usan el mismo
+                         * estilo con avatar — el cliente no debe distinguir entre IA y humano. */}
+                        {!isOwn ? (
                             <div className="chatWidgetAiRow">
                                 <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
                                 {bubble}
@@ -338,23 +337,9 @@ function ChatWidgetMessages({
 
             {typing && (
                 <div className="chatWidgetMsg chatWidgetMsgOther">
-                    {typing.sender !== 'ai' && (
-                        <span className={`chatWidgetMsgSender chatWidgetSender--${typing.sender}`}>
-                            <User size={14} /> {SENDER_LABELS[typing.sender] || typing.sender}
-                        </span>
-                    )}
-                    {typing.sender === 'ai' ? (
-                        <div className="chatWidgetAiRow">
-                            <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
-                            <div className="chatWidgetMsgBubble chatWidgetMsgBubbleOther chatWidgetTyping">
-                                <span className="chatWidgetTypingDots">
-                                    <span />
-                                    <span />
-                                    <span />
-                                </span>
-                            </div>
-                        </div>
-                    ) : (
+                    {/* [124A-WIDGET1] Typing indicator también usa chatWidgetAiRow para todos */}
+                    <div className="chatWidgetAiRow">
+                        <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetAiAvatar" loading="lazy" />
                         <div className="chatWidgetMsgBubble chatWidgetMsgBubbleOther chatWidgetTyping">
                             <span className="chatWidgetTypingDots">
                                 <span />
@@ -362,7 +347,7 @@ function ChatWidgetMessages({
                                 <span />
                             </span>
                         </div>
-                    )}
+                    </div>
                 </div>
             )}
 
