@@ -392,6 +392,18 @@ impl UserRepository {
         Ok(rows)
     }
 
+    /* [124A-SENT-R1] IDs de empleados con disponibilidad 'available'.
+     * Usado al reabrir una orden para notificar empleados que pueden tomarla.
+     * runtime query (sin macro) para no requerir sqlx prepare. */
+    pub async fn available_employee_ids(pool: &PgPool) -> Result<Vec<Uuid>, sqlx::Error> {
+        let rows = sqlx::query_scalar::<_, Uuid>(
+            "SELECT user_id FROM employee_profiles WHERE availability = 'available'"
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
     /* [154A-5] Actualiza la contraseña de un usuario y marca password_set = true.
      * Usado cuando un usuario de quick_register establece su propia contraseña,
      * o cuando usa el endpoint explícito de set-password. */

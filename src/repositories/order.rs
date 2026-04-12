@@ -850,6 +850,29 @@ impl OrderRepository {
         .await
     }
 
+    /* [124A-SENT-R1] Reabre una orden rechazada al pool de disponibles.
+     * Difiere de set_awaiting_assignment: también unasigna al empleado y
+     * no establece deadline de auto-asignación (queda null para no urgir).
+     * runtime query (sin macro) para no requerir sqlx prepare. */
+    pub async fn reopen_after_rejection(
+        pool: &PgPool,
+        order_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE orders \
+             SET status = 'awaiting_assignment', \
+                 assigned_employee_id = NULL, \
+                 assigned_at = NULL, \
+                 open_to_employees = true, \
+                 updated_at = NOW() \
+             WHERE id = $1",
+        )
+        .bind(order_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     /// Órdenes que pasaron su deadline de auto-asignación (24h en `awaiting_assignment`)
     pub async fn list_overdue_unassigned(pool: &PgPool) -> Result<Vec<Order>, sqlx::Error> {
         sqlx::query_as!(

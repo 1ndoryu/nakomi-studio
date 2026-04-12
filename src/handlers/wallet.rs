@@ -25,8 +25,8 @@ use crate::models::{
     WithdrawalRequestsPage, NOTIF_ORDER_CANCELLED,
 };
 use crate::repositories::{
-    CancellationRequestRepository, OrderRepository, WalletRepository,
-    WithdrawalRequestRepository,
+    ActivityLogRepository, CancellationRequestRepository, OrderRepository, UserRepository,
+    WalletRepository, WithdrawalRequestRepository,
 };
 use crate::services::WalletService;
 use crate::AppState;
@@ -167,15 +167,14 @@ pub async fn create_cancellation_request(
     }
 
     /* Registrar en activity_log */
-    let _ = sqlx::query!(
-        r#"INSERT INTO activity_log (user_id, entity_type, entity_id, action, details)
-           VALUES ($1, 'order', $2, 'cancellation_requested', $3)"#,
+    let _ = ActivityLogRepository::log(
+        &state.pool,
         auth.user_id,
+        "cancellation_requested",
+        "order",
         order_id,
-        serde_json::json!({ "reason": body.reason })
-    )
-    .execute(&state.pool)
-    .await;
+        Some(serde_json::json!({ "reason": body.reason })),
+    ).await;
 
     let resp = CancellationRequestResponse {
         id: req.id,
@@ -292,12 +291,7 @@ async fn handle_cancellation_accepted(
     resolved_by: Uuid,
 ) {
     /* Cancelar orden */
-    let _ = sqlx::query!(
-        "UPDATE orders SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW() WHERE id = $1",
-        order_id
-    )
-    .execute(&state.pool)
-    .await;
+    let _ = OrderRepository::cancel_order(&state.pool, order_id).await;
 
     /* Acreditar wallet del cliente */
     let _ = WalletRepository::credit(
@@ -325,16 +319,15 @@ async fn handle_cancellation_accepted(
         let _ = state.notification_hub.notify(notif).await;
     }
 
-    /* Activity log */
-    let _ = sqlx::query!(
-        r#"INSERT INTO activity_log (user_id, entity_type, entity_id, action, details)
-           VALUES ($1, 'order', $2, 'cancellation_accepted', $3)"#,
+    /* Activity log — cancelación aceptada */
+    let _ = ActivityLogRepository::log(
+        &state.pool,
         resolved_by,
+        "cancellation_accepted",
+        "order",
         order_id,
-        serde_json::json!({ "refund_cents": order.final_price_cents })
-    )
-    .execute(&state.pool)
-    .await;
+        Some(serde_json::json!({ "refund_cents": order.final_price_cents })),
+    ).await;
 }
 
 async fn handle_cancellation_rejected(
@@ -344,18 +337,7 @@ async fn handle_cancellation_rejected(
     resolved_by: Uuid,
 ) {
     /* Orden vuelve a awaiting_assignment sin empleado */
-    let _ = sqlx::query!(
-        r#"UPDATE orders
-           SET status = 'awaiting_assignment',
-               assigned_employee_id = NULL,
-               assigned_at = NULL,
-               open_to_employees = true,
-               updated_at = NOW()
-           WHERE id = $1"#,
-        order_id
-    )
-    .execute(&state.pool)
-    .await;
+    let _ = OrderRepository::reopen_after_rejection(&state.pool, order_id).await;
 
     /* Notificar al empleado */
     if let Some(emp_id) = order.assigned_employee_id {
@@ -372,12 +354,9 @@ async fn handle_cancellation_rejected(
     }
 
     /* Notificar a empleados disponibles */
-    let employees = sqlx::query_scalar!(
-        "SELECT user_id FROM employee_profiles WHERE availability = 'available'"
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    let employees = UserRepository::available_employee_ids(&state.pool)
+        .await
+        .unwrap_or_default();
 
     for emp_id in employees {
         let notif = CreateNotification {
@@ -392,15 +371,15 @@ async fn handle_cancellation_rejected(
         let _ = state.notification_hub.notify(notif).await;
     }
 
-    /* Activity log */
-    let _ = sqlx::query!(
-        r#"INSERT INTO activity_log (user_id, entity_type, entity_id, action, details)
-           VALUES ($1, 'order', $2, 'cancellation_rejected', NULL)"#,
+    /* Activity log — cancelación rechazada */
+    let _ = ActivityLogRepository::log(
+        &state.pool,
         resolved_by,
+        "cancellation_rejected",
+        "order",
         order_id,
-    )
-    .execute(&state.pool)
-    .await;
+        None,
+    ).await;
 }
 
 /* ============================================================
@@ -511,12 +490,9 @@ pub async fn create_withdrawal(
 
     /* Notificar a admins */
     let amount_fmt = format!("${:.2}", f64::from(body.amount_cents) / 100.0);
-    let admins = sqlx::query_scalar::<_, Uuid>(
-        "SELECT id FROM users WHERE role = 'admin' AND is_active = true",
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    let admins = UserRepository::admin_ids(&state.pool)
+        .await
+        .unwrap_or_default();
     let base = CreateNotification {
         user_id: Uuid::nil(),
         notification_type: "withdrawal_requested".to_string(),
