@@ -3,7 +3,7 @@
  * [124A-CMS7] Convertido de grid a lista vertical, mismo patrón que ListaServicios/ListaProyectos.
  * [124A-CMS10] Drag-to-reorder via @dnd-kit. */
 import React, {useState} from 'react';
-import {Plus, Archive, ArchiveRestore, Trash2, Globe, GripVertical} from 'lucide-react';
+import {Plus, Archive, ArchiveRestore, Trash2, Globe, GripVertical, Search} from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -22,8 +22,10 @@ import {
 } from '@dnd-kit/sortable';
 import {CSS} from '@dnd-kit/utilities';
 import {Button} from '../ui/Button';
+import {Input} from '../ui/Input';
 import OptimizedImage from '../ui/OptimizedImage';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
+import {useBusquedaLista} from '../../hooks/useBusquedaLista';
 import type {AdminBlogPost} from '../../api/admin-blog';
 import './ListaBlog.css';
 
@@ -156,6 +158,10 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
     onReordenar,
 }) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
+    /* [124A-SEARCH1] Búsqueda en tiempo real */
+    const { busqueda, setBusqueda, filtrados } = useBusquedaLista(
+        posts, ['title', 'slug']
+    );
 
     const sensors = useSensors(
         useSensor(PointerSensor, {activationConstraint: {distance: 5}}),
@@ -181,6 +187,15 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
         <div className="listaBlog">
             <div className="listaBlogHeader">
                 <h3 className="listaBlogTitulo">Blog</h3>
+                <div className="listaBusqueda">
+                    <Search size={14} className="listaBusquedaIcono" />
+                    <Input
+                        value={busqueda}
+                        onChange={e => setBusqueda(e.target.value)}
+                        placeholder="Buscar posts..."
+                        className="listaBusquedaInput"
+                    />
+                </div>
                 <Button variante="primario" tamano="pequeno" onClick={onCrear}>
                     <Plus size={14} />
                     Nuevo
@@ -188,9 +203,9 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
             </div>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={posts.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                <SortableContext items={filtrados.map(p => p.id)} strategy={verticalListSortingStrategy}>
                     <div className="listaBlogLista">
-                        {posts.map(post => (
+                        {filtrados.map(post => (
                             <FilaBlogPost
                                 key={post.id}
                                 post={post}

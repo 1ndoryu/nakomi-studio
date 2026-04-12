@@ -40,6 +40,28 @@
     min-height: 300px;
 }
 
+/* [124A-SEARCH1] Buscador compartido entre todas las listas del CMS */
+.listaBusqueda {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    max-width: 280px;
+}
+
+.listaBusquedaIcono {
+    position: absolute;
+    left: var(--spacing-sm);
+    color: var(--text-quaternary);
+    pointer-events: none;
+}
+
+.listaBusquedaInput {
+    padding-left: calc(var(--spacing-sm) + 14px + var(--spacing-xs)) !important;
+    font-size: var(--text-sm) !important;
+    height: 32px;
+}
+
 .contenidoPlaceholder {
     display: flex;
     align-items: center;

@@ -3,7 +3,7 @@
  * [124A-CMS3] Convertido de grid a lista vertical con drag-to-reorder via @dnd-kit.
  * El orden se persiste en BD al soltar (sort_order batch update). */
 import React, {useState} from 'react';
-import { Plus, Archive, ArchiveRestore, Trash2, Globe, GripVertical, Star } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trash2, Globe, GripVertical, Star, Search } from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -22,8 +22,10 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import OptimizedImage from '../ui/OptimizedImage';
 import { MenuContextual, type MenuContextualItem } from '../ui/ContextMenu';
+import { useBusquedaLista } from '../../hooks/useBusquedaLista';
 import type { AdminProject } from '../../api/admin-projects';
 import './ListaProyectos.css';
 
@@ -169,6 +171,10 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
     onToggleFeatured,
 }) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
+    /* [124A-SEARCH1] Búsqueda en tiempo real */
+    const { busqueda, setBusqueda, filtrados } = useBusquedaLista(
+        proyectos, ['title', 'slug', 'client', 'categories']
+    );
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -196,6 +202,15 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
         <div className="listaProyectos">
             <div className="listaProyectosHeader">
                 <h3 className="listaProyectosTitulo">Proyectos</h3>
+                <div className="listaBusqueda">
+                    <Search size={14} className="listaBusquedaIcono" />
+                    <Input
+                        value={busqueda}
+                        onChange={e => setBusqueda(e.target.value)}
+                        placeholder="Buscar proyectos..."
+                        className="listaBusquedaInput"
+                    />
+                </div>
                 <Button variante="primario" tamano="pequeno" onClick={onCrear}>
                     <Plus size={14} />
                     Nuevo
@@ -208,11 +223,11 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
                 onDragEnd={handleDragEnd}
             >
                 <SortableContext
-                    items={proyectos.map(p => p.id)}
+                    items={filtrados.map(p => p.id)}
                     strategy={verticalListSortingStrategy}
                 >
                     <div className="listaProyectosLista">
-                        {proyectos.map(proyecto => (
+                        {filtrados.map(proyecto => (
                             <FilaProyecto
                                 key={proyecto.id}
                                 proyecto={proyecto}

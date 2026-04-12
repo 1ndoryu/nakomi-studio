@@ -3,7 +3,7 @@
  * [124A-CMS7] Convertido de grid a lista vertical, mismo patrón que ListaProyectos.
  * [124A-CMS10] Drag-to-reorder via @dnd-kit, mismo patrón que ListaProyectos. */
 import React, {useState} from 'react';
-import {Plus, Archive, ArchiveRestore, Trash2, Globe, Eye, EyeOff, GripVertical} from 'lucide-react';
+import {Plus, Archive, ArchiveRestore, Trash2, Globe, Eye, EyeOff, GripVertical, Search} from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -22,8 +22,10 @@ import {
 } from '@dnd-kit/sortable';
 import {CSS} from '@dnd-kit/utilities';
 import {Button} from '../ui/Button';
+import {Input} from '../ui/Input';
 import OptimizedImage from '../ui/OptimizedImage';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
+import {useBusquedaLista} from '../../hooks/useBusquedaLista';
 import type {AdminService} from '../../api/admin-services';
 import './ListaServicios.css';
 
@@ -157,6 +159,10 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
     onReordenar,
 }) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
+    /* [124A-SEARCH1] Búsqueda en tiempo real */
+    const { busqueda, setBusqueda, filtrados } = useBusquedaLista(
+        servicios, ['title', 'slug']
+    );
 
     const sensors = useSensors(
         useSensor(PointerSensor, {activationConstraint: {distance: 5}}),
@@ -182,6 +188,15 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
         <div className="listaServicios">
             <div className="listaServiciosHeader">
                 <h3 className="listaServiciosTitulo">Servicios</h3>
+                <div className="listaBusqueda">
+                    <Search size={14} className="listaBusquedaIcono" />
+                    <Input
+                        value={busqueda}
+                        onChange={e => setBusqueda(e.target.value)}
+                        placeholder="Buscar servicios..."
+                        className="listaBusquedaInput"
+                    />
+                </div>
                 <Button variante="primario" tamano="pequeno" onClick={onCrear}>
                     <Plus size={14} />
                     Nuevo
@@ -189,9 +204,9 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
             </div>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={servicios.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                <SortableContext items={filtrados.map(s => s.id)} strategy={verticalListSortingStrategy}>
                     <div className="listaServiciosLista">
-                        {servicios.map(svc => (
+                        {filtrados.map(svc => (
                             <FilaServicio
                                 key={svc.id}
                                 svc={svc}

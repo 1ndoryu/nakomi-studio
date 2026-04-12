@@ -3,12 +3,14 @@
  * [124A-CMS7] Convertido de grid a lista vertical, mismo patrón que ListaServicios/ListaBlog. */
 
 import React, {useState} from 'react';
-import {Archive, ArchiveRestore, Trash2, Globe} from 'lucide-react';
+import {Archive, ArchiveRestore, Trash2, Globe, Search} from 'lucide-react';
 import {AdminTeamMember} from '../../api/admin-team';
 import {Badge} from '../ui/Badge';
 import {Button} from '../ui/Button';
+import {Input} from '../ui/Input';
 import OptimizedImage from '../ui/OptimizedImage';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
+import {useBusquedaLista} from '../../hooks/useBusquedaLista';
 import './ListaEquipo.css';
 
 interface ListaEquipoProps {
@@ -24,17 +26,30 @@ interface ListaEquipoProps {
 
 export const ListaEquipo: React.FC<ListaEquipoProps> = ({miembros, cargando, onEditar, onCrear, onArchivar, onDesarchivar, onEliminar, onPublicar}) => {
     const [menuActivo, setMenuActivo] = useState<string | null>(null);
+    /* [124A-SEARCH1] Búsqueda en tiempo real */
+    const { busqueda, setBusqueda, filtrados } = useBusquedaLista(
+        miembros, ['name', 'role']
+    );
 
     if (cargando) return <p className="equipoListaCargando">Cargando miembros...</p>;
 
     return (
         <div className="equipoListaContenedor">
             <div className="equipoListaAcciones">
+                <div className="listaBusqueda">
+                    <Search size={14} className="listaBusquedaIcono" />
+                    <Input
+                        value={busqueda}
+                        onChange={e => setBusqueda(e.target.value)}
+                        placeholder="Buscar miembros..."
+                        className="listaBusquedaInput"
+                    />
+                </div>
                 <Button variante="primario" tamano="pequeno" onClick={onCrear}>+ Nuevo miembro</Button>
             </div>
-            {miembros.length === 0 && <p className="equipoListaVacia">No hay miembros del equipo.</p>}
+            {filtrados.length === 0 && <p className="equipoListaVacia">No hay miembros del equipo.</p>}
             <div className="equipoListaLista">
-            {miembros.map(m => {
+            {filtrados.map(m => {
                 const items: MenuContextualItem[] = [];
                 /* [084A-10] Publicar: solo si no está ya publicado */
                 if (m.status !== 'published' && onPublicar) {
