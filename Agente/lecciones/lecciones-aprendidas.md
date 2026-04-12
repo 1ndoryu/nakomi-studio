@@ -36,6 +36,13 @@
 - `GET /api/v1/deploy?uuid={uuid}&force=true` trigger un rebuild completo (git pull + docker build).
 - Para cambios de código, SIEMPRE usar deploy, no restart.
 - coolify-manager.exe `deploy --name` es para WordPress themes, no para apps Rust. Usar API directa.
+- coolify-manager.exe `restart` no siempre reinicia los contenedores de apps Docker Compose; `redeploy` (API) es más fiable para forzar recreación.
+
+## Rust/Axum — Timeouts HTTP obligatorios para APIs externas
+- **NUNCA crear `reqwest::Client::new()` sin `.timeout()` en código de producción.** Una API externa que se cuelga bloquea la tarea async indefinidamente. Si la tarea retiene una conexión del pool de BD (SQLx), agota el pool y congela toda la aplicación (deadlock de pool). Síntomas: proceso vivo pero 503, tcp backlog lleno, threads dormidos.
+- Usar `reqwest::Client::builder().timeout(Duration::from_secs(30)).build()` como mínimo.
+- Para cadenas de retry (Groq 3 keys × 3 modelos + Gemini 6 modelos = 24 intentos), agregar timeout global con `tokio::time::timeout(Duration::from_secs(90), ...)` además del per-request timeout.
+- [124A-1] Este bug causó un 503 en producción ~1h después de deploy. Los logs no mostraron crash porque no hubo panic — el pool simplemente se agotó en silencio.
 
 ## UI del panel — bases compartidas
 - Si una variante visual ya es la buena (`hostingCardIcono` en este caso), promover ese estilo a la clase base compartida y dejar las variantes futuras como overrides mínimos con composición de clases, no como recetas duplicadas.
