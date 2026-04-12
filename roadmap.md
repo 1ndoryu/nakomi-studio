@@ -25,10 +25,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-- Corregir ~126 problemas reales del sentinel-report → ver plan detallado en `Agente/planes/plan-sentinel-problemas-reales-2026-04-12.md`
-- Hay que asegurar que una vez que el chatbot le envía la factura, detectar cuando la factura se pague, notificar al admin, y avisarle al cliente que se registre con el correo con el que hizo el pago.
-- Las imágenes de proyectos tienen problema: la misma imagen carga 2 veces (carrusel = carruselImagen + Selected Work = proyectoImagen con srcset diferente). La resolución del carrusel es mala y el peso es excesivo. Hay que unificar el pipeline de imágenes y optimizar srcset/sizes para LCP.
-- botonBase botonTexto botonPequeno chatBtnToggleAi no funciona no veo la diferencia entre desactivado y activado visualmente
+(sin tareas pendientes)
 
 
 
