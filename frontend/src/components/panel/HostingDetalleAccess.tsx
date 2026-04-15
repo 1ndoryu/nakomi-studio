@@ -8,6 +8,7 @@ import {apiDnsCheck} from '../../api/hosting';
 import type {DnsCheckResult} from '../../api/hosting';
 import {Button} from '../ui/Button';
 import {CopyButton, InfoRow} from './HostingDetalle';
+import {DnsManager} from './DnsManager';
 
 type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscription']>;
 
@@ -145,6 +146,9 @@ export function TabDominio({domainInfo, subscriptionId}: {
                     Tu certificado SSL se renueva automáticamente. No necesitas hacer nada.
                 </p>
             )}
+
+            {/* [154A-6] Gestión de registros DNS del cliente */}
+            {domainInfo.domain && <DnsManager subscriptionId={subscriptionId} />}
         </div>
     );
 }

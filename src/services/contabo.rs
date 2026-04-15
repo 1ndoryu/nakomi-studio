@@ -125,13 +125,13 @@ struct CachedToken {
 #[derive(Clone)]
 pub struct ContaboService {
     config: ContaboConfig,
-    client: reqwest::Client,
+    pub(crate) client: reqwest::Client,
     cached_token: Arc<RwLock<Option<CachedToken>>>,
 }
 
 const AUTH_URL: &str =
     "https://auth.contabo.com/auth/realms/contabo/protocol/openid-connect/token";
-const API_BASE: &str = "https://api.contabo.com/v1";
+pub(crate) const API_BASE: &str = "https://api.contabo.com/v1";
 
 impl ContaboService {
     #[must_use]
@@ -144,7 +144,7 @@ impl ContaboService {
     }
 
     /// Obtener token `OAuth2` (cacheado, se renueva 60s antes de expirar)
-    async fn get_token(&self) -> Result<String, String> {
+    pub(crate) async fn get_token(&self) -> Result<String, String> {
         /* Leer cache */
         {
             let guard = self.cached_token.read().await;

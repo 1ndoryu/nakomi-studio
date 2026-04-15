@@ -91,6 +91,7 @@ pub async fn initiate_payment(
     ),
     tag = "payments"
 )]
+#[allow(clippy::too_many_lines)]
 pub async fn stripe_webhook(
     State(state): State<AppState>,
     headers: HeaderMap,

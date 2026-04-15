@@ -6,6 +6,7 @@ mod auth;
 mod chat;
 mod chat_timing;
 pub mod contabo;
+pub mod contabo_domains;
 pub mod coolify;
 pub mod docker_stats;
 pub mod email;

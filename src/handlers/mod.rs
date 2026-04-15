@@ -12,6 +12,7 @@ mod dashboard;
 mod deliverables;
 mod health;
 mod hosting;
+mod hosting_domains;
 mod image_proxy;
 mod profile;
 mod notes;
@@ -531,6 +532,7 @@ fn api_routes() -> Router<AppState> {
         .merge(admin_seed::seed_routes())
         .merge(configuracion::configuracion_routes())
         .merge(hosting::hosting_routes())
+        .merge(hosting_domains::domain_routes())
         .merge(problems::routes())
         .merge(wallet::wallet_routes())
         .merge(wallet::cancellation_routes())

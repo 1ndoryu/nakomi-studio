@@ -5,7 +5,7 @@
  * [084A-24] Endpoints Contabo VPS + Stripe hosting checkout. */
 
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::routing::get;
 use axum::{Json, Router};
 use rand::Rng;
@@ -21,8 +21,37 @@ use crate::models::{
     UpdateHostingRequest, UpdateHostingStatusRequest, UpdatePlanConfigRequest, UserRole,
 };
 use crate::repositories::{CreateHostingParams, HostingRepository, ServerInfo, UserRepository};
-use crate::services::CoolifyService;
+use crate::services::{CoolifyConfig, CoolifyService};
 use crate::AppState;
+
+/// Deriva la URL base pública desde Origin header, env var, o fallback dev.
+fn resolve_public_base_url(headers: &HeaderMap) -> String {
+    // 1. Origin header (enviado por el browser en requests cross-origin y same-origin POST)
+    if let Some(origin) = headers.get("origin").and_then(|v| v.to_str().ok()) {
+        let trimmed = origin.trim_end_matches('/');
+        if !trimmed.is_empty() && !trimmed.contains("localhost") {
+            return trimmed.to_string();
+        }
+    }
+    // 2. Referer header como fallback (contiene la URL completa — extraemos scheme://host)
+    if let Some(referer) = headers.get("referer").and_then(|v| v.to_str().ok()) {
+        if let Some(idx) = referer.find("://") {
+            // scheme://host... → encontrar el primer '/' después de "://"
+            let after_scheme = &referer[idx + 3..];
+            let host_end = after_scheme.find('/').unwrap_or(after_scheme.len());
+            let base = &referer[..idx + 3 + host_end];
+            if !base.contains("localhost") {
+                return base.to_string();
+            }
+        }
+    }
+    // 3. Variable de entorno explícita
+    if let Ok(env_url) = std::env::var("GLORY_PUBLIC_URL") {
+        return env_url.trim_end_matches('/').to_string();
+    }
+    // 4. Solo en dev
+    "http://localhost:5173".to_string()
+}
 
 /* [084A-10] Precios por plan en centavos: Básico $5, Pro $10, E-commerce $15 */
 fn plan_price_cents(plan: &str) -> Option<i32> {
@@ -192,6 +221,7 @@ pub async fn create_subscription(
 pub async fn subscribe_self(
     State(state): State<AppState>,
     auth: AuthUser,
+    headers: HeaderMap,
     Json(req): Json<SelfSubscribeRequest>,
 ) -> Result<(StatusCode, Json<SelfSubscribeResponse>), AppError> {
     req.validate().map_err(|e| AppError::Validation(e.to_string()))?;
@@ -257,8 +287,7 @@ pub async fn subscribe_self(
         .as_ref()
         .ok_or_else(|| AppError::ServiceUnavailable("Precios de hosting no configurados".into()))?;
 
-    let base_url = std::env::var("GLORY_PUBLIC_URL")
-        .unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let base_url = resolve_public_base_url(&headers);
     let success_url = format!(
         "{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}"
     );
@@ -470,6 +499,21 @@ pub async fn update_subscription(
         tracing::warn!("Error registrando evento updated para {id}: {e}");
     }
 
+    /* [154A-4] Si el dominio cambió y hay servicio Coolify, actualizar FQDN.
+     * No bloquea el update si falla — se registra como warning. */
+    if let Some(ref new_domain) = req.domain {
+        let domain_changed = sub.domain.as_deref() != Some(new_domain.as_str());
+        if domain_changed && !new_domain.is_empty() {
+            if let (Some(ref server_uuid), Some(ref config)) = (&sub.server_uuid, &state.coolify_config) {
+                if let Err(e) = CoolifyService::update_service_domain(
+                    &state.http_client, config, server_uuid, new_domain,
+                ).await {
+                    tracing::warn!("Coolify FQDN update fallo para {id}: {e}");
+                }
+            }
+        }
+    }
+
     Ok(Json(updated.into()))
 }
 
@@ -493,9 +537,22 @@ pub async fn delete_subscription(
 ) -> Result<StatusCode, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    HostingRepository::find_by_id(&state.pool, id)
+    let sub = HostingRepository::find_by_id(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    /* [154A-16] Si tiene servicio Coolify provisionado, eliminarlo antes de borrar BD */
+    if let (Some(ref server_uuid), Some(ref coolify_config)) = (&sub.server_uuid, &state.coolify_config) {
+        if let Err(e) = CoolifyService::delete_service(
+            &state.http_client,
+            coolify_config,
+            server_uuid,
+            true,
+        ).await {
+            tracing::warn!("Error eliminando servicio Coolify {} para suscripción {id}: {e}", server_uuid);
+            /* No bloquear la eliminación de BD por un fallo en Coolify */
+        }
+    }
 
     /* CASCADE borra eventos asociados automáticamente */
     HostingRepository::delete(&state.pool, id).await?;
@@ -580,6 +637,7 @@ pub async fn request_cancel(
 pub async fn create_checkout(
     State(state): State<AppState>,
     auth: AuthUser,
+    headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let sub = HostingRepository::find_by_id(&state.pool, id)
@@ -609,7 +667,7 @@ pub async fn create_checkout(
         .ok_or_else(|| AppError::ServiceUnavailable("Precios de hosting no configurados".into()))?;
 
     /* URLs de retorno (frontend SPA) */
-    let base_url = std::env::var("GLORY_PUBLIC_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let base_url = resolve_public_base_url(&headers);
     let success_url = format!("{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}");
     let cancel_url = format!("{base_url}/panel?hosting=cancelled");
 
@@ -696,6 +754,26 @@ fn plan_bandwidth_gb(plan: &str) -> i32 {
         "pro" => 200,
         "ecommerce" => 500,
         _ => 50,
+    }
+}
+
+/* [154A-3] Obtiene el uso de disco real del contenedor WordPress via SSH.
+ * Sigue el mismo patrón que fetch_container_resources: requiere SSH key + server_ip. */
+async fn fetch_storage_used(
+    state: &AppState,
+    sub: &crate::models::HostingSubscription,
+) -> Option<i64> {
+    let coolify_name = sub.coolify_site_name.as_deref().filter(|n| !n.is_empty())?;
+    let server_ip = sub.server_ip.as_deref().filter(|ip| !ip.is_empty())?;
+    let ssh_key = state.coolify_config.as_ref()?.ssh_key_path.as_ref()?;
+
+    match crate::services::docker_stats::fetch_storage_usage(server_ip, ssh_key, coolify_name).await
+    {
+        Ok(mb) => Some(mb),
+        Err(e) => {
+            tracing::warn!("Storage check fallo para {coolify_name}@{server_ip}: {e}");
+            None
+        }
     }
 }
 
@@ -812,9 +890,12 @@ pub async fn get_hosting_stats(
     let (cpu_percent, ram_used_mb, ram_limit_mb, containers) =
         fetch_container_resources(&state, &sub).await;
 
+    /* [154A-3] Storage real via SSH — du -sm en el contenedor WordPress */
+    let storage_used_mb = fetch_storage_used(&state, &sub).await;
+
     Ok(Json(HostingStatsResponse {
         storage_limit_mb: sub.storage_limit_mb,
-        storage_used_mb: None,
+        storage_used_mb,
         bandwidth_limit_gb: bandwidth,
         bandwidth_used_gb: None,
         uptime_percent,
@@ -1281,6 +1362,183 @@ pub async fn refresh_hosting(
     })))
 }
 
+/* ============================================================
+   [154A-9] CONTROL DE SERVICIO — Restart / Stop / Start
+   Solo admin o dueño. La suscripción debe estar provisionada.
+   ============================================================ */
+
+async fn resolve_provisioned_sub(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+) -> Result<(crate::models::HostingSubscription, String, CoolifyConfig), AppError> {
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+    if auth.effective_role != UserRole::Admin && sub.user_id != Some(auth.user_id) {
+        return Err(AppError::Forbidden("Sin permisos".into()));
+    }
+    let server_uuid = sub.server_uuid.clone()
+        .ok_or(AppError::Validation("Hosting no provisionado".into()))?;
+    let config = state.coolify_config.clone()
+        .ok_or(AppError::ServiceUnavailable("Coolify no configurado".into()))?;
+    Ok((sub, server_uuid, config))
+}
+
+/// Reiniciar el servicio `WordPress`
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/restart",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "Servicio reiniciado"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn restart_hosting(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let (_sub, server_uuid, config) = resolve_provisioned_sub(&state, &auth, id).await?;
+    CoolifyService::restart_service(&state.http_client, &config, &server_uuid).await?;
+    if let Err(e) = HostingRepository::add_event(&state.pool, id, "restarted",
+        Some(serde_json::json!({"by": auth.user_id.to_string()}))).await {
+        tracing::warn!("Error registrando evento restarted para {id}: {e}");
+    }
+    Ok(Json(serde_json::json!({"message": "WordPress reiniciado"})))
+}
+
+/// Detener el servicio `WordPress`
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/stop",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "Servicio detenido"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn stop_hosting(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let (_sub, server_uuid, config) = resolve_provisioned_sub(&state, &auth, id).await?;
+    CoolifyService::stop_service(&state.http_client, &config, &server_uuid).await?;
+    if let Err(e) = HostingRepository::add_event(&state.pool, id, "stopped",
+        Some(serde_json::json!({"by": auth.user_id.to_string()}))).await {
+        tracing::warn!("Error registrando evento stopped para {id}: {e}");
+    }
+    Ok(Json(serde_json::json!({"message": "WordPress detenido"})))
+}
+
+/// Arrancar el servicio `WordPress`
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/start",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "Servicio iniciado"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn start_hosting(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let (_sub, server_uuid, config) = resolve_provisioned_sub(&state, &auth, id).await?;
+    CoolifyService::start_service(&state.http_client, &config, &server_uuid).await?;
+    if let Err(e) = HostingRepository::add_event(&state.pool, id, "started",
+        Some(serde_json::json!({"by": auth.user_id.to_string()}))).await {
+        tracing::warn!("Error registrando evento started para {id}: {e}");
+    }
+    Ok(Json(serde_json::json!({"message": "WordPress iniciado"})))
+}
+
+/* ============================================================
+   [154A-14] ADMIN TEST SUBSCRIBE — Bypass Stripe para testing
+   Crea suscripción + la activa inmediatamente sin pago.
+   Solo admin.
+   ============================================================ */
+
+/// Admin test: crear hosting sin Stripe (para testing)
+#[utoipa::path(
+    post,
+    path = "/api/hosting/admin-test-subscribe",
+    request_body = SelfSubscribeRequest,
+    responses(
+        (status = 201, description = "Suscripción creada y activada (test)"),
+        (status = 403, description = "Solo admin"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn admin_test_subscribe(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<SelfSubscribeRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+    req.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &req.plan)
+        .await?
+        .ok_or_else(|| AppError::Validation(format!("Plan inválido: {}", req.plan)))?;
+
+    let user = UserRepository::find_by_id(&state.pool, auth.user_id)
+        .await?
+        .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+
+    let sub = HostingRepository::create(
+        &state.pool,
+        CreateHostingParams {
+            user_id: Some(auth.user_id),
+            client_name: &user.display_name.unwrap_or_else(|| user.email.clone()),
+            client_email: &user.email,
+            plan: &req.plan,
+            domain: req.domain.as_deref(),
+            monthly_price_cents: plan_config.monthly_price_cents,
+            storage_limit_mb: plan_config.storage_limit_mb,
+        },
+    )
+    .await?;
+
+    /* Activar directamente sin Stripe */
+    HostingRepository::update_status(&state.pool, sub.id, "active").await?;
+
+    if let Err(e) = HostingRepository::add_event(
+        &state.pool, sub.id, "created",
+        Some(serde_json::json!({
+            "plan": req.plan,
+            "by": auth.user_id.to_string(),
+            "source": "admin-test",
+            "note": "Suscripción de prueba sin Stripe"
+        })),
+    ).await {
+        tracing::warn!("Error registrando evento admin-test-subscribe para {}: {e}", sub.id);
+    }
+
+    let updated = HostingRepository::find_by_id(&state.pool, sub.id)
+        .await?
+        .ok_or_else(|| AppError::Internal("Suscripción perdida post-create".into()))?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::json!({
+        "subscription": HostingSubscriptionResponse::from(updated),
+        "message": "Suscripción de prueba creada. Usa /provision para provisionarla.",
+    }))))
+}
+
 pub fn hosting_routes() -> Router<AppState> {
     /* [174A-17] Rate limits específicos para endpoints de pago de hosting.
      * subscribe: máx 3 por hora por IP (evita abuso de checkouts).
@@ -1367,6 +1625,24 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/subscriptions/:id/refresh",
             axum::routing::post(refresh_hosting),
+        )
+        /* [154A-9] Control de servicio: restart / stop / start */
+        .route(
+            "/hosting/subscriptions/:id/restart",
+            axum::routing::post(restart_hosting),
+        )
+        .route(
+            "/hosting/subscriptions/:id/stop",
+            axum::routing::post(stop_hosting),
+        )
+        .route(
+            "/hosting/subscriptions/:id/start",
+            axum::routing::post(start_hosting),
+        )
+        /* [154A-14] Admin test subscribe: crea hosting sin Stripe */
+        .route(
+            "/hosting/admin-test-subscribe",
+            axum::routing::post(admin_test_subscribe),
         )
 }
 

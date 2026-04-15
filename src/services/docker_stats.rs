@@ -219,6 +219,41 @@ fn parse_size_to_mb(s: &str) -> f64 {
     }
 }
 
+/* [154A-3] Obtener uso de almacenamiento (MB) del contenedor WordPress via SSH + du.
+ * Ejecuta `docker exec {prefix}-wordpress-1 du -sm /var/www/html` en el servidor. */
+pub async fn fetch_storage_usage(
+    server_ip: &str,
+    ssh_key_path: &str,
+    container_prefix: &str,
+) -> Result<i64, String> {
+    let docker_cmd = format!(
+        "docker exec {container_prefix}-wordpress-1 du -sm /var/www/html 2>/dev/null | awk '{{print $1}}'"
+    );
+
+    let output = tokio::process::Command::new("ssh")
+        .args([
+            "-i", ssh_key_path,
+            "-o", "StrictHostKeyChecking=accept-new",
+            "-o", "ConnectTimeout=5",
+            "-o", "BatchMode=yes",
+            &format!("root@{server_ip}"),
+            &docker_cmd,
+        ])
+        .output()
+        .await
+        .map_err(|e| format!("SSH storage check failed: {e}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if stdout.is_empty() {
+        return Err("Empty du output — container may not be running".into());
+    }
+
+    stdout
+        .parse::<i64>()
+        .map_err(|e| format!("Failed to parse du output '{stdout}': {e}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -584,3 +584,146 @@
         grid-template-columns: 1fr 1fr;
     }
 }
+
+/* ── DNS Manager ──────────────────────── */
+
+.dnsManager {
+    margin-top: var(--spacing-lg, 1.5rem);
+    border-top: 1px solid var(--border-default, #2a2a3e);
+    padding-top: var(--spacing-lg, 1.5rem);
+}
+
+.dnsManagerHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md, 1rem);
+}
+
+.dnsForm {
+    background: var(--bg-card-subtle, #1a1a2e);
+    border: 1px solid var(--border-default, #2a2a3e);
+    border-radius: var(--radius-md, 8px);
+    padding: var(--spacing-md, 1rem);
+    margin-bottom: var(--spacing-md, 1rem);
+}
+
+.dnsFormRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm, 0.5rem);
+    align-items: flex-end;
+}
+
+.dnsFormField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 80px;
+}
+
+.dnsFormField span {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--text-tertiary, #888);
+}
+
+.dnsFormField input,
+.dnsFormField select {
+    padding: 6px 8px;
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid var(--border-default, #2a2a3e);
+    background: var(--bg-input, #111);
+    color: var(--text-primary, #eee);
+    font-size: var(--text-sm, 0.875rem);
+}
+
+.dnsFormField--name { flex: 1; min-width: 120px; }
+.dnsFormField--value { flex: 2; min-width: 160px; }
+
+.dnsFormActions {
+    display: flex;
+    gap: var(--spacing-sm, 0.5rem);
+    margin-top: var(--spacing-sm, 0.5rem);
+}
+
+.dnsTable {
+    border: 1px solid var(--border-default, #2a2a3e);
+    border-radius: var(--radius-md, 8px);
+    overflow: hidden;
+}
+
+.dnsTableHeader,
+.dnsTableRow {
+    display: grid;
+    grid-template-columns: 70px 1fr 2fr 80px 70px;
+    padding: 8px 12px;
+    align-items: center;
+    gap: var(--spacing-sm, 0.5rem);
+}
+
+.dnsTableHeader {
+    background: var(--bg-card-subtle, #1a1a2e);
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--text-tertiary, #888);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.dnsTableRow {
+    border-top: 1px solid var(--border-default, #2a2a3e);
+    font-size: var(--text-sm, 0.875rem);
+}
+
+.dnsTableRow:hover {
+    background: var(--bg-card-subtle, #1a1a2e);
+}
+
+.dnsType {
+    font-family: monospace;
+    font-weight: 600;
+    color: var(--color-accent, #6366f1);
+}
+
+.dnsName {
+    font-family: monospace;
+}
+
+.dnsValue {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: var(--text-xs, 0.75rem);
+}
+
+.dnsActions {
+    display: flex;
+    gap: 4px;
+}
+
+.dnsActionBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-tertiary, #888);
+    transition: color 0.15s, background 0.15s;
+}
+
+.dnsActionBtn:hover {
+    color: var(--text-primary, #eee);
+    background: var(--bg-card-subtle, #1a1a2e);
+}
+
+.dnsActionBtn--delete:hover {
+    color: var(--color-error, #ef4444);
+}
+
+.dnsLoading {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm, 0.5rem);
+    color: var(--text-tertiary, #888);
+    padding: var(--spacing-md, 1rem) 0;
+}

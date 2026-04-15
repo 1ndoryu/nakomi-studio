@@ -251,7 +251,7 @@ impl AiChatService {
             let choice = &resp["choices"][0];
             let tool_calls = &choice["message"]["tool_calls"];
 
-            if tool_calls.is_array() && tool_calls.as_array().map(|a| !a.is_empty()).unwrap_or(false) {
+            if tool_calls.is_array() && tool_calls.as_array().is_some_and(|a| !a.is_empty()) {
                 /* La IA quiere llamar tools — ejecutarlas */
                 messages.push(choice["message"].clone());
                 let tool_results = process_tool_calls(
