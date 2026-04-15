@@ -39,6 +39,9 @@ export const SeccionHosting: React.FC = () => {
         checkoutMutation,
         subscribeMutation,
         provisionMutation,
+        restartMutation,
+        stopMutation,
+        startMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -63,6 +66,12 @@ export const SeccionHosting: React.FC = () => {
                 planChangeLoading={updateMutation.isPending}
                 onProvision={() => provisionMutation.mutate(selectedHostingId)}
                 provisionLoading={provisionMutation.isPending}
+                onRestart={() => restartMutation.mutate(selectedHostingId)}
+                restartLoading={restartMutation.isPending}
+                onStop={() => stopMutation.mutate(selectedHostingId)}
+                stopLoading={stopMutation.isPending}
+                onStart={() => startMutation.mutate(selectedHostingId)}
+                startLoading={startMutation.isPending}
             />
         );
     }

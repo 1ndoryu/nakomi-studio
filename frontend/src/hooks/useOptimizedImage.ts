@@ -2,7 +2,6 @@ import {useEffect, useRef, useState} from 'react';
 
 import {
     generateSrcSet,
-    generateWebPSrcSet,
     optimizedUrl,
     resolveBestWidth,
     resolveResponsiveWidths,
@@ -92,6 +91,8 @@ export function useOptimizedImage({
         resolvedSizes,
         fallbackSrc: optimizedUrl(src, fallbackWidth ? {quality, width: fallbackWidth} : {quality}),
         fallbackSrcSet: generateSrcSet(src, responsiveWidths, {quality}),
-        webpSrcSet: generateWebPSrcSet(src, responsiveWidths, quality),
+        /* [154A-IMG] WebP desactivado: image-webp 0.2 solo soporta lossless (archivos enormes).
+         * JPEG lossy con quality 80 produce ~80% menos peso. Reactivar cuando haya lossy WebP. */
+        webpSrcSet: '',
     };
 }

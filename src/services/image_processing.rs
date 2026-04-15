@@ -153,11 +153,12 @@ fn encode_image(
             Ok((buf, "image/jpeg"))
         }
         OutputFormat::Webp => {
-            /* image 0.25 solo soporta WebP lossless en el encoder puro Rust.
-             * Aun así, WebP lossless es ~26% menor que PNG para la mayoría de imágenes. */
-            img.write_to(&mut Cursor::new(&mut buf), image::ImageFormat::WebP)
-                .map_err(|e| AppError::Internal(format!("Error codificando WebP: {e}")))?;
-            Ok((buf, "image/webp"))
+            /* [154A-IMG] image-webp 0.2 solo soporta lossless (archivos enormes).
+             * Caer a JPEG lossy con la calidad indicada — ~80% menor tamaño. */
+            let encoder = JpegEncoder::new_with_quality(&mut buf, quality);
+            img.write_with_encoder(encoder)
+                .map_err(|e| AppError::Internal(format!("Error codificando WebP→JPEG: {e}")))?;
+            Ok((buf, "image/jpeg"))
         }
         OutputFormat::Png => {
             img.write_to(&mut Cursor::new(&mut buf), image::ImageFormat::Png)

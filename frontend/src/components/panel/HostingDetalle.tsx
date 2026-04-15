@@ -90,6 +90,12 @@ export function HostingDetalle({
     planChangeLoading,
     onProvision,
     provisionLoading,
+    onRestart,
+    restartLoading,
+    onStop,
+    stopLoading,
+    onStart,
+    startLoading,
 }: {
     hostingId: string;
     isAdmin: boolean;
@@ -98,6 +104,12 @@ export function HostingDetalle({
     planChangeLoading?: boolean;
     onProvision?: () => void;
     provisionLoading?: boolean;
+    onRestart?: () => void;
+    restartLoading?: boolean;
+    onStop?: () => void;
+    stopLoading?: boolean;
+    onStart?: () => void;
+    startLoading?: boolean;
 }) {
     const {
         subscription: sub,
@@ -180,6 +192,12 @@ export function HostingDetalle({
                         isAdmin={isAdmin}
                         onProvision={onProvision}
                         provisionLoading={provisionLoading}
+                        onRestart={onRestart}
+                        restartLoading={restartLoading}
+                        onStop={onStop}
+                        stopLoading={stopLoading}
+                        onStart={onStart}
+                        startLoading={startLoading}
                     />
                 )}
                 {tabActiva === 'recursos' && <TabRecursos sub={sub} />}

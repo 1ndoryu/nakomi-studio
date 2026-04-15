@@ -61,8 +61,8 @@ const TABS_CLIENT: TabConfig[] = [
     /* [064A-32] Hosting visible para clientes con suscripciones */
     {
         id: 'hosting',
-        label: 'Mi Hosting',
-        descripcion: 'Estado de tus suscripciones de hosting, plan activo y eventos recientes.'
+        label: 'Mi Hosting WordPress',
+        descripcion: 'Estado de tus suscripciones de hosting WordPress, plan activo y eventos recientes.'
     }
 ];
 
@@ -127,8 +127,8 @@ const TABS_ADMIN: TabConfig[] = [
     },
     {
         id: 'hosting',
-        label: 'Hosting',
-        descripcion: 'Gestiona suscripciones de hosting: planes, dominios, estados y eventos de cada cliente.'
+        label: 'Hosting WordPress',
+        descripcion: 'Gestiona suscripciones de hosting WordPress: planes, dominios, estados y eventos de cada cliente.'
     },
     {
         id: 'mensajes',

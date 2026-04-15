@@ -6,7 +6,7 @@
  * [094A-6] TabFacturacion extraída a TabFacturacion.tsx por límite de líneas.
  * [114A-5] TabDominio + TabAcceso extraídas a HostingDetalleAccess.tsx por límite. */
 
-import {Server, Loader, ExternalLink} from 'lucide-react';
+import {Server, Loader, ExternalLink, RefreshCw, Square, Play} from 'lucide-react';
 import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
 import {
     HOSTING_PLAN_LABELS,
@@ -20,11 +20,17 @@ import {InfoRow} from './HostingDetalle';
 type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscription']>;
 
 /* ── Tab: General ────────────────────────── */
-export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
+export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onRestart, restartLoading, onStop, stopLoading, onStart, startLoading}: {
     sub: Subscription;
     isAdmin: boolean;
     onProvision?: () => void;
     provisionLoading?: boolean;
+    onRestart?: () => void;
+    restartLoading?: boolean;
+    onStop?: () => void;
+    stopLoading?: boolean;
+    onStart?: () => void;
+    startLoading?: boolean;
 }) {
     const sitioUrl = sub.domain ? `https://${sub.domain}` : null;
     /* URL real del WordPress: solo para hostings provisionados por nuestro sistema (coolify_site_name empieza con 'hosting-').
@@ -98,6 +104,23 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading}: {
                             <ExternalLink size={14} /> Visitar sitio
                         </Button>
                     </a>
+                )}
+                {/* [154A-9] Botones de control de servicio — solo para hostings provisionados */}
+                {isRealProvisioned && sub.status === 'active' && (
+                    <>
+                        <Button type="button" variante="outline" tamano="pequeno"
+                            onClick={onRestart} disabled={restartLoading || stopLoading || startLoading}>
+                            {restartLoading ? <Loader size={14} className="hostingSpinner" /> : <RefreshCw size={14} />} Reiniciar
+                        </Button>
+                        <Button type="button" variante="outline" tamano="pequeno"
+                            onClick={onStop} disabled={stopLoading || restartLoading || startLoading}>
+                            {stopLoading ? <Loader size={14} className="hostingSpinner" /> : <Square size={14} />} Detener
+                        </Button>
+                        <Button type="button" variante="outline" tamano="pequeno"
+                            onClick={onStart} disabled={startLoading || restartLoading || stopLoading}>
+                            {startLoading ? <Loader size={14} className="hostingSpinner" /> : <Play size={14} />} Iniciar
+                        </Button>
+                    </>
                 )}
             </div>
         </div>

@@ -24,8 +24,8 @@ interface Solucion {
 
 const SOLUCIONES: Solucion[] = [
     {
-        titulo: 'Hosting Administrado',
-        descripcion: 'Infraestructura de alto rendimiento con soporte 24/7, backups automáticos y optimización continua para que tu sitio nunca se detenga.',
+        titulo: 'WordPress Hosting',
+        descripcion: 'Infraestructura de alto rendimiento con WordPress pre-instalado, WP-CLI vía SSH, backups automáticos y soporte técnico.',
         enlace: '/soluciones/hosting',
         etiqueta: 'Desde $29/mes'
     },

@@ -11,6 +11,10 @@ import {
     apiCreateHostingCheckout,
     apiSelfSubscribe,
     apiProvisionHosting,
+    apiRestartHosting,
+    apiStopHosting,
+    apiStartHosting,
+    apiAdminTestSubscribe,
     type CreateHostingRequest,
     type UpdateHostingRequest,
     type SelfSubscribeRequest,
@@ -99,6 +103,45 @@ export function useHostingMutations(
         onError: () => toast.error('Error al provisionar hosting'),
     });
 
+    /* [154A-9] Control de servicio */
+    const restartMutation = useMutation({
+        mutationFn: (id: string) => apiRestartHosting(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success('WordPress reiniciado');
+        },
+        onError: () => toast.error('Error al reiniciar WordPress'),
+    });
+
+    const stopMutation = useMutation({
+        mutationFn: (id: string) => apiStopHosting(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success('WordPress detenido');
+        },
+        onError: () => toast.error('Error al detener WordPress'),
+    });
+
+    const startMutation = useMutation({
+        mutationFn: (id: string) => apiStartHosting(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success('WordPress iniciado');
+        },
+        onError: () => toast.error('Error al iniciar WordPress'),
+    });
+
+    /* [154A-14] Admin test subscribe (sin Stripe) */
+    const adminTestSubscribeMutation = useMutation({
+        mutationFn: (req: SelfSubscribeRequest) => apiAdminTestSubscribe(req),
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success('Suscripción de prueba creada');
+            onCreateSuccess();
+        },
+        onError: () => toast.error('Error al crear suscripción de prueba'),
+    });
+
     return {
         createMutation,
         statusMutation,
@@ -108,5 +151,9 @@ export function useHostingMutations(
         checkoutMutation,
         subscribeMutation,
         provisionMutation,
+        restartMutation,
+        stopMutation,
+        startMutation,
+        adminTestSubscribeMutation,
     };
 }

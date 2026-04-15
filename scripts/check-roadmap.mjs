@@ -51,6 +51,8 @@ function parsePendingTasks(filePath) {
 
         /* Líneas que inician con - o con ### son tareas */
         if (trimmed.startsWith('-') || trimmed.startsWith('###') || trimmed.startsWith('--')) {
+            /* Ignorar tareas marcadas como completadas (✅, ~~tachado~~) */
+            if (trimmed.includes('✅') || trimmed.includes('COMPLETADO') || /^~~.*~~$/.test(trimmed.replace(/^[-#\s]+/, ''))) continue;
             tasks.push({ line: i + 1, text: trimmed });
         }
     }
