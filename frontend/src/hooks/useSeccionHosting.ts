@@ -5,16 +5,17 @@
 
 import {useState, useMemo, useEffect, useCallback} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {apiListHostingSubscriptions} from '../api/hosting';
+import {apiListHostingSubscriptions, apiListVpsSubscriptions} from '../api/hosting';
 import {toast} from '../stores/toastStore';
 import {useAuthStore} from '../stores/authStore';
 import {useHostingMutations} from './useHostingMutations';
+import {useVpsMutations} from './useVpsMutations';
 
 const ACTIVE_STATUSES = new Set(['pending', 'provisioning', 'active']);
 
 export function useSeccionHosting() {
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos' | 'servidores'>('activos');
+    const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos' | 'vps' | 'servidores'>('activos');
     const [selectedHostingId, setSelectedHostingId] = useState<string | null>(null);
 
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
@@ -29,19 +30,37 @@ export function useSeccionHosting() {
         } else if (hostingResult === 'cancelled') {
             toast.warning('Checkout cancelado. Puedes intentarlo de nuevo.');
         }
+        const vpsResult = params.get('vps');
+        if (vpsResult === 'success') {
+            toast.success('Pago VPS confirmado. Tu solicitud quedó pendiente de aprobación.');
+        } else if (vpsResult === 'cancelled') {
+            toast.warning('Checkout VPS cancelado. Puedes intentarlo de nuevo.');
+        }
         if (hostingResult) {
             const url = new URL(window.location.href);
             url.searchParams.delete('hosting');
             url.searchParams.delete('session_id');
             window.history.replaceState({}, '', url.pathname + url.search);
         }
+        if (vpsResult) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('vps');
+            url.searchParams.delete('session_id');
+            window.history.replaceState({}, '', url.pathname + url.search);
+        }
     }, []);
 
     const hostingKey = ['hosting-subscriptions', effectiveRole] as const;
+    const vpsKey = ['vps-subscriptions', effectiveRole] as const;
 
-    const {data: subscriptions = [], isLoading} = useQuery({
+    const {data: subscriptions = [], isLoading: hostingLoading} = useQuery({
         queryKey: hostingKey,
         queryFn: apiListHostingSubscriptions,
+    });
+
+    const {data: vpsSubscriptions = [], isLoading: vpsLoading} = useQuery({
+        queryKey: vpsKey,
+        queryFn: apiListVpsSubscriptions,
     });
 
     const activos = useMemo(
@@ -53,12 +72,15 @@ export function useSeccionHosting() {
         [subscriptions],
     );
     const listaActual = tabActiva === 'activos' ? activos : inactivos;
+    const isLoading = hostingLoading || vpsLoading;
 
     const onCreateSuccess = useCallback(() => setShowCreateModal(false), []);
     const mutations = useHostingMutations(hostingKey, onCreateSuccess);
+    const vpsMutations = useVpsMutations(vpsKey);
 
     return {
         subscriptions,
+        vpsSubscriptions,
         isLoading,
         isAdmin,
         tabActiva,
@@ -71,5 +93,6 @@ export function useSeccionHosting() {
         selectedHostingId,
         setSelectedHostingId,
         ...mutations,
+        ...vpsMutations,
     };
 }

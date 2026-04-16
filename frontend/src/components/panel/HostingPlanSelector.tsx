@@ -7,7 +7,8 @@ import React, {useState} from 'react';
 import {Check} from 'lucide-react';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
-import {HOSTING_PLANS, type HostingPlanInfo} from '../../api/hosting';
+import type {HostingPlanInfo} from '../../api/hosting';
+import {useHostingCatalog} from '../../hooks/useHostingCatalog';
 import './HostingPlanSelector.css';
 
 interface HostingPlanSelectorProps {
@@ -19,6 +20,7 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
     onSelect,
     loading,
 }) => {
+    const {plans} = useHostingCatalog();
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
     const [domain, setDomain] = useState('');
     const [step, setStep] = useState<'plans' | 'domain'>('plans');
@@ -34,7 +36,7 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
     };
 
     if (step === 'domain' && selectedPlan) {
-        const plan = HOSTING_PLANS.find(p => p.id === selectedPlan);
+        const plan = plans.find(p => p.id === selectedPlan);
         return (
             <div className="planSelectorDomain">
                 <h3>Dominio para tu WordPress hosting {plan?.label}</h3>
@@ -72,16 +74,16 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
         <div className="planSelectorGrid">
             <h3 className="planSelectorTitulo">Elige tu plan de WordPress hosting</h3>
             <div className="planSelectorCards">
-                {HOSTING_PLANS.map(plan => (
+                {plans.map(plan => (
                     <div
                         key={plan.id}
-                        className={`planCard ${selectedPlan === plan.id ? 'planCard--selected' : ''} ${plan.id === 'pro' ? 'planCard--recommended' : ''}`}
+                        className={`planCard ${selectedPlan === plan.id ? 'planCard--selected' : ''} ${plan.recommended ? 'planCard--recommended' : ''}`}
                         role="button"
                         tabIndex={0}
                         onClick={() => handlePlanClick(plan)}
                         onKeyDown={e => { if (e.key === 'Enter') handlePlanClick(plan); }}
                     >
-                        {plan.id === 'pro' && (
+                        {plan.recommended && (
                             <span className="planCardBadge">Recomendado</span>
                         )}
                         <h4 className="planCardName">{plan.label}</h4>

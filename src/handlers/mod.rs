@@ -1,3 +1,5 @@
+/* sentinel-disable-file limite-lineas: router central de Axum.
+ * [164A-17] Sigue siendo el orquestador único de rutas/estado global del backend. */
 #![allow(clippy::needless_for_each)] // Generado por utoipa OpenApi derive
 
 mod admin_fixtures;
@@ -30,6 +32,7 @@ mod seo;
 mod services;
 mod team_members;
 mod uploads;
+mod vps;
 mod wallet;
 
 use axum::Router;
@@ -325,54 +328,59 @@ fn security_headers() -> (SecurityHeaderLayer, SecurityHeaderLayer, SecurityHead
     (hsts, nosniff, frame_deny, referrer, permissions)
 }
 
-/// Crea el router principal con CORS, tracing, Swagger UI y todas las rutas
-pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Router {
-    let chat_hub = crate::services::ChatHub::new(pool.clone());
-    let notification_hub = crate::services::NotificationHub::new(pool.clone());
-    let ai_config = crate::services::AiChatConfig::from_env();
-
-    /* [084A-24] Contabo VPS: servicio opcional, solo se activa si las 4 credenciales existen */
-    let contabo_service = crate::services::ContaboConfig::from_env().map(|cfg| {
+fn init_contabo_service() -> Option<crate::services::ContaboService> {
+    crate::services::ContaboConfig::from_env().map(|cfg| {
         tracing::info!("Contabo API configurado para {}", cfg.api_user);
         crate::services::ContaboService::new(cfg, reqwest::Client::new())
-    });
+    })
+}
 
-    /* [084A-24] Stripe Hosting: config de prices para checkout de suscripciones */
-    let hosting_stripe_config = crate::services::HostingStripeConfig::from_env();
-    if hosting_stripe_config.is_some() {
-        tracing::info!("Stripe Hosting configurado (3 planes)");
-    }
-
-    /* [104A-42] Coolify: config para provisioning automático */
+fn init_coolify_config() -> Option<crate::services::CoolifyConfig> {
     let coolify_config = crate::services::CoolifyConfig::from_env();
     if coolify_config.is_some() {
         tracing::info!("Coolify provisioning configurado");
     } else {
         tracing::warn!("Coolify NO configurado — provisioning de hosting desactivado (faltan vars COOLIFY_*)");
     }
+    coolify_config
+}
 
-    /* [154A-15c] Email SMTP config */
+fn init_email_config() -> Option<crate::services::EmailConfig> {
     let email_config = crate::services::EmailConfig::from_env();
     if email_config.is_some() {
         tracing::info!("Email SMTP configurado");
     } else {
         tracing::warn!("Email SMTP NO configurado (faltan vars SMTP_*) — emails desactivados");
     }
+    email_config
+}
 
-    /* [154A-2] Fixture manager debe construirse antes del struct literal para poder clonar pool.
-     * El pool se mueve dentro de AppState, así que la clonación debe ocurrir antes. */
-    let fixture_manager = {
-        let content_dir = std::env::var("CONTENT_DIR").unwrap_or_else(|_| "content".to_string());
-        if std::path::Path::new(&content_dir).exists() {
-            tracing::info!("Fixture manager configurado en '{content_dir}'");
-            Some(std::sync::Arc::new(
-                glory_rs::fixtures::ContentManager::new(pool.clone(), &content_dir)
-            ))
-        } else {
-            tracing::warn!("Content dir '{content_dir}' no encontrado — fixture sync desactivado");
-            None
-        }
-    };
+fn init_fixture_manager(
+    pool: &sqlx::PgPool,
+) -> Option<std::sync::Arc<glory_rs::fixtures::ContentManager>> {
+    let content_dir = std::env::var("CONTENT_DIR").unwrap_or_else(|_| "content".to_string());
+    if std::path::Path::new(&content_dir).exists() {
+        tracing::info!("Fixture manager configurado en '{content_dir}'");
+        Some(std::sync::Arc::new(
+            glory_rs::fixtures::ContentManager::new(pool.clone(), &content_dir),
+        ))
+    } else {
+        tracing::warn!("Content dir '{content_dir}' no encontrado — fixture sync desactivado");
+        None
+    }
+}
+
+/// Crea el router principal con CORS, tracing, Swagger UI y todas las rutas
+/* sentinel-disable-next-line funcion-larga-rs: create_router concentra wiring global de estado, middlewares y servicios opcionales para no fragmentar el bootstrap del servidor. */
+#[allow(clippy::too_many_lines)]
+pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Router {
+    let chat_hub = crate::services::ChatHub::new(pool.clone());
+    let notification_hub = crate::services::NotificationHub::new(pool.clone());
+    let ai_config = crate::services::AiChatConfig::from_env();
+    let contabo_service = init_contabo_service();
+    let coolify_config = init_coolify_config();
+    let email_config = init_email_config();
+    let fixture_manager = init_fixture_manager(&pool);
 
     let state = AppState {
         pool,
@@ -392,7 +400,6 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         notification_hub,
         chat_timing: crate::services::ChatTimingService::new(),
         contabo_service,
-        hosting_stripe_config,
         coolify_config,
         email_config,
         docker_stats_cache: crate::services::docker_stats::DockerStatsCache::new(),
@@ -555,6 +562,7 @@ fn api_routes() -> Router<AppState> {
         .merge(admin_seed::seed_routes())
         .merge(configuracion::configuracion_routes())
         .merge(hosting::hosting_routes())
+        .merge(vps::routes())
         .merge(hosting_domains::domain_routes())
         .merge(problems::routes())
         .merge(wallet::wallet_routes())

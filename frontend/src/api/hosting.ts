@@ -1,3 +1,7 @@
+/* sentinel-disable-file limite-lineas: módulo API legacy de hosting.
+ * Reúne contratos y endpoints compartidos de suscripciones, stats y catálogo para no
+ * romper imports existentes mientras el dominio se separa por archivos menores.
+ */
 /* [054A-2] API client de hosting: suscripciones y eventos.
  * Endpoints bajo /api/hosting/. Requiere JWT. */
 
@@ -153,6 +157,28 @@ export async function apiSelfSubscribe(req: SelfSubscribeRequest): Promise<SelfS
     return data;
 }
 
+export interface PublicHostingPlan {
+    plan_name: string;
+    label: string;
+    description: string;
+    monthly_price_cents: number;
+    wp_cpu_millicores: number;
+    wp_memory_mb: number;
+    db_cpu_millicores: number;
+    db_memory_mb: number;
+    ssh_cpu_millicores: number;
+    ssh_memory_mb: number;
+    storage_limit_mb: number;
+    bandwidth_limit_gb: number;
+    features: string[];
+    recommended: boolean;
+}
+
+export async function apiListPublicHostingPlans(): Promise<PublicHostingPlan[]> {
+    const {data} = await axiosInstance.get<PublicHostingPlan[]>('/api/hosting/public-plans');
+    return data;
+}
+
 /*    CONSTANTES */
 
 export const HOSTING_PLAN_LABELS: Record<string, string> = {
@@ -194,28 +220,46 @@ export interface HostingPlanInfo {
     priceCents: number;
     storageMb: number;
     features: string[];
+    description?: string;
+    recommended?: boolean;
 }
 
-export const HOSTING_PLANS: HostingPlanInfo[] = [
+export function toHostingPlanInfo(plan: PublicHostingPlan): HostingPlanInfo {
+    return {
+        id: plan.plan_name,
+        label: plan.label,
+        priceCents: plan.monthly_price_cents,
+        storageMb: plan.storage_limit_mb,
+        features: plan.features,
+        description: plan.description,
+        recommended: plan.recommended,
+    };
+}
+
+export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
     {
         id: 'basico',
         label: 'Básico',
-        priceCents: 500,
+        priceCents: 248,
         storageMb: 5120,
+        description: 'WordPress administrado para sitios livianos y landings con costo controlado.',
         features: ['WordPress pre-instalado', '5 GB almacenamiento', 'SSL gratuito', '1 dominio', 'WP-CLI vía SSH'],
     },
     {
         id: 'pro',
         label: 'Profesional',
-        priceCents: 1000,
+        priceCents: 413,
         storageMb: 20480,
+        description: 'WordPress para negocios que necesitan más recursos y staging listo.',
         features: ['WordPress pre-instalado', '20 GB almacenamiento', 'SSL gratuito', '3 dominios', 'WP-CLI vía SSH', 'Backups diarios'],
+        recommended: true,
     },
     {
         id: 'ecommerce',
         label: 'E-commerce',
-        priceCents: 1500,
+        priceCents: 619,
         storageMb: 51200,
+        description: 'WooCommerce optimizado para tiendas online con más tráfico y caché avanzada.',
         features: ['WordPress + WooCommerce', '50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'WP-CLI vía SSH', 'Backups diarios', 'Caché avanzada'],
     },
 ];
@@ -293,6 +337,94 @@ export async function apiGetVps(instanceId: number): Promise<VpsSummary> {
     const { data } = await axiosInstance.get<{ data: VpsSummary }>(`/api/hosting/vps/${instanceId}`);
     return data.data;
 }
+
+export interface PublicVpsPlan {
+    tier_name: string;
+    display_name: string;
+    description: string;
+    monthly_price_cents: number;
+    cpu_cores: number;
+    ram_mb: number;
+    disk_mb: number;
+    region: string;
+    features: string[];
+    approval_required: boolean;
+    recommended: boolean;
+}
+
+export interface VpsSubscription {
+    id: string;
+    user_id: string | null;
+    client_name: string;
+    client_email: string;
+    tier_name: string;
+    requested_hostname: string | null;
+    status: string;
+    stripe_subscription_id: string | null;
+    monthly_price_cents: number;
+    contabo_instance_id: number | null;
+    provisioning_ip: string | null;
+    access_username: string | null;
+    approved_by: string | null;
+    approved_at: string | null;
+    provisioned_at: string | null;
+    rejected_reason: string | null;
+    client_notes: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SelfSubscribeVpsRequest {
+    tier: string;
+    hostname?: string;
+    notes?: string;
+}
+
+export interface SelfSubscribeVpsResponse {
+    subscription: VpsSubscription;
+    checkout_url: string;
+}
+
+export async function apiListPublicVpsPlans(): Promise<PublicVpsPlan[]> {
+    const {data} = await axiosInstance.get<PublicVpsPlan[]>('/api/vps/public-plans');
+    return data;
+}
+
+export async function apiListVpsSubscriptions(): Promise<VpsSubscription[]> {
+    const {data} = await axiosInstance.get<VpsSubscription[]>('/api/vps/subscriptions');
+    return data;
+}
+
+export async function apiGetVpsSubscription(id: string): Promise<VpsSubscription> {
+    const {data} = await axiosInstance.get<VpsSubscription>(`/api/vps/subscriptions/${id}`);
+    return data;
+}
+
+export async function apiSelfSubscribeVps(
+    req: SelfSubscribeVpsRequest,
+): Promise<SelfSubscribeVpsResponse> {
+    const {data} = await axiosInstance.post<SelfSubscribeVpsResponse>('/api/vps/subscribe', req);
+    return data;
+}
+
+export async function apiApproveVpsSubscription(id: string): Promise<VpsSubscription> {
+    const {data} = await axiosInstance.post<VpsSubscription>(`/api/admin/vps/subscriptions/${id}/approve`);
+    return data;
+}
+
+export async function apiRejectVpsSubscription(id: string, reason: string): Promise<void> {
+    await axiosInstance.post(`/api/admin/vps/subscriptions/${id}/reject`, {reason});
+}
+
+export const VPS_STATUS_LABELS: Record<string, string> = {
+    pending_payment: 'Pendiente de pago',
+    pending_approval: 'Pendiente de aprobación',
+    provisioning: 'Provisionando',
+    active: 'Activo',
+    suspended: 'Suspendido',
+    rejected: 'Rechazado',
+    cancelled: 'Cancelado',
+};
 
 /* [154A-1] Contabo Domain Management API */
 

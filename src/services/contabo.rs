@@ -96,6 +96,16 @@ pub struct VpsSummary {
     pub disk_mb: i64,
 }
 
+pub struct CreateInstanceParams<'a> {
+    pub product_id: &'a str,
+    pub region: &'a str,
+    pub display_name: &'a str,
+    pub image_id: Option<&'a str>,
+    pub root_password: &'a str,
+    pub default_user: &'a str,
+    pub user_data: &'a str,
+}
+
 impl From<ContaboInstance> for VpsSummary {
     fn from(i: ContaboInstance) -> Self {
         Self {
@@ -262,6 +272,55 @@ impl ContaboService {
             .next()
             .map(VpsSummary::from)
             .ok_or_else(|| format!("Instance {instance_id} not found"))
+    }
+
+    pub async fn create_instance(
+        &self,
+        params: &CreateInstanceParams<'_>,
+    ) -> Result<VpsSummary, String> {
+        let token = self.get_token().await?;
+        let request_id = uuid::Uuid::new_v4().to_string();
+
+        let mut body = serde_json::json!({
+            "productId": params.product_id,
+            "region": params.region,
+            "displayName": params.display_name,
+            "rootPassword": params.root_password,
+            "defaultUser": params.default_user,
+            "userData": params.user_data,
+        });
+
+        if let Some(image_id) = params.image_id {
+            body["imageId"] = serde_json::json!(image_id);
+        }
+
+        let response = self
+            .client
+            .post(format!("{API_BASE}/compute/instances"))
+            .bearer_auth(&token)
+            .header("x-request-id", &request_id)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|error| format!("Contabo create instance failed: {error}"))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            error!("Contabo create instance error: {status} — {body}");
+            return Err(format!("Contabo API create instance error: {status} — {body}"));
+        }
+
+        let data: InstancesResponse = response
+            .json()
+            .await
+            .map_err(|error| format!("Contabo create parse error: {error}"))?;
+
+        data.data
+            .into_iter()
+            .next()
+            .map(VpsSummary::from)
+            .ok_or_else(|| "Contabo no devolvió la instancia creada".to_string())
     }
 }
 

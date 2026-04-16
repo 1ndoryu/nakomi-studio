@@ -1,5 +1,5 @@
 /* [084A-24] Servicio de suscripciones Stripe para hosting.
- * Crea Checkout Sessions en modo subscription usando los Price IDs de Stripe.
+ * Crea Checkout Sessions en modo subscription usando price_data dinámico desde BD.
  * Maneja webhooks de invoice.paid y customer.subscription.* para sincronizar estado.
  * Gotcha: NO usa PaymentIntents directos — usa Stripe Subscriptions nativas.
  * [094A-9] Auditoría de seguridad: validación estricta de campos JSON en webhooks,
@@ -15,50 +15,6 @@ use crate::models::{CreateNotification, NOTIF_HOSTING_CANCELLED, NOTIF_HOSTING_S
 use crate::repositories::{HostingRepository, NotificationRepository, ServerInfo};
 use crate::services::coolify::{CoolifyConfig, CoolifyService};
 
-/* Mapeo plan → Stripe Price ID (cargados desde env) */
-#[derive(Debug, Clone)]
-pub struct HostingStripeConfig {
-    pub price_basico: String,
-    pub price_pro: String,
-    pub price_ecommerce: String,
-}
-
-impl HostingStripeConfig {
-    #[must_use]
-    pub fn from_env() -> Option<Self> {
-        let basico = std::env::var("GLORY_STRIPE_HOSTING_PRICE_BASICO").ok()?;
-        let pro = std::env::var("GLORY_STRIPE_HOSTING_PRICE_PRO").ok()?;
-        let ecommerce = std::env::var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE").ok()?;
-
-        if basico.is_empty() || pro.is_empty() || ecommerce.is_empty() {
-            return None;
-        }
-
-        /* [094A-9] Validar formato de Price IDs al iniciar */
-        if !basico.starts_with("price_") || !pro.starts_with("price_") || !ecommerce.starts_with("price_") {
-            tracing::error!("Stripe hosting Price IDs con formato inválido — deben empezar con 'price_'");
-            return None;
-        }
-
-        Some(Self {
-            price_basico: basico,
-            price_pro: pro,
-            price_ecommerce: ecommerce,
-        })
-    }
-
-    /// Devuelve el Stripe Price ID para un plan dado
-    #[must_use]
-    pub fn price_for_plan(&self, plan: &str) -> Option<&str> {
-        match plan {
-            "basico" => Some(&self.price_basico),
-            "pro" => Some(&self.price_pro),
-            "ecommerce" => Some(&self.price_ecommerce),
-            _ => None,
-        }
-    }
-}
-
 /* Respuesta mínima de Stripe Checkout Session */
 #[derive(Debug, Deserialize)]
 struct CheckoutSession {
@@ -70,9 +26,9 @@ struct CheckoutSession {
 pub struct CheckoutParams<'a> {
     pub http_client: &'a Client,
     pub stripe_key: &'a str,
-    pub config: &'a HostingStripeConfig,
     pub subscription_id: Uuid,
     pub plan: &'a str,
+    pub amount_cents: i32,
     pub customer_email: &'a str,
     pub success_url: &'a str,
     pub cancel_url: &'a str,
@@ -80,29 +36,60 @@ pub struct CheckoutParams<'a> {
 
 pub struct HostingStripeService;
 
+fn humanize_plan_name(plan: &str) -> &str {
+    match plan {
+        "basico" => "Basico",
+        "pro" => "Pro",
+        "ecommerce" => "E-commerce",
+        _ => "Personalizado",
+    }
+}
+
 impl HostingStripeService {
     /// Crea una Stripe Checkout Session para suscripción de hosting.
     /// Retorna la URL a la que redirigir al cliente.
     pub async fn create_checkout_session(
         params: &CheckoutParams<'_>,
     ) -> Result<String, AppError> {
-        let price_id = params.config.price_for_plan(params.plan).ok_or_else(|| {
-            AppError::Validation(format!(
-                "Plan '{}' no tiene precio Stripe configurado",
-                params.plan
-            ))
-        })?;
+        if params.amount_cents <= 0 {
+            return Err(AppError::Validation(
+                "El checkout de hosting requiere un precio mensual mayor a 0".into(),
+            ));
+        }
+
+        let plan_name = humanize_plan_name(params.plan);
 
         let form = vec![
             ("mode", "subscription".to_string()),
-            ("line_items[0][price]", price_id.to_string()),
+            ("line_items[0][price_data][currency]", "usd".to_string()),
+            (
+                "line_items[0][price_data][unit_amount]",
+                params.amount_cents.to_string(),
+            ),
+            (
+                "line_items[0][price_data][product_data][name]",
+                format!("WordPress Hosting {plan_name}"),
+            ),
+            (
+                "line_items[0][price_data][product_data][description]",
+                format!("Plan {plan_name} de hosting WordPress administrado"),
+            ),
+            (
+                "line_items[0][price_data][recurring][interval]",
+                "month".to_string(),
+            ),
             ("line_items[0][quantity]", "1".to_string()),
             ("customer_email", params.customer_email.to_string()),
             ("success_url", params.success_url.to_string()),
             ("cancel_url", params.cancel_url.to_string()),
+            ("metadata[resource_kind]", "hosting".to_string()),
             (
                 "metadata[hosting_subscription_id]",
                 params.subscription_id.to_string(),
+            ),
+            (
+                "subscription_data[metadata][resource_kind]",
+                "hosting".to_string(),
             ),
             (
                 "subscription_data[metadata][hosting_subscription_id]",
@@ -169,6 +156,7 @@ impl HostingStripeService {
 
     /* Cliente completó el checkout — activar suscripción */
     #[allow(clippy::too_many_lines)]
+    /* sentinel-disable-next-line funcion-larga-rs: activa hosting, intenta provisioning y deja auditoría consistente en un único punto transaccional de webhook. */
     async fn on_checkout_completed(
         pool: &PgPool,
         http_client: &Client,
@@ -486,79 +474,18 @@ impl HostingStripeService {
 }
 
 /* ============================================================
-   TESTS — [094A-10] Validación de config y lógica Stripe
+   TESTS — [094A-10] Validación de lógica Stripe hosting
    ============================================================ */
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    /* Mutex para serializar tests que tocan env vars (set_var no es thread-safe) */
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-    /* --- HostingStripeConfig::from_env --- */
 
     #[test]
-    fn config_from_env_valid_prices() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_BASICO", "price_test_basico");
-        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_PRO", "price_test_pro");
-        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE", "price_test_ecommerce");
-
-        let config = HostingStripeConfig::from_env();
-        assert!(config.is_some());
-
-        let config = config.unwrap();
-        assert_eq!(config.price_basico, "price_test_basico");
-        assert_eq!(config.price_pro, "price_test_pro");
-        assert_eq!(config.price_ecommerce, "price_test_ecommerce");
-
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_BASICO");
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_PRO");
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE");
-    }
-
-    #[test]
-    fn config_from_env_invalid_format_rejected() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_BASICO", "invalid_basico");
-        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_PRO", "price_test_pro");
-        std::env::set_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE", "price_test_ecommerce");
-
-        let config = HostingStripeConfig::from_env();
-        assert!(config.is_none());
-
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_BASICO");
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_PRO");
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE");
-    }
-
-    #[test]
-    fn config_from_env_missing_var_returns_none() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_BASICO");
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_PRO");
-        std::env::remove_var("GLORY_STRIPE_HOSTING_PRICE_ECOMMERCE");
-
-        let config = HostingStripeConfig::from_env();
-        assert!(config.is_none());
-    }
-
-    /* --- price_for_plan --- */
-
-    #[test]
-    fn price_for_plan_returns_correct_id() {
-        let config = HostingStripeConfig {
-            price_basico: "price_aaa".to_string(),
-            price_pro: "price_bbb".to_string(),
-            price_ecommerce: "price_ccc".to_string(),
-        };
-
-        assert_eq!(config.price_for_plan("basico"), Some("price_aaa"));
-        assert_eq!(config.price_for_plan("pro"), Some("price_bbb"));
-        assert_eq!(config.price_for_plan("ecommerce"), Some("price_ccc"));
-        assert_eq!(config.price_for_plan("unknown"), None);
-        assert_eq!(config.price_for_plan(""), None);
+    fn humanize_plan_name_maps_known_slugs() {
+        assert_eq!(humanize_plan_name("basico"), "Basico");
+        assert_eq!(humanize_plan_name("pro"), "Pro");
+        assert_eq!(humanize_plan_name("ecommerce"), "E-commerce");
+        assert_eq!(humanize_plan_name("custom"), "Personalizado");
     }
 }

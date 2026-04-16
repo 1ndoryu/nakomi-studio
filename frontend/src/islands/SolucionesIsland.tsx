@@ -27,13 +27,13 @@ const SOLUCIONES: Solucion[] = [
         titulo: 'WordPress Hosting',
         descripcion: 'Infraestructura de alto rendimiento con WordPress pre-instalado, WP-CLI vía SSH, backups automáticos y soporte técnico.',
         enlace: '/soluciones/hosting',
-        etiqueta: 'Desde $29/mes'
+        etiqueta: 'Desde $2.48/mes'
     },
     {
         titulo: 'Servidores VPS',
-        descripcion: 'Control total sobre tu entorno de servidor. Recursos dedicados, escalabilidad instantánea y root access para proyectos que necesitan potencia.',
+        descripcion: 'Control total sobre tu entorno de servidor. Recursos dedicados, root access y aprobación manual antes del provisioning para proyectos que necesitan potencia real.',
         enlace: '/soluciones/vps',
-        etiqueta: 'Desde $79/mes'
+        etiqueta: 'Desde $6.88/mes'
     },
     {
         titulo: 'Agentes de IA',
@@ -65,7 +65,7 @@ export const SolucionesIsland = ({titulo}: SolucionesIslandProps): JSX.Element =
         <LayoutPagina className="solucionesMain" id="paginaSoluciones">
             <SEOHead
                 title="Soluciones"
-                description="Soluciones digitales: hosting administrado, VPS y agentes IA para tu negocio."
+                description="Soluciones digitales: hosting administrado, VPS y agentes IA para tu negocio, con pricing transparente y despliegue real."
                 path="/soluciones"
             />
             {/* Hero */}

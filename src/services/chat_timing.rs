@@ -864,7 +864,7 @@ mod tests {
     fn check_rate_warns_on_first_excess() {
         let svc = ChatTimingService::new();
         for _ in 0..RATE_LIMIT_PER_MIN {
-            svc.check_rate("visitor-2");
+            let _ = svc.check_rate("visitor-2");
         }
         let (result, msg) = svc.check_rate("visitor-2");
         assert!(matches!(result, RateCheckResult::Warning));
@@ -876,7 +876,7 @@ mod tests {
         let svc = ChatTimingService::new();
         /* 10 ok + 1 warning = 11 */
         for _ in 0..=RATE_LIMIT_PER_MIN {
-            svc.check_rate("visitor-3");
+            let _ = svc.check_rate("visitor-3");
         }
         /* Siguiente es mute */
         let (result, msg) = svc.check_rate("visitor-3");
@@ -889,7 +889,7 @@ mod tests {
         let svc = ChatTimingService::new();
         /* 10 ok + 1 warning (cooldown_level=1) */
         for _ in 0..=RATE_LIMIT_PER_MIN {
-            svc.check_rate("visitor-4");
+            let _ = svc.check_rate("visitor-4");
         }
         /* +1 muted (cooldown_level=2, mute_until=30s) */
         let (r2, _) = svc.check_rate("visitor-4");
@@ -911,7 +911,7 @@ mod tests {
         let svc = ChatTimingService::new();
         /* Llegar a muted (10 ok + 1 warning + 1 muted) */
         for _ in 0..RATE_LIMIT_PER_MIN + 2 {
-            svc.check_rate("visitor-5");
+            let _ = svc.check_rate("visitor-5");
         }
         /* Mientras está muteado, sigue retornando Muted sin escalar */
         let (result, _) = svc.check_rate("visitor-5");
@@ -923,7 +923,7 @@ mod tests {
     fn check_rate_independent_per_visitor() {
         let svc = ChatTimingService::new();
         for _ in 0..RATE_LIMIT_PER_MIN {
-            svc.check_rate("visitor-a");
+            let _ = svc.check_rate("visitor-a");
         }
         /* visitor-b debe empezar limpio */
         let (result, _) = svc.check_rate("visitor-b");
@@ -948,7 +948,7 @@ mod tests {
     fn check_ip_rate_warns_on_excess() {
         let svc = ChatTimingService::new();
         for _ in 0..IP_RATE_LIMIT_PER_MIN {
-            svc.check_ip_rate("10.0.0.1");
+            let _ = svc.check_ip_rate("10.0.0.1");
         }
         let (result, _) = svc.check_ip_rate("10.0.0.1");
         assert!(matches!(result, RateCheckResult::Warning));
@@ -958,7 +958,7 @@ mod tests {
     fn check_ip_rate_mutes_60s_on_second_excess() {
         let svc = ChatTimingService::new();
         for _ in 0..=IP_RATE_LIMIT_PER_MIN {
-            svc.check_ip_rate("10.0.0.2");
+            let _ = svc.check_ip_rate("10.0.0.2");
         }
         let (result, msg) = svc.check_ip_rate("10.0.0.2");
         assert!(matches!(result, RateCheckResult::Muted));
@@ -979,7 +979,7 @@ mod tests {
     fn track_ip_connect_rejects_over_max() {
         let svc = ChatTimingService::new();
         for _ in 0..MAX_WS_CONNECTIONS_PER_IP {
-            svc.track_ip_connect("5.6.7.8");
+            let _ = svc.track_ip_connect("5.6.7.8");
         }
         assert!(!svc.track_ip_connect("5.6.7.8"));
     }
@@ -988,7 +988,7 @@ mod tests {
     fn track_ip_disconnect_frees_slot() {
         let svc = ChatTimingService::new();
         for _ in 0..MAX_WS_CONNECTIONS_PER_IP {
-            svc.track_ip_connect("9.8.7.6");
+            let _ = svc.track_ip_connect("9.8.7.6");
         }
         assert!(!svc.track_ip_connect("9.8.7.6"));
         svc.track_ip_disconnect("9.8.7.6");
@@ -1001,7 +1001,7 @@ mod tests {
         /* Disconnect sin connect previo no debe panic */
         svc.track_ip_disconnect("never-connected");
         /* También funciona con una sola conexión */
-        svc.track_ip_connect("once");
+        let _ = svc.track_ip_connect("once");
         svc.track_ip_disconnect("once");
         svc.track_ip_disconnect("once"); /* doble disconnect no causa underflow */
     }
@@ -1010,7 +1010,7 @@ mod tests {
     fn track_ip_independent_per_ip() {
         let svc = ChatTimingService::new();
         for _ in 0..MAX_WS_CONNECTIONS_PER_IP {
-            svc.track_ip_connect("ip-a");
+            let _ = svc.track_ip_connect("ip-a");
         }
         assert!(!svc.track_ip_connect("ip-a"));
         assert!(svc.track_ip_connect("ip-b"));

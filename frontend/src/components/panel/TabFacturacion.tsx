@@ -5,7 +5,8 @@
 import {useState} from 'react';
 import {ArrowUpCircle} from 'lucide-react';
 import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
-import {HOSTING_PLAN_LABELS, HOSTING_PLANS} from '../../api/hosting';
+import {HOSTING_PLAN_LABELS} from '../../api/hosting';
+import {useHostingCatalog} from '../../hooks/useHostingCatalog';
 import {Button} from '../ui/Button';
 
 type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscription']>;
@@ -15,9 +16,10 @@ export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
     onPlanChange?: (plan: string, domain?: string) => void;
     planChangeLoading?: boolean;
 }) {
+    const {plans} = useHostingCatalog();
     const [showPlanChange, setShowPlanChange] = useState(false);
-    const currentPlanInfo = HOSTING_PLANS.find(p => p.id === sub.plan);
-    const otherPlans = HOSTING_PLANS.filter(p => p.id !== sub.plan);
+    const currentPlanInfo = plans.find(p => p.id === sub.plan);
+    const otherPlans = plans.filter(p => p.id !== sub.plan);
 
     const handleSelectPlan = (planId: string) => {
         if (onPlanChange) {

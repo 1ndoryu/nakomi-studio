@@ -16,6 +16,7 @@ mod refund;
 mod review;
 mod team_member;
 mod user;
+mod vps;
 mod wallet;
 
 pub use blog::{
@@ -73,6 +74,8 @@ pub use notification::{
     NOTIF_REVIEW_RESPONSE, NOTIF_DELEGATION_RECEIVED, NOTIF_DELEGATION_RESOLVED,
     NOTIF_NEW_MESSAGE, NOTIF_PAYMENT_RECEIVED,
     NOTIF_HOSTING_CANCELLED, NOTIF_HOSTING_SUSPENDED,
+    NOTIF_VPS_PENDING_APPROVAL, NOTIF_VPS_APPROVED, NOTIF_VPS_REJECTED,
+    NOTIF_VPS_SUSPENDED,
     NOTIF_CHAT_INVOICE_PAID,
 };
 pub use dashboard::{
@@ -85,6 +88,7 @@ pub use user::{
 };
 pub use hosting::{
     CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    PublicHostingPlan,
     HostingSubscription, HostingSubscriptionResponse, SelfSubscribeRequest,
     SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
     UpdatePlanConfigRequest,
@@ -103,4 +107,8 @@ pub use wallet::{
     UserWallet, WalletResponse, WalletTransaction, WalletTransactionResponse,
     WalletTransactionsPage, WithdrawalRequest, WithdrawalRequestResponse,
     WithdrawalRequestsPage,
+};
+pub use vps::{
+    PublicVpsPlan, RejectVpsRequest, SelfSubscribeVpsRequest, SelfSubscribeVpsResponse,
+    VpsEvent, VpsPlanConfig, VpsSubscription, VpsSubscriptionResponse,
 };

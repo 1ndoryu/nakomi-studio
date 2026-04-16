@@ -11,10 +11,11 @@ import {SEOHead} from '../components/seo/SEOHead';
 import {SeccionContacto} from '../components/home/SeccionContacto';
 import {ModalCompra} from '../components/servicios/ModalCompra';
 import {useChatStore} from '../stores/chatStore';
-import {PLANES_HOSTING} from '../data/planes/planes-hosting';
 import {Button} from '../components/ui/Button';
 import {Tarjeta} from '../components/ui/Tarjeta';
 import type {PlanServicio} from '../data/planes/tipos';
+import {incluida} from '../data/planes/tipos';
+import {useHostingCatalog} from '../hooks/useHostingCatalog';
 import '../components/servicios/SeccionPlanesServicio.css';
 import './SolucionHostingIsland.css';
 
@@ -32,10 +33,36 @@ const FEATURES_FALLBACK = [
 const FEATURE_ICONS = [Zap, Shield, Clock, Globe, Server, Headphones];
 const FEATURE_KEYS = ['performance', 'security', 'uptime', 'cdn', 'managed', 'support'];
 
+function formatMonthlyPrice(priceCents: number): string {
+    return `$${(priceCents / 100).toFixed(priceCents % 100 === 0 ? 0 : 2)}`;
+}
+
 export const SolucionHostingIsland = (): JSX.Element => {
     const {t} = useTranslation();
     const abrirChat = useChatStore(s => s.abrir);
+    const {plans} = useHostingCatalog();
     const [planSeleccionado, setPlanSeleccionado] = useState<PlanServicio | null>(null);
+
+    const planCards: PlanServicio[] = plans.map(plan => ({
+        id: `hosting-${plan.id}`,
+        nombre: plan.label,
+        precio: formatMonthlyPrice(plan.priceCents),
+        periodo: '/mes',
+        descripcion: plan.description ?? '',
+        destacado: !!plan.recommended,
+        ctaTexto: plan.recommended ? `Elegir ${plan.label}` : 'Comenzar',
+        ctaLink: '#',
+        stripeModo: 'subscription',
+        caracteristicas: plan.features.map(feature => incluida(feature)),
+    }));
+
+    const lowestHostingPrice = planCards.reduce((min, plan) => {
+        const numeric = Number(plan.precio.replace('$', ''));
+        return Number.isFinite(numeric) ? Math.min(min, numeric) : min;
+    }, Number.POSITIVE_INFINITY);
+    const lowestHostingPriceLabel = Number.isFinite(lowestHostingPrice)
+        ? `$${lowestHostingPrice.toFixed(lowestHostingPrice % 1 === 0 ? 0 : 2)}/mes`
+        : '$2.48/mes';
 
     const features = FEATURE_KEYS.map((key, i) => ({
         icono: FEATURE_ICONS[i],
@@ -47,7 +74,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
         <LayoutPagina className="hostingPaginaMain">
             <SEOHead
                 title="WordPress Hosting"
-                description="WordPress hosting optimizado con WP-CLI, backups automáticos y soporte experto. Planes desde $5/mes con SSL, WordPress pre-instalado y acceso SSH."
+                description={`WordPress hosting optimizado con WP-CLI, backups automáticos y soporte experto. Planes desde ${lowestHostingPriceLabel} con SSL, WordPress pre-instalado y acceso SSH.`}
                 path="/soluciones/hosting"
             />
 
@@ -101,7 +128,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
                         <p className="planesSubtitulo">{t('hosting_page.plans_subtitle', 'Elige el plan que mejor se adapte a tu proyecto')}</p>
                     </div>
                     <div className="planesGrid">
-                        {PLANES_HOSTING.map(plan => (
+                        {planCards.map(plan => (
                             <div key={plan.id} className={`tarjetaPlan ${plan.destacado ? 'tarjetaPlanDestacado' : ''}`}>
                                 {plan.destacado && <div className="tarjetaPlanBadge">{t('plans.recommended')}</div>}
                                 <div className="tarjetaPlanCabecera">

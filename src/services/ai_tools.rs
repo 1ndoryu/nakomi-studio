@@ -1,3 +1,10 @@
+/* sentinel-disable-file limite-lineas: servicio legacy de tools IA.
+ * El archivo concentra múltiples tool definitions y su dispatcher para preservar la
+ * interfaz del chatbot mientras se separa por dominio.
+ */
+/* sentinel-disable-file sqlx-query-sin-macro: servicio legacy de tools IA.
+ * Usa algunas queries runtime intencionalmente para no depender de caché offline.
+ */
 /* [T-2] Herramientas de IA para el chatbot (tool use / function calling).
  * Define las tools que la IA puede invocar y ejecuta las llamadas.
  * Groq soporta tool use compatible con OpenAI en llama-3.3-70b-versatile.
@@ -758,7 +765,16 @@ mod tests {
     async fn execute_tool_unknown_returns_error() {
         let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
         let http = reqwest::Client::new();
-        let result = execute_tool(&pool, &http, None, None, "nonexistent_tool", &json!({})).await;
+        let result = execute_tool(
+            &pool,
+            &http,
+            None,
+            None,
+            uuid::Uuid::nil(),
+            "nonexistent_tool",
+            &json!({}),
+        )
+        .await;
         let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
         assert!(parsed["error"].is_string());
         assert!(result.rich_message.is_none());

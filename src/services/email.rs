@@ -135,6 +135,10 @@ fn html_escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
+fn format_usd_cents(amount_cents: i32) -> String {
+  format!("${:.2} USD", f64::from(amount_cents) / 100.0)
+}
+
 /* [114A-8] Envía email de escalación a todos los admins activos.
  * Se dispara cuando la IA detecta que un visitante necesita asistencia humana.
  * Non-fatal: si SMTP no está configurado o falla, solo se loguea. */
@@ -288,6 +292,136 @@ impl EmailService {
                 "Email pago chat invoice enviado a {} admins para sesión {session_id}",
                 admin_emails.len()
             );
+        }
+    }
+
+    pub async fn send_vps_pending_approval(
+        config: &EmailConfig,
+        admin_emails: &[String],
+        client_email: &str,
+        tier_name: &str,
+        monthly_price_cents: i32,
+    ) {
+        let subject = format!("VPS pendiente de aprobación: {tier_name} — Nakomi Studio");
+        let escaped_email = html_escape(client_email);
+        let escaped_tier = html_escape(tier_name);
+        let amount_display = format_usd_cents(monthly_price_cents);
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#92400e;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">VPS pendiente de aprobación</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      El cliente <strong>{escaped_email}</strong> pagó un <strong>{escaped_tier}</strong>.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
+      Importe mensual: <strong>{amount_display}</strong>. La suscripción quedó en espera de aprobación manual.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
+      Revisa el panel de hosting para aprobar o rechazar la provisión.
+    </p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        for email in admin_emails {
+            if let Err(error) = Self::send(config, email, &subject, &html).await {
+                tracing::error!("Error enviando email VPS pendiente a {email}: {error}");
+            }
+        }
+    }
+
+    pub async fn send_vps_approved(
+        config: &EmailConfig,
+        client_email: &str,
+        tier_name: &str,
+        public_ip: Option<&str>,
+        username: &str,
+        password: &str,
+    ) {
+        let subject = format!("Tu {tier_name} ya está activo — Nakomi Studio");
+        let escaped_tier = html_escape(tier_name);
+        let escaped_username = html_escape(username);
+        let escaped_password = html_escape(password);
+        let ip_block = public_ip.map_or_else(
+          String::new,
+            |ip| format!(
+                "<tr><td style=\"padding:6px 0;color:#888;\">IP pública</td><td style=\"padding:6px 0;font-weight:500;text-align:right;\">{}</td></tr>",
+                html_escape(ip)
+            ),
+        );
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#166534;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">VPS activo</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 20px;">
+      Tu <strong>{escaped_tier}</strong> ya fue provisionado y está listo para usar.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;background:#f8f8f8;border-radius:8px;padding:20px;">
+      {ip_block}
+      <tr><td style="padding:6px 0;color:#888;">Usuario</td><td style="padding:6px 0;font-weight:500;text-align:right;">{escaped_username}</td></tr>
+      <tr><td style="padding:6px 0;color:#888;">Contraseña inicial</td><td style="padding:6px 0;font-weight:500;text-align:right;">{escaped_password}</td></tr>
+    </table>
+    <p style="color:#555;font-size:13px;line-height:1.6;margin:20px 0 0;">
+      Cambia la contraseña en tu primera conexión y guarda estas credenciales en un gestor seguro.
+    </p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        if let Err(error) = Self::send(config, client_email, &subject, &html).await {
+            tracing::error!("Error enviando email VPS aprobado a {client_email}: {error}");
+        }
+    }
+
+    pub async fn send_vps_rejected(
+        config: &EmailConfig,
+        client_email: &str,
+        tier_name: &str,
+        reason: &str,
+    ) {
+        let subject = format!("Tu solicitud de {tier_name} fue rechazada — Nakomi Studio");
+        let escaped_tier = html_escape(tier_name);
+        let escaped_reason = html_escape(reason);
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#991b1b;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Solicitud rechazada</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Revisamos tu solicitud de <strong>{escaped_tier}</strong> y no pudimos aprobarla en este momento.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
+      Motivo: <strong>{escaped_reason}</strong>
+    </p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        if let Err(error) = Self::send(config, client_email, &subject, &html).await {
+            tracing::error!("Error enviando email VPS rechazado a {client_email}: {error}");
         }
     }
 }

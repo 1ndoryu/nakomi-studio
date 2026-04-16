@@ -1,0 +1,121 @@
+.vpsSubscriptionsList {
+    display: grid;
+    gap: 1rem;
+}
+
+.vpsSubscriptionCard {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-borde-suave, #e7dfd7);
+    border-radius: 20px;
+    padding: 1.25rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.vpsSubscriptionHeader {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.vpsSubscriptionHeader h3 {
+    margin: 0.2rem 0 0;
+}
+
+.vpsSubscriptionTier {
+    color: var(--color-texto-secundario, #7b6f66);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.vpsSubscriptionStatus {
+    border-radius: 999px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: #f0ece6;
+    color: #6a5b51;
+}
+
+.vpsSubscriptionStatus--pending_approval {
+    background: #fff2d6;
+    color: #946200;
+}
+
+.vpsSubscriptionStatus--active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.vpsSubscriptionStatus--suspended,
+.vpsSubscriptionStatus--rejected,
+.vpsSubscriptionStatus--cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.vpsSubscriptionMeta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.85rem;
+}
+
+.vpsSubscriptionMeta div {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.vpsSubscriptionMeta span {
+    color: var(--color-texto-secundario, #7b6f66);
+    font-size: 0.85rem;
+}
+
+.vpsSubscriptionNotes,
+.vpsSubscriptionInstance,
+.vpsSubscriptionRejected {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    color: var(--color-texto-principal, #2c241f);
+}
+
+.vpsSubscriptionNotes p,
+.vpsSubscriptionRejected {
+    margin: 0;
+}
+
+.vpsSubscriptionActions {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.vpsSubscriptionButtons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.vpsSubscriptionTextarea {
+    width: 100%;
+}
+
+.vpsSubscriptionsEmpty {
+    min-height: 220px;
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    text-align: center;
+    color: var(--color-texto-secundario, #7b6f66);
+}
+
+@media (max-width: 767px) {
+    .vpsSubscriptionCard {
+        padding: 1rem;
+    }
+
+    .vpsSubscriptionHeader {
+        flex-direction: column;
+    }
+}

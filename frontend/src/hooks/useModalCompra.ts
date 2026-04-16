@@ -7,7 +7,7 @@ import {useState, useRef} from 'react';
 import {useAuthStore} from '../stores/authStore';
 import {apiQuickRegister, apiLogin} from '../api/auth';
 import {apiCreateOrder, type PaymentMode} from '../api/orders';
-import {apiSelfSubscribe} from '../api/hosting';
+import {apiSelfSubscribe, apiSelfSubscribeVps} from '../api/hosting';
 import {apiInitiatePayment} from '../api/payments';
 import {PANEL_TAB_KEY} from '../data/panel';
 import {navegar} from '../navegacionSPA';
@@ -33,6 +33,10 @@ function normalizeHostingPlanSlug(planId: string): string {
     return planId.trim().toLowerCase().replace(/^hosting-/, '');
 }
 
+function normalizeVpsTier(planId: string): string {
+    return planId.trim().toLowerCase().replace(/^vps-/, '');
+}
+
 export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraParams) {
     const logueado = useAuthStore(s => s.logueado);
     const login = useAuthStore(s => s.login);
@@ -51,6 +55,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     const [projectDescription, setProjectDescription] = useState('');
     const [checkoutPendiente, setCheckoutPendiente] = useState<CheckoutPendiente | null>(null);
     const isHosting = servicioSlug === 'hosting';
+    const isVps = servicioSlug === 'vps';
     /* [104A-25] Ref guard: previene doble invocación de iniciarCompra.
      * useState es async y no previene race conditions entre renders. */
     const compraEnCurso = useRef(false);
@@ -59,7 +64,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         /* [104A-15] Forzar la tab correcta evita que el usuario aterrice en la
          * ultima seccion persistida y pierda de vista el flujo que acaba de iniciar.
          * [104A-16] Hosting vuelve al panel de Hosting, no a Proyectos. */
-        localStorage.setItem(PANEL_TAB_KEY, isHosting ? 'hosting' : 'proyectos');
+        localStorage.setItem(PANEL_TAB_KEY, isHosting || isVps ? 'hosting' : 'proyectos');
         navegar('/panel');
         onClose();
     };
@@ -78,6 +83,25 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             const msg = err instanceof Error
                 ? err.message
                 : 'Error al iniciar el checkout de hosting.';
+            setErrorMsg(msg);
+        }
+    };
+
+    const crearVpsYRedirigir = async () => {
+        setPaso('procesando');
+        try {
+            const response = await apiSelfSubscribeVps({
+                tier: normalizeVpsTier(plan.id),
+                hostname: hostingDomain.trim() || undefined,
+                notes: projectDescription.trim() || undefined,
+            });
+            localStorage.setItem(PANEL_TAB_KEY, 'hosting');
+            window.location.href = response.checkout_url;
+        } catch (err: unknown) {
+            setPaso('error');
+            const msg = err instanceof Error
+                ? err.message
+                : 'Error al iniciar el checkout de VPS.';
             setErrorMsg(msg);
         }
     };
@@ -130,6 +154,10 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         try {
             if (isHosting) {
                 await crearHostingYRedirigir();
+                return;
+            }
+            if (isVps) {
+                await crearVpsYRedirigir();
                 return;
             }
             await crearOrdenYPagar();
@@ -218,6 +246,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         setProjectDescription,
         checkoutPendiente,
         isHosting,
+        isVps,
         navegarAlPanelPendiente,
         handleContinuar,
         handleAuth,

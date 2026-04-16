@@ -28,6 +28,7 @@ const NosotrosIsland = lazy(() => import('./islands/NosotrosIsland').then(m => (
 const SolucionesIsland = lazy(() => import('./islands/SolucionesIsland').then(m => ({default: m.SolucionesIsland})));
 const SolucionPlaceholderIsland = lazy(() => import('./islands/SolucionPlaceholderIsland').then(m => ({default: m.SolucionPlaceholderIsland})));
 const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
+const SolucionVpsIsland = lazy(() => import('./islands/SolucionVpsIsland').then(m => ({default: m.SolucionVpsIsland})));
 const UsuarioPublicoIsland = lazy(() => import('./islands/UsuarioPublicoIsland').then(m => ({default: m.UsuarioPublicoIsland})));
 
 /* [054A-5] Toast system */
@@ -116,6 +117,7 @@ function App() {
                     <Route path="/soluciones" element={<Suspense fallback={null}><SolucionesIsland /></Suspense>} />
                     {/* [064A-32] Hosting tiene página propia, el resto usa placeholder */}
                     <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />
+                    <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionVpsIsland /></Suspense>} />
                     <Route path="/soluciones/:slug" element={<Suspense fallback={null}><SolucionPlaceholderIsland /></Suspense>} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
                     <Route path="/usuario/:username" element={<Suspense fallback={null}><UsuarioPublicoIsland /></Suspense>} />

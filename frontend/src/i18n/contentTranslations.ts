@@ -71,7 +71,7 @@ export const contentEs: ContentTranslations = {
         'hosting-custom': {nombre: 'A Medida', descripcion: 'WordPress con infraestructura personalizada para proyectos con necesidades específicas.', cta: 'Consultar', features: ['WordPress pre-instalado', '100+ GB almacenamiento', 'SSL gratuito', 'Backups bajo demanda', 'Dominios ilimitados', 'Soporte dedicado', 'WP-CLI vía SSH', 'SLA personalizado']},
     },
     solutions: {
-        hosting: {titulo: 'WordPress Hosting', descripcion: 'Hosting especializado en WordPress con rendimiento optimizado, WP-CLI, backups automáticos y soporte experto para que tu sitio nunca se detenga.', etiqueta: 'Desde $5/mes', features: {
+        hosting: {titulo: 'WordPress Hosting', descripcion: 'Hosting especializado en WordPress con rendimiento optimizado, WP-CLI, backups automáticos y soporte experto para que tu sitio nunca se detenga.', etiqueta: 'Desde $2.48/mes', features: {
             performance: {titulo: 'WordPress Optimizado', desc: 'Servidores SSD configurados específicamente para WordPress con caché y PHP optimizado.'},
             security: {titulo: 'Seguridad WordPress', desc: 'SSL gratuito, firewall, backups automáticos, hardening SSH y monitoreo 24/7.'},
             uptime: {titulo: '99.9% Uptime', desc: 'Infraestructura redundante con failover automático para máxima disponibilidad.'},
@@ -79,7 +79,7 @@ export const contentEs: ContentTranslations = {
             managed: {titulo: 'WordPress Administrado', desc: 'Actualizaciones de WordPress, plugins, parches de seguridad y optimizaciones sin que toques un servidor.'},
             support: {titulo: 'WP-CLI & Soporte', desc: 'Acceso SSH con WP-CLI incluido y equipo técnico experto en WordPress.'},
         }},
-        vps: {titulo: 'Servidores VPS', descripcion: 'Control total sobre tu entorno de servidor. Recursos dedicados, acceso root y configuración a medida para proyectos exigentes.', etiqueta: 'Desde $79/mes'},
+        vps: {titulo: 'Servidores VPS', descripcion: 'Control total sobre tu entorno de servidor. Recursos dedicados, acceso root y configuración a medida para proyectos exigentes.', etiqueta: 'Desde $6.88/mes'},
         'agentes-ia': {titulo: 'Agentes de IA', descripcion: 'Automatiza procesos de negocio con agentes inteligentes. Chatbots, asistentes virtuales y flujos automatizados con IA de última generación.', etiqueta: 'Consultar'},
     },
     projects: {
@@ -150,7 +150,7 @@ export const contentEn: ContentTranslations = {
         'hosting-custom': {nombre: 'Custom', descripcion: 'WordPress with personalized infrastructure for projects with specific needs.', cta: 'Get a Quote', features: ['WordPress pre-installed', '100+ GB storage', 'Free SSL', 'On-demand backups', 'Unlimited domains', 'Dedicated support', 'WP-CLI via SSH', 'Custom SLA']},
     },
     solutions: {
-        hosting: {titulo: 'WordPress Hosting', descripcion: 'Specialized WordPress hosting with optimized performance, WP-CLI, automatic backups, and expert support so your site never stops.', etiqueta: 'From $5/mo', features: {
+        hosting: {titulo: 'WordPress Hosting', descripcion: 'Specialized WordPress hosting with optimized performance, WP-CLI, automatic backups, and expert support so your site never stops.', etiqueta: 'From $2.48/mo', features: {
             performance: {titulo: 'WordPress Optimized', desc: 'SSD servers specifically configured for WordPress with optimized caching and PHP.'},
             security: {titulo: 'WordPress Security', desc: 'Free SSL, firewall, automatic backups, SSH hardening, and 24/7 monitoring.'},
             uptime: {titulo: '99.9% Uptime', desc: 'Redundant infrastructure with automatic failover for maximum availability.'},
@@ -158,7 +158,7 @@ export const contentEn: ContentTranslations = {
             managed: {titulo: 'Managed WordPress', desc: 'WordPress updates, plugins, security patches, and optimizations without touching a server.'},
             support: {titulo: 'WP-CLI & Support', desc: 'SSH access with WP-CLI included and expert WordPress technical team.'},
         }},
-        vps: {titulo: 'VPS Servers', descripcion: 'Full control over your server environment. Dedicated resources, root access, and custom configuration for demanding projects.', etiqueta: 'From $79/mo'},
+        vps: {titulo: 'VPS Servers', descripcion: 'Full control over your server environment. Dedicated resources, root access, and custom configuration for demanding projects.', etiqueta: 'From $6.88/mo'},
         'agentes-ia': {titulo: 'AI Agents', descripcion: 'Automate business processes with intelligent agents. Chatbots, virtual assistants, and automated workflows with cutting-edge AI.', etiqueta: 'Contact Us'},
     },
     projects: {
@@ -229,7 +229,7 @@ export const contentJa: ContentTranslations = {
         'hosting-custom': {nombre: 'カスタム', descripcion: '特定のニーズを持つプロジェクト向けのWordPressカスタムインフラ。', cta: 'お見積もり', features: ['WordPressプリインストール', '100GB以上のストレージ', '無料SSL', 'オンデマンドバックアップ', '無制限ドメイン', '専任サポート', 'WP-CLI SSHアクセス', 'カスタムSLA']},
     },
     solutions: {
-        hosting: {titulo: 'WordPress ホスティング', descripcion: 'WordPressに特化したホスティング。最適化されたパフォーマンス、WP-CLI、自動バックアップ、専門サポート。', etiqueta: '$5/月〜', features: {
+        hosting: {titulo: 'WordPress ホスティング', descripcion: 'WordPressに特化したホスティング。最適化されたパフォーマンス、WP-CLI、自動バックアップ、専門サポート。', etiqueta: '$2.48/月〜', features: {
             performance: {titulo: 'WordPress最適化', desc: 'WordPress向けに特別設定されたSSDサーバーで最小のロード時間を実現。'},
             security: {titulo: 'WordPressセキュリティ', desc: '無料SSL、ファイアウォール、自動バックアップ、SSHハーデニング、24時間365日モニタリング。'},
             uptime: {titulo: '99.9% アップタイム', desc: '自動フェイルオーバー付きの冗長インフラで最高の可用性を保証。'},
@@ -237,7 +237,7 @@ export const contentJa: ContentTranslations = {
             managed: {titulo: 'WordPressマネージド', desc: 'サーバーに触れることなく、WordPressのアップデート、プラグイン、セキュリティパッチを実施。'},
             support: {titulo: 'WP-CLI & サポート', desc: 'WP-CLI付きSSHアクセスとWordPress専門技術チーム。'},
         }},
-        vps: {titulo: 'VPSサーバー', descripcion: 'サーバー環境の完全な制御。専用リソース、rootアクセス、要求の厳しいプロジェクト向けのカスタム設定。', etiqueta: '$79/月〜'},
+        vps: {titulo: 'VPSサーバー', descripcion: 'サーバー環境の完全な制御。専用リソース、rootアクセス、要求の厳しいプロジェクト向けのカスタム設定。', etiqueta: '$6.88/月〜'},
         'agentes-ia': {titulo: 'AIエージェント', descripcion: 'インテリジェントエージェントでビジネスプロセスを自動化。チャットボット、仮想アシスタント、最先端AIによる自動ワークフロー。', etiqueta: 'お問い合わせ'},
     },
     projects: {

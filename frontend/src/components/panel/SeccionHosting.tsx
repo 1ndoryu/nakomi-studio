@@ -15,11 +15,13 @@ import {HostingCard, CreateHostingForm} from './HostingSubComponents';
 import {HostingDetalle} from './HostingDetalle';
 import {HostingPlanSelector} from './HostingPlanSelector';
 import {VpsPanel} from './VpsPanel';
+import {VpsSubscriptionsPanel} from './VpsSubscriptionsPanel';
 import './SeccionHosting.css';
 
 export const SeccionHosting: React.FC = () => {
     const {
         subscriptions,
+        vpsSubscriptions,
         isLoading,
         isAdmin,
         tabActiva,
@@ -42,6 +44,8 @@ export const SeccionHosting: React.FC = () => {
         restartMutation,
         stopMutation,
         startMutation,
+        approveMutation,
+        rejectMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -122,6 +126,14 @@ export const SeccionHosting: React.FC = () => {
                 >
                     Inactivos ({inactivos.length})
                 </Button>
+                <Button
+                    type="button"
+                    variante="texto"
+                    className={`hostingTab ${tabActiva === 'vps' ? 'hostingTab--activa' : ''}`}
+                    onClick={() => setTabActiva('vps')}
+                >
+                    VPS ({vpsSubscriptions.length})
+                </Button>
                 {/* [084A-24] Tab de servidores solo para admin */}
                 {isAdmin && (
                     <Button
@@ -136,7 +148,16 @@ export const SeccionHosting: React.FC = () => {
             </div>
 
             {/* [084A-24] Contenido condicional por tab */}
-            {tabActiva === 'servidores' && isAdmin ? (
+            {tabActiva === 'vps' ? (
+                <VpsSubscriptionsPanel
+                    subscriptions={vpsSubscriptions}
+                    isAdmin={isAdmin}
+                    onApprove={(id) => approveMutation.mutate(id)}
+                    onReject={(id, reason) => rejectMutation.mutate({id, reason})}
+                    approveLoading={approveMutation.isPending}
+                    rejectLoading={rejectMutation.isPending}
+                />
+            ) : tabActiva === 'servidores' && isAdmin ? (
                 <VpsPanel />
             ) : subscriptions.length === 0 ? (
                 <div className="hostingVacio">

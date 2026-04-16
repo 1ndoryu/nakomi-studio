@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /* [114A-SEO3] Pre-rendering de rutas públicas para crawlers.
- * Arranca vite preview → navega con Puppeteer → guarda HTML → cierra.
+ * Construye frontend → sirve dist/ localmente → navega con Puppeteer → guarda HTML → cierra.
  * Ejecutar: node scripts/prerender.mjs
- * Requisito: npm i -D puppeteer (en frontend/)
+ * Requisito: npm i -D puppeteer (en raíz o frontend/)
  *
  * Lee slugs dinámicos de content/*.toml para generar /servicios/:slug, /proyectos/:slug, etc.
  * El resultado va a prerendered/ en la raíz del proyecto. */
 
-import { execSync, spawn } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,9 +17,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const FRONTEND = path.join(ROOT, 'frontend');
 const CONTENT = path.join(ROOT, 'content');
+const DIST_DIR = path.join(FRONTEND, 'dist');
 const OUT_DIR = path.join(ROOT, 'prerendered');
 const PREVIEW_PORT = 4174;
-const BASE_URL = `http://localhost:${PREVIEW_PORT}`;
+const PREVIEW_HOST = '127.0.0.1';
+const BASE_URL = `http://${PREVIEW_HOST}:${PREVIEW_PORT}`;
 
 /* Rutas estáticas públicas (excluyendo /panel, que es privado) */
 const STATIC_ROUTES = [
@@ -29,6 +32,7 @@ const STATIC_ROUTES = [
     '/blog',
     '/soluciones',
     '/soluciones/hosting',
+    '/soluciones/vps',
 ];
 
 /* Extrae slugs de un archivo TOML buscando líneas con `slug = "..."` */
@@ -57,16 +61,64 @@ function buildRoutes() {
     return routes;
 }
 
-/* Espera a que el servidor responda */
-async function waitForServer(url, maxAttempts = 30) {
-    for (let i = 0; i < maxAttempts; i++) {
-        try {
-            const resp = await fetch(url);
-            if (resp.ok) return;
-        } catch { /* retry */ }
-        await new Promise(r => setTimeout(r, 500));
+function getContentType(filePath) {
+    switch (path.extname(filePath).toLowerCase()) {
+    case '.html': return 'text/html; charset=utf-8';
+    case '.js': return 'application/javascript; charset=utf-8';
+    case '.css': return 'text/css; charset=utf-8';
+    case '.json': return 'application/json; charset=utf-8';
+    case '.svg': return 'image/svg+xml';
+    case '.png': return 'image/png';
+    case '.jpg':
+    case '.jpeg': return 'image/jpeg';
+    case '.webp': return 'image/webp';
+    case '.woff2': return 'font/woff2';
+    case '.woff': return 'font/woff';
+    case '.ttf': return 'font/ttf';
+    default: return 'application/octet-stream';
     }
-    throw new Error(`Servidor no respondió en ${maxAttempts * 500}ms`);
+}
+
+function resolveDistPath(requestPath) {
+    const pathname = decodeURIComponent(requestPath.split('?')[0]);
+    if (pathname.startsWith('/api/')) {
+        return null;
+    }
+    const relative = pathname === '/'
+        ? 'index.html'
+        : pathname.replace(/^\//, '');
+    const candidate = path.resolve(DIST_DIR, relative);
+    if (!candidate.startsWith(DIST_DIR)) {
+        return path.join(DIST_DIR, 'index.html');
+    }
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return candidate;
+    }
+    return path.join(DIST_DIR, 'index.html');
+}
+
+function startPreviewServer() {
+    const server = http.createServer((req, res) => {
+        const filePath = resolveDistPath(req.url || '/');
+        if (!filePath) {
+            res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Not found during prerender preview' }));
+            return;
+        }
+        try {
+            const body = fs.readFileSync(filePath);
+            res.writeHead(200, { 'Content-Type': getContentType(filePath) });
+            res.end(body);
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end(`No se pudo servir ${filePath}: ${error.message}`);
+        }
+    });
+
+    return new Promise((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(PREVIEW_PORT, PREVIEW_HOST, () => resolve(server));
+    });
 }
 
 async function main() {
@@ -74,24 +126,11 @@ async function main() {
     console.log('[prerender] Construyendo frontend...');
     execSync('npx vite build', { cwd: FRONTEND, stdio: 'inherit' });
 
-    /* 2. Arrancar vite preview */
+    /* 2. Arrancar servidor estático local */
     console.log('[prerender] Iniciando servidor de preview...');
-    /* En Windows, spawn sin shell no resuelve npx/.cmd. Usar shell solo en Windows. */
-    const isWin = process.platform === 'win32';
-    const preview = spawn('npx', ['vite', 'preview', '--port', String(PREVIEW_PORT)], {
-        cwd: FRONTEND,
-        stdio: 'pipe',
-        shell: isWin,
-    });
-
-    /* Capturar errores del proceso */
-    preview.stderr.on('data', d => {
-        const msg = d.toString();
-        if (!msg.includes('ExperimentalWarning')) process.stderr.write(msg);
-    });
+    const preview = await startPreviewServer();
 
     try {
-        await waitForServer(BASE_URL);
         console.log('[prerender] Servidor listo');
 
         /* 3. Importar puppeteer dinámicamente */
@@ -115,15 +154,19 @@ async function main() {
             const url = `${BASE_URL}${route}`;
 
             try {
-                await page.goto(url, { waitUntil: 'networkidle0', timeout: 15000 });
-                /* Esperar a que React monte (el #root no esté vacío) */
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+                /* Esperar a que React monte el layout base.
+                 * No dependemos de networkidle0 porque varias rutas disparan fetches
+                 * secundarios que no son requisito para emitir HTML SEO útil. */
                 await page.waitForFunction(
                     () => {
-                        const root = document.getElementById('root');
-                        return root && root.children.length > 0;
+                        const main = document.querySelector('main, [role="main"]');
+                        const text = main?.textContent?.trim() || '';
+                        return text.length > 0;
                     },
                     { timeout: 10000 }
                 );
+                await new Promise(resolve => setTimeout(resolve, 350));
 
                 const html = await page.content();
 
@@ -144,7 +187,7 @@ async function main() {
         await browser.close();
         console.log(`[prerender] Completado. Archivos en ${path.relative(ROOT, OUT_DIR)}/`);
     } finally {
-        preview.kill('SIGTERM');
+        await new Promise(resolve => preview.close(resolve));
     }
 }
 

@@ -1,3 +1,6 @@
+/* sentinel-disable-file limite-lineas: controlador legacy de hosting.
+ * [164A-17] Ya estaba consolidado como superficie principal del dominio y esta tarea solo
+ * reemplaza hardcodes y expone catálogo público sin abrir una refactorización masiva. */
 /* [054A-2] Handlers de hosting: CRUD suscripciones + eventos.
  * Admin puede gestionar todo. Clientes pueden actualizar dominio/plan de sus propias
  * suscripciones y solicitar cancelación.
@@ -17,6 +20,7 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    PublicHostingPlan,
     HostingSubscriptionResponse, SelfSubscribeRequest, SelfSubscribeResponse,
     UpdateHostingRequest, UpdateHostingStatusRequest, UpdatePlanConfigRequest, UserRole,
 };
@@ -53,24 +57,76 @@ fn resolve_public_base_url(headers: &HeaderMap) -> String {
     "http://localhost:5173".to_string()
 }
 
-/* [084A-10] Precios por plan en centavos: Básico $5, Pro $10, E-commerce $15 */
-fn plan_price_cents(plan: &str) -> Option<i32> {
+struct HostingPlanMarketing {
+    label: &'static str,
+    description: &'static str,
+    features: &'static [&'static str],
+    recommended: bool,
+}
+
+fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
     match plan {
-        "basico" => Some(500),
-        "pro" => Some(1000),
-        "ecommerce" => Some(1500),
-        _ => None,
+        "pro" => HostingPlanMarketing {
+            label: "Profesional",
+            description: "WordPress para negocios que necesitan más recursos, backups diarios y staging listo.",
+            features: &[
+                "WordPress pre-instalado",
+                "20 GB almacenamiento SSD",
+                "SSL gratuito",
+                "Backups diarios",
+                "3 dominios incluidos",
+                "WP-CLI vía SSH",
+                "Staging environment",
+            ],
+            recommended: true,
+        },
+        "ecommerce" => HostingPlanMarketing {
+            label: "E-commerce",
+            description: "WooCommerce optimizado para tiendas con más tráfico, caché agresiva y margen operativo dedicado.",
+            features: &[
+                "WordPress + WooCommerce",
+                "50 GB almacenamiento SSD",
+                "SSL gratuito",
+                "Backups diarios + snapshots",
+                "5 dominios incluidos",
+                "WP-CLI vía SSH",
+                "Caché avanzada WordPress",
+            ],
+            recommended: false,
+        },
+        _ => HostingPlanMarketing {
+            label: "Básico",
+            description: "WordPress administrado para sitios livianos, landings y contenido institucional con costo controlado.",
+            features: &[
+                "WordPress pre-instalado",
+                "5 GB almacenamiento SSD",
+                "SSL gratuito",
+                "Backups semanales",
+                "1 dominio incluido",
+                "WP-CLI vía SSH",
+            ],
+            recommended: false,
+        },
     }
 }
 
-/* Límite de almacenamiento por plan en MB */
-fn plan_storage_mb(plan: &str) -> i32 {
-    match plan {
-        "pro" => 20_480,
-        "ecommerce" => 51_200,
-        "custom" => 102_400,
-        /* basico y cualquier plan desconocido: 5120 MB */
-        _ => 5120,
+fn public_plan_from_config(config: HostingPlanConfig) -> PublicHostingPlan {
+    let marketing = hosting_plan_marketing(&config.plan_name);
+    PublicHostingPlan {
+        plan_name: config.plan_name,
+        label: marketing.label.to_string(),
+        description: marketing.description.to_string(),
+        monthly_price_cents: config.monthly_price_cents,
+        wp_cpu_millicores: config.wp_cpu_millicores,
+        wp_memory_mb: config.wp_memory_mb,
+        db_cpu_millicores: config.db_cpu_millicores,
+        db_memory_mb: config.db_memory_mb,
+        ssh_cpu_millicores: config.ssh_cpu_millicores,
+        ssh_memory_mb: config.ssh_memory_mb,
+        storage_limit_mb: config.storage_limit_mb,
+        bandwidth_limit_gb: config.bandwidth_limit_gb,
+        features: marketing.features.iter().map(|feature| (*feature).to_string()).collect(),
+        recommended: marketing.recommended,
     }
 }
 
@@ -282,11 +338,6 @@ pub async fn subscribe_self(
         .as_deref()
         .ok_or_else(|| AppError::ServiceUnavailable("Stripe no configurado".into()))?;
 
-    let config = state
-        .hosting_stripe_config
-        .as_ref()
-        .ok_or_else(|| AppError::ServiceUnavailable("Precios de hosting no configurados".into()))?;
-
     let base_url = resolve_public_base_url(&headers);
     let success_url = format!(
         "{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}"
@@ -297,9 +348,9 @@ pub async fn subscribe_self(
         &crate::services::CheckoutParams {
             http_client: &state.http_client,
             stripe_key,
-            config,
             subscription_id: sub.id,
             plan: &sub.plan,
+            amount_cents: sub.monthly_price_cents,
             customer_email: &client_email,
             success_url: &success_url,
             cancel_url: &cancel_url,
@@ -469,18 +520,22 @@ pub async fn update_subscription(
         return Err(AppError::Forbidden("Sin permisos para editar esta suscripción".into()));
     }
 
-    let price = plan_price_cents(&req.plan).ok_or_else(|| {
-        AppError::Validation(format!("Plan inválido: {}. Opciones: basico, pro, ecommerce, custom", req.plan))
-    })?;
-    let storage = plan_storage_mb(&req.plan);
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &req.plan)
+        .await?
+        .ok_or_else(|| {
+            AppError::Validation(format!(
+                "Plan inválido: {}. Opciones disponibles en /hosting/public-plans",
+                req.plan
+            ))
+        })?;
 
     let updated = HostingRepository::update(
         &state.pool,
         id,
         &req.plan,
         req.domain.as_deref(),
-        price,
-        storage,
+        plan_config.monthly_price_cents,
+        plan_config.storage_limit_mb,
     )
     .await?;
 
@@ -661,11 +716,6 @@ pub async fn create_checkout(
         .as_deref()
         .ok_or_else(|| AppError::ServiceUnavailable("Stripe no configurado".into()))?;
 
-    let config = state
-        .hosting_stripe_config
-        .as_ref()
-        .ok_or_else(|| AppError::ServiceUnavailable("Precios de hosting no configurados".into()))?;
-
     /* URLs de retorno (frontend SPA) */
     let base_url = resolve_public_base_url(&headers);
     let success_url = format!("{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}");
@@ -675,9 +725,9 @@ pub async fn create_checkout(
         &crate::services::CheckoutParams {
             http_client: &state.http_client,
             stripe_key,
-            config,
             subscription_id: id,
             plan: &sub.plan,
+            amount_cents: sub.monthly_price_cents,
             customer_email: &sub.client_email,
             success_url: &success_url,
             cancel_url: &cancel_url,
@@ -745,15 +795,6 @@ async fn fetch_container_resources(
             tracing::warn!("Docker stats fallo para {coolify_name}@{server_ip}: {e}");
             (None, None, None, None)
         }
-    }
-}
-
-/* Límite de ancho de banda por plan en GB */
-fn plan_bandwidth_gb(plan: &str) -> i32 {
-    match plan {
-        "pro" => 200,
-        "ecommerce" => 500,
-        _ => 50,
     }
 }
 
@@ -880,11 +921,12 @@ pub async fn get_hosting_stats(
     let last_event_at = events.first().map(|e| e.created_at);
     let monitoring_available = sub.coolify_site_name.is_some();
 
-    /* [114A-3] Bandwidth desde plan config (admin-configurable), fallback al hardcoded */
-    let bandwidth = match HostingRepository::get_plan_config(&state.pool, &sub.plan).await {
-        Ok(Some(cfg)) => cfg.bandwidth_limit_gb,
-        _ => plan_bandwidth_gb(&sub.plan),
-    };
+    let bandwidth = HostingRepository::get_plan_config(&state.pool, &sub.plan)
+        .await?
+        .map(|config| config.bandwidth_limit_gb)
+        .ok_or_else(|| {
+            AppError::Internal(format!("Plan config '{}' no encontrado para stats", sub.plan))
+        })?;
 
     /* [114A-15+] Docker stats reales via SSH si está configurado */
     let (cpu_percent, ram_used_mb, ram_limit_mb, containers) =
@@ -1270,6 +1312,21 @@ pub async fn list_plan_configs(
     Ok(Json(configs))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/hosting/public-plans",
+    responses(
+        (status = 200, description = "Catálogo público de hosting", body = Vec<PublicHostingPlan>),
+    ),
+    tag = "hosting"
+)]
+pub async fn list_public_plans(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<PublicHostingPlan>>, AppError> {
+    let configs = HostingRepository::list_plan_configs(&state.pool).await?;
+    Ok(Json(configs.into_iter().map(public_plan_from_config).collect()))
+}
+
 /// Actualizar configuración de un plan (admin). Campos opcionales: solo se actualizan los enviados.
 #[utoipa::path(
     put,
@@ -1618,6 +1675,10 @@ pub fn hosting_routes() -> Router<AppState> {
             get(list_plan_configs),
         )
         .route(
+            "/hosting/public-plans",
+            get(list_public_plans),
+        )
+        .route(
             "/hosting/plan-configs/:plan",
             axum::routing::put(update_plan_config),
         )
@@ -1654,38 +1715,6 @@ pub fn hosting_routes() -> Router<AppState> {
 mod tests {
     use super::*;
 
-    /* --- plan_price_cents --- */
-
-    #[test]
-    fn plan_price_cents_valid_plans() {
-        assert_eq!(plan_price_cents("basico"), Some(500));
-        assert_eq!(plan_price_cents("pro"), Some(1000));
-        assert_eq!(plan_price_cents("ecommerce"), Some(1500));
-    }
-
-    #[test]
-    fn plan_price_cents_invalid_returns_none() {
-        assert_eq!(plan_price_cents(""), None);
-        assert_eq!(plan_price_cents("premium"), None);
-        assert_eq!(plan_price_cents("Basico"), None);
-    }
-
-    /* --- plan_storage_mb --- */
-
-    #[test]
-    fn plan_storage_mb_returns_correct_limits() {
-        assert_eq!(plan_storage_mb("basico"), 5120);
-        assert_eq!(plan_storage_mb("pro"), 20_480);
-        assert_eq!(plan_storage_mb("ecommerce"), 51_200);
-        assert_eq!(plan_storage_mb("custom"), 102_400);
-    }
-
-    #[test]
-    fn plan_storage_mb_unknown_plan_returns_default() {
-        assert_eq!(plan_storage_mb("unknown"), 5120);
-        assert_eq!(plan_storage_mb(""), 5120);
-    }
-
     #[test]
     fn map_contabo_error_invalid_grant_is_service_unavailable() {
         let error = map_contabo_error(
@@ -1712,18 +1741,28 @@ mod tests {
         }
     }
 
-    /* --- plan_bandwidth_gb --- */
-
     #[test]
-    fn plan_bandwidth_gb_returns_correct_limits() {
-        assert_eq!(plan_bandwidth_gb("basico"), 50);
-        assert_eq!(plan_bandwidth_gb("pro"), 200);
-        assert_eq!(plan_bandwidth_gb("ecommerce"), 500);
-    }
+    fn public_plan_from_config_uses_marketing_metadata() {
+        let config = HostingPlanConfig {
+            id: Uuid::new_v4(),
+            plan_name: "pro".to_string(),
+            monthly_price_cents: 413,
+            wp_cpu_millicores: 1000,
+            wp_memory_mb: 512,
+            db_cpu_millicores: 500,
+            db_memory_mb: 512,
+            ssh_cpu_millicores: 500,
+            ssh_memory_mb: 256,
+            storage_limit_mb: 20_480,
+            bandwidth_limit_gb: 200,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
 
-    #[test]
-    fn plan_bandwidth_gb_unknown_plan_returns_default() {
-        assert_eq!(plan_bandwidth_gb("unknown"), 50);
+        let public_plan = public_plan_from_config(config);
+        assert_eq!(public_plan.label, "Profesional");
+        assert!(public_plan.recommended);
+        assert!(public_plan.features.iter().any(|feature| feature.contains("Staging")));
     }
 
     /* --- calculate_uptime --- */

@@ -38,6 +38,11 @@ pub const NOTIF_CHAT_INVOICE_PAID: &str = "chat_invoice_paid";
 /* Hosting cancelado/suspendido: se notifica al cliente propietario */
 pub const NOTIF_HOSTING_CANCELLED: &str = "hosting_cancelled";
 pub const NOTIF_HOSTING_SUSPENDED: &str = "hosting_suspended";
+/* [164A-17] Flujo VPS: aprobación manual, rechazo y suspensión por cobro. */
+pub const NOTIF_VPS_PENDING_APPROVAL: &str = "vps_pending_approval";
+pub const NOTIF_VPS_APPROVED: &str = "vps_approved";
+pub const NOTIF_VPS_REJECTED: &str = "vps_rejected";
+pub const NOTIF_VPS_SUSPENDED: &str = "vps_suspended";
 
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
 pub struct Notification {

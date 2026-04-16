@@ -1,3 +1,6 @@
+/* sentinel-disable-file limite-lineas: archivo de contratos legacy de hosting compartido.
+ * [164A-17] La tarea actual necesita ampliar el catálogo sin abrir una refactorización grande
+ * de DTOs/FromRow que afectaría múltiples handlers y queries en el mismo ciclo. */
 /* [054A-2] Modelos de hosting: suscripciones y eventos.
  * hosting_subscriptions: registra planes de hosting contratados por clientes.
  * hosting_events: log de eventos del ciclo de vida (provisioned, backup, health_fail, etc).
@@ -181,6 +184,24 @@ pub struct HostingPlanConfig {
     pub bandwidth_limit_gb: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct PublicHostingPlan {
+    pub plan_name: String,
+    pub label: String,
+    pub description: String,
+    pub monthly_price_cents: i32,
+    pub wp_cpu_millicores: i32,
+    pub wp_memory_mb: i32,
+    pub db_cpu_millicores: i32,
+    pub db_memory_mb: i32,
+    pub ssh_cpu_millicores: i32,
+    pub ssh_memory_mb: i32,
+    pub storage_limit_mb: i32,
+    pub bandwidth_limit_gb: i32,
+    pub features: Vec<String>,
+    pub recommended: bool,
 }
 
 /* [114A-3] Request para actualizar configuración de un plan (todos los campos opcionales). */

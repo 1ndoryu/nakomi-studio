@@ -17,7 +17,7 @@ pub struct FixtureTableStat {
 pub struct FixtureRepository;
 
 impl FixtureRepository {
-    /// Verifica si la tabla _glory_fixtures existe en la BD
+    /// Verifica si la tabla `_glory_fixtures` existe en la BD
     pub async fn table_exists(pool: &PgPool) -> Result<bool, AppError> {
         let exists: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = '_glory_fixtures')",

@@ -54,7 +54,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
     const {
         paso, email, setEmail, password, setPassword,
         emailExiste, errorMsg, paymentMode, setPaymentMode,
-        hostingDomain, setHostingDomain, projectDescription, setProjectDescription, checkoutPendiente, isHosting,
+        hostingDomain, setHostingDomain, projectDescription, setProjectDescription, checkoutPendiente, isHosting, isVps,
         navegarAlPanelPendiente, handleContinuar, handleAuth, reintentar
     } = useModalCompra({plan, servicioSlug, onClose: onCerrar});
 
@@ -94,7 +94,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
             {/* Paso resumen: selector de modo de pago + botón continuar */}
             {paso === 'resumen' && (
                 <div className="modalCompraAcciones">
-                    {!isHosting && (
+                    {!isHosting && !isVps && (
                         <label className="modalCompraBrief">
                             <span className="modalCompraBriefLabel">
                                 Describe tu proyecto
@@ -127,6 +127,36 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                                 Stripe abrirá una suscripción mensual. Puedes dejar el dominio vacío y configurarlo después desde el panel.
                             </p>
                         </div>
+                    ) : isVps ? (
+                        <>
+                            <div className="modalCompraBrief">
+                                <span className="modalCompraBriefLabel">
+                                    Hostname solicitado
+                                </span>
+                                <Input
+                                    type="text"
+                                    value={hostingDomain}
+                                    onChange={e => setHostingDomain(e.target.value)}
+                                    placeholder="cliente-vps-01 (opcional)"
+                                />
+                                <p className="modalCompraAviso">
+                                    Usaremos este nombre como referencia interna y para el bootstrap inicial si la provisión es aprobada.
+                                </p>
+                            </div>
+                            <label className="modalCompraBrief">
+                                <span className="modalCompraBriefLabel">
+                                    Cuéntanos para qué usarás el VPS
+                                </span>
+                                <Textarea
+                                    className="modalCompraBriefInput"
+                                    value={projectDescription}
+                                    onChange={e => setProjectDescription(e.target.value)}
+                                    placeholder="Describe el tipo de carga, stack, exposición pública o cualquier contexto que ayude a aprobar la provisión."
+                                    rows={4}
+                                    required
+                                />
+                            </label>
+                        </>
                     ) : (
                         /* [064A-60] Servicios: selector de modo de pago */
                         <div className="modalCompraModos" role="radiogroup" aria-label="Modo de pago">
@@ -169,13 +199,15 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                     )}
                     {errorMsg && <p className="modalCompraErrorTexto">{errorMsg}</p>}
                     <Button variante="primario" tamano="mediano" onClick={handleContinuar}>
-                        {isHosting
+                        {isHosting || isVps
                             ? t('purchase.continue_pay', 'Continuar al checkout')
                             : t('purchase.continue', 'Continuar')} ({precioFinal})
                     </Button>
                     <p className="modalCompraAviso">
                         {isHosting
                             ? 'El cargo se confirma dentro de Stripe Checkout.'
+                            : isVps
+                                ? 'El cargo se confirma dentro de Stripe Checkout y la provisión queda sujeta a aprobación manual.'
                             : t('purchase.no_charge_yet', 'Aún no se te cobrará')}
                     </p>
                 </div>
@@ -209,13 +241,15 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                         />
                     )}
                     <Button variante="primario" tamano="mediano" type="submit">
-                        {isHosting
+                        {isHosting || isVps
                             ? t('purchase.continue_pay', 'Continuar al checkout')
                             : t('purchase.continue_pay', 'Continuar al pago')} ({precioFinal})
                     </Button>
                     <p className="modalCompraAviso">
                         {isHosting
                             ? 'El cargo se confirma dentro de Stripe Checkout.'
+                            : isVps
+                                ? 'El cargo se confirma dentro de Stripe Checkout y la provisión queda sujeta a aprobación manual.'
                             : t('purchase.no_charge_yet', 'Aún no se te cobrará')}
                     </p>
                 </form>

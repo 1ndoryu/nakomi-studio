@@ -20,6 +20,7 @@ import {Input} from '../ui/Input';
 import {Select} from '../ui/Select';
 import {Button} from '../ui/Button';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
+import {HOSTING_PLAN_OPTIONS} from './hostingPlanOptions';
 
 /* [074A-57] Card de hosting — layout similar a ordenCard de proyectosLista
  * [074A-63] Titulo = dominio o nombre del hosting (identidad unica), plan va debajo.
@@ -164,10 +165,9 @@ export function HostingCard({
                             value={editPlan}
                             onChange={e => setEditPlan(e.target.value)}
                         >
-                            <option value="basico">Básico ($5/mes)</option>
-                            <option value="pro">Profesional ($10/mes)</option>
-                            <option value="ecommerce">E-commerce ($15/mes)</option>
-                            <option value="custom">Custom (cotización)</option>
+                            {HOSTING_PLAN_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
                         </Select>
                         <Input
                             type="text"
@@ -260,10 +260,9 @@ export function CreateHostingForm({
                 value={form.plan}
                 onChange={e => setForm(prev => ({...prev, plan: e.target.value}))}
             >
-                <option value="basico">Básico ($5/mes)</option>
-                <option value="pro">Profesional ($10/mes)</option>
-                <option value="ecommerce">E-commerce ($15/mes)</option>
-                <option value="custom">Custom (cotización)</option>
+                {HOSTING_PLAN_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
             </Select>
             <Input
                 type="text"

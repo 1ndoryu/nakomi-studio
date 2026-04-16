@@ -17,7 +17,7 @@ use crate::models::{
     NOTIF_CHAT_INVOICE_PAID, NOTIF_PAYMENT_RECEIVED,
 };
 use crate::repositories::{OrderRepository, PaymentRepository, UserRepository};
-use crate::services::{AuditService, EmailService, HostingStripeService, PaymentService};
+use crate::services::{AuditService, EmailService, HostingStripeService, PaymentService, VpsStripeService};
 use crate::AppState;
 
 /// Iniciar pago de una orden (crea `PaymentIntent` en Stripe)
@@ -92,6 +92,7 @@ pub async fn initiate_payment(
     tag = "payments"
 )]
 #[allow(clippy::too_many_lines)]
+/* sentinel-disable-next-line funcion-larga-rs: webhook central de Stripe que coordina orders, chat invoices, hosting y VPS en un único punto de deduplicación. */
 pub async fn stripe_webhook(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -245,6 +246,14 @@ pub async fn stripe_webhook(
         &state.pool,
         &state.http_client,
         state.coolify_config.as_ref(),
+        event_type,
+        &event["data"],
+    ).await?;
+
+    VpsStripeService::handle_webhook(
+        &state.pool,
+        &state.notification_hub,
+        state.email_config.as_ref(),
         event_type,
         &event["data"],
     ).await?;

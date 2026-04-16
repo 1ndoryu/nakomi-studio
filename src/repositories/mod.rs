@@ -19,6 +19,7 @@ mod review;
 mod service;
 mod team_member;
 mod user;
+mod vps;
 mod wallet;
 
 pub use activity_log::{ActivityLogRepository, ActivityRow};
@@ -41,5 +42,6 @@ pub use review::ReviewRepository;
 pub use service::ServiceRepository;
 pub use team_member::{CreateTeamMemberParams, TeamMemberRepository, UpdateTeamMemberParams};
 pub use user::{UserRepository, UserWithTotal};
+pub use vps::{CreateVpsSubscriptionParams, ProvisionedVpsInfo, VpsRepository};
 pub use problem::{ProblemRepository, ProblemWithContext};
 pub use wallet::{CancellationRequestRepository, WalletRepository, WithdrawalRequestRepository};

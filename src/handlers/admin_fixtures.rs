@@ -63,9 +63,9 @@ pub async fn get_fixture_status(
         }));
     }
 
-    let stats: Vec<FixtureTableStat> = FixtureRepository::list_table_stats(&state.pool).await?;
-    let tracked_records: i64 = stats.iter().map(|s| s.record_count).sum();
-    let tables = stats
+    let table_stats: Vec<FixtureTableStat> = FixtureRepository::list_table_stats(&state.pool).await?;
+    let tracked_records: i64 = table_stats.iter().map(|s| s.record_count).sum();
+    let tables = table_stats
         .into_iter()
         .map(|s| FixtureTableSummary {
             table_name: s.table_name,
