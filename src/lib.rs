@@ -38,4 +38,7 @@ pub struct AppState {
     pub email_config: Option<EmailConfig>,
     /// [114A-15+] Cache de stats de contenedores Docker (30s TTL)
     pub docker_stats_cache: DockerStatsCache,
+    /* [154A-2] Fixture manager para sincronizar archivos TOML de content/ con la BD desde el panel admin.
+     * Arc porque ContentManager no es Clone (contiene Box<dyn Fn>). None si content/ no existe. */
+    pub fixture_manager: Option<std::sync::Arc<glory_rs::fixtures::ContentManager>>,
 }

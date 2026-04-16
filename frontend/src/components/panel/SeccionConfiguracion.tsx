@@ -4,9 +4,10 @@
  * [084A-11] Lógica extraída a useSeccionConfiguracion (max 3 useState).
  * [114A-12] Toggle de rotación de API keys con status. */
 
-import { Loader2, AlertCircle, CheckCircle2, Database, Trash2, RotateCw, Key } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Database, Trash2, RotateCw, Key, RefreshCw } from 'lucide-react';
 import { useSeccionConfiguracion } from '../../hooks/useSeccionConfiguracion';
 import { useRotacionApi } from '../../hooks/useRotacionApi';
+import { useFixtureSync } from '../../hooks/useFixtureSync';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import './SeccionConfiguracion.css';
@@ -14,6 +15,7 @@ import './SeccionConfiguracion.css';
 export function SeccionConfiguracion() {
     const { cargando, resultado, errorMsg, confirmando, setConfirmando, ejecutarSeed } = useSeccionConfiguracion();
     const { status: rotacion, cargando: rotacionCargando, errorMsg: rotacionError, toggle } = useRotacionApi();
+    const { syncResult, statusData, cargando: syncCargando, error: syncError, sync } = useFixtureSync();
 
     return (
         <div className="configSeccion">
@@ -125,6 +127,52 @@ export function SeccionConfiguracion() {
                     </div>
                 </div>
             </Modal>
+
+            {/* [154A-2] Bloque de sincronización de fixtures de contenido */}
+            <div className="configBloque">
+                <h2 className="configBloqueTitle">
+                    <RefreshCw size={18} />
+                    Sincronizar Contenido
+                </h2>
+                <p className="configBloqueDesc">
+                    Aplica los archivos TOML de <code>content/</code> a la base de datos sin reiniciar el servidor.
+                    Útil cuando se editan fixtures de servicios, proyectos, equipo u otro contenido directamente.
+                </p>
+
+                {statusData && (
+                    <div className="configRotacionDetalles">
+                        <span>Registros rastreados: <strong>{statusData.tracked_records}</strong></span>
+                        {statusData.tables.map((t: { table_name: string; record_count: number }) => (
+                            <span key={t.table_name}>{t.table_name}: <strong>{t.record_count}</strong></span>
+                        ))}
+                    </div>
+                )}
+
+                <div className="configAcciones">
+                    <Button onClick={sync} disabled={syncCargando}>
+                        {syncCargando ? <Loader2 size={16} className="configSpinner" /> : <RefreshCw size={16} />}
+                        Sincronizar Fixtures
+                    </Button>
+                </div>
+
+                {syncResult && (
+                    <div className="configMensaje configMensajeExito">
+                        <CheckCircle2 size={16} />
+                        <span>
+                            Sincronizado: +{syncResult.inserted} insertados, ~{syncResult.updated} actualizados,
+                            -{syncResult.deleted} borrados, {syncResult.skipped} sin cambios
+                            {syncResult.errors.length > 0 && ` — ${syncResult.errors.length} error(es)`}
+                        </span>
+                    </div>
+                )}
+
+                {syncError && (
+                    <div className="configMensaje configMensajeError">
+                        <AlertCircle size={16} />
+                        <span>{syncError}</span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

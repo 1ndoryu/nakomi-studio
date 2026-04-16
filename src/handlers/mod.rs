@@ -1,5 +1,6 @@
 #![allow(clippy::needless_for_each)] // Generado por utoipa OpenApi derive
 
+mod admin_fixtures;
 mod admin_seed;
 mod admin_services;
 mod admin_users;
@@ -129,6 +130,8 @@ impl utoipa::Modify for SecurityAddon {
         admin_users::change_role,
         admin_users::change_status,
         admin_users::delete_user,
+        admin_fixtures::get_fixture_status,
+        admin_fixtures::trigger_sync,
         admin_services::list_all,
         admin_services::create,
         admin_services::update,
@@ -282,6 +285,9 @@ impl utoipa::Modify for SecurityAddon {
         profile::AvatarResponse,
         uploads::UploadResponse,
         crate::errors::ErrorResponse,
+        admin_fixtures::FixtureStatusResponse,
+        admin_fixtures::FixtureTableSummary,
+        admin_fixtures::FixtureSyncResult,
     )),
     modifiers(&SecurityAddon),
     info(
@@ -353,6 +359,21 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         tracing::warn!("Email SMTP NO configurado (faltan vars SMTP_*) — emails desactivados");
     }
 
+    /* [154A-2] Fixture manager debe construirse antes del struct literal para poder clonar pool.
+     * El pool se mueve dentro de AppState, así que la clonación debe ocurrir antes. */
+    let fixture_manager = {
+        let content_dir = std::env::var("CONTENT_DIR").unwrap_or_else(|_| "content".to_string());
+        if std::path::Path::new(&content_dir).exists() {
+            tracing::info!("Fixture manager configurado en '{content_dir}'");
+            Some(std::sync::Arc::new(
+                glory_rs::fixtures::ContentManager::new(pool.clone(), &content_dir)
+            ))
+        } else {
+            tracing::warn!("Content dir '{content_dir}' no encontrado — fixture sync desactivado");
+            None
+        }
+    };
+
     let state = AppState {
         pool,
         jwt_secret: config.jwt_secret,
@@ -375,6 +396,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         coolify_config,
         email_config,
         docker_stats_cache: crate::services::docker_stats::DockerStatsCache::new(),
+        fixture_manager,
     };
 
     /* [064A-73] CORS: restringir orígenes en producción. Si GLORY_ALLOWED_ORIGINS vacío, allow all (dev). */
@@ -529,6 +551,7 @@ fn api_routes() -> Router<AppState> {
         .merge(team_members::public_routes())
         .merge(team_members::admin_routes())
         .merge(public_users::public_routes())
+        .merge(admin_fixtures::routes())
         .merge(admin_seed::seed_routes())
         .merge(configuracion::configuracion_routes())
         .merge(hosting::hosting_routes())
