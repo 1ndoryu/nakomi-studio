@@ -10,6 +10,7 @@ import {
 interface UseOptimizedImageParams {
     src: string;
     width?: number;
+    fixedWidth?: number;
     sizes?: string;
     quality: number;
     noOptimize: boolean;
@@ -27,6 +28,7 @@ interface UseOptimizedImageResult {
 export function useOptimizedImage({
     src,
     width,
+    fixedWidth,
     sizes,
     quality,
     noOptimize,
@@ -43,6 +45,11 @@ export function useOptimizedImage({
     useEffect(() => {
         if (!shouldOptimize) {
             setRenderedWidth(width);
+            return undefined;
+        }
+
+        if (fixedWidth) {
+            setRenderedWidth(fixedWidth);
             return undefined;
         }
 
@@ -75,22 +82,27 @@ export function useOptimizedImage({
         resizeObserver.observe(pictureElement);
 
         return () => resizeObserver.disconnect();
-    }, [shouldOptimize, src, width]);
+    }, [shouldOptimize, src, width, fixedWidth]);
 
     /* [104A-13] Si el caller no declara sizes, medimos el ancho real para no caer en 100vw.
      * Esto evita que logos, avatars y cards pequeñas descarguen variantes más grandes de lo necesario. */
     const devicePixelRatio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
-    const targetWidth = renderedWidth ?? width;
-    const responsiveWidths = resolveResponsiveWidths(targetWidth, devicePixelRatio);
-    const fallbackWidth = resolveBestWidth(targetWidth, devicePixelRatio);
-    const resolvedSizes = sizes ?? (targetWidth ? `${Math.round(targetWidth)}px` : '100vw');
+    const effectivePixelRatio = fixedWidth ? 1 : devicePixelRatio;
+    const targetWidth = fixedWidth ?? renderedWidth ?? width;
+    const responsiveWidths = fixedWidth
+        ? []
+        : resolveResponsiveWidths(targetWidth, devicePixelRatio);
+    const fallbackWidth = resolveBestWidth(targetWidth, effectivePixelRatio);
+    const resolvedSizes = fixedWidth
+        ? `${Math.round(fixedWidth)}px`
+        : sizes ?? (targetWidth ? `${Math.round(targetWidth)}px` : '100vw');
 
     return {
         pictureRef,
         shouldOptimize,
         resolvedSizes,
         fallbackSrc: optimizedUrl(src, fallbackWidth ? {quality, width: fallbackWidth} : {quality}),
-        fallbackSrcSet: generateSrcSet(src, responsiveWidths, {quality}),
+        fallbackSrcSet: fixedWidth ? '' : generateSrcSet(src, responsiveWidths, {quality}),
         /* [154A-IMG] WebP desactivado: image-webp 0.2 solo soporta lossless (archivos enormes).
          * JPEG lossy con quality 80 produce ~80% menos peso. Reactivar cuando haya lossy WebP. */
         webpSrcSet: '',

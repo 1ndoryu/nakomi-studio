@@ -66,8 +66,7 @@ Implementado `GET/POST /api/admin/fixtures` para sincronizar archivos TOML de co
 
 - ✅ Ya que tenemos una forma de comprar y adquirir dominios tenemos margenes de ganacias (pequeños). 
 - ✅ Me falto decir que el cliente pueda cambiar las dns de su hosting *(DnsManager component + client endpoints)*
-- Que las imagenes de inicio del carrusel que esten en w=1200&q=80
--
+- ✅ Que las imagenes de inicio del carrusel esten en w=1200&q=80 *(CarruselShowcase ahora fuerza fixedWidth=1200 y quality=80 para evitar buckets mayores por DPR)*
 
 
 ## Notas de infraestructura
@@ -75,6 +74,7 @@ Implementado `GET/POST /api/admin/fixtures` para sincronizar archivos TOML de co
 - **nakomi.studio**: VPS1 (66.94.100.241), Coolify service `do8k4w8swccwwogoc0os0ck0`
 - **VPS2 Coolify**: Configurado en settings.json
 - **[164A-19] Panel admin de infraestructura**: `Despliegues VPS2` ahora lista servicios reales desde Coolify y `Contabo VPS` queda separado para mostrar solo la capa proveedor.
+- **[164A-20] Carrusel del inicio**: las imágenes del showcase ahora salen por `/api/img/...?...w=1200&q=80` con ancho fijo de optimización, sin escalar a buckets mayores por DPR.
 - **Deploy**: Siempre via coolify-manager-rs, nunca desde Coolify UI (ver doc de persistencia volúmenes)
 - **Volúmenes**: Documentado en `Agente/documentacion/hosting/coolify-volumenes-persistencia-2026-04-12.md`
 - **[164A-18] Fix aplicado**: Dockerfile.rust actualizado con `gosu` entrypoint para corregir permisos de volúmenes montados (`root:root` → `appuser`). Fix inmediato aplicado en producción via chown directo. Detalle en `Agente/completados/tareas-2026-04-16.md`.

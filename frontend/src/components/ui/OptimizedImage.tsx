@@ -12,6 +12,8 @@ interface OptimizedImageProps {
     width?: number;
     height?: number;
     className?: string;
+    /** Fuerza un ancho exacto de optimización y desactiva srcSet responsive. */
+    fixedWidth?: number;
     /** Hint manual para el navegador cuando el layout ya es conocido. */
     sizes?: string;
     /** Calidad de compresión 10-100 (default: 80) */
@@ -32,6 +34,7 @@ export default function OptimizedImage({
     width,
     height,
     className,
+    fixedWidth,
     sizes = '100vw',
     quality = 80,
     noOptimize = false,
@@ -51,6 +54,7 @@ export default function OptimizedImage({
     } = useOptimizedImage({
         src,
         width,
+        fixedWidth,
         sizes,
         quality,
         noOptimize,

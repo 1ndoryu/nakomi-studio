@@ -102,10 +102,10 @@ export const CarruselShowcase: React.FC = () => {
                                         src={proyecto.imagen}
                                         alt={proyecto.titulo}
                                         className="carruselImagen"
-                                        /* [124A-IMG] Sizes realista: la imagen tiene altura fija (400-600px)
-                                         * y ancho proporcional. En desktop puede llegar a 800-900px para ratio 3:2. */
-                                        sizes="(min-width: 1440px) min(85vw, 900px), (min-width: 768px) min(80vw, 800px), 90vw"
-                                        quality={85}
+                                        /* [164A-20] El inicio no debe escalar por DPR en este carrusel.
+                                         * Forzamos proxy fijo a w=1200&q=80 para evitar sobredescarga. */
+                                        fixedWidth={1200}
+                                        quality={80}
                                         loading={isFirst ? 'eager' : 'lazy'}
                                         fetchPriority={isFirst ? 'high' : 'auto'}
                                         draggable={false}
