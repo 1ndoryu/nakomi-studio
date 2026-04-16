@@ -52,11 +52,11 @@ Causa raíz: image-webp 0.2.4 solo soporta WebP lossless → 1.5MB por imagen. S
 ### ~~3. Error react-helmet-async + redirect a localhost~~ ✅ COMPLETADO
 npm install restauró react-helmet-async. Redirect arreglado con resolve_public_base_url() que lee Origin/Referer headers.
 
-### 4. Sincronización de env locales con producción
-Tarea para coolify-manager-rs. Pendiente.
+### ~~4. Sincronización de env locales con producción~~ ✅ COMPLETADO
+Implementado en coolify-manager-rs: comando `sync-env --name <sitio> --direction diff|push|pull [--dry-run] [--env-file <path>]`. Compara .env local con vars de Coolify API, soporta push bulk y pull a archivo local con output coloreado y mascarado para secrets.
 
-### 5. API del CMS — edición de contenido
-Pendiente. Las APIs de contenido (content/*.toml) necesitan endpoints CRUD.
+### ~~5. API del CMS — edición de contenido~~ ✅ COMPLETADO
+Implementado `GET/POST /api/admin/fixtures` para sincronizar archivos TOML de content/ con BD desde el panel admin. Frontend: hook `useFixtureSync` + bloque UI en SeccionConfiguracion.
 
 ### Pendientes menores
 - ~~Cambiar "Hosting" → "Hosting WordPress" en nav/soluciones con logo WP~~ ✅ COMPLETADO
