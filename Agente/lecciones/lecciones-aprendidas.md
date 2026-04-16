@@ -101,6 +101,10 @@
 - Si un producto ya tiene backend propio de suscripcion (`/api/hosting/subscribe`), la UI publica no debe seguir entrando por `/api/orders` aunque visualmente reuse cards o modales de compra.
 - Un `404` en checkout puede venir de un contrato de dominio equivocado: en este caso `service_slug = hosting` no existia en el catalogo de ordenes, asi que la solucion correcta fue mover el flujo al endpoint real de hosting, no inventar aliases en orders.
 
+## Infra admin - proveedor no equivale a deployment
+- Si el panel pide “despliegues reales”, la fuente correcta es la capa de orquestacion (Coolify, Kubernetes, etc.), no la API del proveedor de VPS.
+- Contabo responde “que servidores existen”; Coolify responde “que servicios estan desplegados”. Mezclar ambas capas permite cerrar tareas en falso y oculta orfandades reales entre deployment y suscripcion.
+
 ## Commit-por-tarea — no acumular cambios
 - Si el protocolo dice "un commit por tarea", cumplirlo inmediatamente después de validar, no al "final de la sesión" ni "cuando haya tiempo". Acumular 3+ tareas sin commit significa que un solo error en git rompe todo el trabajo.
 - El push es parte del cierre de la tarea. Si no se hizo push, la tarea no está cerrada.

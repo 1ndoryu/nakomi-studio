@@ -44,7 +44,7 @@ Causa raíz: image-webp 0.2.4 solo soporta WebP lossless → 1.5MB por imagen. S
 - ✅ Que pueda ver su ram y status (Docker stats vía SSH)
 - ✅ Que no pueda cambiar sus valores asignados
 - ✅ Necesito una forma de testear la compra de hosting *(admin-test-subscribe: bypass Stripe)*
-- ✅ Que todos los despliegues de vps2 salgan en panel admin (Contabo API)
+- ✅ Que todos los despliegues reales de VPS2 salgan en panel admin (Coolify services en tab separado; Contabo queda como vista de infraestructura)
 - ✅ Eliminar hosting del panel borra el hosting real en Coolify
 - ✅ Asegurar que VPS1 no esté relacionada (solo VPS2 configurada en CoolifyConfig)
 - ✅ Que el cliente pueda cambiar las DNS de su hosting *(DnsManager + client endpoints)*
@@ -66,13 +66,15 @@ Implementado `GET/POST /api/admin/fixtures` para sincronizar archivos TOML de co
 
 - ✅ Ya que tenemos una forma de comprar y adquirir dominios tenemos margenes de ganacias (pequeños). 
 - ✅ Me falto decir que el cliente pueda cambiar las dns de su hosting *(DnsManager component + client endpoints)*
-
+- Que las imagenes de inicio del carrusel que esten en w=1200&q=80
+-
 
 
 ## Notas de infraestructura
 
 - **nakomi.studio**: VPS1 (66.94.100.241), Coolify service `do8k4w8swccwwogoc0os0ck0`
 - **VPS2 Coolify**: Configurado en settings.json
+- **[164A-19] Panel admin de infraestructura**: `Despliegues VPS2` ahora lista servicios reales desde Coolify y `Contabo VPS` queda separado para mostrar solo la capa proveedor.
 - **Deploy**: Siempre via coolify-manager-rs, nunca desde Coolify UI (ver doc de persistencia volúmenes)
 - **Volúmenes**: Documentado en `Agente/documentacion/hosting/coolify-volumenes-persistencia-2026-04-12.md`
 - **[164A-18] Fix aplicado**: Dockerfile.rust actualizado con `gosu` entrypoint para corregir permisos de volúmenes montados (`root:root` → `appuser`). Fix inmediato aplicado en producción via chown directo. Detalle en `Agente/completados/tareas-2026-04-16.md`.

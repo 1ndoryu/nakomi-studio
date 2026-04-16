@@ -247,6 +247,25 @@ pub struct HostingStatsResponse {
     pub containers: Option<Vec<crate::services::docker_stats::ContainerStats>>,
 }
 
+/* [164A-19] Despliegues reales de VPS2 en el panel admin.
+ * Expone el estado de Coolify enriquecido con el vínculo opcional a suscripciones
+ * de hosting guardadas en la BD para detectar drift entre panel e infraestructura. */
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CoolifyDeploymentResponse {
+    pub uuid: String,
+    pub name: String,
+    pub status: String,
+    pub fqdn: Option<String>,
+    pub server_uuid: Option<String>,
+    pub server_name: Option<String>,
+    pub project_uuid: Option<String>,
+    pub environment_name: Option<String>,
+    pub linked_subscription_id: Option<Uuid>,
+    pub linked_subscription_domain: Option<String>,
+    pub linked_subscription_status: Option<String>,
+    pub linked_subscription_plan: Option<String>,
+}
+
 /* ============================================================
    TESTS — [094A-10] Validación de modelos hosting
    ============================================================ */

@@ -1,3 +1,7 @@
+/* sentinel-disable-file limite-lineas: servicio central de integracion Coolify.
+ * Agrupa create/list/start/stop/restart/update para que el dominio de hosting no
+ * disperse llamadas HTTP y parsing de la API en varios handlers.
+ */
 /* [104A-42] Servicio de provisioning Coolify para hosting administrado.
  * [154A-11] Cambiado de WordPress+MariaDB a Nginx puro vía docker_compose_raw.
  * Lee configuración desde variables de entorno COOLIFY_*.
@@ -9,6 +13,7 @@ use rand::distributions::Alphanumeric;
 use rand::Rng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tracing;
 
 use crate::errors::AppError;
@@ -98,11 +103,117 @@ pub struct CoolifyProvisionResult {
     pub sftp_port: i32,
 }
 
+/* [164A-19] Resumen de servicios reales devueltos por Coolify.
+ * Se usa para poblar el panel admin con despliegues de la VPS2, no con la lista
+ * de instancias del proveedor. Los campos opcionales vienen de la API y no siempre
+ * están presentes según la versión de Coolify o el tipo de servicio. */
+#[derive(Debug, Clone)]
+pub struct CoolifyServiceSummary {
+    pub uuid: String,
+    pub name: String,
+    pub status: String,
+    pub fqdn: Option<String>,
+    pub server_uuid: Option<String>,
+    pub server_name: Option<String>,
+    pub project_uuid: Option<String>,
+    pub environment_name: Option<String>,
+}
+
 /* ============================================================
    SERVICIO
    ============================================================ */
 
 pub struct CoolifyService;
+
+fn read_nested_string(value: &Value, path: &[&str]) -> Option<String> {
+    let mut current = value;
+    for segment in path {
+        current = current.get(*segment)?;
+    }
+
+    current
+        .as_str()
+        .map(str::trim)
+        .filter(|candidate| !candidate.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn read_first_string(value: &Value, paths: &[&[&str]]) -> Option<String> {
+    paths.iter().find_map(|path| read_nested_string(value, path))
+}
+
+fn extract_service_fqdn(value: &Value) -> Option<String> {
+    read_first_string(
+        value,
+        &[&["fqdn"], &["destination", "fqdn"], &["service", "fqdn"]],
+    )
+    .or_else(|| {
+        value
+            .get("domains")
+            .and_then(Value::as_array)
+            .and_then(|domains| {
+                domains.iter().find_map(|domain| {
+                    domain
+                        .as_str()
+                        .map(str::trim)
+                        .filter(|candidate| !candidate.is_empty())
+                        .map(ToOwned::to_owned)
+                        .or_else(|| {
+                            domain
+                                .get("domain")
+                                .and_then(Value::as_str)
+                                .map(str::trim)
+                                .filter(|candidate| !candidate.is_empty())
+                                .map(ToOwned::to_owned)
+                        })
+                        .or_else(|| {
+                            domain
+                                .get("fqdn")
+                                .and_then(Value::as_str)
+                                .map(str::trim)
+                                .filter(|candidate| !candidate.is_empty())
+                                .map(ToOwned::to_owned)
+                        })
+                })
+            })
+    })
+}
+
+fn parse_service_summary(value: &Value) -> Option<CoolifyServiceSummary> {
+    let uuid = read_first_string(value, &[&["uuid"]])?;
+    let name = read_first_string(value, &[&["name"]])?;
+
+    Some(CoolifyServiceSummary {
+        uuid,
+        name,
+        status: read_first_string(value, &[&["status"], &["deployment_status"]])
+            .unwrap_or_else(|| "unknown".to_string()),
+        fqdn: extract_service_fqdn(value),
+        server_uuid: read_first_string(
+            value,
+            &[&["server_uuid"], &["server", "uuid"], &["server", "server_uuid"]],
+        ),
+        server_name: read_first_string(value, &[&["server_name"], &["server", "name"]]),
+        project_uuid: read_first_string(value, &[&["project_uuid"], &["project", "uuid"]]),
+        environment_name: read_first_string(
+            value,
+            &[&["environment_name"], &["environment", "name"]],
+        ),
+    })
+}
+
+fn service_matches_target(service: &CoolifyServiceSummary, config: &CoolifyConfig) -> bool {
+    let matches_server = service
+        .server_uuid
+        .as_deref()
+        .is_none_or(|server_uuid| server_uuid == config.server_uuid);
+    let matches_project = service
+        .project_uuid
+        .as_deref()
+        .is_none_or(|project_uuid| project_uuid == config.project_uuid);
+
+    matches_server && matches_project
+}
 
 /* [164A-6] Genera el compose YAML para un hosting WordPress + MariaDB + SSH/SFTP.
  * [164A-16] Hardening: imágenes pineadas, network isolation, cap_drop ALL,
@@ -207,6 +318,65 @@ fn build_compose_backup() -> String {
 }
 
 impl CoolifyService {
+    /* [164A-19] Lista despliegues reales visibles en Coolify para la VPS2 configurada.
+     * La tarea original confundía "instancia VPS" con "servicio desplegado"; este método
+     * corrige esa frontera leyendo directamente `/api/v1/services` y filtrando por target. */
+    pub async fn list_services(
+        http_client: &Client,
+        config: &CoolifyConfig,
+    ) -> Result<Vec<CoolifyServiceSummary>, AppError> {
+        let url = format!("{}/api/v1/services", config.base_url);
+        let resp = http_client
+            .get(&url)
+            .bearer_auth(&config.api_token)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Coolify list services request failed: {e}")))?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            tracing::error!("[Coolify] Error listando servicios: {} — {}", status, body);
+            return Err(AppError::Internal(format!(
+                "Coolify list services failed: {status}"
+            )));
+        }
+
+        let payload: Value = resp
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Coolify list services parse error: {e}")))?;
+
+        let services_raw = payload.as_array().ok_or_else(|| {
+            AppError::Internal("Coolify list services parse error: expected array".into())
+        })?;
+
+        let mut services = Vec::new();
+        let mut skipped = 0usize;
+
+        for service_value in services_raw {
+            let Some(service) = parse_service_summary(service_value) else {
+                skipped += 1;
+                continue;
+            };
+
+            if service_matches_target(&service, config) {
+                services.push(service);
+            }
+        }
+
+        if skipped > 0 {
+            tracing::warn!(
+                "[Coolify] {} servicio(s) omitidos del panel por respuesta incompleta.",
+                skipped
+            );
+        }
+
+        services.sort_by(|left, right| left.name.cmp(&right.name).then(left.uuid.cmp(&right.uuid)));
+
+        Ok(services)
+    }
+
     /// Provision completo: crea servicio `WordPress` en Coolify y lo arranca.
     /// Usa `docker_compose_raw` con `WordPress` + `MariaDB` + SSH/SFTP.
     /// El nombre de servicio garantiza idempotencia (Coolify rechaza duplicados).
@@ -571,6 +741,7 @@ mod tests {
     use super::*;
     use uuid::Uuid;
     use chrono::Utc;
+    use serde_json::json;
 
     fn test_plan_config(plan_name: &str) -> HostingPlanConfig {
         HostingPlanConfig {
@@ -607,6 +778,96 @@ mod tests {
         assert_eq!(millicores_to_cpu(10), "0.01");
         assert_eq!(millicores_to_cpu(100), "0.10");
         assert_eq!(millicores_to_cpu(4000), "4.00");
+    }
+
+    #[test]
+    fn parse_service_summary_reads_flat_service_payload() {
+        let payload = json!({
+            "uuid": "svc-123",
+            "name": "hosting-demo",
+            "status": "running",
+            "server_uuid": "srv-vps2",
+            "server_name": "vps2",
+            "project_uuid": "project-1",
+            "environment_name": "production",
+            "domains": ["https://demo.example.com"]
+        });
+
+        let service = parse_service_summary(&payload).expect("service parse");
+
+        assert_eq!(service.uuid, "svc-123");
+        assert_eq!(service.name, "hosting-demo");
+        assert_eq!(service.status, "running");
+        assert_eq!(service.fqdn.as_deref(), Some("https://demo.example.com"));
+        assert_eq!(service.server_uuid.as_deref(), Some("srv-vps2"));
+        assert_eq!(service.server_name.as_deref(), Some("vps2"));
+        assert_eq!(service.project_uuid.as_deref(), Some("project-1"));
+        assert_eq!(service.environment_name.as_deref(), Some("production"));
+    }
+
+    #[test]
+    fn parse_service_summary_reads_nested_service_payload() {
+        let payload = json!({
+            "uuid": "svc-456",
+            "name": "wordpress-demo",
+            "deployment_status": "healthy",
+            "fqdn": "https://wp.example.com",
+            "server": {
+                "uuid": "srv-vps2",
+                "name": "vps2"
+            },
+            "project": {
+                "uuid": "project-1"
+            },
+            "environment": {
+                "name": "production"
+            }
+        });
+
+        let service = parse_service_summary(&payload).expect("service parse");
+
+        assert_eq!(service.status, "healthy");
+        assert_eq!(service.fqdn.as_deref(), Some("https://wp.example.com"));
+        assert_eq!(service.server_uuid.as_deref(), Some("srv-vps2"));
+        assert_eq!(service.project_uuid.as_deref(), Some("project-1"));
+        assert_eq!(service.environment_name.as_deref(), Some("production"));
+    }
+
+    #[test]
+    fn service_matches_target_rejects_other_server_or_project() {
+        let config = CoolifyConfig {
+            base_url: "https://coolify.example.com".to_string(),
+            api_token: "token".to_string(),
+            server_uuid: "srv-vps2".to_string(),
+            project_uuid: "project-vps2".to_string(),
+            server_ip: "10.0.0.2".to_string(),
+            ssh_key_path: None,
+        };
+
+        let matching = CoolifyServiceSummary {
+            uuid: "svc-1".to_string(),
+            name: "hosting-a".to_string(),
+            status: "running".to_string(),
+            fqdn: None,
+            server_uuid: Some("srv-vps2".to_string()),
+            server_name: None,
+            project_uuid: Some("project-vps2".to_string()),
+            environment_name: Some("production".to_string()),
+        };
+
+        let other_server = CoolifyServiceSummary {
+            server_uuid: Some("srv-vps1".to_string()),
+            ..matching.clone()
+        };
+
+        let other_project = CoolifyServiceSummary {
+            project_uuid: Some("project-vps1".to_string()),
+            ..matching.clone()
+        };
+
+        assert!(service_matches_target(&matching, &config));
+        assert!(!service_matches_target(&other_server, &config));
+        assert!(!service_matches_target(&other_project, &config));
     }
 
     /* --- service_name_for --- */

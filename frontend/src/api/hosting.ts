@@ -317,6 +317,27 @@ export async function apiGetHostingStats(id: string): Promise<HostingStatsData> 
     return data;
 }
 
+export interface CoolifyDeployment {
+    uuid: string;
+    name: string;
+    status: string;
+    fqdn: string | null;
+    server_uuid: string | null;
+    server_name: string | null;
+    project_uuid: string | null;
+    environment_name: string | null;
+    linked_subscription_id: string | null;
+    linked_subscription_domain: string | null;
+    linked_subscription_status: string | null;
+    linked_subscription_plan: string | null;
+}
+
+/* [164A-19] Despliegues reales de Coolify filtrados para la VPS2 configurada. */
+export async function apiListVps2Deployments(): Promise<CoolifyDeployment[]> {
+    const {data} = await axiosInstance.get<CoolifyDeployment[]>('/api/hosting/deployments');
+    return data;
+}
+
 export interface VpsSummary {
     instance_id: number;
     name: string;

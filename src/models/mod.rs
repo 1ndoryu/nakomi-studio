@@ -87,7 +87,7 @@ pub use user::{
     UpdateProfileRequest, User, UserResponse, UserRole,
 };
 pub use hosting::{
-    CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
     PublicHostingPlan,
     HostingSubscription, HostingSubscriptionResponse, SelfSubscribeRequest,
     SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,

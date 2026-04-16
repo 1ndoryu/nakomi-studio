@@ -5,13 +5,15 @@
  * Admin puede gestionar todo. Clientes pueden actualizar dominio/plan de sus propias
  * suscripciones y solicitar cancelación.
  * [084A-4] Cliente ahora puede editar su suscripción y solicitar cancelación.
- * [084A-24] Endpoints Contabo VPS + Stripe hosting checkout. */
+ * [084A-24] Endpoints Contabo VPS + Stripe hosting checkout.
+ * [164A-19] Añade despliegues reales de Coolify para VPS2 en panel admin. */
 
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::get;
 use axum::{Json, Router};
 use rand::Rng;
+use std::collections::HashMap;
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 use uuid::Uuid;
 use validator::Validate;
@@ -19,7 +21,7 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
     PublicHostingPlan,
     HostingSubscriptionResponse, SelfSubscribeRequest, SelfSubscribeResponse,
     UpdateHostingRequest, UpdateHostingStatusRequest, UpdatePlanConfigRequest, UserRole,
@@ -953,6 +955,94 @@ pub async fn get_hosting_stats(
 }
 
 /* ============================================================
+   DESPLIEGUES REALES VPS2 — Coolify (solo admin)
+   [164A-19] Corrige la tarea mal cerrada: Contabo lista servidores, no despliegues.
+   ============================================================ */
+
+/// Listar despliegues reales de la VPS2 configurada en Coolify (admin only)
+#[utoipa::path(
+    get,
+    path = "/api/hosting/deployments",
+    responses(
+        (status = 200, description = "Lista de despliegues reales en Coolify VPS2", body = Vec<CoolifyDeploymentResponse>),
+        (status = 403, description = "Sin permisos"),
+        (status = 503, description = "Coolify no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn list_vps2_deployments(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<Vec<CoolifyDeploymentResponse>>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let config = state.coolify_config.as_ref().ok_or_else(|| {
+        AppError::ServiceUnavailable(
+            "Coolify no está configurado para listar despliegues reales de la VPS2".into(),
+        )
+    })?;
+
+    let services = CoolifyService::list_services(&state.http_client, config).await?;
+    let subscriptions = HostingRepository::list_all(&state.pool).await?;
+
+    let subscriptions_by_uuid: HashMap<&str, _> = subscriptions
+        .iter()
+        .filter_map(|subscription| {
+            subscription
+                .server_uuid
+                .as_deref()
+                .map(|server_uuid| (server_uuid, subscription))
+        })
+        .collect();
+    let subscriptions_by_name: HashMap<&str, _> = subscriptions
+        .iter()
+        .filter_map(|subscription| {
+            subscription
+                .coolify_site_name
+                .as_deref()
+                .map(|site_name| (site_name, subscription))
+        })
+        .collect();
+
+    let mut deployments: Vec<CoolifyDeploymentResponse> = services
+        .into_iter()
+        .map(|service| {
+            let linked_subscription = subscriptions_by_uuid
+                .get(service.uuid.as_str())
+                .copied()
+                .or_else(|| subscriptions_by_name.get(service.name.as_str()).copied());
+
+            CoolifyDeploymentResponse {
+                uuid: service.uuid,
+                name: service.name,
+                status: service.status,
+                fqdn: service.fqdn,
+                server_uuid: service.server_uuid,
+                server_name: service.server_name,
+                project_uuid: service.project_uuid,
+                environment_name: service.environment_name,
+                linked_subscription_id: linked_subscription.map(|subscription| subscription.id),
+                linked_subscription_domain: linked_subscription.and_then(|subscription| subscription.domain.clone()),
+                linked_subscription_status: linked_subscription.map(|subscription| subscription.status.clone()),
+                linked_subscription_plan: linked_subscription.map(|subscription| subscription.plan.clone()),
+            }
+        })
+        .collect();
+
+    deployments.sort_by(|left, right| {
+        right
+            .linked_subscription_id
+            .is_some()
+            .cmp(&left.linked_subscription_id.is_some())
+            .then(left.name.cmp(&right.name))
+            .then(left.uuid.cmp(&right.uuid))
+    });
+
+    Ok(Json(deployments))
+}
+
+/* ============================================================
    VPS STATS — Proxy a Contabo API (solo admin)
    [084A-24] Permite al panel admin ver estado real de las VPS
    ============================================================ */
@@ -1651,6 +1741,8 @@ pub fn hosting_routes() -> Router<AppState> {
             axum::routing::post(subscribe_self)
                 .layer(GovernorLayer { config: std::sync::Arc::new(subscribe_gov) }),
         )
+        /* [164A-19] Despliegues reales de Coolify en VPS2 */
+        .route("/hosting/deployments", get(list_vps2_deployments))
         /* [084A-24] VPS stats: proxy a Contabo API */
         .route("/hosting/vps", get(list_vps))
         .route("/hosting/vps/:instance_id", get(get_vps))

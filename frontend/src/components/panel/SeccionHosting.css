@@ -43,6 +43,7 @@
 /* [074A-63] Tabs como en SeccionProyectos */
 .hostingTabs {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-xs);
     border-bottom: 1px solid var(--bg-item-active);
     padding-bottom: 0;
@@ -218,9 +219,8 @@
     top: 100%;
     right: 0;
     background: var(--bg-primary);
-    border: 1px solid var(--bg-accent);
+    border: 1px solid var(--border-hover);
     border-radius: var(--radius-md);
-    box-shadow: 0 4px 16px var(--border-light);
     z-index: 100;
     min-width: 140px;
     overflow: hidden;

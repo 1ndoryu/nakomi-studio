@@ -4,7 +4,8 @@
  * [054A-17] Corregidos: <button>→<Button>, inline styles→CSS classes, overlay→MenuContextual.
  * [074A-63] Tabs Activos/Inactivos como en SeccionProyectos. Titulo de card = dominio o nombre del hosting.
  *           Logica de estado extraida a useSeccionHosting. Sub-componentes en HostingSubComponents.
- * [084A-24] Tab "Servidores" para admin: muestra VPS reales de Contabo. */
+ * [084A-24] Tab "Servidores" para admin: muestra VPS reales de Contabo.
+ * [164A-19] Tab separado para despliegues reales de VPS2 desde Coolify. */
 
 import React from 'react';
 import {Server, Plus} from 'lucide-react';
@@ -15,6 +16,7 @@ import {HostingCard, CreateHostingForm} from './HostingSubComponents';
 import {HostingDetalle} from './HostingDetalle';
 import {HostingPlanSelector} from './HostingPlanSelector';
 import {VpsPanel} from './VpsPanel';
+import {Vps2DeploymentsPanel} from './Vps2DeploymentsPanel';
 import {VpsSubscriptionsPanel} from './VpsSubscriptionsPanel';
 import './SeccionHosting.css';
 
@@ -139,10 +141,20 @@ export const SeccionHosting: React.FC = () => {
                     <Button
                         type="button"
                         variante="texto"
+                        className={`hostingTab ${tabActiva === 'deployments' ? 'hostingTab--activa' : ''}`}
+                        onClick={() => setTabActiva('deployments')}
+                    >
+                        Despliegues VPS2
+                    </Button>
+                )}
+                {isAdmin && (
+                    <Button
+                        type="button"
+                        variante="texto"
                         className={`hostingTab ${tabActiva === 'servidores' ? 'hostingTab--activa' : ''}`}
                         onClick={() => setTabActiva('servidores')}
                     >
-                        Servidores
+                        Contabo VPS
                     </Button>
                 )}
             </div>
@@ -157,6 +169,8 @@ export const SeccionHosting: React.FC = () => {
                     approveLoading={approveMutation.isPending}
                     rejectLoading={rejectMutation.isPending}
                 />
+            ) : tabActiva === 'deployments' && isAdmin ? (
+                <Vps2DeploymentsPanel />
             ) : tabActiva === 'servidores' && isAdmin ? (
                 <VpsPanel />
             ) : subscriptions.length === 0 ? (
