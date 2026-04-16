@@ -60,7 +60,7 @@ Implementado `GET/POST /api/admin/fixtures` para sincronizar archivos TOML de co
 
 ### Pendientes menores
 - ~~Cambiar "Hosting" → "Hosting WordPress" en nav/soluciones con logo WP~~ ✅ COMPLETADO
-- Planificar solución de hosting compartido + reventa VPS Contabo (márgenes, SSH sin branding, aprobación humana)
+- ~~Planificar solución de hosting compartido + reventa VPS Contabo~~ ✅ COMPLETADO — Plan completo en `Agente/planes/plan-hosting-compartido-reventa-vps-2026-04-15.md`. Decisiones pendientes del usuario (precios finales, alcance VPS, aprobación).
 
 - ~~el backend local no funciona~~ ✅ CORREGIDO — BD tenía migraciones de proyecto anterior (restaurant/CRM). Reset DB resolvió `VersionMissing(20260325100000)`.
 
