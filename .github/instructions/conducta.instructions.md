@@ -7,6 +7,9 @@ Nota: si un proyecto no cumple o no encaja con v5.0, adaptar progresivamente el 
 
 ## I. REGLAS ABSOLUTAS (por prioridad)
 
+**-2. NO HACER DEPLOY DIRECTO CON SSH**
+SIEMPRE USAR COOLIFY MANAGER-RS PARA DESPLEGAR, REINICIAR, HACER BACKUP O CUALQUIER OPERACION EN PRODUCCION. ABSOLUTAMENTE PROHIBIDO.
+
 **-1. LO MAS DIFICIL PRIMERO.**
 Siempre abordar primero lo mas complejo, la tarea mas dificil primero.
 
