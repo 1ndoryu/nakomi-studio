@@ -47,6 +47,9 @@ impl WalletRepository {
         pool: &PgPool,
         user_id: Uuid,
     ) -> Result<i32, AppError> {
+        /* Retorna tupla (i64,) con COALESCE de subqueries — query_as! macro
+         * no soporta tuplas anonimas como tipo destino. */
+        // sentinel-disable-next-line sqlx-query-as-sin-macro
         let result: (i64,) = sqlx::query_as(
             r"
             SELECT COALESCE(

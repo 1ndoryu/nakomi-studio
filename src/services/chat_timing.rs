@@ -274,16 +274,7 @@ impl ChatTimingService {
             session_id,
             visitor_name,
             rx,
-            deps.pool,
-            deps.ai_config,
-            deps.hub,
-            deps.notification_hub,
-            deps.http_client,
-            deps.stripe_key,
-            deps.visitor_id,
-            deps.user_id,
-            deps.context,
-            deps.email_config,
+            deps,
         ));
 
         tx
@@ -311,21 +302,11 @@ impl ChatTimingService {
 /* Máquina de estados del timing por sesión.
  * Recibe eventos, bufferea mensajes, decide cuándo responder.
  * Se ejecuta como tokio::spawn por cada sesión activa. */
-#[allow(clippy::too_many_arguments)]
 async fn session_timing_loop(
     session_id: Uuid,
     visitor_name: Option<String>,
     mut rx: mpsc::Receiver<TimingEvent>,
-    pool: PgPool,
-    ai_config: AiChatConfig,
-    hub: ChatHub,
-    notification_hub: NotificationHub,
-    http_client: reqwest::Client,
-    stripe_key: Option<String>,
-    visitor_id: String,
-    user_id: Option<Uuid>,
-    page_ctx: Option<String>,
-    email_config: Option<crate::services::EmailConfig>,
+    deps: TimingSessionDeps,
 ) {
     let mut buffer: Vec<String> = Vec::new();
     let mut is_typing = false;
@@ -367,18 +348,9 @@ async fn session_timing_loop(
         irrelevant_count = generate_ai_response(
             session_id,
             visitor_name.as_deref(),
-            &visitor_id,
-            user_id,
-            page_ctx.as_deref(),
             &combined,
             irrelevant_count,
-            &pool,
-            &ai_config,
-            &hub,
-            &notification_hub,
-            &http_client,
-            stripe_key.as_deref(),
-            email_config.as_ref(),
+            &deps,
         )
         .await;
     }
@@ -386,10 +358,10 @@ async fn session_timing_loop(
     /* [T-3] Al cerrar sesión, generar resumen de contexto para futuras conversaciones.
      * Usa modelo pequeño para resumir el historial y lo guarda en visitor_profiles. */
     tokio::spawn(generate_context_summary(
-        pool.clone(),
-        ai_config.clone(),
+        deps.pool.clone(),
+        deps.ai_config.clone(),
         session_id,
-        visitor_id,
+        deps.visitor_id,
     ));
 }
 
@@ -459,26 +431,16 @@ fn drain_pending(
  * Verifica sesión activa, clasifica relevancia, genera respuesta y escala si necesario.
  * [T-2] Envía rich_messages (service_cards, invoices) como mensajes separados.
  * Retorna el nuevo valor de irrelevant_count. */
-#[allow(clippy::too_many_arguments)]
 async fn generate_ai_response(
     session_id: Uuid,
     visitor_name: Option<&str>,
-    visitor_id: &str,
-    user_id: Option<Uuid>,
-    page_ctx: Option<&str>,
     combined: &str,
     mut irrelevant_count: u32,
-    pool: &PgPool,
-    ai_config: &AiChatConfig,
-    hub: &ChatHub,
-    notification_hub: &NotificationHub,
-    http_client: &reqwest::Client,
-    stripe_key: Option<&str>,
-    email_config: Option<&crate::services::EmailConfig>,
+    deps: &TimingSessionDeps,
 ) -> u32 {
     /* Verificar que la sesión sigue con IA activa */
     let session_ok = match crate::repositories::ChatRepository::find_session_by_id(
-        pool, session_id,
+        &deps.pool, session_id,
     )
     .await
     {
@@ -491,7 +453,7 @@ async fn generate_ai_response(
     }
 
     /* Clasificador de relevancia: filtrar off-topic con modelo pequeño */
-    if let Ok(false) = check_relevance(pool, ai_config, combined).await {
+    if let Ok(false) = check_relevance(&deps.pool, &deps.ai_config, combined).await {
         irrelevant_count += 1;
         let msg = if irrelevant_count >= MAX_IRRELEVANT_STREAK {
             irrelevant_count = 0;
@@ -503,7 +465,7 @@ async fn generate_ai_response(
              en lo que pueda ayudarte? Ofrecemos diseño web, desarrollo \
              de aplicaciones, branding y agentes IA."
         };
-        let _ = hub.send_message(session_id, "ai", Some("ai"), msg).await;
+        let _ = deps.hub.send_message(session_id, "ai", Some("ai"), msg).await;
         return irrelevant_count;
     }
 
@@ -516,10 +478,10 @@ async fn generate_ai_response(
     let ai_result = tokio::time::timeout(
         std::time::Duration::from_secs(90),
         AiChatService::generate_response(
-            pool, ai_config, http_client, stripe_key,
+            &deps.pool, &deps.ai_config, &deps.http_client, deps.stripe_key.as_deref(),
             crate::services::AiSessionContext {
-                session_id, visitor_id: Some(visitor_id), user_id,
-                context: page_ctx,
+                session_id, visitor_id: Some(&deps.visitor_id), user_id: deps.user_id,
+                context: deps.context.as_deref(),
             },
             combined,
         ),
@@ -544,7 +506,7 @@ async fn generate_ai_response(
 
     /* [T-2] Enviar rich messages (service_cards, invoices) antes del texto */
     for rm in &ai_resp.rich_messages {
-        let _ = hub
+        let _ = deps.hub
             .send_rich_message(
                 session_id, "ai", Some("ai"),
                 &rm.content, &rm.message_type, &rm.metadata,
@@ -552,12 +514,12 @@ async fn generate_ai_response(
             .await;
     }
 
-    let _ = hub
+    let _ = deps.hub
         .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
         .await;
 
     if ai_resp.needs_escalation {
-        send_escalation(pool, notification_hub, session_id, visitor_name, email_config).await;
+        send_escalation(&deps.pool, &deps.notification_hub, session_id, visitor_name, deps.email_config.as_ref()).await;
     }
 
     irrelevant_count
@@ -660,6 +622,8 @@ async fn send_escalation(
 
     /* [124A-ESC] Persistir is_escalated = true para que el panel muestre
      * el indicador al recargar sin depender solo del estado WS en memoria. */
+    /* UPDATE fire-and-forget; resultado descartado con let _ = */
+    // sentinel-disable-next-line sqlx-query-sin-macro
     let _ = sqlx::query(
         "UPDATE chat_sessions SET is_escalated = true, updated_at = NOW() WHERE id = $1"
     )

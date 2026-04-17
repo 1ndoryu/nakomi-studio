@@ -727,3 +727,7 @@
     color: var(--text-tertiary, #888);
     padding: var(--spacing-md, 1rem) 0;
 }
+
+.dnsErrorMessage {
+    color: var(--color-error, #ef4444);
+}

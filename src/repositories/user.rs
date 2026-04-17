@@ -483,6 +483,8 @@ impl UserRepository {
             avatar_url: Option<String>,
             display_name: Option<String>,
         }
+        /* ANY($1) con &[Uuid] no es compatible con query_as! macro. */
+        // sentinel-disable-next-line sqlx-query-as-sin-macro
         let rows = sqlx::query_as::<_, Row>(
             "SELECT id, avatar_url, display_name FROM users WHERE id = ANY($1)"
         )

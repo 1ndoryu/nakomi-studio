@@ -14,6 +14,8 @@ import {
     type CreateDnsRecordRequest,
 } from '../../api/hosting';
 import {Button} from '../ui/Button';
+import {Input} from '../ui/Input';
+import {Select} from '../ui/Select';
 import {toast} from '../../stores/toastStore';
 
 const DNS_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV', 'CAA'] as const;
@@ -102,7 +104,7 @@ export function DnsManager({subscriptionId}: Props) {
 
     if (error) {
         return (
-            <p className="hostingDetalleSectionDesc" style={{color: 'var(--color-error, #ef4444)'}}>
+            <p className="hostingDetalleSectionDesc dnsErrorMessage">
                 No se pudieron cargar los registros DNS. Es posible que el dominio no esté gestionado en nuestros servidores.
             </p>
         );
@@ -129,16 +131,16 @@ export function DnsManager({subscriptionId}: Props) {
                     <div className="dnsFormRow">
                         <label className="dnsFormField">
                             <span>Tipo</span>
-                            <select
+                            <Select
                                 value={form.type}
                                 onChange={e => setForm(f => ({...f, type: e.target.value}))}
                             >
                                 {DNS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
+                            </Select>
                         </label>
                         <label className="dnsFormField dnsFormField--name">
                             <span>Nombre</span>
-                            <input
+                            <Input
                                 type="text"
                                 value={form.name}
                                 onChange={e => setForm(f => ({...f, name: e.target.value}))}
@@ -148,7 +150,7 @@ export function DnsManager({subscriptionId}: Props) {
                         </label>
                         <label className="dnsFormField dnsFormField--value">
                             <span>Valor</span>
-                            <input
+                            <Input
                                 type="text"
                                 value={form.data}
                                 onChange={e => setForm(f => ({...f, data: e.target.value}))}
@@ -158,7 +160,7 @@ export function DnsManager({subscriptionId}: Props) {
                         </label>
                         <label className="dnsFormField">
                             <span>TTL</span>
-                            <input
+                            <Input
                                 type="number"
                                 value={form.ttl}
                                 onChange={e => setForm(f => ({...f, ttl: Number(e.target.value)}))}
@@ -168,7 +170,7 @@ export function DnsManager({subscriptionId}: Props) {
                         {(form.type === 'MX' || form.type === 'SRV') && (
                             <label className="dnsFormField">
                                 <span>Prioridad</span>
-                                <input
+                                <Input
                                     type="number"
                                     value={form.prio}
                                     onChange={e => setForm(f => ({
@@ -220,23 +222,27 @@ export function DnsManager({subscriptionId}: Props) {
                             <span className="dnsValue" title={record.data ?? ''}>{record.data}</span>
                             <span className="dnsTtl">{record.ttl}</span>
                             <span className="dnsActions">
-                                <button
+                                <Button
                                     type="button"
+                                    variante="texto"
+                                    tamano="pequeno"
                                     className="dnsActionBtn"
                                     title="Editar"
                                     onClick={() => startEdit(record)}
                                 >
                                     <Edit2 size={14} />
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="button"
+                                    variante="texto"
+                                    tamano="pequeno"
                                     className="dnsActionBtn dnsActionBtn--delete"
                                     title="Eliminar"
                                     onClick={() => { if (record.recordId != null) deleteMutation.mutate(record.recordId); }}
                                     disabled={deleteMutation.isPending}
                                 >
                                     <Trash2 size={14} />
-                                </button>
+                                </Button>
                             </span>
                         </div>
                     ))}
