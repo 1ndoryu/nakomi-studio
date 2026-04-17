@@ -151,7 +151,7 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                                     checked={form.inCarousel}
                                     onChange={e => form.setInCarousel(e.target.checked)}
                                 />
-                                Aparece en el carrusel del inicio
+                                Aparece en la galería del inicio
                             </label>
                             <label className="editorProyectoCheckboxLabel">
                                 <input
@@ -172,6 +172,14 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                             valor={form.imagenUrl}
                             onChange={form.setImagenUrl}
                             etiqueta="Imagen destacada"
+                        />
+
+                        {/* Imagen personalizada para la galería del hero (inicio).
+                         * Si no se sube, se usa la imagen destacada. */}
+                        <UploadImage
+                            valor={form.imagenGaleria}
+                            onChange={form.setImagenGaleria}
+                            etiqueta="Imagen para galería del inicio (opcional)"
                         />
 
                         {/* [124A-DETAIL1] Toggle: usar primera imagen de galería como portada en detalle */}

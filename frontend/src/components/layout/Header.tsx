@@ -72,6 +72,7 @@ export const Header: React.FC = () => {
     return (
         <>
             <header className="cabeceraPrincipal" role="banner">
+                <div className="cabeceraPrincipalInterior">
                 <div className="logoContenedor">
                     <GloryLink to="/" className="logoEnlace" aria-label={t('accessibility.logo_home')}>
                         <Logo className="logoSvg" />
@@ -138,6 +139,7 @@ export const Header: React.FC = () => {
                         {textoCta}
                         <ChevronRight size={14} strokeWidth={3} aria-hidden="true" />
                     </Button>
+                </div>
                 </div>
             </header>
 

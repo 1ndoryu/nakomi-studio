@@ -22,6 +22,7 @@ export interface AdminProject {
     client: string | null;
     description: string;
     featured_image: string | null;
+    gallery_image: string | null;
     gallery: GaleriaImagen[];
     categories: string[];
     technologies: string[];
@@ -46,6 +47,7 @@ export interface CreateProjectBody {
     client?: string;
     description?: string;
     featured_image?: string;
+    gallery_image?: string;
     gallery?: GaleriaImagen[];
     categories?: string[];
     technologies?: string[];
@@ -68,6 +70,7 @@ export interface UpdateProjectBody {
     client?: string;
     description?: string;
     featured_image?: string;
+    gallery_image?: string;
     gallery?: GaleriaImagen[];
     categories?: string[];
     technologies?: string[];

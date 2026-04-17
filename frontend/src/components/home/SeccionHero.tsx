@@ -1,13 +1,13 @@
 /**
  * Componente: SeccionHero
  * Descripcion: Seccion principal (Hero) de la pagina de bienvenida.
- * Muestra un titulo, descripcion, boton de llamada a la accion y un carrusel de imagenes.
+ * Muestra un titulo, descripcion, boton de llamada a la accion y una galería de imágenes.
  */
 
 import './SeccionHero.css';
 import {useTranslation} from 'react-i18next';
 import {Button} from '../ui/Button';
-import {CarruselShowcase} from './CarruselShowcase';
+import {GaleriaHero} from './GaleriaHero';
 
 export const SeccionHero = (): JSX.Element => {
     const {t} = useTranslation();
@@ -30,7 +30,7 @@ export const SeccionHero = (): JSX.Element => {
             </div>
 
             <div className="heroImagenFondo">
-                <CarruselShowcase />
+                <GaleriaHero />
             </div>
         </section>
     );

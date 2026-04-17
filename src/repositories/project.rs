@@ -15,6 +15,7 @@ pub struct CreateProjectParams<'a> {
     pub client: Option<&'a str>,
     pub description: &'a str,
     pub featured_image: Option<&'a str>,
+    pub gallery_image: Option<&'a str>,
     pub gallery: &'a serde_json::Value,
     pub categories: &'a serde_json::Value,
     pub technologies: &'a serde_json::Value,
@@ -38,6 +39,7 @@ pub struct UpdateProjectParams<'a> {
     pub client: Option<&'a str>,
     pub description: Option<&'a str>,
     pub featured_image: Option<&'a str>,
+    pub gallery_image: Option<&'a str>,
     pub gallery: Option<&'a serde_json::Value>,
     pub categories: Option<&'a serde_json::Value>,
     pub technologies: Option<&'a serde_json::Value>,
@@ -60,7 +62,7 @@ impl ProjectRepository {
     /// Lista proyectos publicados (público), ordenados por `sort_order` ASC, `created_at` DESC
     pub async fn list_published(pool: &PgPool) -> Result<Vec<Project>, sqlx::Error> {
         sqlx::query_as::<_, Project>(
-            "SELECT id, title, slug, client, description, featured_image,
+            "SELECT id, title, slug, client, description, featured_image, gallery_image,
                     gallery, categories, technologies, links, skills,
                     status, sort_order, is_featured, in_carousel, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                     created_at, updated_at
@@ -78,7 +80,7 @@ impl ProjectRepository {
         slug: &str,
     ) -> Result<Option<Project>, sqlx::Error> {
         sqlx::query_as::<_, Project>(
-            "SELECT id, title, slug, client, description, featured_image,
+            "SELECT id, title, slug, client, description, featured_image, gallery_image,
                     gallery, categories, technologies, links, skills,
                     status, sort_order, is_featured, in_carousel, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                     created_at, updated_at
@@ -93,7 +95,7 @@ impl ProjectRepository {
     /// Lista todos los proyectos (admin), sin filtro de status
     pub async fn list_all(pool: &PgPool) -> Result<Vec<Project>, sqlx::Error> {
         sqlx::query_as::<_, Project>(
-            "SELECT id, title, slug, client, description, featured_image,
+            "SELECT id, title, slug, client, description, featured_image, gallery_image,
                     gallery, categories, technologies, links, skills,
                     status, sort_order, is_featured, in_carousel, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                     created_at, updated_at
@@ -110,7 +112,7 @@ impl ProjectRepository {
         id: Uuid,
     ) -> Result<Option<Project>, sqlx::Error> {
         sqlx::query_as::<_, Project>(
-            "SELECT id, title, slug, client, description, featured_image,
+            "SELECT id, title, slug, client, description, featured_image, gallery_image,
                     gallery, categories, technologies, links, skills,
                     status, sort_order, is_featured, in_carousel, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                     created_at, updated_at
@@ -129,13 +131,13 @@ impl ProjectRepository {
     ) -> Result<Project, sqlx::Error> {
         sqlx::query_as::<_, Project>(
             "INSERT INTO projects
-                (title, slug, client, description, featured_image,
-                 gallery, categories, technologies, links, skills,
+                (title, slug, client, description, featured_image, gallery_image,
+                    gallery, categories, technologies, links, skills,
                  status, sort_order, is_featured, in_carousel, showcase_category,
                  detail_title, use_first_gallery_image, meta_title, meta_description)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-             RETURNING id, title, slug, client, description, featured_image,
-                       gallery, categories, technologies, links, skills,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+             RETURNING id, title, slug, client, description, featured_image, gallery_image,
+                    gallery, categories, technologies, links, skills,
                        status, sort_order, is_featured, in_carousel, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                        created_at, updated_at"
         )
@@ -144,6 +146,7 @@ impl ProjectRepository {
         .bind(params.client)
         .bind(params.description)
         .bind(params.featured_image)
+        .bind(params.gallery_image)
         .bind(params.gallery)
         .bind(params.categories)
         .bind(params.technologies)
@@ -175,24 +178,25 @@ impl ProjectRepository {
                 client = COALESCE($4, client),
                 description = COALESCE($5, description),
                 featured_image = COALESCE($6, featured_image),
-                gallery = COALESCE($7, gallery),
-                categories = COALESCE($8, categories),
-                technologies = COALESCE($9, technologies),
-                links = COALESCE($10, links),
-                skills = COALESCE($11, skills),
-                status = COALESCE($12, status),
-                sort_order = COALESCE($13, sort_order),
-                is_featured = COALESCE($14, is_featured),
-                in_carousel = COALESCE($15, in_carousel),
-                showcase_category = COALESCE($16, showcase_category),
-                detail_title = COALESCE($17, detail_title),
-                use_first_gallery_image = COALESCE($18, use_first_gallery_image),
-                meta_title = COALESCE($19, meta_title),
-                meta_description = COALESCE($20, meta_description),
+                gallery_image = COALESCE($7, gallery_image),
+                gallery = COALESCE($8, gallery),
+                categories = COALESCE($9, categories),
+                technologies = COALESCE($10, technologies),
+                links = COALESCE($11, links),
+                skills = COALESCE($12, skills),
+                status = COALESCE($13, status),
+                sort_order = COALESCE($14, sort_order),
+                is_featured = COALESCE($15, is_featured),
+                in_carousel = COALESCE($16, in_carousel),
+                showcase_category = COALESCE($17, showcase_category),
+                detail_title = COALESCE($18, detail_title),
+                use_first_gallery_image = COALESCE($19, use_first_gallery_image),
+                meta_title = COALESCE($20, meta_title),
+                meta_description = COALESCE($21, meta_description),
                 updated_at = NOW()
              WHERE id = $1
-             RETURNING id, title, slug, client, description, featured_image,
-                       gallery, categories, technologies, links, skills,
+             RETURNING id, title, slug, client, description, featured_image, gallery_image,
+                    gallery, categories, technologies, links, skills,
                        status, sort_order, is_featured, in_carousel, showcase_category, detail_title, use_first_gallery_image, meta_title, meta_description,
                        created_at, updated_at"
         )
@@ -202,6 +206,7 @@ impl ProjectRepository {
         .bind(params.client)
         .bind(params.description)
         .bind(params.featured_image)
+        .bind(params.gallery_image)
         .bind(params.gallery)
         .bind(params.categories)
         .bind(params.technologies)

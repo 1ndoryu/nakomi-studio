@@ -103,8 +103,8 @@ export const CarruselShowcase: React.FC = () => {
                                         alt={proyecto.titulo}
                                         className="carruselImagen"
                                         /* [164A-20] El inicio no debe escalar por DPR en este carrusel.
-                                         * Forzamos proxy fijo a w=1200&q=80 para evitar sobredescarga. */
-                                        fixedWidth={1200}
+                                         * Forzamos proxy fijo a w=1600&q=80 para evitar sobredescarga. */
+                                        fixedWidth={1600}
                                         quality={80}
                                         loading={isFirst ? 'eager' : 'lazy'}
                                         fetchPriority={isFirst ? 'high' : 'auto'}

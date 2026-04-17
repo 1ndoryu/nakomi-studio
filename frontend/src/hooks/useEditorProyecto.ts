@@ -15,6 +15,7 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
     const [descripcion, setDescripcion] = useState('');
     const [contenido, setContenido] = useState('');
     const [imagenUrl, setImagenUrl] = useState('');
+    const [imagenGaleria, setImagenGaleria] = useState('');
     /* [124A-PROJ1] Galería con layout (full/half) en vez de string[] */
     const [galeria, setGaleria] = useState<GaleriaImagen[]>([]);
     const [categorias, setCategorias] = useState<string[]>([]);
@@ -36,7 +37,7 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
 
     const resetear = useCallback(() => {
         setTitulo(''); setSlug(''); setCliente(''); setDescripcion('');
-        setContenido(''); setImagenUrl(''); setGaleria([]); setCategorias([]);
+        setContenido(''); setImagenUrl(''); setImagenGaleria(''); setGaleria([]); setCategorias([]);
         setTecnologias([]); setEnlaces([]); setSkills([]);
         setStatus('published'); setSortOrder(0);
         setMetaTitle(''); setMetaDescription(''); setShowcaseCategory('');
@@ -52,6 +53,7 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
             setDescripcion(proyecto.description);
             setContenido('');
             setImagenUrl(proyecto.featured_image ?? '');
+            setImagenGaleria(proyecto.gallery_image ?? '');
             setGaleria(proyecto.gallery);
             setCategorias(proyecto.categories);
             setTecnologias(proyecto.technologies);
@@ -77,6 +79,7 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
         client: cliente || undefined,
         description: descripcion || undefined,
         featured_image: imagenUrl || undefined,
+        gallery_image: imagenGaleria || undefined,
         gallery: galeria.length > 0 ? galeria : undefined,
         categories: categorias.length > 0 ? categorias : undefined,
         technologies: tecnologias.length > 0 ? tecnologias : undefined,
@@ -91,17 +94,18 @@ export function useEditorProyecto(proyecto: AdminProject | null, abierto: boolea
         use_first_gallery_image: useFirstGalleryImage,
         is_featured: isFeatured,
         in_carousel: inCarousel,
-    }), [titulo, slug, cliente, descripcion, imagenUrl, galeria, categorias,
+    }), [titulo, slug, cliente, descripcion, imagenUrl, imagenGaleria, galeria, categorias,
         tecnologias, enlaces, skills, status, sortOrder, metaTitle, metaDescription, showcaseCategory,
         detailTitle, useFirstGalleryImage, isFeatured, inCarousel]);
 
     return {
-        titulo, slug, cliente, descripcion, contenido, imagenUrl,
+        titulo, slug, cliente, descripcion, contenido, imagenUrl, imagenGaleria,
         galeria, categorias, tecnologias, enlaces, skills,
         status, sortOrder, metaTitle, metaDescription, showcaseCategory,
         detailTitle, useFirstGalleryImage,
         setTitulo, setSlug, setCliente, setDescripcion, setContenido,
         setImagenUrl, setGaleria, setCategorias, setTecnologias,
+        setImagenGaleria,
         setEnlaces, setSkills, setStatus, setSortOrder,
         setMetaTitle, setMetaDescription, setShowcaseCategory,
         setDetailTitle, setUseFirstGalleryImage,
