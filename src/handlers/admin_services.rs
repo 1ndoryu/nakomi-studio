@@ -1,4 +1,4 @@
-/* [074A-8] Handler CRUD de servicios para panel admin.
+﻿/* [074A-8] Handler CRUD de servicios para panel admin.
  * Endpoints: listar todos (incluyendo inactivos), crear, actualizar, archivar.
  * Solo accesible por admins. Los planes se incluyen en la respuesta de listado. */
 
@@ -16,7 +16,7 @@ use crate::models::{
     AdminServiceResponse, CreateServiceRequest, ReorderRequest, SaveServicePlansRequest,
     ServicePlanPhaseResponse, ServicePlanResponse, UpdateServiceRequest, UserRole,
 };
-use crate::repositories::OrderRepository;
+use crate::repositories::ServiceRepository;
 use crate::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -43,15 +43,15 @@ async fn list_all(
 ) -> Result<Json<Vec<AdminServiceResponse>>, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    let services = OrderRepository::list_all_services(&state.pool).await?;
+    let services = ServiceRepository::list_all_services(&state.pool).await?;
     let mut result = Vec::with_capacity(services.len());
 
     for svc in services {
-        let plans = OrderRepository::list_plans_for_service(&state.pool, svc.id).await?;
+        let plans = ServiceRepository::list_plans_for_service(&state.pool, svc.id).await?;
         let mut plan_responses = Vec::with_capacity(plans.len());
 
         for plan in plans {
-            let phases = OrderRepository::list_plan_phases(&state.pool, plan.id).await?;
+            let phases = ServiceRepository::list_plan_phases(&state.pool, plan.id).await?;
             plan_responses.push(ServicePlanResponse {
                 id: plan.id,
                 slug: plan.slug,
@@ -108,7 +108,7 @@ async fn create(
     auth.require_role(&[UserRole::Admin])?;
     body.validate().map_err(|e| AppError::Validation(e.to_string()))?;
 
-    let svc = OrderRepository::create_service(&state.pool, &body).await?;
+    let svc = ServiceRepository::create_service(&state.pool, &body).await?;
 
     let response = AdminServiceResponse {
         id: svc.id,
@@ -154,18 +154,18 @@ async fn update(
     auth.require_role(&[UserRole::Admin])?;
 
     /* Verificar que el servicio existe */
-    OrderRepository::find_service_by_id(&state.pool, id)
+    ServiceRepository::find_service_by_id(&state.pool, id)
         .await?
         .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
 
-    let svc = OrderRepository::update_service(&state.pool, id, &body).await?;
+    let svc = ServiceRepository::update_service(&state.pool, id, &body).await?;
 
     /* Incluir planes actualizados en la respuesta */
-    let plans = OrderRepository::list_plans_for_service(&state.pool, svc.id).await?;
+    let plans = ServiceRepository::list_plans_for_service(&state.pool, svc.id).await?;
     let mut plan_responses = Vec::with_capacity(plans.len());
 
     for plan in plans {
-        let phases = OrderRepository::list_plan_phases(&state.pool, plan.id).await?;
+        let phases = ServiceRepository::list_plan_phases(&state.pool, plan.id).await?;
         plan_responses.push(ServicePlanResponse {
             id: plan.id,
             slug: plan.slug,
@@ -218,17 +218,17 @@ async fn archive(
 ) -> Result<axum::http::StatusCode, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    OrderRepository::find_service_by_id(&state.pool, id)
+    ServiceRepository::find_service_by_id(&state.pool, id)
         .await?
         .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
 
-    OrderRepository::archive_service(&state.pool, id).await?;
+    ServiceRepository::archive_service(&state.pool, id).await?;
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 /* [074A-66] Guarda (reemplaza) todos los planes de un servicio.
- * Estrategia: DELETE CASCADE + INSERT en transacción — simple y consistente. */
+ * Estrategia: DELETE CASCADE + INSERT en transacciÃ³n â€” simple y consistente. */
 #[utoipa::path(
     put,
     path = "/api/admin/services/{id}/plans",
@@ -248,16 +248,16 @@ async fn save_plans(
     auth.require_role(&[UserRole::Admin])?;
     body.validate().map_err(|e| AppError::Validation(e.to_string()))?;
 
-    OrderRepository::find_service_by_id(&state.pool, id)
+    ServiceRepository::find_service_by_id(&state.pool, id)
         .await?
         .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
 
-    OrderRepository::save_plans_for_service(&state.pool, id, &body.plans).await?;
+    ServiceRepository::save_plans_for_service(&state.pool, id, &body.plans).await?;
 
-    let plans = OrderRepository::list_plans_for_service(&state.pool, id).await?;
+    let plans = ServiceRepository::list_plans_for_service(&state.pool, id).await?;
     let mut responses = Vec::with_capacity(plans.len());
     for plan in plans {
-        let phases = OrderRepository::list_plan_phases(&state.pool, plan.id).await?;
+        let phases = ServiceRepository::list_plan_phases(&state.pool, plan.id).await?;
         responses.push(ServicePlanResponse {
             id: plan.id,
             slug: plan.slug,
@@ -291,12 +291,12 @@ async fn reorder(
 ) -> Result<axum::http::StatusCode, AppError> {
     auth.require_role(&[UserRole::Admin])?;
     let items: Vec<(uuid::Uuid, i32)> = body.items.iter().map(|i| (i.id, i.sort_order)).collect();
-    OrderRepository::reorder_services(&state.pool, &items).await?;
+    ServiceRepository::reorder_services(&state.pool, &items).await?;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
-/* [084A-10] Eliminación permanente de un servicio.
- * Rechaza con 409 Conflict si existen órdenes que lo referencian. */
+/* [084A-10] EliminaciÃ³n permanente de un servicio.
+ * Rechaza con 409 Conflict si existen Ã³rdenes que lo referencian. */
 #[utoipa::path(
     post,
     path = "/api/admin/services/{id}/destroy",
@@ -304,7 +304,7 @@ async fn reorder(
     responses(
         (status = 204, description = "Servicio eliminado permanentemente"),
         (status = 404, description = "Servicio no encontrado"),
-        (status = 409, description = "No se puede eliminar: existen órdenes vinculadas")
+        (status = 409, description = "No se puede eliminar: existen Ã³rdenes vinculadas")
     ),
     security(("bearer_auth" = []))
 )]
@@ -315,17 +315,17 @@ async fn destroy(
 ) -> Result<axum::http::StatusCode, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    OrderRepository::find_service_by_id(&state.pool, id)
+    ServiceRepository::find_service_by_id(&state.pool, id)
         .await?
         .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
 
-    if OrderRepository::service_has_orders(&state.pool, id).await? {
+    if ServiceRepository::service_has_orders(&state.pool, id).await? {
         return Err(AppError::Conflict(
-            "No se puede eliminar: existen órdenes vinculadas a este servicio".into(),
+            "No se puede eliminar: existen Ã³rdenes vinculadas a este servicio".into(),
         ));
     }
 
-    OrderRepository::hard_delete_service(&state.pool, id).await?;
+    ServiceRepository::hard_delete_service(&state.pool, id).await?;
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

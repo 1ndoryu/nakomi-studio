@@ -7,6 +7,7 @@ mod hosting;
 mod note;
 mod notification;
 mod order;
+mod service;
 mod payment;
 mod payment_method;
 mod problem;
@@ -38,11 +39,14 @@ pub use deliverable::{
 };
 pub use note::{CreateNoteRequest, Note, PaginatedNotes, PaginationParams, UpdateNoteRequest};
 pub use order::{
-    AdminServiceResponse, CreateServiceRequest, UpdateServiceRequest,
-    Order, OrderPhase, OrderStatus, PaymentMode, PhaseStatus, ServicePlan, ServiceRecord,
-    ServicePlanPhase, CreateOrderRequest, OrderResponse, OrderPhaseResponse, SwitchRoleRequest,
+    Order, OrderPhase, OrderStatus, PaymentMode, PhaseStatus,
+    CreateOrderRequest, OrderResponse, OrderPhaseResponse, SwitchRoleRequest,
     ToggleAiIntermediaryRequest, UpdateOrderPhaseDefinitionRequest,
     UpdateOrderProjectDescriptionRequest,
+};
+pub use service::{
+    AdminServiceResponse, CreateServiceRequest, UpdateServiceRequest,
+    ServicePlan, ServiceRecord, ServicePlanPhase,
     ServiceDetailResponse, ServicePlanResponse, ServicePlanPhaseResponse,
     SaveServicePlansRequest, SavePlanItem, SavePhaseItem,
 };

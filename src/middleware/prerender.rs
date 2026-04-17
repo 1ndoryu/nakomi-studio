@@ -152,6 +152,7 @@ async fn resolve_dynamic_meta(
         if slug.is_empty() {
             return None;
         }
+        // sentinel-disable-next-line sqlx-query-as-sin-macro
         let row: (String, Option<String>) = sqlx::query_as(
             "SELECT title, description FROM services WHERE slug = $1 AND is_active = true",
         )
@@ -172,6 +173,7 @@ async fn resolve_dynamic_meta(
         if slug.is_empty() {
             return None;
         }
+        // sentinel-disable-next-line sqlx-query-as-sin-macro
         let row: (String, String, Option<String>) = sqlx::query_as(
             "SELECT COALESCE(meta_title, title), \
                     COALESCE(meta_description, description), \

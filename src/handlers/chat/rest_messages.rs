@@ -66,7 +66,6 @@ pub async fn get_messages(
     security(("bearer_auth" = [])),
     tag = "chat"
 )]
-#[allow(clippy::too_many_lines)]
 pub async fn send_message(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -163,90 +162,93 @@ pub async fn send_message(
                 spawn_intermediary_if_enabled(
                     &state, session_id, order_id, auth.user_id, &req.content,
                 );
-            /* [124A-CHAT1] Solo verificar ai_enabled — assigned_staff_id no bloquea la IA.
-             * El toggle de IA es explícito via WS ToggleAi o el botón del panel. */
             } else if s.ai_enabled {
-                let ai_resp = AiChatService::generate_response(
-                    &state.pool,
-                    &state.ai_config,
-                    &state.http_client,
-                    state.stripe_secret_key.as_deref(),
-                    crate::services::AiSessionContext {
-                        session_id,
-                        visitor_id: s.visitor_id.as_deref(),
-                        user_id: None,
-                        context: None,
-                    },
-                    &req.content,
-                )
-                .await
-                .unwrap_or_else(|e| crate::services::AiResponse {
-                    text: format!("Error IA: {e}"),
-                    needs_escalation: true,
-                    rich_messages: Vec::new(),
-                });
-
-                /* [T-2] Enviar rich messages antes del texto */
-                for rm in &ai_resp.rich_messages {
-                    let _ = state.chat_hub
-                        .send_rich_message(
-                            session_id, "ai", Some("ai"),
-                            &rm.content, &rm.message_type, &rm.metadata,
-                        )
-                        .await;
-                }
-
-                let _ = state
-                    .chat_hub
-                    .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
-                    .await;
-
-                /* [T-6] [114A-8] Escalación: notificar admins + enviar email */
-                if ai_resp.needs_escalation {
-                    let visitor = s.visitor_name.as_deref().unwrap_or("Visitante");
-
-                    if let Ok(admin_ids) =
-                        crate::repositories::UserRepository::admin_ids(&state.pool).await
-                    {
-                        if !admin_ids.is_empty() {
-                            let base = crate::models::CreateNotification {
-                                user_id: uuid::Uuid::nil(),
-                                notification_type: crate::models::NOTIF_ESCALATION_NEEDED
-                                    .to_string(),
-                                title: format!("Escalación: {visitor} necesita ayuda"),
-                                body: Some(
-                                    "La IA detectó que se requiere intervención humana en la sesión de chat."
-                                        .to_string()
-                                ),
-                                link: Some(format!("/admin/chat?session={session_id}")),
-                                reference_type: Some("chat_session".to_string()),
-                                reference_id: Some(session_id),
-                            };
-                            let _ = state.notification_hub.notify_many(&admin_ids, &base).await;
-                        }
-                    }
-
-                    /* [114A-8] Email de escalación a admins */
-                    if let Some(ref email_cfg) = state.email_config {
-                        if let Ok(emails) =
-                            crate::repositories::UserRepository::admin_emails(&state.pool).await
-                        {
-                            if !emails.is_empty() {
-                                let site_url = std::env::var("SITE_URL")
-                                    .unwrap_or_else(|_| "https://nakomi.studio".to_string());
-                                crate::services::EmailService::send_escalation_emails(
-                                    email_cfg, &emails, visitor, session_id, &site_url,
-                                )
-                                .await;
-                            }
-                        }
-                    }
-                }
+                handle_ai_and_escalation(&state, session_id, &s, &req.content).await;
             }
         }
     }
 
     Ok((StatusCode::CREATED, Json(msg)))
+}
+
+/* [174A-2] Extraído de send_message: genera respuesta IA, envía rich messages y escala si necesario. */
+async fn handle_ai_and_escalation(
+    state: &AppState,
+    session_id: Uuid,
+    session: &crate::models::ChatSession,
+    content: &str,
+) {
+    let ai_resp = AiChatService::generate_response(
+        &state.pool,
+        &state.ai_config,
+        &state.http_client,
+        state.stripe_secret_key.as_deref(),
+        crate::services::AiSessionContext {
+            session_id,
+            visitor_id: session.visitor_id.as_deref(),
+            user_id: None,
+            context: None,
+        },
+        content,
+    )
+    .await
+    .unwrap_or_else(|e| crate::services::AiResponse {
+        text: format!("Error IA: {e}"),
+        needs_escalation: true,
+        rich_messages: Vec::new(),
+    });
+
+    /* [T-2] Enviar rich messages antes del texto */
+    for rm in &ai_resp.rich_messages {
+        let _ = state.chat_hub
+            .send_rich_message(
+                session_id, "ai", Some("ai"),
+                &rm.content, &rm.message_type, &rm.metadata,
+            )
+            .await;
+    }
+
+    let _ = state
+        .chat_hub
+        .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
+        .await;
+
+    /* [T-6] [114A-8] Escalación: notificar admins + enviar email */
+    if ai_resp.needs_escalation {
+        let visitor = session.visitor_name.as_deref().unwrap_or("Visitante");
+        notify_escalation(state, session_id, visitor).await;
+    }
+}
+
+/* [174A-2] Notifica a admins de escalación via notificación in-app + email */
+async fn notify_escalation(state: &AppState, session_id: Uuid, visitor: &str) {
+    if let Ok(admin_ids) = crate::repositories::UserRepository::admin_ids(&state.pool).await {
+        if !admin_ids.is_empty() {
+            let base = crate::models::CreateNotification {
+                user_id: uuid::Uuid::nil(),
+                notification_type: crate::models::NOTIF_ESCALATION_NEEDED.to_string(),
+                title: format!("Escalación: {visitor} necesita ayuda"),
+                body: Some("La IA detectó que se requiere intervención humana en la sesión de chat.".to_string()),
+                link: Some(format!("/admin/chat?session={session_id}")),
+                reference_type: Some("chat_session".to_string()),
+                reference_id: Some(session_id),
+            };
+            let _ = state.notification_hub.notify_many(&admin_ids, &base).await;
+        }
+    }
+
+    if let Some(ref email_cfg) = state.email_config {
+        if let Ok(emails) = crate::repositories::UserRepository::admin_emails(&state.pool).await {
+            if !emails.is_empty() {
+                let site_url = std::env::var("SITE_URL")
+                    .unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                crate::services::EmailService::send_escalation_emails(
+                    email_cfg, &emails, visitor, session_id, &site_url,
+                )
+                .await;
+            }
+        }
+    }
 }
 
 /* [T-10] Lanza respuesta IA intermediaria en background si la orden lo tiene habilitado */

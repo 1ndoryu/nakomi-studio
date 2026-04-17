@@ -9,6 +9,7 @@ mod admin_users;
 mod assignment;
 mod auth;
 mod blog;
+mod cancellation;
 mod chat;
 mod configuracion;
 mod dashboard;
@@ -21,6 +22,7 @@ mod profile;
 mod notes;
 mod notifications;
 mod orders;
+mod order_lifecycle;
 mod payments;
 mod payment_methods;
 mod problems;
@@ -87,12 +89,12 @@ impl utoipa::Modify for SecurityAddon {
         orders::update_order_project_description_handler,
         orders::update_order_phase_definition_handler,
         orders::assign_order,
-        orders::switch_role,
-        orders::cancel_order_handler,
-        orders::approve_phase,
-        orders::request_revision,
-        orders::toggle_ai_intermediary,
-        orders::get_order_activity,
+        order_lifecycle::switch_role,
+        order_lifecycle::cancel_order_handler,
+        order_lifecycle::approve_phase,
+        order_lifecycle::request_revision,
+        order_lifecycle::toggle_ai_intermediary,
+        order_lifecycle::get_order_activity,
         payments::initiate_payment,
         payments::stripe_webhook,
         payments::list_payments,
@@ -172,8 +174,8 @@ impl utoipa::Modify for SecurityAddon {
         problems::resolve_problem,
         wallet::get_balance,
         wallet::list_transactions,
-        wallet::create_cancellation_request,
-        wallet::respond_cancellation_request,
+        cancellation::create_cancellation_request,
+        cancellation::respond_cancellation_request,
         wallet::create_withdrawal,
         wallet::list_withdrawals,
         wallet::admin_list_withdrawals,
@@ -284,7 +286,7 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::ResolveWithdrawalRequest,
         configuracion::RotacionStatusResponse,
         configuracion::ToggleRotacionRequest,
-        orders::ActivityEntry,
+        order_lifecycle::ActivityEntry,
         profile::AvatarResponse,
         uploads::UploadResponse,
         crate::errors::ErrorResponse,
@@ -540,6 +542,7 @@ fn api_routes() -> Router<AppState> {
          * registrarse antes de /orders/:order_id (parámetro) para evitar conflicto */
         .merge(assignment::routes())
         .merge(orders::routes())
+        .merge(order_lifecycle::routes())
         .merge(payments::routes())
         .merge(payment_methods::routes())
         .merge(chat::rest_routes())
@@ -566,7 +569,7 @@ fn api_routes() -> Router<AppState> {
         .merge(hosting_domains::domain_routes())
         .merge(problems::routes())
         .merge(wallet::wallet_routes())
-        .merge(wallet::cancellation_routes())
+        .merge(cancellation::cancellation_routes())
         .merge(wallet::withdrawal_admin_routes())
         .merge(uploads::routes())
         .merge(image_proxy::routes())

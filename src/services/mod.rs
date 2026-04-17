@@ -1,4 +1,6 @@
-mod ai_chat;
+pub(crate) mod ai_chat;
+mod ai_prompts;
+mod ai_providers;
 pub(crate) mod ai_tools;
 mod assignment;
 mod audit;

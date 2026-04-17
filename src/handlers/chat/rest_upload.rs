@@ -179,11 +179,17 @@ pub async fn upload_chat_file(
     );
 
     /* [T-5] Procesamiento IA en background */
-    spawn_file_ai_processing(
-        state.pool.clone(), state.ai_config.clone(), state.http_client.clone(),
-        state.chat_hub.clone(), session_id, attachment.id,
-        content_type.clone(), data.to_vec(), relative_path,
-    );
+    spawn_file_ai_processing(FileAiContext {
+        pool: state.pool.clone(),
+        ai_config: state.ai_config.clone(),
+        http_client: state.http_client.clone(),
+        chat_hub: state.chat_hub.clone(),
+        session_id,
+        attachment_id: attachment.id,
+        mime_type: content_type.clone(),
+        data: data.to_vec(),
+        file_path: relative_path,
+    });
 
     Ok((
         StatusCode::CREATED,
@@ -197,10 +203,8 @@ pub async fn upload_chat_file(
     ))
 }
 
-/* [T-5] Lanza procesamiento IA del archivo en background (Vision, Whisper, PDF extract).
- * Si la sesión tiene IA habilitada, genera respuesta automática con el resultado. */
-#[allow(clippy::too_many_arguments)]
-fn spawn_file_ai_processing(
+/* [174A-2] Contexto para procesamiento IA de archivos en background */
+struct FileAiContext {
     pool: sqlx::PgPool,
     ai_config: crate::services::AiChatConfig,
     http_client: reqwest::Client,
@@ -210,29 +214,33 @@ fn spawn_file_ai_processing(
     mime_type: String,
     data: Vec<u8>,
     file_path: String,
-) {
+}
+
+/* [T-5] Lanza procesamiento IA del archivo en background (Vision, Whisper, PDF extract).
+ * Si la sesión tiene IA habilitada, genera respuesta automática con el resultado. */
+fn spawn_file_ai_processing(ctx: FileAiContext) {
     tokio::spawn(async move {
         let description = process_file_with_ai(
-            &pool, &ai_config, &http_client, &mime_type, &data, &file_path,
+            &ctx.pool, &ctx.ai_config, &ctx.http_client, &ctx.mime_type, &ctx.data, &ctx.file_path,
         ).await;
 
         if let Some(desc) = &description {
             let _ = crate::repositories::ChatRepository::update_attachment_description(
-                &pool, attachment_id, desc,
+                &ctx.pool, ctx.attachment_id, desc,
             ).await;
 
-            if let Ok(Some(s)) = crate::repositories::ChatRepository::find_session_by_id(&pool, session_id).await {
+            if let Ok(Some(s)) = crate::repositories::ChatRepository::find_session_by_id(&ctx.pool, ctx.session_id).await {
                 if s.ai_enabled {
-                    let user_msg = match mime_type.as_str() {
+                    let user_msg = match ctx.mime_type.as_str() {
                         m if m.starts_with("image/") => format!("[El cliente envió una imagen. Descripción: {desc}]"),
                         m if m.starts_with("audio/") => format!("[El cliente envió un audio. Transcripción: {desc}]"),
                         _ => format!("[El cliente envió un archivo PDF. Contenido: {desc}]"),
                     };
 
                     if let Ok(ai_resp) = AiChatService::generate_response(
-                        &pool, &ai_config, &http_client, None,
+                        &ctx.pool, &ctx.ai_config, &ctx.http_client, None,
                         crate::services::AiSessionContext {
-                            session_id,
+                            session_id: ctx.session_id,
                             visitor_id: s.visitor_id.as_deref(),
                             user_id: None,
                             context: None,
@@ -240,12 +248,12 @@ fn spawn_file_ai_processing(
                         &user_msg,
                     ).await {
                         for rm in &ai_resp.rich_messages {
-                            let _ = chat_hub.send_rich_message(
-                                session_id, "ai", Some("ai"),
+                            let _ = ctx.chat_hub.send_rich_message(
+                                ctx.session_id, "ai", Some("ai"),
                                 &rm.content, &rm.message_type, &rm.metadata,
                             ).await;
                         }
-                        let _ = chat_hub.send_message(session_id, "ai", Some("ai"), &ai_resp.text).await;
+                        let _ = ctx.chat_hub.send_message(ctx.session_id, "ai", Some("ai"), &ai_resp.text).await;
                     }
                 }
             }

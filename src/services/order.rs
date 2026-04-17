@@ -1,5 +1,5 @@
-/* [044A-38] Servicio de órdenes: lógica de negocio para crear órdenes, calcular
- * descuentos según payment_mode, y generar fases automáticamente desde plantillas.
+/* [044A-38] Servicio de Ã³rdenes: lÃ³gica de negocio para crear Ã³rdenes, calcular
+ * descuentos segÃºn payment_mode, y generar fases automÃ¡ticamente desde plantillas.
  * Descuentos: Full = 20%, HalfHalf = 10%, Phased = 0%. */
 
 use sqlx::PgPool;
@@ -11,22 +11,22 @@ use crate::models::{
     OrderStatus, PaymentMode, PhaseStatus, ServiceDetailResponse, ServicePlanResponse,
     ServicePlanPhaseResponse, UpdateOrderPhaseDefinitionRequest,
 };
-use crate::repositories::{OrderRepository, CreateOrderParams, CreatePhaseParams};
+use crate::repositories::{OrderRepository, ServiceRepository, CreateOrderParams, CreatePhaseParams};
 
 pub struct OrderService;
 
 impl OrderService {
     /// Lista todos los servicios activos con planes y fases
     pub async fn list_services(pool: &PgPool) -> Result<Vec<ServiceDetailResponse>, AppError> {
-        let services = OrderRepository::list_services(pool).await?;
+        let services = ServiceRepository::list_services(pool).await?;
         let mut result = Vec::with_capacity(services.len());
 
         for svc in services {
-            let plans = OrderRepository::list_plans_for_service(pool, svc.id).await?;
+            let plans = ServiceRepository::list_plans_for_service(pool, svc.id).await?;
             let mut plan_responses = Vec::with_capacity(plans.len());
 
             for plan in plans {
-                let phases = OrderRepository::list_plan_phases(pool, plan.id).await?;
+                let phases = ServiceRepository::list_plan_phases(pool, plan.id).await?;
                 plan_responses.push(ServicePlanResponse {
                     id: plan.id,
                     slug: plan.slug,
@@ -64,15 +64,15 @@ impl OrderService {
         pool: &PgPool,
         slug: &str,
     ) -> Result<ServiceDetailResponse, AppError> {
-        let svc = OrderRepository::find_service_by_slug(pool, slug)
+        let svc = ServiceRepository::find_service_by_slug(pool, slug)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Servicio '{slug}' no encontrado")))?;
 
-        let plans = OrderRepository::list_plans_for_service(pool, svc.id).await?;
+        let plans = ServiceRepository::list_plans_for_service(pool, svc.id).await?;
         let mut plan_responses = Vec::with_capacity(plans.len());
 
         for plan in plans {
-            let phases = OrderRepository::list_plan_phases(pool, plan.id).await?;
+            let phases = ServiceRepository::list_plan_phases(pool, plan.id).await?;
             plan_responses.push(ServicePlanResponse {
                 id: plan.id,
                 slug: plan.slug,
@@ -116,13 +116,13 @@ impl OrderService {
             client_notes,
         } = req;
 
-        let svc = OrderRepository::find_service_by_slug(pool, &service_slug)
+        let svc = ServiceRepository::find_service_by_slug(pool, &service_slug)
             .await?
             .ok_or_else(|| {
                 AppError::NotFound(format!("Servicio '{service_slug}' no encontrado"))
             })?;
 
-        let plan = OrderRepository::find_plan_by_slug(pool, svc.id, &plan_slug)
+        let plan = ServiceRepository::find_plan_by_slug(pool, svc.id, &plan_slug)
             .await?
             .ok_or_else(|| {
                 AppError::NotFound(format!("Plan '{plan_slug}' no encontrado"))
@@ -132,7 +132,7 @@ impl OrderService {
         let discount = Self::discount_for_mode(payment_mode);
         let final_price = base_price - (base_price * discount / 100);
 
-        let plan_phases = OrderRepository::list_plan_phases(pool, plan.id).await?;
+        let plan_phases = ServiceRepository::list_plan_phases(pool, plan.id).await?;
 
         let order = OrderRepository::create_order(
             pool,
@@ -264,7 +264,7 @@ impl OrderService {
         Ok((order.client_id, response, phase_responses))
     }
 
-    /// Lista órdenes según rol: cliente ve las suyas, employee las asignadas, admin todas
+    /// Lista Ã³rdenes segÃºn rol: cliente ve las suyas, employee las asignadas, admin todas
     pub async fn list_orders_for_user(
         pool: &PgPool,
         user_id: Uuid,
@@ -320,7 +320,7 @@ impl OrderService {
         Ok(result)
     }
 
-    /// Asigna un empleado a una orden (admin o auto-asignación)
+    /// Asigna un empleado a una orden (admin o auto-asignaciÃ³n)
     pub async fn assign_order(
         pool: &PgPool,
         order_id: Uuid,
@@ -334,7 +334,7 @@ impl OrderService {
             && order.status != OrderStatus::PaymentHeld
         {
             return Err(AppError::BadRequest(
-                "La orden no está en estado de asignación".into(),
+                "La orden no estÃ¡ en estado de asignaciÃ³n".into(),
             ));
         }
 
@@ -342,8 +342,8 @@ impl OrderService {
         Ok(assigned)
     }
 
-    /* [104A-28] Cancela una orden. Empleados pueden cancelar con razón obligatoria.
-     * Máquina de estados: PendingPayment | PaymentHeld | AwaitingAssignment | InProgress → Cancelled */
+    /* [104A-28] Cancela una orden. Empleados pueden cancelar con razÃ³n obligatoria.
+     * MÃ¡quina de estados: PendingPayment | PaymentHeld | AwaitingAssignment | InProgress â†’ Cancelled */
     pub async fn cancel_order(
         pool: &PgPool,
         order_id: Uuid,
@@ -357,7 +357,7 @@ impl OrderService {
             .await?
             .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
-        /* Verificar permisos: dueño, empleado asignado (con razón), o admin */
+        /* Verificar permisos: dueÃ±o, empleado asignado (con razÃ³n), o admin */
         match effective_role {
             UserRole::Admin => {}
             UserRole::Client => {
@@ -367,18 +367,18 @@ impl OrderService {
             }
             UserRole::Employee => {
                 if order.assigned_employee_id != Some(user_id) {
-                    return Err(AppError::Forbidden("No estás asignado a esta orden".into()));
+                    return Err(AppError::Forbidden("No estÃ¡s asignado a esta orden".into()));
                 }
                 if reason.is_none_or(|r| r.trim().is_empty()) {
                     return Err(AppError::Validation(
-                        "Los empleados deben proporcionar una razón para cancelar".into(),
+                        "Los empleados deben proporcionar una razÃ³n para cancelar".into(),
                     ));
                 }
             }
         }
 
         /* [104A-29] Solo se puede cancelar en estados iniciales + in_progress para empleados.
-         * pending_payment ya no se usa a nivel de orden — solo en fases. */
+         * pending_payment ya no se usa a nivel de orden â€” solo en fases. */
         let can_cancel = matches!(
             order.status,
             OrderStatus::PaymentHeld
@@ -392,7 +392,7 @@ impl OrderService {
             ));
         }
 
-        /* Guardar razón si se proporcionó */
+        /* Guardar razÃ³n si se proporcionÃ³ */
         if let Some(r) = reason {
             sqlx::query!(
                 "UPDATE orders SET cancel_reason = $1 WHERE id = $2",
@@ -401,7 +401,7 @@ impl OrderService {
             )
             .execute(pool)
             .await
-            .map_err(|e| AppError::Internal(format!("Error guardando razón: {e}")))?;
+            .map_err(|e| AppError::Internal(format!("Error guardando razÃ³n: {e}")))?;
         }
 
         let cancelled = OrderRepository::cancel_order(pool, order_id).await?;
@@ -423,13 +423,13 @@ impl OrderService {
 
         if effective_role != UserRole::Admin && order.client_id != user_id {
             return Err(AppError::Forbidden(
-                "Solo el cliente dueño puede actualizar la descripción del proyecto".into(),
+                "Solo el cliente dueÃ±o puede actualizar la descripciÃ³n del proyecto".into(),
             ));
         }
 
         if matches!(order.status, OrderStatus::Completed | OrderStatus::Cancelled) {
             return Err(AppError::BadRequest(
-                "La descripción no se puede editar en una orden cerrada".into(),
+                "La descripciÃ³n no se puede editar en una orden cerrada".into(),
             ));
         }
 
@@ -490,7 +490,7 @@ impl OrderService {
 
         if order.payment_mode != PaymentMode::Phased {
             return Err(AppError::BadRequest(
-                "Solo las órdenes por fases admiten definición manual de fases".into(),
+                "Solo las Ã³rdenes por fases admiten definiciÃ³n manual de fases".into(),
             ));
         }
 
@@ -506,7 +506,7 @@ impl OrderService {
 
         if !matches!(phase.status, PhaseStatus::Locked | PhaseStatus::PendingPayment) {
             return Err(AppError::BadRequest(
-                "Solo se pueden definir fases que aún no comenzaron".into(),
+                "Solo se pueden definir fases que aÃºn no comenzaron".into(),
             ));
         }
 
@@ -524,7 +524,7 @@ impl OrderService {
         let title = req.title.as_deref().map(str::trim);
         if matches!(title, Some("")) {
             return Err(AppError::Validation(
-                "El título de la fase no puede estar vacío".into(),
+                "El titulo de la fase no puede estar vacio".into(),
             ));
         }
 
@@ -540,7 +540,7 @@ impl OrderService {
         if let Some(estimated_days) = req.estimated_days {
             if estimated_days <= 0 {
                 return Err(AppError::Validation(
-                    "Los días estimados deben ser mayores que cero".into(),
+                    "Los dias estimados deben ser mayores que cero".into(),
                 ));
             }
         }
@@ -548,7 +548,7 @@ impl OrderService {
         if let Some(max_revisions) = req.max_revisions {
             if max_revisions < 0 {
                 return Err(AppError::Validation(
-                    "Las revisiones máximas no pueden ser negativas".into(),
+                    "Las revisiones mÃ¡ximas no pueden ser negativas".into(),
                 ));
             }
         }
@@ -568,7 +568,7 @@ impl OrderService {
     }
 
     /* [044A-38 Fase 2] Empleado entrega una fase.
-     * Máquina de estados: InProgress | Paid | RevisionRequested → Delivered.
+     * MÃ¡quina de estados: InProgress | Paid | RevisionRequested â†’ Delivered.
      * Solo el empleado asignado puede entregar. */
     pub async fn deliver_phase(
         pool: &PgPool,
@@ -602,9 +602,9 @@ impl OrderService {
     }
 
     /* [044A-38 Fase 2] Cliente aprueba una fase.
-     * Máquina de estados: Delivered → Approved.
-     * Si es la última fase, marca la orden como Completed.
-     * Si hay siguiente fase, la desbloquea (Locked → PendingPayment o Paid según modo). */
+     * MÃ¡quina de estados: Delivered â†’ Approved.
+     * Si es la Ãºltima fase, marca la orden como Completed.
+     * Si hay siguiente fase, la desbloquea (Locked â†’ PendingPayment o Paid segÃºn modo). */
     pub async fn approve_phase(
         pool: &PgPool,
         order_id: Uuid,
@@ -656,9 +656,9 @@ impl OrderService {
         Ok(approved)
     }
 
-    /* [044A-38 Fase 2] Cliente solicita revisión.
-     * Máquina de estados: Delivered → RevisionRequested.
-     * Valida que no se excedan las revisiones máximas. */
+    /* [044A-38 Fase 2] Cliente solicita revisiÃ³n.
+     * MÃ¡quina de estados: Delivered â†’ RevisionRequested.
+     * Valida que no se excedan las revisiones mÃ¡ximas. */
     pub async fn request_revision(
         pool: &PgPool,
         order_id: Uuid,
@@ -670,7 +670,7 @@ impl OrderService {
             .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
         if order.client_id != client_id {
-            return Err(AppError::Forbidden("Solo el cliente puede solicitar revisión".into()));
+            return Err(AppError::Forbidden("Solo el cliente puede solicitar revisiÃ³n".into()));
         }
 
         let phase = OrderRepository::find_phase_by_number(pool, order_id, phase_number)
@@ -679,13 +679,13 @@ impl OrderService {
 
         if phase.status != PhaseStatus::Delivered {
             return Err(AppError::BadRequest(
-                format!("Solo se puede pedir revisión en fases entregadas (estado actual: {:?})", phase.status),
+                format!("Solo se puede pedir revisiÃ³n en fases entregadas (estado actual: {:?})", phase.status),
             ));
         }
 
         if phase.revisions_used >= phase.max_revisions {
             return Err(AppError::BadRequest(
-                format!("Se alcanzó el límite de revisiones ({}/{})", phase.revisions_used, phase.max_revisions),
+                format!("Se alcanzÃ³ el lÃ­mite de revisiones ({}/{})", phase.revisions_used, phase.max_revisions),
             ));
         }
 
@@ -706,7 +706,7 @@ impl OrderService {
         }
     }
 
-    /// Estado inicial de la primera fase según modo de pago
+    /// Estado inicial de la primera fase segÃºn modo de pago
     fn initial_phase_status(mode: PaymentMode) -> PhaseStatus {
         match mode {
             PaymentMode::Full => PhaseStatus::Paid,
@@ -729,25 +729,25 @@ impl OrderService {
             let detail = project_description
                 .filter(|value| !value.trim().is_empty())
                 .map_or_else(|| {
-                    "Revisión del brief del cliente y definición del alcance inicial del proyecto.".to_string()
+                    "RevisiÃ³n del brief del cliente y definiciÃ³n del alcance inicial del proyecto.".to_string()
                 }, |value| {
                     format!(
                         "Brief inicial del cliente: {value}. Esta fase sirve para revisar alcance, prioridades y la estructura del proyecto."
                     )
                 });
-            return ("Definición del proyecto".to_string(), Some(detail));
+            return ("DefiniciÃ³n del proyecto".to_string(), Some(detail));
         }
 
         (
             format!("Fase {phase_number} por definir"),
             Some(
-                "Esta fase será definida por el especialista cuando revise el brief y la conversación con el cliente.".to_string(),
+                "Esta fase serÃ¡ definida por el especialista cuando revise el brief y la conversaciÃ³n con el cliente.".to_string(),
             ),
         )
     }
 }
 
-/* [154A-15c] Formato de precio en centavos → string legible para emails */
+/* [154A-15c] Formato de precio en centavos â†’ string legible para emails */
 #[must_use]
 pub fn format_price_cents(cents: i32, currency: &str) -> String {
     let dollars = f64::from(cents) / 100.0;

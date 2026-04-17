@@ -15,6 +15,7 @@ use crate::models::WsServerMessage;
 use crate::repositories::ChatRepository;
 use crate::services::TimingEvent;
 use crate::AppState;
+use uuid::Uuid;
 
 use super::VisitorWsParams;
 use super::ws_visitor_helpers::{process_visitor_messages, send_history};
@@ -104,7 +105,6 @@ fn try_extract_user_id(token: Option<&str>, jwt_secret: &str) -> Option<uuid::Uu
     })
 }
 
-#[allow(clippy::too_many_lines)]
 async fn handle_visitor_ws(
     socket: WebSocket,
     state: AppState,
@@ -233,21 +233,29 @@ async fn handle_visitor_ws(
     )
     .await;
 
-    /* [T-4] Cleanup multi-conexión: solo cerrar sesión si soy la última conexión
-     * o si el usuario cerró explícitamente. */
+    cleanup_visitor_session(&state, session_id, &ip_for_tracking, explicit_close, visitor_online_at, &timing_tx).await;
+    send_task.abort();
+}
+
+/* [174A-2] Cleanup multi-conexión: unsubscribe, offline, disconnect, IP tracking */
+async fn cleanup_visitor_session(
+    state: &AppState,
+    session_id: Uuid,
+    ip_for_tracking: &str,
+    explicit_close: bool,
+    visitor_online_at: chrono::DateTime<chrono::Utc>,
+    timing_tx: &tokio::sync::mpsc::Sender<TimingEvent>,
+) {
     let remaining = state.chat_hub.unsubscribe(session_id);
     if explicit_close || remaining == 0 {
-        /* [104A-40] Última conexión desconectada: notificar offline al staff */
         state.chat_hub.notify_visitor_offline(session_id, Some(visitor_online_at));
         let _ = timing_tx.send(TimingEvent::Disconnect).await;
         state.chat_timing.unregister_session(session_id);
         let _ = state.chat_hub.close_session(session_id).await;
     }
-    /* [084A-42] Decrementar conexión IP al desconectar */
     if !ip_for_tracking.is_empty() {
-        state.chat_timing.track_ip_disconnect(&ip_for_tracking);
+        state.chat_timing.track_ip_disconnect(ip_for_tracking);
     }
-    send_task.abort();
 }
 
 /* ============================================================

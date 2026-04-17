@@ -4,30 +4,17 @@
  * [074A-60] Info visitante solo visible para admin. */
 
 import React, {useRef, useState} from 'react';
-import {MessageCircle, Send, Bot, BotOff, User, ChevronLeft, XCircle, Info, Paperclip, AlertTriangle} from 'lucide-react';
-import {SENDER_LABELS, SESSION_STATUS_LABELS, type ChatSession} from '../../api/chat';
+import {MessageCircle, Send, Bot, BotOff, ChevronLeft, XCircle, Info, Paperclip, AlertTriangle} from 'lucide-react';
+import {SENDER_LABELS} from '../../api/chat';
 import {useSeccionChat} from '../../hooks/useSeccionChat';
 import {useAuthStore} from '../../stores/authStore';
 import {ChatInfoPanel} from './ChatInfoPanel';
 import {MessageBubble, resolveSenderToneClass} from './ChatBurbujaMessage';
+import {resolveSessionTitle, SessionItem} from './ChatSessionList';
 import {Button} from '../ui/Button';
 import {Textarea} from '../ui/Textarea';
 import './SeccionChat.css';
 import './ChatBurbujas.css';
-
-/* [154A-14] Resuelve el título de una sesión de chat mostrando el nombre del
- * otro participante en vez de "Orden #N". Staff ve el nombre del cliente,
- * clientes ven el nombre del empleado. Fallback a order_number si no hay nombre.
- * [164A-13] Chat general → Visitante #{id} para diferenciar anónimos. */
-function resolveSessionTitle(s: ChatSession, isStaff: boolean): string {
-    if (s.order_id) {
-        const name = isStaff ? s.client_name : s.employee_name;
-        if (name) return name;
-        return `Orden #${s.order_number ?? '...'}`;
-    }
-    if (s.visitor_name) return s.visitor_name;
-    return `Visitante #${s.id.slice(-4).toUpperCase()}`;
-}
 
 export const SeccionChat: React.FC = () => {
     const {
@@ -296,49 +283,6 @@ export const SeccionChat: React.FC = () => {
     );
 };
 
-function SessionItem({
-    session,
-    active,
-    onClick,
-    isStaff,
-}: {
-    session: ChatSession;
-    active: boolean;
-    onClick: () => void;
-    isStaff: boolean;
-}) {
-    /* [154A-14] Avatar del otro participante (staff → avatar del cliente, cliente → avatar del empleado) */
-    const avatarUrl = isStaff ? session.client_avatar_url : session.employee_avatar_url;
-
-    return (
-        <Button
-            className={`chatSesionItem ${active ? 'chatSesionActiva' : ''}`}
-            onClick={onClick}
-            type="button"
-            variante="texto"
-            tamano="pequeno"
-        >
-            <div className="chatSesionIcono">
-                {avatarUrl
-                    ? <img src={avatarUrl} alt="" className="chatSesionAvatar" />
-                    : session.ai_enabled ? <Bot size={18} /> : <User size={18} />}
-            </div>
-            <div className="chatSesionInfo">
-                <div className="chatSesionTitulo">
-                    {resolveSessionTitle(session, isStaff)}
-                </div>
-                <div className="chatSesionPreview">
-                    {session.last_message || 'Sin mensajes'}
-                </div>
-            </div>
-            <div className="chatSesionMeta">
-                <span className="chatSesionEstado">
-                    {SESSION_STATUS_LABELS[session.status] || session.status}
-                </span>
-            </div>
-        </Button>
-    );
-}
-
 /* [104A-32] MessageBubble, renderMessageContent y resolveSenderToneClass
- * extraidos a ChatBurbujaMessage.tsx para cumplir SRP (max 300 lineas). */
+ * extraidos a ChatBurbujaMessage.tsx para cumplir SRP (max 300 lineas).
+ * [174A-2] resolveSessionTitle y SessionItem extraidos a ChatSessionList.tsx. */

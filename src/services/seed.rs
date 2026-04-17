@@ -20,6 +20,29 @@ const TEST_EMAILS: [&str; 5] = [
 
 pub struct SeedService;
 
+/* [174A-2] Helper reutilizable: inserta un hosting_event con ON CONFLICT DO NOTHING.
+ * Extraído de create_seed_hosting_events para reducir repetición de la query SQL. */
+async fn insert_hosting_event(
+    pool: &PgPool,
+    sub_id: &Uuid,
+    event_type: &str,
+    details: serde_json::Value,
+    interval: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
+         VALUES ($1, $2, $3::jsonb, NOW() - $4::interval)
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(sub_id)
+    .bind(event_type)
+    .bind(details)
+    .bind(interval)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 impl SeedService {
     /// Elimina todos los datos generados por el seed (usuarios test + sus órdenes/fases/chat)
     pub async fn delete_test_data(pool: &PgPool) -> Result<u64, sqlx::Error> {
@@ -223,7 +246,6 @@ impl SeedService {
     /* [104A-seed] Crea hosting_events realistas que simulan el ciclo de vida completo
      * de un hosting comprado: pago → provisioning → DNS → SSL → activo.
      * Para hostings suspendidos agrega evento de suspensión por falta de pago. */
-    #[allow(clippy::too_many_lines)]
     async fn create_seed_hosting_events(pool: &PgPool, client_id: Uuid) -> Result<u32, sqlx::Error> {
         let sub_ids: Vec<(Uuid, String, Option<String>)> = sqlx::query_as(
             "SELECT id, status, domain FROM hosting_subscriptions WHERE user_id = $1",
@@ -236,176 +258,44 @@ impl SeedService {
         for (sub_id, status, domain) in &sub_ids {
             let domain_str = domain.as_deref().unwrap_or("sin dominio");
 
-            /* Evento 1: suscripción creada (pago procesado) */
-            sqlx::query(
-                "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                 VALUES ($1, 'created', $2::jsonb, NOW() - INTERVAL '30 days')
-                 ON CONFLICT DO NOTHING",
-            )
-            .bind(sub_id)
-            .bind(serde_json::json!({
-                "source": "stripe_webhook",
-                "plan": "pro",
-                "domain": domain_str,
+            /* Eventos comunes: creación + provisioning iniciado */
+            insert_hosting_event(pool, sub_id, "created", serde_json::json!({
+                "source": "stripe_webhook", "plan": "pro", "domain": domain_str,
                 "message": "Suscripción de hosting creada tras confirmación de pago"
-            }))
-            .execute(pool)
-            .await?;
-            count += 1;
-
-            /* Evento 2: provisioning iniciado */
-            sqlx::query(
-                "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                 VALUES ($1, 'provisioning_started', $2::jsonb, NOW() - INTERVAL '29 days 23 hours')
-                 ON CONFLICT DO NOTHING",
-            )
-            .bind(sub_id)
-            .bind(serde_json::json!({
+            }), "30 days").await?;
+            insert_hosting_event(pool, sub_id, "provisioning_started", serde_json::json!({
                 "message": "Servidor VPS asignado, instalando WordPress + SSL",
                 "server": "vps1.nakomi.studio"
-            }))
-            .execute(pool)
-            .await?;
-            count += 1;
+            }), "29 days 23 hours").await?;
+            count += 2;
 
             if status == "active" {
-                /* Evento 3: provisioning completado */
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'provisioning_completed', $2::jsonb, NOW() - INTERVAL '29 days 22 hours')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "message": "Hosting provisionado exitosamente en Coolify",
-                    "server_ip": "66.94.100.241",
-                    "coolify_site_name": "mitienda-test"
-                }))
-                .execute(pool)
-                .await?;
-                count += 1;
-
-                /* Evento 4: DNS configurado */
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'dns_configured', $2::jsonb, NOW() - INTERVAL '29 days 20 hours')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "message": format!("Registros DNS de {} apuntan correctamente al servidor", domain_str),
-                    "records": ["A @ → 66.94.100.241", "A www → 66.94.100.241"]
-                }))
-                .execute(pool)
-                .await?;
-                count += 1;
-
-                /* Evento 5: SSL emitido */
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'ssl_issued', $2::jsonb, NOW() - INTERVAL '29 days 19 hours')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "message": format!("Certificado SSL emitido para {}", domain_str),
-                    "provider": "Let's Encrypt",
-                    "expires": "2026-07-10"
-                }))
-                .execute(pool)
-                .await?;
-                count += 1;
-
-                /* Evento 6: hosting activado */
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'status_changed', $2::jsonb, NOW() - INTERVAL '29 days 18 hours')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "from": "provisioning",
-                    "to": "active",
-                    "message": "Hosting activado y funcionando"
-                }))
-                .execute(pool)
-                .await?;
-                count += 1;
-
-                /* Evento 7: renovación de pago (simula 1 mes después) */
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'payment_received', $2::jsonb, NOW() - INTERVAL '1 day')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "message": "Pago mensual procesado: $10.00",
-                    "amount_cents": 1000,
-                    "source": "stripe_webhook"
-                }))
-                .execute(pool)
-                .await?;
-                count += 1;
+                let events = vec![
+                    ("provisioning_completed", serde_json::json!({"message": "Hosting provisionado exitosamente en Coolify", "server_ip": "66.94.100.241", "coolify_site_name": "mitienda-test"}), "29 days 22 hours"),
+                    ("dns_configured", serde_json::json!({"message": format!("Registros DNS de {} apuntan correctamente al servidor", domain_str), "records": ["A @ → 66.94.100.241", "A www → 66.94.100.241"]}), "29 days 20 hours"),
+                    ("ssl_issued", serde_json::json!({"message": format!("Certificado SSL emitido para {}", domain_str), "provider": "Let's Encrypt", "expires": "2026-07-10"}), "29 days 19 hours"),
+                    ("status_changed", serde_json::json!({"from": "provisioning", "to": "active", "message": "Hosting activado y funcionando"}), "29 days 18 hours"),
+                    ("payment_received", serde_json::json!({"message": "Pago mensual procesado: $10.00", "amount_cents": 1000, "source": "stripe_webhook"}), "1 day"),
+                ];
+                for (etype, details, interval) in events {
+                    insert_hosting_event(pool, sub_id, etype, details, interval).await?;
+                    count += 1;
+                }
             } else if status == "suspended" {
-                /* Hosting suspendido: provisioning completado pero luego suspendido */
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'provisioning_completed', $2::jsonb, NOW() - INTERVAL '60 days')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "message": "Hosting provisionado exitosamente"
-                }))
-                .execute(pool)
-                .await?;
-                count += 1;
-
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'payment_failed', $2::jsonb, NOW() - INTERVAL '5 days')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "message": "Falló el cobro mensual — tarjeta rechazada",
-                    "amount_cents": 1500,
-                    "retry_count": 3
-                }))
-                .execute(pool)
-                .await?;
-                count += 1;
-
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'status_changed', $2::jsonb, NOW() - INTERVAL '2 days')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "from": "active",
-                    "to": "suspended",
-                    "message": "Hosting suspendido por falta de pago tras 3 intentos fallidos"
-                }))
-                .execute(pool)
-                .await?;
-                count += 1;
+                let events = vec![
+                    ("provisioning_completed", serde_json::json!({"message": "Hosting provisionado exitosamente"}), "60 days"),
+                    ("payment_failed", serde_json::json!({"message": "Falló el cobro mensual — tarjeta rechazada", "amount_cents": 1500, "retry_count": 3}), "5 days"),
+                    ("status_changed", serde_json::json!({"from": "active", "to": "suspended", "message": "Hosting suspendido por falta de pago tras 3 intentos fallidos"}), "2 days"),
+                ];
+                for (etype, details, interval) in events {
+                    insert_hosting_event(pool, sub_id, etype, details, interval).await?;
+                    count += 1;
+                }
             } else {
-                /* Provisioning en curso — solo el evento de inicio */
-                sqlx::query(
-                    "INSERT INTO hosting_events (subscription_id, event_type, details, created_at)
-                     VALUES ($1, 'status_changed', $2::jsonb, NOW() - INTERVAL '1 hour')
-                     ON CONFLICT DO NOTHING",
-                )
-                .bind(sub_id)
-                .bind(serde_json::json!({
-                    "from": "pending",
-                    "to": "provisioning",
+                insert_hosting_event(pool, sub_id, "status_changed", serde_json::json!({
+                    "from": "pending", "to": "provisioning",
                     "message": "Servidor asignado, provisioning en curso..."
-                }))
-                .execute(pool)
-                .await?;
+                }), "1 hour").await?;
                 count += 1;
             }
         }

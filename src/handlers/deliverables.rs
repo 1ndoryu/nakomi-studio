@@ -96,15 +96,18 @@ pub async fn deliver_phase_with_files(
         .map_err(|e| AppError::Internal(format!("Error creando directorio: {e}")))?;
 
     /* Procesar multipart: extraer notas y archivos */
-    let (_notes, saved_files) = process_multipart_files(
-        &mut multipart,
-        &state.pool,
-        &upload_path,
-        phase.id,
-        auth.user_id,
+    let ctx = MultipartContext {
+        pool: &state.pool,
+        upload_path: &upload_path,
+        phase_id: phase.id,
+        uploaded_by: auth.user_id,
         order_id,
         phase_number,
         revision_number,
+    };
+    let (_notes, saved_files) = process_multipart_files(
+        &mut multipart,
+        &ctx,
     )
     .await?;
 
@@ -308,18 +311,22 @@ fn verify_order_access(order: &crate::models::Order, auth: &AuthUser) -> Result<
     Ok(())
 }
 
-/// Procesa campos multipart: extrae `notes` (texto) y `files` (binarios).
-/// Valida MIME, tamaño, extensiones dobles. Guarda en disco y BD.
-#[allow(clippy::too_many_arguments)]
-async fn process_multipart_files(
-    multipart: &mut Multipart,
-    pool: &sqlx::PgPool,
-    upload_path: &std::path::Path,
+/* [174A-2] Contexto para procesamiento multipart — agrupa parámetros de la fase/orden */
+struct MultipartContext<'a> {
+    pool: &'a sqlx::PgPool,
+    upload_path: &'a std::path::Path,
     phase_id: Uuid,
     uploaded_by: Uuid,
     order_id: Uuid,
     phase_number: i32,
     revision_number: i32,
+}
+
+/// Procesa campos multipart: extrae `notes` (texto) y `files` (binarios).
+/// Valida MIME, tamaño, extensiones dobles. Guarda en disco y BD.
+async fn process_multipart_files(
+    multipart: &mut Multipart,
+    ctx: &MultipartContext<'_>,
 ) -> Result<(Option<String>, Vec<crate::models::PhaseDeliverable>), AppError> {
     let mut notes: Option<String> = None;
     let mut saved_files: Vec<crate::models::PhaseDeliverable> = Vec::new();
@@ -390,8 +397,8 @@ async fn process_multipart_files(
             }
 
             let safe_name = sanitize_filename(&original_name);
-            let unique_name = format!("{phase_id}-{revision_number}-{safe_name}");
-            let file_path = upload_path.join(&unique_name);
+            let unique_name = format!("{}-{}-{safe_name}", ctx.phase_id, ctx.revision_number);
+            let file_path = ctx.upload_path.join(&unique_name);
 
             fs::write(&file_path, &data)
                 .await
@@ -399,7 +406,7 @@ async fn process_multipart_files(
 
             /* [064A-73] Log de upload para auditoría */
             tracing::info!(
-                user_id = %uploaded_by,
+                user_id = %ctx.uploaded_by,
                 file = %original_name,
                 mime = %content_type,
                 size = file_size,
@@ -407,20 +414,20 @@ async fn process_multipart_files(
             );
 
             let file_url = format!(
-                "/uploads/deliverables/{order_id}/{phase_number}/{unique_name}"
+                "/uploads/deliverables/{}/{}/{unique_name}", ctx.order_id, ctx.phase_number
             );
 
             #[allow(clippy::cast_possible_wrap)]
             let deliverable = DeliverableRepository::create(
-                pool,
+                ctx.pool,
                 CreateDeliverableParams {
-                    phase_id,
-                    uploaded_by,
+                    phase_id: ctx.phase_id,
+                    uploaded_by: ctx.uploaded_by,
                     file_name: &original_name,
                     file_url: &file_url,
                     file_size_bytes: Some(file_size as i64),
                     mime_type: Some(&content_type),
-                    revision_number,
+                    revision_number: ctx.revision_number,
                     notes: notes.as_deref(),
                 },
             )

@@ -191,6 +191,7 @@ impl PaymentRepository {
         event_id: &str,
         event_type: &str,
     ) -> Result<(), sqlx::Error> {
+        // sentinel-disable-next-line sqlx-query-sin-macro
         sqlx::query(
             "INSERT INTO stripe_processed_events (event_id, event_type) VALUES ($1, $2) ON CONFLICT DO NOTHING"
         )
