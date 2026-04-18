@@ -41,13 +41,16 @@ interface ProyectoDetalle {
  * [124A-DETAIL1] Usa detail_title si existe, y primera imagen de galería si use_first_gallery_image */
 function convertirDesdeApi(p: AdminProject): ProyectoDetalle {
     const usarPrimeraGaleria = p.use_first_gallery_image && p.gallery.length > 0;
+    /* [174A-2] Si la primera imagen de galería se usa como portada, quitarla de la galería
+     * para evitar que aparezca duplicada en la sección de imágenes del detalle. */
+    const galeriaSinPortada = usarPrimeraGaleria ? p.gallery.slice(1) : p.gallery;
     return {
         titulo: p.detail_title || p.title,
         descripcion: p.description,
         cliente: p.client || '',
         categorias: p.categories.join(', '),
         imagenPortada: usarPrimeraGaleria ? p.gallery[0].url : (p.featured_image || ''),
-        galeria: p.gallery,
+        galeria: galeriaSinPortada,
         tecnologias: p.technologies,
         enlaces: p.links.map(l => ({tipo: l.tipo as EnlaceProyecto['tipo'], url: l.url, etiqueta: l.etiqueta})),
     };

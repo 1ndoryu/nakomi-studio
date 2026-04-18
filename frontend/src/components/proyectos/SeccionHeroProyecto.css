@@ -55,14 +55,19 @@
     width: 100%;
     overflow: hidden;
     padding: var(--spacing-lg);
+    max-width: var(--container-width);
+    margin: auto;
+    border-radius: var(--radius-xl);
 }
 
 .proyectoPortadaImagen {
     width: 100%;
     height: auto;
+    border-radius: var(--radius-md);
     display: block;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
 }
-
 /* === CASE INTRODUCTION === */
 .proyectoCaseIntro {
     padding: var(--spacing-3xl) 0;

@@ -1,1 +1,1 @@
-ALTER TABLE projects ADD COLUMN gallery_image VARCHAR(500);
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS gallery_image VARCHAR(500);

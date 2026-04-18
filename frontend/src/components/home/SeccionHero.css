@@ -61,7 +61,13 @@
 
 .heroImagenFondo {
     padding: var(--spacing-xl) var(--spacing-lg);
-    padding-right: unset;
+    
+    max-width: var(--container-width);
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    margin: auto;
+    width: 100%;
 }
 
 @media (max-width: 768px) {

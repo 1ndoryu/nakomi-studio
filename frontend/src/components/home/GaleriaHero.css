@@ -1,10 +1,15 @@
 /* Galería del hero: contenedor con proporción 1200x600 (2:1) y bordes redondeados.
- * Las imágenes se superponen con crossfade. */
+ * Las imágenes se superponen con crossfade.
+ * Overlay inferior-derecho: pill con nombre del proyecto + panel expandible. */
 
 .galeriaHeroContenedor {
     position: relative;
+    max-width: var(--container-width);
+    margin: 0 auto;
     width: 100%;
-    aspect-ratio: 1200 / 600;
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+    aspect-ratio: 1200 / 620;
     border-radius: var(--radius-xl);
     overflow: hidden;
 }
@@ -22,3 +27,106 @@
 .galeriaHeroImagenActiva {
     opacity: 1;
 }
+
+/* Overlay: apila detalle encima de la pill, alineados a la derecha */
+.galeriaHeroOverlay {
+    position: absolute;
+    bottom: var(--spacing-md);
+    right: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-xs);
+    z-index: 10;
+}
+
+/* Panel expandido: descripción y enlaces */
+.galeriaHeroDetalle {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    max-width: 320px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    background: var(--bg-warm);
+    border: 1px solid var(--bg-item-active);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.galeriaHeroDescripcion {
+    font-family: var(--font-serif);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.galeriaHeroEnlaces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.galeriaHeroEnlace {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--text-dark);
+    text-decoration: none;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--bg-item-active);
+    transition: background 0.2s;
+}
+
+.galeriaHeroEnlace:hover {
+    background: var(--bg-warm-hover);
+}
+
+/* Pill: nombre + botón info */
+.galeriaHeroPill {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 6px 12px 6px 16px;
+    border-radius: 999px;
+    background: var(--bg-warm);
+    border: 1px solid var(--bg-item-active);
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.galeriaHeroPillTitulo {
+    color: var(--text-dark);
+    text-decoration: none;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.galeriaHeroPillTitulo:hover {
+    text-decoration: underline;
+}
+
+.galeriaHeroPillInfo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    color: var(--text-muted);
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.galeriaHeroPillInfo:hover {
+    color: var(--text-dark);
+}
+

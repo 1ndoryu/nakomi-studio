@@ -8,7 +8,7 @@
 .proyectoGaleriaGrid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-lg);
     max-width: var(--container-width);
     margin: 0 auto;
     padding: 0 var(--spacing-lg);
