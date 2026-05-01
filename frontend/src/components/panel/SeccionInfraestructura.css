@@ -1,0 +1,50 @@
+/* [304A-1] Estilos de la sección Infraestructura del panel admin.
+ * Reutiliza los mismos tokens y patrones que SeccionHosting.css. */
+
+.infraContenedor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.infraHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.infraHeader h2 {
+    margin: 0;
+    font-family: var(--font-primary);
+    font-size: var(--text-lg);
+    color: var(--brand-black);
+}
+
+/* Tabs: mismo patrón que hostingTabs */
+.infraTabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    border-bottom: 1px solid var(--bg-item-active);
+    padding-bottom: 0;
+}
+
+.infraTab {
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    transition: color var(--transicion-rapida), border-color var(--transicion-rapida);
+}
+
+.infraTab:hover {
+    color: var(--brand-black);
+}
+
+.infraTab--activa {
+    color: var(--brand-black);
+    border-bottom-color: var(--brand-black);
+}

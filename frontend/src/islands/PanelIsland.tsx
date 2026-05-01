@@ -22,6 +22,7 @@ import {SeccionContenido} from '../components/panel/SeccionContenido';
 import {SeccionProblemas} from '../components/panel/SeccionProblemas';
 import {SeccionWallet} from '../components/panel/SeccionWallet';
 import {SeccionRetiros} from '../components/panel/SeccionRetiros';
+import {SeccionInfraestructura} from '../components/panel/SeccionInfraestructura';
 /* [064A-34] EmployeesSection y ServicesCatalogSection eliminados del panel. */
 import {SidebarPanel} from '../components/panel/SidebarPanel';
 import {PlaceholderSeccion} from '../components/panel/PlaceholderSeccion';
@@ -138,6 +139,9 @@ export const PanelIsland: React.FC = () => {
             /* [T1-withdrawal] Retiros: gestión admin */
             case 'retiros':
                 return <SeccionRetiros />;
+            /* [304A-1] Infraestructura: despliegues Coolify + servidores Contabo (admin) */
+            case 'infraestructura':
+                return <SeccionInfraestructura />;
             default:
                 return <PlaceholderSeccion tab={tabActual} />;
         }

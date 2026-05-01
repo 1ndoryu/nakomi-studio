@@ -25,6 +25,35 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
+### 6. Reorganizar panel admin de Hosting/VPS/Dominios
+
+- ✅ Cambiar el encabezado genérico del panel: no mezclar todo bajo “WordPress Hosting” si también contiene VPS, despliegues reales y dominios.
+- ✅ Separar visualmente "Hosting", "VPS/Infraestructura", "Despliegues Coolify" y "Dominios" — SeccionInfraestructura creada como entrada separada en sidebar (Despliegues VPS2 + Contabo VPS).
+- ✅ vpsCard rediseñado con tokens coherentes con hostingCard (brand-white, bg-item-active, radius-lg).
+- ⬜ Agregar apartado admin de dominios para ver, comprar/asignar y gestionar dominios desde el panel *(queda como apartado pendiente).*
+- ⬜ Revisar por qué producción muestra “Coolify no está configurado para listar despliegues reales de la VPS2” y “Contabo API no configurada” aunque settings tiene credenciales.
+
+### 7. Asignación manual de hostings a clientes y cobro posterior
+
+- ⬜ Crear UI admin para asignar hosting existente o recién creado a un cliente registrado o por registrar.
+- ⬜ Soportar casos como guillermochatbots, palasdepadel, restaurante.wandori y cap.wandori.us: hostings ya corriendo asignables a un cliente que todavía no tiene cuenta.
+- ⬜ Permitir crear la cuenta del cliente desde admin y dejar los hostings asignados en estado pendiente de pago.
+- ⬜ Generar cobro/factura pagable por el cliente para varios hostings juntos o individualmente.
+- ⬜ Definir estados claros: provisionado/no pagado, pagado, suspendido, cancelado.
+
+### 8. Auditoría real del sistema de compra/provisioning
+
+- ⬜ Auditar compra de hosting WordPress de punta a punta: checkout, webhook, suscripción, provisioning Coolify, dominio, estado visible al cliente.
+- ⬜ Auditar compra de VPS de punta a punta: checkout/solicitud, aprobación manual si aplica, proveedor Contabo, credenciales/estado esperado.
+- ⬜ Verificar que una compra real entregue exactamente lo prometido al cliente, sin pasos manuales ocultos ni errores silenciosos.
+- ⬜ Crear checklist de pruebas reproducible para hosting, dominios y VPS antes de considerar el sistema listo para producción.
+
+### 9. Tooling local común entre ramas
+
+- ✅ `npm run dev` usa BD local aislada por rama/proyecto y repara historiales SQLx incompatibles en desarrollo.
+- ✅ `npm run dev` fuerza `CARGO_TARGET_DIR` fuera de OneDrive y usa `sccache` si está disponible.
+- ✅ `npm run dev` arranca watcher de limpieza de `C:\tmp\glory-target` para evitar crecimiento indefinido del target Rust.
+
 ### ~~1. Imágenes pesadas en inicio~~ ✅ COMPLETADO
 Causa raíz: image-webp 0.2.4 solo soporta WebP lossless → 1.5MB por imagen. Solucionado: backend ahora devuelve JPEG lossy para peticiones WebP (196KB vs 1.5MB). Frontend deshabilitó srcSet WebP. Cache limpiada.
 

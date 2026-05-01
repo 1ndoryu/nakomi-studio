@@ -5,7 +5,7 @@
  * [074A-63] Tabs Activos/Inactivos como en SeccionProyectos. Titulo de card = dominio o nombre del hosting.
  *           Logica de estado extraida a useSeccionHosting. Sub-componentes en HostingSubComponents.
  * [084A-24] Tab "Servidores" para admin: muestra VPS reales de Contabo.
- * [164A-19] Tab separado para despliegues reales de VPS2 desde Coolify. */
+ * [304A-1] Tabs 'Despliegues VPS2' y 'Contabo VPS' movidos a SeccionInfraestructura (sidebar separado). */
 
 import React from 'react';
 import {Server, Plus} from 'lucide-react';
@@ -15,8 +15,6 @@ import {Button} from '../ui/Button';
 import {HostingCard, CreateHostingForm} from './HostingSubComponents';
 import {HostingDetalle} from './HostingDetalle';
 import {HostingPlanSelector} from './HostingPlanSelector';
-import {VpsPanel} from './VpsPanel';
-import {Vps2DeploymentsPanel} from './Vps2DeploymentsPanel';
 import {VpsSubscriptionsPanel} from './VpsSubscriptionsPanel';
 import './SeccionHosting.css';
 
@@ -136,30 +134,10 @@ export const SeccionHosting: React.FC = () => {
                 >
                     VPS ({vpsSubscriptions.length})
                 </Button>
-                {/* [084A-24] Tab de servidores solo para admin */}
-                {isAdmin && (
-                    <Button
-                        type="button"
-                        variante="texto"
-                        className={`hostingTab ${tabActiva === 'deployments' ? 'hostingTab--activa' : ''}`}
-                        onClick={() => setTabActiva('deployments')}
-                    >
-                        Despliegues VPS2
-                    </Button>
-                )}
-                {isAdmin && (
-                    <Button
-                        type="button"
-                        variante="texto"
-                        className={`hostingTab ${tabActiva === 'servidores' ? 'hostingTab--activa' : ''}`}
-                        onClick={() => setTabActiva('servidores')}
-                    >
-                        Contabo VPS
-                    </Button>
-                )}
             </div>
 
             {/* [084A-24] Contenido condicional por tab */}
+            {/* [304A-1] 'deployments' y 'servidores' movidos a SeccionInfraestructura */}
             {tabActiva === 'vps' ? (
                 <VpsSubscriptionsPanel
                     subscriptions={vpsSubscriptions}
@@ -169,10 +147,6 @@ export const SeccionHosting: React.FC = () => {
                     approveLoading={approveMutation.isPending}
                     rejectLoading={rejectMutation.isPending}
                 />
-            ) : tabActiva === 'deployments' && isAdmin ? (
-                <Vps2DeploymentsPanel />
-            ) : tabActiva === 'servidores' && isAdmin ? (
-                <VpsPanel />
             ) : subscriptions.length === 0 ? (
                 <div className="hostingVacio">
                     <Server size={48} strokeWidth={1.2} />

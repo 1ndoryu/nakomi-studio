@@ -14,13 +14,14 @@
     gap: var(--spacing-sm);
 }
 
+/* [304A-2] Alineado con tokens de hostingCard: brand-white, bg-item-active, radius-lg */
 .vpsDeploymentsSummaryCard {
     display: flex;
     flex-direction: column;
     gap: 4px;
     padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-card-subtle);
-    border: 1px solid var(--border-light);
+    background: var(--brand-white);
+    border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-md);
 }
 
@@ -37,10 +38,11 @@
     gap: var(--spacing-md);
 }
 
+/* [304A-2] Background y borde coherentes con hostingCard */
 .vpsCard {
-    background: var(--bg-card-subtle);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
+    background: var(--brand-white);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
     padding: var(--spacing-md);
     display: flex;
     flex-direction: column;

@@ -11,7 +11,9 @@ export type SeccionPanel =
     | 'proyectos' | 'pagos' | 'perfil' | 'metodos-pago' | 'mensajes' | 'wallet'
     | 'asignados' | 'disponibles' | 'delegaciones'
     | 'todos-ordenes' | 'reembolsos' | 'retiros' | 'usuarios' | 'hosting' | 'configuracion'
-    | 'contenido' | 'problemas';
+    | 'contenido' | 'problemas'
+    /* [304A-1] Sección separada para infraestructura (VPS reales, despliegues Coolify) */
+    | 'infraestructura';
 
 export interface TabConfig {
     id: SeccionPanel;
@@ -157,6 +159,12 @@ const TABS_ADMIN: TabConfig[] = [
         id: 'problemas',
         label: 'Problemas',
         descripcion: 'Reportes de problemas en órdenes. Revisa, resuelve o descarta tickets de clientes y empleados.'
+    },
+    /* [304A-1] Infraestructura: despliegues Coolify VPS2 y servidores Contabo — solo admin */
+    {
+        id: 'infraestructura',
+        label: 'Infraestructura',
+        descripcion: 'Despliegues activos en VPS2 (Coolify) y servidores Contabo. Monitoreo y auditoría de infraestructura real.'
     }
 ];
 

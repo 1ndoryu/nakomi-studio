@@ -15,7 +15,8 @@ const ACTIVE_STATUSES = new Set(['pending', 'provisioning', 'active']);
 
 export function useSeccionHosting() {
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos' | 'vps' | 'deployments' | 'servidores'>('activos');
+    /* [304A-1] 'deployments' y 'servidores' eliminados — movidos a SeccionInfraestructura */
+    const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos' | 'vps'>('activos');
     const [selectedHostingId, setSelectedHostingId] = useState<string | null>(null);
 
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
