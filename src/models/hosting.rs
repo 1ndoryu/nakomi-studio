@@ -80,6 +80,9 @@ pub struct CreateHostingRequest {
     pub plan: String,
     #[validate(length(max = 253), regex(path = "*DOMAIN_REGEX", message = "Dominio inválido"))]
     pub domain: Option<String>,
+    /* [304A-3] Permite vincular manualmente a un despliegue Coolify existente (admin) */
+    #[validate(length(max = 200))]
+    pub coolify_site_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]

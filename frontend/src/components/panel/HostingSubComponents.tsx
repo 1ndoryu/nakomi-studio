@@ -299,15 +299,19 @@ export function HostingCard({
 export function CreateHostingForm({
     onSubmit,
     submitting,
+    initialCoolifyName,
 }: {
     onSubmit: (req: CreateHostingRequest) => void;
     submitting: boolean;
+    /* [304A-3] Pre-llena coolify_site_name cuando se crea desde un despliegue huérfano */
+    initialCoolifyName?: string;
 }) {
     const [form, setForm] = useState<CreateHostingRequest>({
         client_name: '',
         client_email: '',
         plan: 'basico',
         domain: '',
+        coolify_site_name: initialCoolifyName || '',
     });
 
     const handleSubmit = useCallback(
@@ -317,6 +321,7 @@ export function CreateHostingForm({
             onSubmit({
                 ...form,
                 domain: form.domain?.trim() || undefined,
+                coolify_site_name: form.coolify_site_name?.trim() || undefined,
             });
         },
         [form, onSubmit],
@@ -352,6 +357,15 @@ export function CreateHostingForm({
                 value={form.domain || ''}
                 onChange={e => setForm(prev => ({...prev, domain: e.target.value}))}
             />
+            {/* [304A-3] Campo visible solo cuando se vincula a un despliegue Coolify */}
+            {initialCoolifyName !== undefined && (
+                <Input
+                    type="text"
+                    placeholder="Nombre en Coolify"
+                    value={form.coolify_site_name || ''}
+                    onChange={e => setForm(prev => ({...prev, coolify_site_name: e.target.value}))}
+                />
+            )}
             <Button type="submit" className="hostingBtnSubmit" disabled={submitting}>
                 {submitting ? 'Creando...' : 'Crear suscripción WordPress'}
             </Button>

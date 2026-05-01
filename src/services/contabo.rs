@@ -20,7 +20,8 @@ fn first_env(keys: &[&str]) -> Option<String> {
     keys.iter().find_map(|key| {
         std::env::var(key)
             .ok()
-            .filter(|value| !value.trim().is_empty())
+            .map(|v| v.trim().to_string())
+            .filter(|value| !value.is_empty())
     })
 }
 

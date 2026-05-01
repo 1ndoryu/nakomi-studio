@@ -2,10 +2,14 @@
  * Muestra servicios de Coolify y si cada despliegue está o no vinculado a una
  * suscripción del panel para evitar otra falsa equivalencia entre VPS y deployment. */
 
-import React from 'react';
-import {Activity, ExternalLink, Globe, Link2, Server, ShieldAlert} from 'lucide-react';
+import React, {useState} from 'react';
+import {Activity, ExternalLink, Globe, Link2, PlusCircle, Server, ShieldAlert} from 'lucide-react';
+import {useMutation, useQueryClient} from '@tanstack/react-query';
 import type {CoolifyDeployment} from '../../api/hosting';
+import {apiCreateHostingSubscription} from '../../api/hosting';
 import {useVps2DeploymentsPanel} from '../../hooks/useVps2DeploymentsPanel';
+import {CreateHostingForm} from './HostingSubComponents';
+import {toast} from '../../stores/toastStore';
 import './VpsPanel.css';
 
 function getPanelErrorMessage(error: unknown): string {
@@ -51,6 +55,19 @@ function resolveSubscriptionLabel(deployment: CoolifyDeployment): string {
 function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
     const isLinked = Boolean(deployment.linked_subscription_id);
     const fqdn = deployment.fqdn?.trim() || null;
+    /* [304A-3] Crea suscripción directamente desde el card sin depender del hook complejo */
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const queryClient = useQueryClient();
+    const createMutation = useMutation({
+        mutationFn: apiCreateHostingSubscription,
+        onSuccess: () => {
+            toast.success('Suscripción creada y vinculada al despliegue');
+            void queryClient.invalidateQueries({queryKey: ['hosting-subscriptions']});
+            void queryClient.invalidateQueries({queryKey: ['vps2-deployments']});
+            setShowCreateForm(false);
+        },
+        onError: () => toast.error('Error al crear la suscripción'),
+    });
 
     return (
         <article className="vpsCard">
@@ -121,7 +138,29 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
                         ? 'Despliegue real detectado y vinculado a una suscripción del panel.'
                         : 'Despliegue real detectado en Coolify sin vínculo con una suscripción del panel.'}
                 </p>
+                {/* [304A-3] Botón para vincular despliegue huérfano creando una suscripción */}
+                {!isLinked && (
+                    <button
+                        className="vpsOrphanLinkBtn"
+                        onClick={() => setShowCreateForm(prev => !prev)}
+                        type="button"
+                    >
+                        <PlusCircle size={14} />
+                        {showCreateForm ? 'Cancelar' : 'Crear suscripción vinculada'}
+                    </button>
+                )}
             </div>
+
+            {/* [304A-3] Formulario inline para crear suscripción desde despliegue huérfano */}
+            {!isLinked && showCreateForm && (
+                <div className="vpsOrphanCreateForm">
+                    <CreateHostingForm
+                        initialCoolifyName={deployment.name}
+                        submitting={createMutation.isPending}
+                        onSubmit={req => createMutation.mutate(req)}
+                    />
+                </div>
+            )}
         </article>
     );
 }

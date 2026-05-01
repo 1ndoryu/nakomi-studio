@@ -29,6 +29,8 @@ pub struct CreateHostingParams<'a> {
     pub client_email: &'a str,
     pub plan: &'a str,
     pub domain: Option<&'a str>,
+    /* [304A-3] Permite vincular a despliegue Coolify existente al crear suscripción */
+    pub coolify_site_name: Option<&'a str>,
     pub monthly_price_cents: i32,
     pub storage_limit_mb: i32,
 }
@@ -95,8 +97,8 @@ impl HostingRepository {
     ) -> Result<HostingSubscription, AppError> {
         let row = sqlx::query_as!(
             HostingSubscription,
-            "INSERT INTO hosting_subscriptions (user_id, client_name, client_email, plan, domain, monthly_price_cents, storage_limit_mb)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "INSERT INTO hosting_subscriptions (user_id, client_name, client_email, plan, domain, coolify_site_name, monthly_price_cents, storage_limit_mb)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
@@ -106,6 +108,7 @@ impl HostingRepository {
             params.client_email,
             params.plan,
             params.domain,
+            params.coolify_site_name,
             params.monthly_price_cents,
             params.storage_limit_mb
         )

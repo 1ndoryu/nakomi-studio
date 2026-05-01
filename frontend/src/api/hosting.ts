@@ -44,6 +44,8 @@ export interface CreateHostingRequest {
     client_email: string;
     plan: string;
     domain?: string;
+    /* [304A-3] Vincular a un despliegue Coolify existente (admin) */
+    coolify_site_name?: string;
 }
 
 /*    REST API */
