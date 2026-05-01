@@ -48,3 +48,9 @@ frontend/tsconfig.tsbuildinfo
 /scripts
 !/scripts/prerender.mjs
 !/scripts/check-roadmap.mjs
+/legacy-assets/
+/colors/
+/colors
+/backups/
+frontend/public/legacy-assets
+clients/kamples-scraper
