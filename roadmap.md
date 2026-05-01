@@ -79,8 +79,8 @@ Implementado `GET/POST /api/admin/fixtures` para sincronizar archivos TOML de co
 - ✅ Ya que tenemos una forma de comprar y adquirir dominios tenemos margenes de ganacias (pequeños). 
 - ✅ Me falto decir que el cliente pueda cambiar las dns de su hosting *(DnsManager component + client endpoints)*
 - ✅ Que las imagenes de inicio del carrusel esten en w=1200&q=80 *(CarruselShowcase ahora fuerza fixedWidth=1200 y quality=80 para evitar buckets mayores por DPR)*
-- En local dice "Contabo rechazó la autenticación. Revisa CONTABO_API_PASSWORD y las credenciales OAuth2 configuradas." Debería funcionar. 
-- Entonces si hay un despliegue real, entonces. ¿Como lo solucionamos cuando dice? "Despliegue real detectado en Coolify sin vínculo con una suscripción del panel."
+- ✅ En local dice "Contabo rechazó la autenticación..." — `first_env()` ahora hace `.trim()` al valor, elimina espacios al final en variables de entorno.
+- ✅ Despliegue real sin vínculo — en `Vps2DeploymentsPanel` se agrega botón "Crear suscripción vinculada" inline en cards huérfanas; `CreateHostingRequest` acepta `coolify_site_name` para pre-vincular al crear.
 
 
 ## Notas de infraestructura

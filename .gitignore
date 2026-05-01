@@ -45,9 +45,12 @@ frontend/openapi-debug.json
 .sentinel-report.md
 frontend/tsconfig.tsbuildinfo
 /uploads
-/scripts
+/scripts/*
+!/scripts/clean-cargo-target.ps1
+!/scripts/dev.mjs
 !/scripts/prerender.mjs
 !/scripts/check-roadmap.mjs
+!/scripts/watch-cargo-target.ps1
 /legacy-assets/
 /colors/
 /colors
