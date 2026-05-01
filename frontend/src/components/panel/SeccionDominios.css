@@ -1,0 +1,146 @@
+/* [304A-3] Estilos para SeccionDominios — panel admin de dominios Contabo.
+ * Sigue el mismo patrón visual que SeccionInfraestructura.css */
+
+.dominiosContenedor {
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.dominiosHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--text-secondary);
+}
+
+.dominiosHeader h2 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1;
+}
+
+/* Lista de dominios */
+.dominiosLista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--spacing-md);
+}
+
+/* Card individual de dominio */
+.dominioCard {
+    background: var(--brand-white);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    transition: border-color 0.15s;
+}
+
+.dominioCard:hover {
+    border-color: var(--accent-primary);
+}
+
+.dominioCardHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.dominioCardIcono {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.dominioCombre {
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dominioEstado {
+    font-size: var(--text-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-item-hover);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.dominioEstado--active,
+.dominioEstado--registered {
+    background: color-mix(in srgb, var(--success, #4caf50) 12%, transparent);
+    color: var(--success, #4caf50);
+}
+
+.dominioEstado--expired,
+.dominioEstado--cancelled {
+    background: color-mix(in srgb, var(--error, #f44336) 12%, transparent);
+    color: var(--error, #f44336);
+}
+
+.dominioVence {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.dominioNs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.dominioNsItem {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    background: var(--bg-item-hover);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+}
+
+/* Estados de carga / error / vacío */
+.dominiosCargando,
+.dominiosError,
+.dominiosVacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xl);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.dominiosError {
+    color: var(--error, #f44336);
+}
+
+/* Icono giratorio de recarga */
+@keyframes dominiosSpin {
+    to { transform: rotate(360deg); }
+}
+
+.dominiosSpinning {
+    animation: dominiosSpin 1s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .dominiosLista {
+        grid-template-columns: 1fr;
+    }
+    .dominiosContenedor {
+        padding: var(--spacing-md);
+    }
+}

@@ -91,8 +91,8 @@ pub use user::{
     UpdateProfileRequest, User, UserResponse, UserRole,
 };
 pub use hosting::{
-    CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
-    PublicHostingPlan,
+    AssignHostingRequest, CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent,
+    HostingPlanConfig, HostingStatsResponse, PublicHostingPlan,
     HostingSubscription, HostingSubscriptionResponse, SelfSubscribeRequest,
     SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
     UpdatePlanConfigRequest,

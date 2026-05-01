@@ -136,6 +136,19 @@ export async function apiCreateHostingCheckout(id: string): Promise<string> {
     return data.checkout_url;
 }
 
+/* [304A-3] Admin asigna una suscripción de hosting a un usuario registrado por email.
+ * Vincula hostings creados manualmente a cuentas de clientes existentes. */
+export async function apiAssignHostingToUser(
+    id: string,
+    userEmail: string,
+): Promise<HostingSubscription> {
+    const { data } = await axiosInstance.patch<HostingSubscription>(
+        `/api/hosting/subscriptions/${id}/assign`,
+        { user_email: userEmail },
+    );
+    return data;
+}
+
 export async function apiListHostingEvents(id: string): Promise<HostingEvent[]> {
     const {data} = await axiosInstance.get<HostingEvent[]>(`/api/hosting/subscriptions/${id}/events`);
     return data;

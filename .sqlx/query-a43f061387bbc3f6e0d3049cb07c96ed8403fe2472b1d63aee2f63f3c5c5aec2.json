@@ -1,0 +1,125 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE hosting_subscriptions\n             SET user_id = $1, updated_at = NOW()\n             WHERE id = $2\n             RETURNING id, user_id, client_name, client_email, plan, domain,\n                       coolify_site_name, status, stripe_subscription_id,\n                       monthly_price_cents, storage_limit_mb,\n                       server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "client_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "client_email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "plan",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "domain",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "coolify_site_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "stripe_subscription_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "monthly_price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "storage_limit_mb",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "server_uuid",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "server_ip",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "sftp_user",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "sftp_password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "sftp_port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a43f061387bbc3f6e0d3049cb07c96ed8403fe2472b1d63aee2f63f3c5c5aec2"
+}

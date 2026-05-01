@@ -1,10 +1,11 @@
 /* [074A-63] Sub-componentes de SeccionHosting extraidos para cumplir limite de 300 lineas.
  * HostingCard, CreateHostingForm, EventsPanel, EventItem.
- * [074A-65] HostingCard ahora incluye editar/eliminar en context menu. */
+ * [074A-65] HostingCard ahora incluye editar/eliminar en context menu.
+ * [304A-3] Admin puede asignar hosting a cliente por email + generar link de pago. */
 
 import React, {useState, useCallback} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {Server, ExternalLink} from 'lucide-react';
+import {Server, ExternalLink, UserCheck, Link} from 'lucide-react';
 import {
     apiListHostingEvents,
     HOSTING_PLAN_LABELS,
@@ -25,7 +26,8 @@ import {HOSTING_PLAN_OPTIONS} from './hostingPlanOptions';
 /* [074A-57] Card de hosting — layout similar a ordenCard de proyectosLista
  * [074A-63] Titulo = dominio o nombre del hosting (identidad unica), plan va debajo.
  * [074A-65] Context menu con editar/eliminar + edit modal inline.
- * [084A-4] Clientes ahora tienen context menu con Editar/Cancelar. */
+ * [084A-4] Clientes ahora tienen context menu con Editar/Cancelar.
+ * [304A-3] Admin puede asignar hosting a cliente y generar link de pago. */
 export function HostingCard({
     sub,
     isAdmin,
@@ -34,8 +36,10 @@ export function HostingCard({
     onDelete,
     onCancel,
     onCheckout,
+    onAssign,
     onSelect,
     checkoutLoading,
+    assignLoading,
 }: {
     sub: HostingSubscription;
     isAdmin: boolean;
@@ -44,12 +48,16 @@ export function HostingCard({
     onDelete: () => void;
     onCancel: () => void;
     onCheckout: () => void;
+    onAssign?: (email: string) => void;
     onSelect: () => void;
     checkoutLoading?: boolean;
+    assignLoading?: boolean;
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [showStatusModal, setShowStatusModal] = useState(false);
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [assignEmail, setAssignEmail] = useState('');
     const [editPlan, setEditPlan] = useState(sub.plan);
     const [editDomain, setEditDomain] = useState(sub.domain || '');
 
@@ -63,6 +71,17 @@ export function HostingCard({
             label: 'Cambiar estado',
             onSelect: () => setShowStatusModal(true),
         });
+        /* [304A-3] Asignar hosting a cliente registrado */
+        if (onAssign) {
+            menuItems.push({
+                id: 'assign',
+                label: sub.user_id ? 'Reasignar cliente' : 'Asignar a cliente',
+                onSelect: () => {
+                    setAssignEmail('');
+                    setShowAssignModal(true);
+                },
+            });
+        }
     }
 
     /* Editar: admin y cliente */
@@ -81,6 +100,13 @@ export function HostingCard({
         onUpdate({plan: editPlan, domain: editDomain.trim() || undefined});
         setEditing(false);
     }, [editPlan, editDomain, onUpdate]);
+
+    const handleAssignSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        if (!assignEmail.trim() || !onAssign) return;
+        onAssign(assignEmail.trim().toLowerCase());
+        setShowAssignModal(false);
+    }, [assignEmail, onAssign]);
 
     return (
         <>
@@ -103,6 +129,16 @@ export function HostingCard({
                     {isAdmin && (
                         <span className="hostingCardCliente">
                             {sub.client_name} · {sub.client_email}
+                            {/* [304A-3] Indicador visual de asignación */}
+                            {sub.user_id ? (
+                                <span className="hostingAsignadoBadge" title="Asignado a cuenta">
+                                    <UserCheck size={11} /> vinculado
+                                </span>
+                            ) : (
+                                <span className="hostingNoAsignadoBadge" title="Sin cuenta asignada">
+                                    sin cuenta
+                                </span>
+                            )}
                         </span>
                     )}
                     {/* [104A-24] Recursos movidos al footer, precio eliminado */}
@@ -130,8 +166,8 @@ export function HostingCard({
                         )}
                         {/* [094A-2] stopPropagation evita navegar al detalle al usar acciones */}
                         <div className="hostingCardAcciones" onClick={e => e.stopPropagation()}>
-                            {/* [084A-24] Botón de checkout Stripe para suscripciones pendientes */}
-                            {sub.status === 'pending' && (
+                            {/* [084A-24] Botón de checkout Stripe para suscripciones pendientes (cliente) */}
+                            {sub.status === 'pending' && !isAdmin && (
                                 <Button
                                     type="button"
                                     variante="primario"
@@ -140,6 +176,20 @@ export function HostingCard({
                                     disabled={checkoutLoading}
                                 >
                                     {checkoutLoading ? 'Redirigiendo…' : 'Pagar'}
+                                </Button>
+                            )}
+                            {/* [304A-3] Admin genera link de pago para suscripciones pendientes sin cuenta */}
+                            {sub.status === 'pending' && isAdmin && (
+                                <Button
+                                    type="button"
+                                    variante="secundario"
+                                    tamano="pequeno"
+                                    onClick={onCheckout}
+                                    disabled={checkoutLoading}
+                                    title="Genera URL de Stripe para compartir con el cliente"
+                                >
+                                    <Link size={12} />
+                                    {checkoutLoading ? 'Generando…' : 'Link de pago'}
                                 </Button>
                             )}
                             {/* [084A-4] Menú visible para todos los roles, items varían por rol */}
@@ -208,6 +258,38 @@ export function HostingCard({
                                 ))}
                         </div>
                     </div>
+                </Modal>
+            )}
+
+            {/* [304A-3] Modal de asignación de hosting a cliente */}
+            {showAssignModal && isAdmin && onAssign && (
+                <Modal abierto={showAssignModal} onCerrar={() => setShowAssignModal(false)}>
+                    <form className="hostingFormCrear" onSubmit={handleAssignSubmit}>
+                        <h3 className="modalTitulo">
+                            {sub.user_id ? 'Reasignar hosting' : 'Asignar hosting a cliente'}
+                        </h3>
+                        <p className="hostingStatusModalSub">
+                            Hosting: <strong>{sub.domain || sub.client_name}</strong>
+                        </p>
+                        {sub.user_id && (
+                            <p className="hostingStatusModalSub">
+                                Actualmente asignado a: <strong>{sub.client_email}</strong>
+                            </p>
+                        )}
+                        <Input
+                            type="email"
+                            placeholder="Email del cliente registrado"
+                            value={assignEmail}
+                            onChange={e => setAssignEmail(e.target.value)}
+                            required
+                        />
+                        <p className="hostingFormNota">
+                            El cliente debe tener cuenta registrada en el sistema.
+                        </p>
+                        <Button type="submit" disabled={assignLoading || !assignEmail.trim()}>
+                            {assignLoading ? 'Asignando…' : 'Asignar'}
+                        </Button>
+                    </form>
                 </Modal>
             )}
         </>

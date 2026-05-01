@@ -6,7 +6,7 @@
  */
 import React, {useState, useCallback, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
-import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, Banknote, Menu, Network} from 'lucide-react';
+import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, Banknote, Menu, Network, Globe} from 'lucide-react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import {obtenerTabsPorRol, type SeccionPanel} from '../../data/panel';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
@@ -43,6 +43,8 @@ const ICONOS_SECCION: Record<SeccionPanel, React.ElementType> = {
     'wallet': Wallet,
     /* [304A-1] Infraestructura: ícono Network para servidores/despliegues */
     'infraestructura': Network,
+    /* [304A-3] Dominios Contabo */
+    'dominios': Globe,
 };
 
 /* [044A-38 Fase 1] Etiquetas legibles para cada rol */

@@ -229,6 +229,30 @@ impl HostingRepository {
         Ok(row)
     }
 
+    /* [304A-3] Asignar (o desasignar) una suscripción de hosting a un usuario.
+     * Admin only. Permite vincular hostings creados manualmente a cuentas de clientes. */
+    pub async fn assign_user(
+        pool: &PgPool,
+        id: Uuid,
+        user_id: Option<Uuid>,
+    ) -> Result<HostingSubscription, AppError> {
+        let row = sqlx::query_as!(
+            HostingSubscription,
+            "UPDATE hosting_subscriptions
+             SET user_id = $1, updated_at = NOW()
+             WHERE id = $2
+             RETURNING id, user_id, client_name, client_email, plan, domain,
+                       coolify_site_name, status, stripe_subscription_id,
+                       monthly_price_cents, storage_limit_mb,
+                       server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
+            user_id,
+            id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
+    }
+
     /* [084A-24] Asignar stripe_subscription_id a una suscripción de hosting */
     pub async fn set_stripe_subscription_id(
         pool: &PgPool,

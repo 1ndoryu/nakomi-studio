@@ -108,6 +108,14 @@ pub struct UpdateHostingRequest {
     pub domain: Option<String>,
 }
 
+/* [304A-3] Request para asignar hosting a un usuario registrado por email (admin only).
+ * Vincula una suscripción existente (creada manualmente) a la cuenta de un cliente. */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct AssignHostingRequest {
+    #[validate(email)]
+    pub user_email: String,
+}
+
 /* ============================================================
    RESPONSES
    ============================================================ */

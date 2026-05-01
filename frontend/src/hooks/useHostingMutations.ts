@@ -1,5 +1,7 @@
 /* [094A-3] Mutations de hosting extraídas de useSeccionHosting para cumplir límite 120 líneas.
- * Contiene todas las mutaciones CRUD + checkout + self-service subscribe. */
+ * Contiene todas las mutaciones CRUD + checkout + self-service subscribe.
+ * [304A-3] Agrega assignMutation (admin asigna hosting a cliente por email) y
+ *          adminCheckoutMutation (genera link de pago sin redirigir al admin). */
 
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {
@@ -9,6 +11,7 @@ import {
     apiDeleteHostingSubscription,
     apiRequestCancelHosting,
     apiCreateHostingCheckout,
+    apiAssignHostingToUser,
     apiSelfSubscribe,
     apiProvisionHosting,
     apiRestartHosting,
@@ -142,6 +145,30 @@ export function useHostingMutations(
         onError: () => toast.error('Error al crear suscripción de prueba'),
     });
 
+    /* [304A-3] Admin asigna hosting a cliente registrado por email */
+    const assignMutation = useMutation({
+        mutationFn: ({id, email}: {id: string; email: string}) =>
+            apiAssignHostingToUser(id, email),
+        onSuccess: (updated) => {
+            queryClient.invalidateQueries({queryKey: hostingKey});
+            toast.success(`Hosting asignado a ${updated.client_email}`);
+        },
+        onError: (err: unknown) => {
+            const msg = err instanceof Error ? err.message : 'Error al asignar hosting';
+            toast.error(msg);
+        },
+    });
+
+    /* [304A-3] Admin genera link de pago: copia URL al portapapeles en vez de redirigir */
+    const adminCheckoutMutation = useMutation({
+        mutationFn: (id: string) => apiCreateHostingCheckout(id),
+        onSuccess: (checkoutUrl) => {
+            navigator.clipboard.writeText(checkoutUrl).catch(() => {/* silent fallback */});
+            toast.success('Link de pago copiado al portapapeles');
+        },
+        onError: () => toast.error('Error al generar link de pago'),
+    });
+
     return {
         createMutation,
         statusMutation,
@@ -155,5 +182,7 @@ export function useHostingMutations(
         stopMutation,
         startMutation,
         adminTestSubscribeMutation,
+        assignMutation,
+        adminCheckoutMutation,
     };
 }

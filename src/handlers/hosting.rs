@@ -21,7 +21,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    AssignHostingRequest, CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent,
+    HostingPlanConfig, HostingStatsResponse,
     PublicHostingPlan,
     HostingSubscriptionResponse, SelfSubscribeRequest, SelfSubscribeResponse,
     UpdateHostingRequest, UpdateHostingStatusRequest, UpdatePlanConfigRequest, UserRole,
@@ -1686,6 +1687,63 @@ pub async fn admin_test_subscribe(
     }))))
 }
 
+/* [304A-3] Asigna una suscripción de hosting a un usuario por email.
+ * Admin only. Permite vincular hostings creados manualmente a cuentas de clientes existentes.
+ * Gotcha: el usuario debe existir en BD — no crea cuentas nuevas. */
+
+/// Asignar hosting a cliente por email (admin only)
+#[utoipa::path(
+    patch,
+    path = "/api/hosting/subscriptions/{id}/assign",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    request_body = AssignHostingRequest,
+    responses(
+        (status = 200, description = "Suscripción asignada al usuario", body = HostingSubscriptionResponse),
+        (status = 403, description = "Solo admin"),
+        (status = 404, description = "Suscripción o usuario no encontrado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn assign_hosting(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(req): Json<AssignHostingRequest>,
+) -> Result<Json<HostingSubscriptionResponse>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+    req.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+
+    /* Verificar que la suscripción existe */
+    let _existing = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    /* Buscar usuario por email */
+    let user = UserRepository::find_by_email(&state.pool, &req.user_email)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound(format!("Usuario con email '{}' no encontrado. Debe tener cuenta registrada.", req.user_email)))?;
+
+    /* Asignar user_id */
+    let updated = HostingRepository::assign_user(&state.pool, id, Some(user.id)).await?;
+
+    if let Err(e) = HostingRepository::add_event(
+        &state.pool,
+        id,
+        "assigned",
+        Some(serde_json::json!({
+            "assigned_to": user.id.to_string(),
+            "user_email": req.user_email,
+            "by": auth.user_id.to_string(),
+        })),
+    ).await {
+        tracing::warn!("Error registrando evento assigned para {id}: {e}");
+    }
+
+    Ok(Json(updated.into()))
+}
+
 pub fn hosting_routes() -> Router<AppState> {
     /* [174A-17] Rate limits específicos para endpoints de pago de hosting.
      * subscribe: máx 3 por hora por IP (evita abuso de checkouts).
@@ -1715,6 +1773,11 @@ pub fn hosting_routes() -> Router<AppState> {
         .route(
             "/hosting/subscriptions/:id/status",
             axum::routing::patch(update_status),
+        )
+        /* [304A-3] Admin asigna hosting a cliente registrado por email */
+        .route(
+            "/hosting/subscriptions/:id/assign",
+            axum::routing::patch(assign_hosting),
         )
         .route(
             "/hosting/subscriptions/:id/events",

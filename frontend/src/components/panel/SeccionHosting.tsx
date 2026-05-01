@@ -46,6 +46,8 @@ export const SeccionHosting: React.FC = () => {
         startMutation,
         approveMutation,
         rejectMutation,
+        assignMutation,
+        adminCheckoutMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -173,8 +175,18 @@ export const SeccionHosting: React.FC = () => {
                             }
                             onDelete={() => deleteMutation.mutate(sub.id)}
                             onCancel={() => cancelMutation.mutate(sub.id)}
-                            onCheckout={() => checkoutMutation.mutate(sub.id)}
-                            checkoutLoading={checkoutMutation.isPending}
+                            /* [304A-3] Admin copia link de pago; cliente es redirigido */
+                            onCheckout={() =>
+                                isAdmin
+                                    ? adminCheckoutMutation.mutate(sub.id)
+                                    : checkoutMutation.mutate(sub.id)
+                            }
+                            checkoutLoading={
+                                isAdmin ? adminCheckoutMutation.isPending : checkoutMutation.isPending
+                            }
+                            /* [304A-3] Admin asigna hosting a cliente por email */
+                            onAssign={isAdmin ? (email) => assignMutation.mutate({id: sub.id, email}) : undefined}
+                            assignLoading={assignMutation.isPending}
                         />
                     ))}
                 </div>
