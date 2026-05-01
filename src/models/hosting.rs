@@ -371,6 +371,7 @@ mod tests {
             client_email: "juan@example.com".to_string(),
             plan: "pro".to_string(),
             domain: Some("nakomi.studio".to_string()),
+            coolify_site_name: None,
         };
         assert!(req.validate().is_ok());
     }
@@ -382,6 +383,7 @@ mod tests {
             client_email: "test@test.com".to_string(),
             plan: "basico".to_string(),
             domain: None,
+            coolify_site_name: None,
         };
         assert!(req.validate().is_err());
     }
@@ -393,6 +395,7 @@ mod tests {
             client_email: "not-an-email".to_string(),
             plan: "basico".to_string(),
             domain: None,
+            coolify_site_name: None,
         };
         assert!(req.validate().is_err());
     }
@@ -404,6 +407,7 @@ mod tests {
             client_email: "test@test.com".to_string(),
             plan: "basico".to_string(),
             domain: Some("' OR 1=1; --".to_string()),
+            coolify_site_name: None,
         };
         assert!(req.validate().is_err());
     }
@@ -415,6 +419,7 @@ mod tests {
             client_email: "test@test.com".to_string(),
             plan: "basico".to_string(),
             domain: Some("<script>alert(1)</script>.com".to_string()),
+            coolify_site_name: None,
         };
         assert!(req.validate().is_err());
     }

@@ -3,9 +3,9 @@
  * [074A-65] HostingCard ahora incluye editar/eliminar en context menu.
  * [304A-3] Admin puede asignar hosting a cliente por email + generar link de pago. */
 
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useRef, useEffect} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {Server, ExternalLink, UserCheck, Link} from 'lucide-react';
+import {Server, ExternalLink, UserCheck, Link, ChevronDown} from 'lucide-react';
 import {
     apiListHostingEvents,
     HOSTING_PLAN_LABELS,
@@ -16,6 +16,7 @@ import {
     type CreateHostingRequest,
     type UpdateHostingRequest,
 } from '../../api/hosting';
+import {apiListUsers, type AdminUserItem} from '../../api/admin-users';
 import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';
 import {Select} from '../ui/Select';
@@ -296,6 +297,72 @@ export function HostingCard({
     );
 }
 
+/* Selector de usuario con búsqueda. Devuelve el usuario seleccionado via onSelect. */
+function UserSelector({onSelect}: {onSelect: (user: AdminUserItem) => void}) {
+    const [search, setSearch] = useState('');
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    const {data, isLoading} = useQuery({
+        queryKey: ['admin-users-selector', search],
+        queryFn: () => apiListUsers({search, per_page: 20, role: 'client'}),
+        enabled: open,
+        staleTime: 30_000,
+    });
+
+    /* Cerrar al hacer click fuera */
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    const users = data?.users ?? [];
+
+    return (
+        <div className="userSelectorContenedor" ref={ref}>
+            <div className="userSelectorInput" onClick={() => setOpen(prev => !prev)}>
+                <Input
+                    type="text"
+                    placeholder="Buscar cliente registrado…"
+                    value={search}
+                    onChange={e => {
+                        setSearch(e.target.value);
+                        setOpen(true);
+                    }}
+                    onFocus={() => setOpen(true)}
+                />
+                <ChevronDown size={14} className="userSelectorChevron" />
+            </div>
+            {open && (
+                <div className="userSelectorDropdown">
+                    {isLoading && <div className="userSelectorItem userSelectorItemMuted">Cargando…</div>}
+                    {!isLoading && users.length === 0 && (
+                        <div className="userSelectorItem userSelectorItemMuted">Sin resultados</div>
+                    )}
+                    {users.map(user => (
+                        <div
+                            key={user.id}
+                            className="userSelectorItem"
+                            onClick={() => {
+                                onSelect(user);
+                                setSearch(user.display_name || user.email);
+                                setOpen(false);
+                            }}
+                        >
+                            <span className="userSelectorName">{user.display_name || user.email}</span>
+                            <span className="userSelectorEmail">{user.email}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function CreateHostingForm({
     onSubmit,
     submitting,
@@ -306,9 +373,8 @@ export function CreateHostingForm({
     /* [304A-3] Pre-llena coolify_site_name cuando se crea desde un despliegue huérfano */
     initialCoolifyName?: string;
 }) {
-    const [form, setForm] = useState<CreateHostingRequest>({
-        client_name: '',
-        client_email: '',
+    const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null);
+    const [form, setForm] = useState({
         plan: 'basico',
         domain: '',
         coolify_site_name: initialCoolifyName || '',
@@ -317,31 +383,27 @@ export function CreateHostingForm({
     const handleSubmit = useCallback(
         (e: React.FormEvent) => {
             e.preventDefault();
-            if (!form.client_name.trim() || !form.client_email.trim()) return;
+            if (!selectedUser) return;
             onSubmit({
-                ...form,
-                domain: form.domain?.trim() || undefined,
-                coolify_site_name: form.coolify_site_name?.trim() || undefined,
+                client_name: selectedUser.display_name || selectedUser.email,
+                client_email: selectedUser.email,
+                plan: form.plan,
+                domain: form.domain.trim() || undefined,
+                coolify_site_name: form.coolify_site_name.trim() || undefined,
             });
         },
-        [form, onSubmit],
+        [form, onSubmit, selectedUser],
     );
 
     return (
         <form className="hostingFormCrear" onSubmit={handleSubmit}>
-            <h3>Nueva suscripción de WordPress hosting</h3>
-            <Input
-                type="text"
-                placeholder="Nombre del cliente"
-                value={form.client_name}
-                onChange={e => setForm(prev => ({...prev, client_name: e.target.value}))}
-            />
-            <Input
-                type="email"
-                placeholder="Email del cliente"
-                value={form.client_email}
-                onChange={e => setForm(prev => ({...prev, client_email: e.target.value}))}
-            />
+            <h3>Nueva suscripción de hosting</h3>
+            <UserSelector onSelect={setSelectedUser} />
+            {selectedUser && (
+                <p className="hostingFormNota">
+                    Cliente: <strong>{selectedUser.display_name || selectedUser.email}</strong> · {selectedUser.email}
+                </p>
+            )}
             <Select
                 className="hostingSelect"
                 value={form.plan}
@@ -354,7 +416,7 @@ export function CreateHostingForm({
             <Input
                 type="text"
                 placeholder="Dominio (opcional)"
-                value={form.domain || ''}
+                value={form.domain}
                 onChange={e => setForm(prev => ({...prev, domain: e.target.value}))}
             />
             {/* [304A-3] Campo visible solo cuando se vincula a un despliegue Coolify */}
@@ -362,11 +424,11 @@ export function CreateHostingForm({
                 <Input
                     type="text"
                     placeholder="Nombre en Coolify"
-                    value={form.coolify_site_name || ''}
+                    value={form.coolify_site_name}
                     onChange={e => setForm(prev => ({...prev, coolify_site_name: e.target.value}))}
                 />
             )}
-            <Button type="submit" className="hostingBtnSubmit" disabled={submitting}>
+            <Button type="submit" className="hostingBtnSubmit" disabled={submitting || !selectedUser}>
                 {submitting ? 'Creando...' : 'Crear suscripción WordPress'}
             </Button>
         </form>

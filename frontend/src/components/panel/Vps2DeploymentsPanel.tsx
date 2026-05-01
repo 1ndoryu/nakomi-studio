@@ -9,6 +9,7 @@ import type {CoolifyDeployment} from '../../api/hosting';
 import {apiCreateHostingSubscription} from '../../api/hosting';
 import {useVps2DeploymentsPanel} from '../../hooks/useVps2DeploymentsPanel';
 import {CreateHostingForm} from './HostingSubComponents';
+import {Modal} from '../ui/Modal';
 import {toast} from '../../stores/toastStore';
 import './VpsPanel.css';
 
@@ -26,6 +27,11 @@ function getPanelErrorMessage(error: unknown): string {
     }
 
     return 'No se pudo consultar Coolify para listar los despliegues reales de la VPS2';
+}
+
+/* Formatea el status de Coolify para display: "Running:Unknown" → "Running · Unknown" */
+function formatStatus(status: string): string {
+    return status.replace(':', ' · ');
 }
 
 function getDeploymentStatusClass(status: string): string {
@@ -75,7 +81,7 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
                 <Server size={20} strokeWidth={1.4} />
                 <h4 className="vpsCardNombre">{deployment.name}</h4>
                 <span className={`vpsStatus ${getDeploymentStatusClass(deployment.status)}`}>
-                    {deployment.status}
+                    {formatStatus(deployment.status)}
                 </span>
             </div>
 
@@ -142,25 +148,23 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
                 {!isLinked && (
                     <button
                         className="vpsOrphanLinkBtn"
-                        onClick={() => setShowCreateForm(prev => !prev)}
+                        onClick={() => setShowCreateForm(true)}
                         type="button"
                     >
                         <PlusCircle size={14} />
-                        {showCreateForm ? 'Cancelar' : 'Crear suscripción vinculada'}
+                        Crear suscripción vinculada
                     </button>
                 )}
             </div>
 
-            {/* [304A-3] Formulario inline para crear suscripción desde despliegue huérfano */}
-            {!isLinked && showCreateForm && (
-                <div className="vpsOrphanCreateForm">
-                    <CreateHostingForm
-                        initialCoolifyName={deployment.name}
-                        submitting={createMutation.isPending}
-                        onSubmit={req => createMutation.mutate(req)}
-                    />
-                </div>
-            )}
+            {/* [304A-3] Modal para crear suscripción desde despliegue huérfano */}
+            <Modal abierto={showCreateForm} onCerrar={() => setShowCreateForm(false)}>
+                <CreateHostingForm
+                    initialCoolifyName={deployment.name}
+                    submitting={createMutation.isPending}
+                    onSubmit={req => createMutation.mutate(req)}
+                />
+            </Modal>
         </article>
     );
 }
@@ -201,15 +205,15 @@ export const Vps2DeploymentsPanel: React.FC = () => {
             <div className="vpsDeploymentsSummary">
                 <div className="vpsDeploymentsSummaryCard">
                     <span className="vpsDeploymentsSummaryLabel">Coolify</span>
-                    <strong>{deployments.length} despliegues reales</strong>
+                    <span className="vpsDeploymentsSummaryValue">{deployments.length} despliegues reales</span>
                 </div>
                 <div className="vpsDeploymentsSummaryCard">
                     <span className="vpsDeploymentsSummaryLabel">Vinculados</span>
-                    <strong>{linkedDeployments.length} en panel</strong>
+                    <span className="vpsDeploymentsSummaryValue">{linkedDeployments.length} en panel</span>
                 </div>
                 <div className="vpsDeploymentsSummaryCard">
                     <span className="vpsDeploymentsSummaryLabel">Huérfanos</span>
-                    <strong>{orphanDeployments} sin vínculo</strong>
+                    <span className="vpsDeploymentsSummaryValue">{orphanDeployments} sin vínculo</span>
                 </div>
             </div>
 
