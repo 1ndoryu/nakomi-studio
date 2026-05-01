@@ -25,11 +25,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-
-
-### 6. (Fix prod) Coolify/Contabo no configurados en producción
-
-- ⬜ Verificar por qué producción muestra "Coolify no está configurado" y "Contabo API no configurada" aunque Coolify Dashboard tiene las credenciales. Revisar que los env vars (`COOLIFY_BASE_URL`, `COOLIFY_API_TOKEN`, `COOLIFY_SERVER_UUID`, `CONTABO_*`) estén en el servicio correcto en Coolify UI.
+(sin tareas pendientes)
 
 ### 9. Tooling local común entre ramas
 

@@ -1,5 +1,8 @@
 /* [154A-15c] Servicio de email con SMTP (lettre).
- * Configuración vía env vars: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM.
+ * Configuración vía env vars: SMTP_HOST o GLORY_SMTP_HOST, SMTP_PORT o GLORY_SMTP_PORT,
+ * SMTP_USER o GLORY_SMTP_USER, SMTP_PASS o GLORY_SMTP_PASSWORD, SMTP_FROM.
+ * Se aceptan ambos prefijos para compatibilidad con .env local (GLORY_SMTP_*)
+ * y posibles configuraciones legacy (SMTP_*).
  * Non-fatal: si SMTP no está configurado, los emails se loguean y se omiten. */
 
 use lettre::message::header::ContentType;
@@ -18,14 +21,22 @@ pub struct EmailConfig {
 
 impl EmailConfig {
     /// Intenta crear config desde env vars. Retorna None si faltan variables.
+    /// Acepta SMTP_* y GLORY_SMTP_* como nombres de variables (compat local/prod).
     #[must_use]
     pub fn from_env() -> Option<Self> {
-        let host = std::env::var("SMTP_HOST").ok()?;
-        let user = std::env::var("SMTP_USER").ok()?;
-        let pass = std::env::var("SMTP_PASS").ok()?;
+        let host = std::env::var("SMTP_HOST")
+            .or_else(|_| std::env::var("GLORY_SMTP_HOST"))
+            .ok()?;
+        let user = std::env::var("SMTP_USER")
+            .or_else(|_| std::env::var("GLORY_SMTP_USER"))
+            .ok()?;
+        let pass = std::env::var("SMTP_PASS")
+            .or_else(|_| std::env::var("GLORY_SMTP_PASSWORD"))
+            .ok()?;
         let from_email = std::env::var("SMTP_FROM").unwrap_or_else(|_| user.clone());
         let from_name = std::env::var("SMTP_FROM_NAME").unwrap_or_else(|_| "Nakomi Studio".to_string());
         let port = std::env::var("SMTP_PORT")
+            .or_else(|_| std::env::var("GLORY_SMTP_PORT"))
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(587);
