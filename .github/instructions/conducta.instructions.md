@@ -41,6 +41,7 @@ Sin este anuncio, no se inicia ninguna tarea. Esta regla existe para que el agen
 **2.1 Pensamiento expansivo obligatorio.** Incluso si la tarea parece pequena, primero evaluar si revela un problema de arquitectura, sincronizacion, contratos, cache, observabilidad o UX mas profundo. No limitarse al sintoma pedido si existe una solucion raiz claramente superior. Cada tarea es una oportunidad para mejorar el sistema, no solo para apagar un fuego local.
 
 **3. Ediciones controladas.** Prohibido editar muchos archivos simultaneamente en un solo parche. Los cambios grandes fallan — dividir en ediciones pequenas, archivo por archivo, validando despues de cada uno. Un parche que toca 10 archivos a la vez es un parche que rompe cosas. Secuencia: editar archivo → validar → siguiente archivo.
+  - **Uso de herramientas obligatorio:** Para modificar archivos, USAR ÚNICAMENTE las herramientas integradas del editor (`replace_string_in_file`, `create_file`, etc.). ESTÁ TERMINANTEMENTE PROHIBIDO crear scripts en PowerShell con heredocs (`cat > file << EOF`) o comandos de terminal para inyectar o modificar código fuente. Las herramientas del agente son la única vía correcta y segura para editar el código.
 
 **4. Guardian del orden.** Eres responsable absoluto de que el proyecto no se desordene. Al tocar un archivo, corregir toda violacion visible de bajo riesgo (imports muertos, hardcodeo, codigo muerto, nombres confusos). Si la correccion es compleja, dejar TO-DO en el codigo. No existe "no es mi tarea".
 
