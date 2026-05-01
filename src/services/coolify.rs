@@ -63,6 +63,33 @@ impl CoolifyConfig {
             ssh_key_path,
         })
     }
+
+    /* [VPS1-support] Carga config desde env vars con prefijo arbitrario.
+     * Permite tener múltiples instancias Coolify: "COOLIFY_" (VPS2), "COOLIFY_VPS1_" (VPS1).
+     * Gotcha: el prefijo debe incluir el guion bajo final, ej: "COOLIFY_VPS1_". */
+    #[must_use]
+    pub fn from_env_with_prefix(prefix: &str) -> Option<Self> {
+        let base_url = std::env::var(format!("{prefix}BASE_URL")).ok()?;
+        let api_token = std::env::var(format!("{prefix}API_TOKEN")).ok()?;
+        let server_uuid = std::env::var(format!("{prefix}SERVER_UUID")).ok()?;
+        let project_uuid = std::env::var(format!("{prefix}PROJECT_UUID")).ok()?;
+        let server_ip = std::env::var(format!("{prefix}SERVER_IP")).ok()?;
+
+        if base_url.is_empty() || api_token.is_empty() || server_uuid.is_empty() || project_uuid.is_empty() || server_ip.is_empty() {
+            return None;
+        }
+
+        let ssh_key_path = std::env::var(format!("{prefix}SSH_KEY_PATH")).ok().filter(|s| !s.is_empty());
+
+        Some(Self {
+            base_url,
+            api_token,
+            server_uuid,
+            project_uuid,
+            server_ip,
+            ssh_key_path,
+        })
+    }
 }
 
 /* ============================================================

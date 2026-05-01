@@ -26,12 +26,14 @@ function getPanelErrorMessage(error: unknown): string {
         return error.message;
     }
 
-    return 'No se pudo consultar Coolify para listar los despliegues reales de la VPS2';
+    return 'No se pudo consultar Coolify para listar los despliegues reales';
 }
 
-/* Formatea el status de Coolify para display: "Running:Unknown" → "Running · Unknown" */
+/* Formatea el status de Coolify para display: "Running:Unknown" → "Running", "Running:Healthy" → "Running · Healthy" */
 function formatStatus(status: string): string {
-    return status.replace(':', ' · ');
+    const [main, sub] = status.split(':');
+    if (!sub || sub.toLowerCase() === 'unknown') return main;
+    return `${main} · ${sub}`;
 }
 
 function getDeploymentStatusClass(status: string): string {
@@ -80,6 +82,7 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
             <div className="vpsCardHeader">
                 <Server size={20} strokeWidth={1.4} />
                 <h4 className="vpsCardNombre">{deployment.name}</h4>
+                <span className="vpsServerLabel">{deployment.server_label}</span>
                 <span className={`vpsStatus ${getDeploymentStatusClass(deployment.status)}`}>
                     {formatStatus(deployment.status)}
                 </span>
@@ -101,7 +104,7 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
                 <div className="vpsStat">
                     <Server size={14} />
                     <span className="vpsStatLabel">Servidor</span>
-                    <span className="vpsStatValor">{deployment.server_name || deployment.server_uuid || 'VPS2'}</span>
+                    <span className="vpsStatValor">{deployment.server_name || deployment.server_label}</span>
                 </div>
 
                 <div className="vpsStat">
@@ -178,7 +181,7 @@ export const Vps2DeploymentsPanel: React.FC = () => {
         return (
             <div className="vpsLoading">
                 <Server size={28} strokeWidth={1.2} />
-                <p>Consultando despliegues reales de la VPS2...</p>
+                <p>Consultando despliegues reales de todas las VPS...</p>
             </div>
         );
     }
@@ -195,7 +198,7 @@ export const Vps2DeploymentsPanel: React.FC = () => {
         return (
             <div className="vpsVacio">
                 <Server size={36} strokeWidth={1.2} />
-                <p>No se encontraron despliegues reales en la VPS2</p>
+                <p>No se encontraron despliegues reales en ninguna VPS configurada</p>
             </div>
         );
     }

@@ -347,6 +347,17 @@ fn init_coolify_config() -> Option<crate::services::CoolifyConfig> {
     coolify_config
 }
 
+/* [VPS1-support] Config de Coolify para la VPS principal, vars COOLIFY_VPS1_* */
+fn init_coolify_config_vps1() -> Option<crate::services::CoolifyConfig> {
+    let cfg = crate::services::CoolifyConfig::from_env_with_prefix("COOLIFY_VPS1_");
+    if cfg.is_some() {
+        tracing::info!("Coolify VPS1 configurado");
+    } else {
+        tracing::debug!("Coolify VPS1 no configurado (opcional — faltan vars COOLIFY_VPS1_*)");
+    }
+    cfg
+}
+
 fn init_email_config() -> Option<crate::services::EmailConfig> {
     let email_config = crate::services::EmailConfig::from_env();
     if email_config.is_some() {
@@ -381,6 +392,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
     let ai_config = crate::services::AiChatConfig::from_env();
     let contabo_service = init_contabo_service();
     let coolify_config = init_coolify_config();
+    let coolify_config_vps1 = init_coolify_config_vps1();
     let email_config = init_email_config();
     let fixture_manager = init_fixture_manager(&pool);
 
@@ -403,6 +415,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         chat_timing: crate::services::ChatTimingService::new(),
         contabo_service,
         coolify_config,
+        coolify_config_vps1,
         email_config,
         docker_stats_cache: crate::services::docker_stats::DockerStatsCache::new(),
         fixture_manager,

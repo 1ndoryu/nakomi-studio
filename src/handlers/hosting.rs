@@ -29,6 +29,7 @@ use crate::models::{
 };
 use crate::repositories::{CreateHostingParams, HostingRepository, ServerInfo, UserRepository};
 use crate::services::{CoolifyConfig, CoolifyService};
+use crate::services::coolify::CoolifyServiceSummary;
 use crate::AppState;
 
 /// Deriva la URL base pública desde Origin header, env var, o fallback dev.
@@ -959,16 +960,18 @@ pub async fn get_hosting_stats(
 }
 
 /* ============================================================
-   DESPLIEGUES REALES VPS2 — Coolify (solo admin)
+   DESPLIEGUES REALES VPS — Coolify (solo admin)
    [164A-19] Corrige la tarea mal cerrada: Contabo lista servidores, no despliegues.
+   [VPS1-support] Ahora consulta ambos Coolify (VPS principal + VPS2) y retorna
+   resultados unificados con server_label para distinguir origen.
    ============================================================ */
 
-/// Listar despliegues reales de la VPS2 configurada en Coolify (admin only)
+/// Listar despliegues reales de todas las VPS configuradas en Coolify (admin only)
 #[utoipa::path(
     get,
     path = "/api/hosting/deployments",
     responses(
-        (status = 200, description = "Lista de despliegues reales en Coolify VPS2", body = Vec<CoolifyDeploymentResponse>),
+        (status = 200, description = "Lista de despliegues reales en Coolify (todas las VPS)", body = Vec<CoolifyDeploymentResponse>),
         (status = 403, description = "Sin permisos"),
         (status = 503, description = "Coolify no configurado"),
     ),
@@ -981,13 +984,13 @@ pub async fn list_vps2_deployments(
 ) -> Result<Json<Vec<CoolifyDeploymentResponse>>, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    let config = state.coolify_config.as_ref().ok_or_else(|| {
-        AppError::ServiceUnavailable(
-            "Coolify no está configurado para listar despliegues reales de la VPS2".into(),
-        )
-    })?;
+    /* Necesitamos al menos un config disponible */
+    if state.coolify_config.is_none() && state.coolify_config_vps1.is_none() {
+        return Err(AppError::ServiceUnavailable(
+            "Coolify no está configurado para listar despliegues".into(),
+        ));
+    }
 
-    let services = CoolifyService::list_services(&state.http_client, config).await?;
     let subscriptions = HostingRepository::list_all(&state.pool).await?;
 
     let subscriptions_by_uuid: HashMap<&str, _> = subscriptions
@@ -1009,30 +1012,52 @@ pub async fn list_vps2_deployments(
         })
         .collect();
 
-    let mut deployments: Vec<CoolifyDeploymentResponse> = services
-        .into_iter()
-        .map(|service| {
-            let linked_subscription = subscriptions_by_uuid
-                .get(service.uuid.as_str())
-                .copied()
-                .or_else(|| subscriptions_by_name.get(service.name.as_str()).copied());
+    /* Helper: mapea servicios Coolify a CoolifyDeploymentResponse con una etiqueta de servidor */
+    let map_services = |services: Vec<_>, label: &str| -> Vec<CoolifyDeploymentResponse> {
+        services
+            .into_iter()
+            .map(|service: CoolifyServiceSummary| {
+                let linked_subscription = subscriptions_by_uuid
+                    .get(service.uuid.as_str())
+                    .copied()
+                    .or_else(|| subscriptions_by_name.get(service.name.as_str()).copied());
 
-            CoolifyDeploymentResponse {
-                uuid: service.uuid,
-                name: service.name,
-                status: service.status,
-                fqdn: service.fqdn,
-                server_uuid: service.server_uuid,
-                server_name: service.server_name,
-                project_uuid: service.project_uuid,
-                environment_name: service.environment_name,
-                linked_subscription_id: linked_subscription.map(|subscription| subscription.id),
-                linked_subscription_domain: linked_subscription.and_then(|subscription| subscription.domain.clone()),
-                linked_subscription_status: linked_subscription.map(|subscription| subscription.status.clone()),
-                linked_subscription_plan: linked_subscription.map(|subscription| subscription.plan.clone()),
-            }
-        })
-        .collect();
+                CoolifyDeploymentResponse {
+                    uuid: service.uuid,
+                    name: service.name,
+                    status: service.status,
+                    fqdn: service.fqdn,
+                    server_uuid: service.server_uuid,
+                    server_name: service.server_name,
+                    project_uuid: service.project_uuid,
+                    environment_name: service.environment_name,
+                    linked_subscription_id: linked_subscription.map(|s| s.id),
+                    linked_subscription_domain: linked_subscription.and_then(|s| s.domain.clone()),
+                    linked_subscription_status: linked_subscription.map(|s| s.status.clone()),
+                    linked_subscription_plan: linked_subscription.map(|s| s.plan.clone()),
+                    server_label: label.to_string(),
+                }
+            })
+            .collect()
+    };
+
+    let mut deployments: Vec<CoolifyDeploymentResponse> = Vec::new();
+
+    /* VPS principal (COOLIFY_VPS1_*) */
+    if let Some(cfg) = state.coolify_config_vps1.as_ref() {
+        match CoolifyService::list_services(&state.http_client, cfg).await {
+            Ok(services) => deployments.extend(map_services(services, "VPS Principal")),
+            Err(e) => tracing::warn!("[deployments] Error listando VPS1: {e}"),
+        }
+    }
+
+    /* VPS2 (COOLIFY_*) */
+    if let Some(cfg) = state.coolify_config.as_ref() {
+        match CoolifyService::list_services(&state.http_client, cfg).await {
+            Ok(services) => deployments.extend(map_services(services, "VPS2")),
+            Err(e) => tracing::warn!("[deployments] Error listando VPS2: {e}"),
+        }
+    }
 
     deployments.sort_by(|left, right| {
         right

@@ -345,6 +345,7 @@ export interface CoolifyDeployment {
     linked_subscription_domain: string | null;
     linked_subscription_status: string | null;
     linked_subscription_plan: string | null;
+    server_label: string;
 }
 
 /* [164A-19] Despliegues reales de Coolify filtrados para la VPS2 configurada. */

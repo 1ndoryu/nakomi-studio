@@ -275,6 +275,8 @@ pub struct CoolifyDeploymentResponse {
     pub linked_subscription_domain: Option<String>,
     pub linked_subscription_status: Option<String>,
     pub linked_subscription_plan: Option<String>,
+    /// Etiqueta del servidor Coolify de origen, ej: "VPS Principal" o "VPS2".
+    pub server_label: String,
 }
 
 /* ============================================================
