@@ -47,8 +47,6 @@
     margin: 0;
     font-family: var(--font-primary);
     font-size: var(--text-lg);
-    font-weight: 700;
-    color: var(--brand-black);
 }
 
 .hostingDetalleHeaderMeta {
