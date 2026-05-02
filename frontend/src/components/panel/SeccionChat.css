@@ -37,7 +37,7 @@
 }
 
 /* [074A-20] Títulos chat panel: todos con font-size sm, weight 600, brand-black, flex 1 */
-.chatListaHeader h3 {
+.chatListaHeader .chatListaTitulo {
     margin: 0;
     font-family: var(--font-primary);
     font-size: var(--text-sm);

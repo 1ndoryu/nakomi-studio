@@ -319,7 +319,7 @@
 }
 
 /* Footer con acciones */
-.editorProyectoAcciones {
+.editorProyectoFooter {
     display: flex;
     align-items: center;
     justify-content: space-between;

@@ -118,7 +118,7 @@
 }
 
 /* Acciones */
-.testimonioAcciones {
+.testimonioFormZona {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -152,14 +152,6 @@
     flex-direction: column;
     align-items: center;
     gap: var(--spacing-md);
-}
-
-.modalTestimonioExitoTitulo {
-    font-family: var(--font-primary);
-    font-size: var(--text-2xl);
-    font-weight: 500;
-    color: var(--brand-black);
-    margin: 0;
 }
 
 .modalTestimonioExitoTexto {

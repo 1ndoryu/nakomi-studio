@@ -68,7 +68,7 @@ export const SeccionChat: React.FC = () => {
             {/* Lista de sesiones */}
             <div className={`chatListaSesiones ${showingChat ? 'chatListaOculta' : ''}`}>
                 <div className="chatListaHeader">
-                    <h3>Conversaciones</h3>
+                    <h3 className="chatListaTitulo">Conversaciones</h3>
                 </div>
                 {sessions.length === 0 ? (
                     <div className="chatVacio">

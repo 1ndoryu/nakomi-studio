@@ -113,7 +113,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
                             <div className="hostingFeatureIcono">
                                 <f.icono size={20} strokeWidth={1.5} />
                             </div>
-                            <h3>{f.titulo}</h3>
+                            <h3 className="hostingFeatureTitulo">{f.titulo}</h3>
                             <p>{f.desc}</p>
                         </Tarjeta>
                     ))}

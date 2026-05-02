@@ -334,7 +334,7 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                 )}
             </div>
 
-            <div className="editorProyectoAcciones">
+            <div className="editorProyectoFooter">
                 <div className="editorProyectoEstado">
                     <Button
                         type="button"

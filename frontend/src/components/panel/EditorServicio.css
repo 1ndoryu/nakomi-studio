@@ -143,7 +143,7 @@
 }
 
 /* Footer con acciones */
-.editorServicioAcciones {
+.editorServicioFooter {
     display: flex;
     align-items: center;
     justify-content: space-between;

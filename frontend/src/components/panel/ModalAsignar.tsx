@@ -4,7 +4,7 @@
  * Al confirmar hace PUT /api/orders/:id/assign/:employeeId. */
 
 import { useState } from 'react';
-import { Loader2, UserCheck } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiListEmployees, apiAssignOrder, type EmployeeListItem } from '../../api/assignment';
 import { Modal } from '../ui/Modal';
@@ -19,7 +19,7 @@ interface ModalAsignarProps {
     onAsignado: () => void;
 }
 
-export function ModalAsignar({ orderId, orderNumber, abierto, onCerrar, onAsignado }: ModalAsignarProps) {
+export function ModalAsignar({ orderId, abierto, onCerrar, onAsignado }: ModalAsignarProps) {
     const [seleccionado, setSeleccionado] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
@@ -40,11 +40,6 @@ export function ModalAsignar({ orderId, orderNumber, abierto, onCerrar, onAsigna
 
     return (
         <Modal abierto={abierto} onCerrar={onCerrar} className="modalAsignar">
-            <h2 className="modalAsignarTitulo">
-                <UserCheck size={20} />
-                Asignar orden #{orderNumber}
-            </h2>
-
             {isLoading ? (
                 <div className="modalAsignarCargando">
                     <Loader2 className="modalAsignarSpinner" size={24} />
@@ -79,7 +74,7 @@ export function ModalAsignar({ orderId, orderNumber, abierto, onCerrar, onAsigna
                 </ul>
             )}
 
-            <div className="modalAsignarAcciones">
+            <div className="modalAcciones">
                 <Button
                     variante="primario"
                     tamano="mediano"

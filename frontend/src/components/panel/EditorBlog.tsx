@@ -174,7 +174,7 @@ export const EditorBlog: React.FC<EditorBlogProps> = ({
                 )}
             </div>
 
-            <div className="editorBlogAcciones">
+            <div className="editorBlogFooter">
                 <div className="editorBlogEstado">
                     <Button
                         type="button"

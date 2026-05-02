@@ -81,7 +81,6 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
         <Modal abierto={abierto} onCerrar={onCerrar} className="modalTestimonioContenedor">
             {estado === 'exito' ? (
                     <div className="modalTestimonioExito">
-                        <h2 className="modalTestimonioExitoTitulo">Gracias por tu comentario</h2>
                         <p className="modalTestimonioExitoTexto">
                             Tu testimonio ha sido enviado y está pendiente de aprobación.
                             Lo revisaremos y publicaremos lo antes posible.
@@ -90,7 +89,6 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                     </div>
                 ) : (
                     <>
-                        <h2 className="modalTitulo">Escribir un comentario</h2>
                         <p className="modalTestimonioSubtitulo">Comparte tu experiencia trabajando con nosotros.</p>
 
                         <form className="modalTestimonioFormulario" onSubmit={handleSubmit}>
@@ -186,7 +184,7 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                                 />
                             </div>
 
-                            <div className="testimonioAcciones">
+                            <div className="testimonioFormZona">
                                 <Button variante="primario" className="testimonioAccionEnviar" disabled={estado === 'enviando'}>
                                     {estado === 'enviando' ? 'Enviando...' : 'Enviar testimonio'}
                                 </Button>

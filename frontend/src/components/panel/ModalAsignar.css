@@ -1,15 +1,5 @@
 /* [T2-assignment] Estilos del modal de asignación de orden a empleado. */
 
-.modalAsignarTitulo {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    font-size: var(--text-lg);
-    font-weight: 400;
-    color: var(--text-primary);
-    margin: 0 0 var(--spacing-md);
-}
-
 .modalAsignarCargando {
     display: flex;
     justify-content: center;
@@ -70,15 +60,6 @@
     font-size: var(--text-xs);
     color: var(--text-muted);
     white-space: nowrap;
-}
-
-.modalAsignarAcciones {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    margin-top: var(--spacing-md);
-    padding-top: var(--spacing-md);
-    border-top: 1px solid var(--bg-item-active);
 }
 
 .modalAsignarError {

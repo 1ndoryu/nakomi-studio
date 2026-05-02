@@ -166,7 +166,7 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
                 )}
             </div>
 
-            <div className="editorServicioAcciones">
+            <div className="editorServicioFooter">
                 <div className="editorServicioEstado">
                     <Button
                         type="button"

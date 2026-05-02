@@ -86,14 +86,13 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
             {/* [064A-46] Resumen: precio solo en botón, no en texto. */}
             {(paso === 'resumen' || paso === 'auth') && (
                 <div className="modalCompraResumen">
-                    <h2 className="modalTitulo">{plan.nombre}</h2>
                     <p className="modalCompraDescripcion">{plan.descripcion}</p>
                 </div>
             )}
 
             {/* Paso resumen: selector de modo de pago + botón continuar */}
             {paso === 'resumen' && (
-                <div className="modalCompraAcciones">
+                <div className="modalCompraPaso">
                     {!isHosting && !isVps && (
                         <label className="modalCompraBrief">
                             <span className="modalCompraBriefLabel">
@@ -198,7 +197,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                         </div>
                     )}
                     {errorMsg && <p className="modalCompraErrorTexto">{errorMsg}</p>}
-                    <Button variante="primario" tamano="mediano" onClick={handleContinuar} className="modalCompraBotonAncho">
+                    <Button variante="primario" tamano="mediano" onClick={handleContinuar} className="modalCompraCta">
                         {isHosting || isVps
                             ? t('purchase.continue_pay', 'Continuar al checkout')
                             : t('purchase.continue', 'Continuar')} ({precioFinal})
@@ -240,7 +239,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                             minLength={8}
                         />
                     )}
-                    <Button variante="primario" tamano="mediano" type="submit" className="modalCompraBotonAncho">
+                    <Button variante="primario" tamano="mediano" type="submit" className="modalCompraCta">
                         {isHosting || isVps
                             ? t('purchase.continue_pay', 'Continuar al checkout')
                             : t('purchase.continue_pay', 'Continuar al pago')} ({precioFinal})

@@ -336,12 +336,6 @@
     box-sizing: border-box;
 }
 
-.pagoModalBotones {
-    display: flex;
-    gap: var(--spacing-sm);
-    justify-content: flex-end;
-}
-
 /* [084A-44] Responsive: tablas scrollable en mobile, totales apilados */
 @media (max-width: 767px) {
     .pagosOrdenesWrapper {
