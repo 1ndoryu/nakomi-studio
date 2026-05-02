@@ -6,32 +6,6 @@
     gap: var(--spacing-md);
 }
 
-.vpsSubscriptionStatus {
-    border-radius: var(--radius-full);
-    padding: 0.4rem 0.75rem;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    background: var(--bg-accent);
-    color: var(--text-muted);
-}
-
-.vpsSubscriptionStatus--pending_approval {
-    background: var(--color-warning-bg);
-    color: var(--color-warning-text);
-}
-
-.vpsSubscriptionStatus--active {
-    background: var(--color-success-bg);
-    color: var(--color-success-text);
-}
-
-.vpsSubscriptionStatus--suspended,
-.vpsSubscriptionStatus--rejected,
-.vpsSubscriptionStatus--cancelled {
-    background: var(--color-error-bg);
-    color: var(--color-error-text);
-}
-
 .vpsSubscriptionMeta {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

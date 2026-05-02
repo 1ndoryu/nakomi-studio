@@ -79,7 +79,7 @@ export function VpsSubscriptionsPanel({
                                     <span className="hostingCardPlan">{humanizeTier(subscription.tier_name)}</span>
                                     <h3 className="hostingCardTitulo">{subscription.requested_hostname || subscription.client_name}</h3>
                                 </div>
-                                <span className={`vpsSubscriptionStatus vpsSubscriptionStatus--${subscription.status}`}>
+                                <span className="hostingStatus">
                                     {VPS_STATUS_LABELS[subscription.status] ?? subscription.status}
                                 </span>
                             </div>
