@@ -17,7 +17,7 @@ provisioned_at = "timestamptz"
 # VPS 1: Activo — provisionado, con IP asignada (estado ideal)
 [[records]]
 id = "f0000001-0001-4000-8000-000000000001"
-user_id = "@users:cliente@test.com"
+user_id = "@lookup:users:email=cliente@test.com"
 client_name = "Cliente Test"
 client_email = "cliente@test.com"
 tier_name = "vps2"
@@ -26,7 +26,7 @@ status = "active"
 monthly_price_cents = 1238
 provisioning_ip = "185.245.96.1"
 access_username = "root"
-approved_by = "@users:admin@admin.com"
+approved_by = "@lookup:users:email=admin@admin.com"
 approved_at = "2026-03-10T10:00:00Z"
 provisioned_at = "2026-03-10T10:30:00Z"
 client_notes = "Servidor para staging de app Node.js"
@@ -34,7 +34,7 @@ client_notes = "Servidor para staging de app Node.js"
 # VPS 2: Pendiente de aprobación — pagó, esperando que admin apruebe
 [[records]]
 id = "f0000001-0001-4000-8000-000000000002"
-user_id = "@users:cliente@test.com"
+user_id = "@lookup:users:email=cliente@test.com"
 client_name = "Cliente Test"
 client_email = "cliente@test.com"
 tier_name = "vps1"
@@ -47,7 +47,7 @@ client_notes = "Para correr un agente de automatización 24/7"
 # VPS 3: Rechazado — admin rechazó la solicitud con razón
 [[records]]
 id = "f0000001-0001-4000-8000-000000000003"
-user_id = "@users:cliente@test.com"
+user_id = "@lookup:users:email=cliente@test.com"
 client_name = "Cliente Test"
 client_email = "cliente@test.com"
 tier_name = "vps3"
