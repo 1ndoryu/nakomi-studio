@@ -59,6 +59,9 @@ export default function OptimizedImage({
         quality,
         noOptimize,
     });
+    const fetchPriorityProps = fetchPriority
+        ? ({fetchpriority: fetchPriority} as Record<string, string>)
+        : {};
 
     /* Si no hay src, no renderizar nada */
     if (!src) return null;
@@ -73,7 +76,7 @@ export default function OptimizedImage({
                 height={height}
                 className={className}
                 loading={loading}
-                fetchPriority={fetchPriority}
+                {...fetchPriorityProps}
                 draggable={draggable}
                 onClick={onClick}
                 onError={onError}
@@ -93,7 +96,7 @@ export default function OptimizedImage({
                 height={height}
                 className={className}
                 loading={loading}
-                fetchPriority={fetchPriority}
+                {...fetchPriorityProps}
                 draggable={draggable}
                 onClick={onClick}
                 onError={onError}

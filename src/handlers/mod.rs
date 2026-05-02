@@ -38,6 +38,7 @@ mod vps;
 mod wallet;
 
 use axum::Router;
+use argon2::PasswordHasher;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::compression::CompressionLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
@@ -376,8 +377,19 @@ fn init_fixture_manager(
     let content_dir = std::env::var("CONTENT_DIR").unwrap_or_else(|_| "content".to_string());
     if std::path::Path::new(&content_dir).exists() {
         tracing::info!("Fixture manager configurado en '{content_dir}'");
+        let password_hasher: glory_rs::fixtures::PasswordHasher = Box::new(|plain| {
+            let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
+            let hash = argon2::Argon2::default()
+                .hash_password(plain.as_bytes(), &salt)
+                .map_err(|e: argon2::password_hash::Error| -> Box<dyn std::error::Error + Send + Sync> {
+                    e.to_string().into()
+                })?
+                .to_string();
+            Ok(hash)
+        });
         Some(std::sync::Arc::new(
-            glory_rs::fixtures::ContentManager::new(pool.clone(), &content_dir),
+            glory_rs::fixtures::ContentManager::new(pool.clone(), &content_dir)
+                .with_password_hasher(password_hasher),
         ))
     } else {
         tracing::warn!("Content dir '{content_dir}' no encontrado — fixture sync desactivado");

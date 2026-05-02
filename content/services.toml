@@ -10,7 +10,7 @@ id_field = "slug"
 [meta.casts]
 
 [[records]]
-slug = "diseno-de-sitios-web"
+slug = "diseno-web"
 title = "Diseño de Sitios Web"
 description = "Diseño web profesional adaptado a las necesidades del negocio"
 base_price_cents = 10000
