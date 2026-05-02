@@ -1,8 +1,9 @@
 /* [304A-3] Estilos para SeccionDominios — panel admin de dominios Contabo.
  * Sigue el mismo patrón visual que SeccionInfraestructura.css */
 
+/* [batch-4-fix] Padding removido — panelContenido ya lo provee.
+ * Este era el único contenedor de sección con padding propio, rompiendo la consistencia. */
 .dominiosContenedor {
-    padding: var(--spacing-lg);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
