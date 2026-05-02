@@ -21,7 +21,6 @@ import './SeccionHosting.css';
 export const SeccionHosting: React.FC = () => {
     const {
         subscriptions,
-        vpsSubscriptions,
         isLoading,
         isAdmin,
         tabActiva,
@@ -44,8 +43,6 @@ export const SeccionHosting: React.FC = () => {
         restartMutation,
         stopMutation,
         startMutation,
-        approveMutation,
-        rejectMutation,
         assignMutation,
         adminCheckoutMutation,
     } = useSeccionHosting();
@@ -127,24 +124,11 @@ export const SeccionHosting: React.FC = () => {
                 >
                     Inactivos ({inactivos.length})
                 </Button>
-                <Button
-                    type="button"
-                    variante="texto"
-                    className={`hostingTab ${tabActiva === 'vps' ? 'hostingTab--activa' : ''}`}
-                    onClick={() => setTabActiva('vps')}
-                >
-                    VPS ({vpsSubscriptions.length})
-                </Button>
             </div>
 
             {/* [084A-24] Contenido condicional por tab */}
             {/* [304A-1] 'deployments' y 'servidores' movidos a SeccionInfraestructura */}
-            {tabActiva === 'vps' ? (
-                <div className="hostingVacio">
-                    <Server size={36} strokeWidth={1.2} />
-                    <p>Los VPS estarán disponibles próximamente.</p>
-                </div>
-            ) : subscriptions.length === 0 ? (
+            {subscriptions.length === 0 ? (
                 <div className="hostingVacio">
                     <Server size={48} strokeWidth={1.2} />
                     <p>Sin suscripciones de WordPress hosting</p>
