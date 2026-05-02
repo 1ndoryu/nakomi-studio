@@ -113,6 +113,15 @@ impl AiChatConfig {
             tracing::info!("AI: Gemini configurado como proveedor secundario");
         }
 
+        /* [025B-1] Inicializa el estado de rotación desde env var AI_ROTATION_ENABLED.
+         * Default true. Añadir AI_ROTATION_ENABLED=false en .env para desactivarla al arrancar.
+         * Sin esto, el AtomicBool se resetea a true en cada reinicio del servidor. */
+        let rotation_from_env = std::env::var("AI_ROTATION_ENABLED")
+            .map(|v| !v.eq_ignore_ascii_case("false") && v != "0")
+            .unwrap_or(true);
+        ROTATION_ENABLED.store(rotation_from_env, Ordering::Relaxed);
+        tracing::info!("AI: rotación de API keys {}", if rotation_from_env { "activada" } else { "desactivada (AI_ROTATION_ENABLED=false)" });
+
         Self {
             api_keys: keys,
             model,
