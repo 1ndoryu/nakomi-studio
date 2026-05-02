@@ -14,17 +14,7 @@
     font-size: var(--text-sm);
 }
 
-.listaServiciosHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.listaServiciosTitulo {
-    font-size: var(--text-lg);
-    color: var(--text-primary);
-    margin: 0;
-}
+/* listaServiciosHeader + listaServiciosTitulo: seccionHeader/seccionTitulo manejan layout y tipografía. */
 
 /* [124A-CMS7] Lista vertical */
 .listaServiciosLista {

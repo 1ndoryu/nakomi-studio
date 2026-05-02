@@ -17,9 +17,9 @@ export const SeccionInfraestructura: React.FC = () => {
 
     return (
         <div className="infraContenedor">
-            <div className="infraHeader">
+            <div className="infraHeader seccionHeader">
                 <Server size={20} strokeWidth={1.4} />
-                <h2>Infraestructura</h2>
+                <h2 className="seccionTitulo">Infraestructura</h2>
             </div>
 
             <div className="infraTabs">

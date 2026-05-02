@@ -7,18 +7,7 @@
     gap: var(--spacing-md);
 }
 
-.infraHeader {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.infraHeader h2 {
-    margin: 0;
-    font-family: var(--font-primary);
-    font-size: var(--text-lg);
-    color: var(--brand-black);
-}
+/* infraHeader: seccionHeader maneja layout — no hay overrides adicionales. */
 
 /* Tabs: mismo patrón que hostingTabs */
 .infraTabs {

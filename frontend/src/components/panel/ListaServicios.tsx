@@ -186,8 +186,8 @@ export const ListaServicios: React.FC<ListaServiciosProps> = ({
 
     return (
         <div className="listaServicios">
-            <div className="listaServiciosHeader">
-                <h3 className="listaServiciosTitulo">Servicios</h3>
+            <div className="listaServiciosHeader seccionHeader">
+                <h3 className="seccionTitulo">Servicios</h3>
                 <div className="listaBusqueda">
                     <Search size={14} className="listaBusquedaIcono" />
                     <Input

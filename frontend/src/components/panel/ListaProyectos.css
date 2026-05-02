@@ -14,17 +14,7 @@
     font-size: var(--text-sm);
 }
 
-.listaProyectosHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.listaProyectosTitulo {
-    font-size: var(--text-lg);
-    color: var(--text-primary);
-    margin: 0;
-}
+/* listaProyectosHeader + listaProyectosTitulo: seccionHeader/seccionTitulo manejan layout y tipografía. */
 
 /* [124A-CMS3] Lista vertical (antes era grid) */
 .listaProyectosLista {

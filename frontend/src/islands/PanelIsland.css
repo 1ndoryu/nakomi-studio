@@ -65,6 +65,27 @@
     color: var(--panel-card-icono-color, var(--text-tertiary));
 }
 
+/* ── Contrato: headers de sección ──────────────────────────────────────────
+ * Toda sección dentro de panelContenido que tenga título + acción usa estas
+ * clases base. Los {section}Header solo declaran overrides puntuales.
+ * Así se impide que cada sección reinvente el mismo layout con variaciones. */
+.seccionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+}
+
+.seccionTitulo {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-family: var(--font-primary);
+    color: var(--text-primary);
+    flex: 1;
+}
+
+/* ── Contrato: headers de sección ── fin ────────────────────────────────── */
+
 /* Responsive: stack vertical en movil */
 @media (max-width: 768px) {
     .panelCardIcono {

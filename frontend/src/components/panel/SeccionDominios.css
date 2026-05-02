@@ -9,19 +9,9 @@
     gap: var(--spacing-md);
 }
 
+/* dominiosHeader: seccionHeader maneja layout. Solo override de color del icono. */
 .dominiosHeader {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
     color: var(--text-tertiary);
-}
-
-.dominiosHeader h2 {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-    flex: 1;
 }
 
 /* Lista de dominios */

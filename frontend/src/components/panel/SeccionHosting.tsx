@@ -85,8 +85,8 @@ export const SeccionHosting: React.FC = () => {
 
     return (
         <div className="hostingContenedor">
-            <div className="hostingHeader">
-                <h2>WordPress Hosting</h2>
+            <div className="hostingHeader seccionHeader">
+                <h2 className="seccionTitulo">WordPress Hosting</h2>
                 {isAdmin ? (
                     <Button
                         variante="primario"

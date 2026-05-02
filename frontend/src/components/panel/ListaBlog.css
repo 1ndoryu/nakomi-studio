@@ -14,17 +14,7 @@
     font-size: var(--text-sm);
 }
 
-.listaBlogHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.listaBlogTitulo {
-    font-size: var(--text-lg);
-    color: var(--text-primary);
-    margin: 0;
-}
+/* listaBlogHeader + listaBlogTitulo: seccionHeader/seccionTitulo manejan layout y tipografía. */
 
 /* [124A-CMS7] Lista vertical */
 .listaBlogLista {

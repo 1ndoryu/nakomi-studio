@@ -8,18 +8,7 @@
     gap: var(--spacing-md);
 }
 
-.hostingHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.hostingHeader h2 {
-    margin: 0;
-    font-family: var(--font-primary);
-    font-size: var(--text-lg);
-    color: var(--brand-black);
-}
+/* hostingHeader: seccionHeader maneja layout — no hay overrides adicionales. */
 
 /* [064A-1] hostingBtnCrear: usa Button variante="primario". Solo gap contextual. */
 .hostingBtnCrear {
