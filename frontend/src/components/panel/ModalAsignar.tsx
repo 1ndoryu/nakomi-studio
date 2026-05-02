@@ -77,13 +77,13 @@ export function ModalAsignar({ orderId, abierto, onCerrar, onAsignado }: ModalAs
             <div className="modalAcciones">
                 <Button
                     variante="primario"
-                    tamano="mediano"
+                    tamano="pequeno"
                     disabled={!seleccionado || asignar.isPending}
                     onClick={() => asignar.mutate()}
                 >
                     {asignar.isPending ? <Loader2 className="modalAsignarSpinner" size={14} /> : 'Confirmar asignación'}
                 </Button>
-                <Button variante="texto" tamano="mediano" onClick={onCerrar}>
+                <Button variante="texto" tamano="pequeno" onClick={onCerrar}>
                     Cancelar
                 </Button>
                 {asignar.isError && (

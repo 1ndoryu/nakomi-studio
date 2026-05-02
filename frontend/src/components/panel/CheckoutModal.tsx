@@ -151,6 +151,7 @@ function FormularioPago({
             <div className="modalAcciones">
                 <Button
                     type="submit"
+                    tamano="pequeno"
                     className="checkoutBoton"
                     disabled={!stripe || procesando}
                 >

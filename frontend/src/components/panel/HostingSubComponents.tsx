@@ -214,7 +214,7 @@ export function HostingCard({
                             onChange={e => setEditDomain(e.target.value)}
                         />
                         <div className="modalAcciones">
-                            <Button type="button" onClick={handleEditSubmit}>
+                            <Button type="button" tamano="pequeno" onClick={handleEditSubmit}>
                                 Guardar cambios
                             </Button>
                         </div>
@@ -273,7 +273,7 @@ export function HostingCard({
                             El cliente debe tener cuenta registrada en el sistema.
                         </p>
                         <div className="modalAcciones">
-                            <Button type="submit" disabled={assignLoading || !assignEmail.trim()}>
+                            <Button type="submit" tamano="pequeno" disabled={assignLoading || !assignEmail.trim()}>
                                 {assignLoading ? 'Asignando…' : 'Asignar'}
                             </Button>
                         </div>

@@ -35,7 +35,7 @@ export function AddPaymentMethodModal({open, onClose, onSaved}: AddPaymentMethod
                 <div className="agregarTarjetaContenido">
                     <p className="agregarTarjetaError">Stripe no esta configurado en este entorno.</p>
                     <div className="modalAcciones">
-                        <Button type="button" variante="outline" onClick={onClose}>Cerrar</Button>
+                        <Button type="button" variante="outline" tamano="pequeno" onClick={onClose}>Cerrar</Button>
                     </div>
                 </div>
             </Modal>
@@ -152,10 +152,10 @@ function AddPaymentMethodForm({
             {submitError && <p className="agregarTarjetaError">{submitError}</p>}
 
             <div className="modalAcciones">
-                <Button type="button" variante="outline" onClick={onClose} disabled={isSubmitting}>
+                <Button type="button" variante="outline" tamano="pequeno" onClick={onClose} disabled={isSubmitting}>
                     Cancelar
                 </Button>
-                <Button type="submit" variante="primario" disabled={!stripe || isSubmitting}>
+                <Button type="submit" variante="primario" tamano="pequeno" disabled={!stripe || isSubmitting}>
                     {isSubmitting ? 'Guardando...' : 'Guardar tarjeta'}
                 </Button>
             </div>

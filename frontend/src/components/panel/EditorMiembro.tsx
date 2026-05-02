@@ -100,8 +100,8 @@ export const EditorMiembro: React.FC<EditorMiembroProps> = ({miembro, abierto, g
                 </div>
             </div>
             <div className="modalAcciones">
-                <Button variante="secundario" type="button" onClick={onCerrar}>Cancelar</Button>
-                <Button variante="primario" type="button" onClick={handleSubmit} disabled={guardando || !editor.nombre || !editor.slug}>
+                <Button variante="secundario" tamano="pequeno" type="button" onClick={onCerrar}>Cancelar</Button>
+                <Button variante="primario" tamano="pequeno" type="button" onClick={handleSubmit} disabled={guardando || !editor.nombre || !editor.slug}>
                     {guardando ? 'Guardando...' : miembro ? 'Actualizar' : 'Crear'}
                 </Button>
             </div>

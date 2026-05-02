@@ -118,10 +118,10 @@ export function SeccionConfiguracion() {
                             : '¿Borrar todos los datos de prueba? Esta acción elimina usuarios test y sus órdenes/fases/chat.'}
                     </p>
                     <div className="modalAcciones">
-                        <Button variante="secundario" onClick={() => setConfirmando(null)}>
+                        <Button variante="secundario" tamano="pequeno" onClick={() => setConfirmando(null)}>
                             Cancelar
                         </Button>
-                        <Button onClick={() => ejecutarSeed(confirmando)}>
+                        <Button tamano="pequeno" onClick={() => ejecutarSeed(confirmando)}>
                             Confirmar
                         </Button>
                     </div>
