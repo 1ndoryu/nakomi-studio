@@ -8,7 +8,7 @@ import {useMutation, useQueryClient} from '@tanstack/react-query';
 import type {CoolifyDeployment} from '../../api/hosting';
 import {apiCreateHostingSubscription} from '../../api/hosting';
 import {useVps2DeploymentsPanel} from '../../hooks/useVps2DeploymentsPanel';
-import {CreateHostingForm} from './HostingSubComponents';
+import {CreateHostingForm} from './HostingCreateForm';
 import {Modal} from '../ui/Modal';
 import {toast} from '../../stores/toastStore';
 import './VpsPanel.css';

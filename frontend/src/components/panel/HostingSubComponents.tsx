@@ -1,22 +1,17 @@
-/* [074A-63] Sub-componentes de SeccionHosting extraidos para cumplir limite de 300 lineas.
- * HostingCard, CreateHostingForm, EventsPanel, EventItem.
- * [074A-65] HostingCard ahora incluye editar/eliminar en context menu.
+/* [074A-63] HostingCard — sub-componente principal de SeccionHosting.
+ * CreateHostingForm → HostingCreateForm.tsx, EventsPanel → HostingEventsPanel.tsx.
+ * [074A-65] Incluye editar/eliminar en context menu.
  * [304A-3] Admin puede asignar hosting a cliente por email + generar link de pago. */
 
-import React, {useState, useCallback, useRef, useEffect} from 'react';
-import {useQuery} from '@tanstack/react-query';
-import {Server, ExternalLink, UserCheck, Link, ChevronDown} from 'lucide-react';
+import React, {useState, useCallback} from 'react';
+import {Server, ExternalLink, UserCheck, Link} from 'lucide-react';
 import {
-    apiListHostingEvents,
     HOSTING_PLAN_LABELS,
     HOSTING_STATUS_LABELS,
     HOSTING_STATUS_CLASS,
     type HostingSubscription,
-    type HostingEvent,
-    type CreateHostingRequest,
     type UpdateHostingRequest,
 } from '../../api/hosting';
-import {apiListUsers, type AdminUserItem} from '../../api/admin-users';
 import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';
 import {Select} from '../ui/Select';
@@ -294,189 +289,5 @@ export function HostingCard({
                 </Modal>
             )}
         </>
-    );
-}
-
-/* Selector de usuario con búsqueda. Devuelve el usuario seleccionado via onSelect. */
-function UserSelector({onSelect}: {onSelect: (user: AdminUserItem) => void}) {
-    const [search, setSearch] = useState('');
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-
-    const {data, isLoading} = useQuery({
-        queryKey: ['admin-users-selector', search],
-        queryFn: () => apiListUsers({search, per_page: 20, role: 'client'}),
-        enabled: open,
-        staleTime: 30_000,
-    });
-
-    /* Cerrar al hacer click fuera */
-    useEffect(() => {
-        if (!open) return;
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [open]);
-
-    const users = data?.users ?? [];
-
-    return (
-        <div className="userSelectorContenedor" ref={ref}>
-            <div className="userSelectorInput" onClick={() => setOpen(prev => !prev)}>
-                <Input
-                    type="text"
-                    placeholder="Buscar cliente registrado…"
-                    value={search}
-                    onChange={e => {
-                        setSearch(e.target.value);
-                        setOpen(true);
-                    }}
-                    onFocus={() => setOpen(true)}
-                />
-                <ChevronDown size={14} className="userSelectorChevron" />
-            </div>
-            {open && (
-                <div className="userSelectorDropdown">
-                    {isLoading && <div className="userSelectorItem userSelectorItemMuted">Cargando…</div>}
-                    {!isLoading && users.length === 0 && (
-                        <div className="userSelectorItem userSelectorItemMuted">Sin resultados</div>
-                    )}
-                    {users.map(user => (
-                        <div
-                            key={user.id}
-                            className="userSelectorItem"
-                            onClick={() => {
-                                onSelect(user);
-                                setSearch(user.display_name || user.email);
-                                setOpen(false);
-                            }}
-                        >
-                            <span className="userSelectorName">{user.display_name || user.email}</span>
-                            <span className="userSelectorEmail">{user.email}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-export function CreateHostingForm({
-    onSubmit,
-    submitting,
-    initialCoolifyName,
-}: {
-    onSubmit: (req: CreateHostingRequest) => void;
-    submitting: boolean;
-    /* [304A-3] Pre-llena coolify_site_name cuando se crea desde un despliegue huérfano */
-    initialCoolifyName?: string;
-}) {
-    const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null);
-    const [form, setForm] = useState({
-        plan: 'basico',
-        domain: '',
-        coolify_site_name: initialCoolifyName || '',
-    });
-
-    const handleSubmit = useCallback(
-        (e: React.FormEvent) => {
-            e.preventDefault();
-            if (!selectedUser) return;
-            onSubmit({
-                client_name: selectedUser.display_name || selectedUser.email,
-                client_email: selectedUser.email,
-                plan: form.plan,
-                domain: form.domain.trim() || undefined,
-                coolify_site_name: form.coolify_site_name.trim() || undefined,
-            });
-        },
-        [form, onSubmit, selectedUser],
-    );
-
-    return (
-        <form className="hostingFormCrear" onSubmit={handleSubmit}>
-            <h3>Nueva suscripción de hosting</h3>
-            <UserSelector onSelect={setSelectedUser} />
-            {selectedUser && (
-                <p className="hostingFormNota">
-                    Cliente: <strong>{selectedUser.display_name || selectedUser.email}</strong> · {selectedUser.email}
-                </p>
-            )}
-            <Select
-                className="hostingSelect"
-                value={form.plan}
-                onChange={e => setForm(prev => ({...prev, plan: e.target.value}))}
-            >
-                {HOSTING_PLAN_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-            </Select>
-            <Input
-                type="text"
-                placeholder="Dominio (opcional)"
-                value={form.domain}
-                onChange={e => setForm(prev => ({...prev, domain: e.target.value}))}
-            />
-            {/* [304A-3] Campo visible solo cuando se vincula a un despliegue Coolify */}
-            {initialCoolifyName !== undefined && (
-                <Input
-                    type="text"
-                    placeholder="Nombre en Coolify"
-                    value={form.coolify_site_name}
-                    onChange={e => setForm(prev => ({...prev, coolify_site_name: e.target.value}))}
-                />
-            )}
-            <Button type="submit" className="hostingBtnSubmit" disabled={submitting || !selectedUser}>
-                {submitting ? 'Creando...' : 'Crear suscripción WordPress'}
-            </Button>
-        </form>
-    );
-}
-
-function EventItem({event}: {event: HostingEvent}) {
-    return (
-        <div className="hostingEvento">
-            <span className="hostingEventoTipo">{event.event_type}</span>
-            <span className="hostingEventoFecha">
-                {new Date(event.created_at).toLocaleString('es')}
-            </span>
-            {event.details && (
-                <pre className="hostingEventoDetalles">
-                    {JSON.stringify(event.details, null, 2)}
-                </pre>
-            )}
-        </div>
-    );
-}
-
-export function EventsPanel({
-    subscriptionId,
-    clientName,
-}: {
-    subscriptionId: string;
-    clientName: string;
-}) {
-    const {data: events = [], isLoading: cargando} = useQuery({
-        queryKey: ['hosting-events', subscriptionId],
-        queryFn: () => apiListHostingEvents(subscriptionId),
-    });
-
-    return (
-        <div className="hostingEventos">
-            <h3>Historial: {clientName}</h3>
-            {cargando ? (
-                <p>Cargando...</p>
-            ) : events.length === 0 ? (
-                <p className="hostingEventosVacio">Sin eventos registrados</p>
-            ) : (
-                <div className="hostingEventosLista">
-                    {events.map(ev => (
-                        <EventItem key={ev.id} event={ev} />
-                    ))}
-                </div>
-            )}
-        </div>
     );
 }

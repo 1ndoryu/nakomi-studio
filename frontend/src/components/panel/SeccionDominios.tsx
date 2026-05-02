@@ -31,8 +31,8 @@ function DomainCard({domain}: {domain: ContaboDomain}) {
             )}
             {domain.nameservers && domain.nameservers.length > 0 && (
                 <div className="dominioNs">
-                    {domain.nameservers.slice(0, 2).map((ns, i) => (
-                        <span key={i} className="dominioNsItem">{ns.hostname}</span>
+                    {domain.nameservers.slice(0, 2).map((ns) => (
+                        <span key={ns.hostname} className="dominioNsItem">{ns.hostname}</span>
                     ))}
                     {domain.nameservers.length > 2 && (
                         <span className="dominioNsItem">+{domain.nameservers.length - 2} más</span>

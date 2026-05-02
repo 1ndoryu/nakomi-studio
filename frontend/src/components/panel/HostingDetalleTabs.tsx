@@ -14,7 +14,7 @@ import {
 } from '../../api/hosting';
 import {Button} from '../ui/Button';
 import {HostingStats} from './HostingStats';
-import {EventsPanel} from './HostingSubComponents';
+import {EventsPanel} from './HostingEventsPanel';
 import {InfoRow} from './HostingDetalle';
 
 type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscription']>;

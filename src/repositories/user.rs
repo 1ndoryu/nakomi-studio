@@ -113,18 +113,20 @@ impl UserRepository {
         /* Usar los primeros 6 chars del UUID (sin guiones) como sufijo único */
         let id_hex = id.to_string().replace('-', "");
         let username = format!("{email_prefix}_{}", &id_hex[..6]);
-        sqlx::query_as::<_, User>(
+        sqlx::query_as!(
+            User,
             r#"INSERT INTO users (id, email, password_hash, username, role, password_set)
              VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING id, email, password_hash, role, active_role,
+             RETURNING id, email, password_hash,
+                       role as "role: UserRole", active_role as "active_role: UserRole",
                        email_verified, status, avatar_url, display_name, username, created_at, password_set"#,
+            id,
+            email,
+            password_hash,
+            username,
+            role as UserRole,
+            password_set,
         )
-        .bind(id)
-        .bind(email)
-        .bind(password_hash)
-        .bind(username)
-        .bind(role)
-        .bind(password_set)
         .fetch_one(pool)
         .await
     }

@@ -52,6 +52,8 @@
     gap: var(--spacing-xs);
 }
 
+/* sentinel-disable-next-line card-icono-debe-extender-base
+ * Icono inline en header compacto (no es el panel-icon lateral de 140px). */
 .dominioCardIcono {
     color: var(--text-muted);
     flex-shrink: 0;
