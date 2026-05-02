@@ -70,85 +70,90 @@ export function VpsSubscriptionsPanel({
                 const canReview = isAdmin && subscription.status === 'pending_approval';
                 return (
                     <article key={subscription.id} className="vpsSubscriptionCard">
-                        <div className="vpsSubscriptionHeader">
-                            <div>
-                                <span className="vpsSubscriptionTier">{humanizeTier(subscription.tier_name)}</span>
-                                <h3 className="vpsSubscriptionNombre">{subscription.requested_hostname || subscription.client_name}</h3>
-                            </div>
-                            <span className={`vpsSubscriptionStatus vpsSubscriptionStatus--${subscription.status}`}>
-                                {VPS_STATUS_LABELS[subscription.status] ?? subscription.status}
-                            </span>
+                        <div className="panelCardIcono">
+                            <Server size={28} strokeWidth={1.4} />
                         </div>
+                        <div className="vpsSubscriptionCardBody">
+                            <div className="vpsSubscriptionHeader">
+                                <div>
+                                    <span className="vpsSubscriptionTier">{humanizeTier(subscription.tier_name)}</span>
+                                    <h3 className="vpsSubscriptionNombre">{subscription.requested_hostname || subscription.client_name}</h3>
+                                </div>
+                                <span className={`vpsSubscriptionStatus vpsSubscriptionStatus--${subscription.status}`}>
+                                    {VPS_STATUS_LABELS[subscription.status] ?? subscription.status}
+                                </span>
+                            </div>
 
-                        <div className="vpsSubscriptionMeta">
-                            <div>
-                                <span>Precio</span>
-                                <strong>{formatPrice(subscription.monthly_price_cents)}</strong>
-                            </div>
-                            <div>
-                                <span>Cliente</span>
-                                <strong>{subscription.client_email}</strong>
-                            </div>
-                            <div>
-                                <span>IP</span>
-                                <strong>{subscription.provisioning_ip || 'Pendiente'}</strong>
-                            </div>
-                            <div>
-                                <span>Acceso</span>
-                                <strong>{subscription.access_username || 'Se entrega al aprobar'}</strong>
-                            </div>
-                        </div>
-
-                        {subscription.client_notes && (
-                            <div className="vpsSubscriptionNotes">
-                                <ShieldAlert size={16} />
-                                <p>{subscription.client_notes}</p>
-                            </div>
-                        )}
-
-                        {subscription.contabo_instance_id && (
-                            <div className="vpsSubscriptionInstance">
-                                <TerminalSquare size={16} />
-                                <span>Instancia Contabo #{subscription.contabo_instance_id}</span>
-                            </div>
-                        )}
-
-                        {subscription.rejected_reason && (
-                            <div className="vpsSubscriptionRejected">
-                                <strong>Motivo del rechazo:</strong> {subscription.rejected_reason}
-                            </div>
-                        )}
-
-                        {canReview && (
-                            <div className="vpsSubscriptionActions">
-                                <Textarea
-                                    className="vpsSubscriptionTextarea"
-                                    value={rejectReason}
-                                    onChange={event => setRejectReasons(current => ({
-                                        ...current,
-                                        [subscription.id]: event.target.value,
-                                    }))}
-                                    placeholder="Motivo si decides rechazar la provisión"
-                                    rows={3}
-                                />
-                                <div className="vpsSubscriptionButtons">
-                                    <Button
-                                        variante="primario"
-                                        onClick={() => onApprove(subscription.id)}
-                                        disabled={approveLoading || rejectLoading}
-                                    >
-                                        {approveLoading ? 'Aprobando…' : 'Aprobar'}
-                                    </Button>
-                                    <Button
-                                        variante="outline"
-                                        onClick={() => onReject(subscription.id, rejectReason.trim())}
-                                        disabled={approveLoading || rejectLoading || rejectReason.trim().length < 3}
-                                    >
-                                        {rejectLoading ? 'Rechazando…' : 'Rechazar'}
-                                    </Button>
+                            <div className="vpsSubscriptionMeta">
+                                <div>
+                                    <span>Precio</span>
+                                    <strong>{formatPrice(subscription.monthly_price_cents)}</strong>
+                                </div>
+                                <div>
+                                    <span>Cliente</span>
+                                    <strong>{subscription.client_email}</strong>
+                                </div>
+                                <div>
+                                    <span>IP</span>
+                                    <strong>{subscription.provisioning_ip || 'Pendiente'}</strong>
+                                </div>
+                                <div>
+                                    <span>Acceso</span>
+                                    <strong>{subscription.access_username || 'Se entrega al aprobar'}</strong>
                                 </div>
                             </div>
-                        )}
+
+                            {subscription.client_notes && (
+                                <div className="vpsSubscriptionNotes">
+                                    <ShieldAlert size={16} />
+                                    <p>{subscription.client_notes}</p>
+                                </div>
+                            )}
+
+                            {subscription.contabo_instance_id && (
+                                <div className="vpsSubscriptionInstance">
+                                    <TerminalSquare size={16} />
+                                    <span>Instancia Contabo #{subscription.contabo_instance_id}</span>
+                                </div>
+                            )}
+
+                            {subscription.rejected_reason && (
+                                <div className="vpsSubscriptionRejected">
+                                    <strong>Motivo del rechazo:</strong> {subscription.rejected_reason}
+                                </div>
+                            )}
+
+                            {canReview && (
+                                <div className="vpsSubscriptionActions">
+                                    <Textarea
+                                        className="vpsSubscriptionTextarea"
+                                        value={rejectReason}
+                                        onChange={event => setRejectReasons(current => ({
+                                            ...current,
+                                            [subscription.id]: event.target.value,
+                                        }))}
+                                        placeholder="Motivo si decides rechazar la provisión"
+                                        rows={3}
+                                    />
+                                    <div className="vpsSubscriptionButtons">
+                                        <Button
+                                            variante="primario"
+                                            onClick={() => onApprove(subscription.id)}
+                                            disabled={approveLoading || rejectLoading}
+                                        >
+                                            {approveLoading ? 'Aprobando…' : 'Aprobar'}
+                                        </Button>
+                                        <Button
+                                            variante="outline"
+                                            onClick={() => onReject(subscription.id, rejectReason.trim())}
+                                            disabled={approveLoading || rejectLoading || rejectReason.trim().length < 3}
+                                        >
+                                            {rejectLoading ? 'Rechazando…' : 'Rechazar'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </article>
                 );
             })}

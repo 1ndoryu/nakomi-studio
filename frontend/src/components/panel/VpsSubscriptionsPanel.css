@@ -3,13 +3,30 @@
     gap: 1rem;
 }
 
+/* [025B-5] Alineado con patrón hostingCard: flex horizontal, icono a la izquierda, tokens brand-white/bg-item-active/radius-lg */
 .vpsSubscriptionCard {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-xl);
-    padding: 1.25rem;
-    display: grid;
-    gap: 1rem;
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-md);
+    padding: 0;
+    background: var(--brand-white);
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+    overflow: visible;
+    transition: border-color var(--transicion-rapida);
+}
+
+.vpsSubscriptionCard:hover {
+    border-color: var(--border-hover);
+}
+
+.vpsSubscriptionCardBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .vpsSubscriptionHeader {
@@ -112,7 +129,11 @@
 
 @media (max-width: 767px) {
     .vpsSubscriptionCard {
-        padding: 1rem;
+        flex-direction: column;
+    }
+
+    .vpsSubscriptionCardBody {
+        padding: var(--spacing-md);
     }
 
     .vpsSubscriptionHeader {
