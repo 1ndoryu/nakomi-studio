@@ -300,27 +300,6 @@
     color: var(--brand-black);
 }
 
-.hostingBtnSubmit {
-    padding: var(--spacing-xs) var(--spacing-md);
-    background: var(--brand-black);
-    color: var(--brand-white);
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    
-    cursor: pointer;
-    transition: opacity 0.15s;
-}
-
-.hostingBtnSubmit:hover:not(:disabled) {
-    opacity: 0.85;
-}
-
-.hostingBtnSubmit:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 /* [084A-45] Eventos: quitado padding innecesario */
 .hostingEventos {
     min-width: 340px;

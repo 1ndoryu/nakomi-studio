@@ -147,7 +147,7 @@ export function CreateHostingForm({
                     onChange={e => setForm(prev => ({...prev, coolify_site_name: e.target.value}))}
                 />
             )}
-            <Button type="submit" className="hostingBtnSubmit" disabled={submitting || !selectedUser}>
+            <Button type="submit" variante="secundario" tamano="pequeno" disabled={submitting || !selectedUser}>
                 {submitting ? 'Creando...' : 'Crear suscripción WordPress'}
             </Button>
         </form>
