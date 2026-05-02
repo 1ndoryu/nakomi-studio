@@ -14,7 +14,12 @@
     font-size: var(--text-sm);
 }
 
-/* listaBlogHeader + listaBlogTitulo: seccionHeader/seccionTitulo manejan layout y tipografía. */
+/* listaBlogAcciones: búsqueda + botón crear. */
+.listaBlogAcciones {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
 
 /* [124A-CMS7] Lista vertical */
 .listaBlogLista {

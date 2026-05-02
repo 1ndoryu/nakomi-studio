@@ -8,7 +8,11 @@
     gap: var(--spacing-md);
 }
 
-/* hostingHeader: seccionHeader maneja layout — no hay overrides adicionales. */
+/* hostingAcciones: botón crear alineado a la derecha. */
+.hostingAcciones {
+    display: flex;
+    justify-content: flex-end;
+}
 
 /* [064A-1] hostingBtnCrear: usa Button variante="primario". Solo gap contextual. */
 .hostingBtnCrear {

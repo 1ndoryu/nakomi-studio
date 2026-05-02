@@ -14,7 +14,12 @@
     font-size: var(--text-sm);
 }
 
-/* listaProyectosHeader + listaProyectosTitulo: seccionHeader/seccionTitulo manejan layout y tipografía. */
+/* listaProyectosAcciones: búsqueda + botón crear. */
+.listaProyectosAcciones {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
 
 /* [124A-CMS3] Lista vertical (antes era grid) */
 .listaProyectosLista {

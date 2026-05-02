@@ -52,9 +52,7 @@ export const SeccionDominios: React.FC = () => {
 
     return (
         <div className="dominiosContenedor">
-            <div className="dominiosHeader seccionHeader">
-                <Globe size={20} strokeWidth={1.4} />
-                <h2 className="seccionTitulo">Dominios</h2>
+            <div className="dominiosAcciones">
                 <Button
                     type="button"
                     variante="texto"

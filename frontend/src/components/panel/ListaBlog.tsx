@@ -200,8 +200,7 @@ export const ListaBlog: React.FC<ListaBlogProps> = ({
 
     return (
         <div className="listaBlog">
-            <div className="listaBlogHeader seccionHeader">
-                <h3 className="seccionTitulo">Blog</h3>
+            <div className="listaBlogAcciones">
                 <div className="listaBusqueda">
                     <Search size={14} className="listaBusquedaIcono" />
                     <Input

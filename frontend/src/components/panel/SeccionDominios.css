@@ -9,9 +9,10 @@
     gap: var(--spacing-md);
 }
 
-/* dominiosHeader: seccionHeader maneja layout. Solo override de color del icono. */
-.dominiosHeader {
-    color: var(--text-tertiary);
+/* dominiosAcciones: botón de recarga alineado a la derecha. */
+.dominiosAcciones {
+    display: flex;
+    justify-content: flex-end;
 }
 
 /* Lista de dominios */

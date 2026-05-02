@@ -14,7 +14,12 @@
     font-size: var(--text-sm);
 }
 
-/* listaServiciosHeader + listaServiciosTitulo: seccionHeader/seccionTitulo manejan layout y tipografía. */
+/* listaServiciosAcciones: búsqueda + botón crear. */
+.listaServiciosAcciones {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
 
 /* [124A-CMS7] Lista vertical */
 .listaServiciosLista {

@@ -7,8 +7,6 @@
     gap: var(--spacing-md);
 }
 
-/* infraHeader: seccionHeader maneja layout — no hay overrides adicionales. */
-
 /* Tabs: mismo patrón que hostingTabs */
 .infraTabs {
     display: flex;

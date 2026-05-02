@@ -201,8 +201,7 @@ export const ListaProyectos: React.FC<ListaProyectosProps> = ({
 
     return (
         <div className="listaProyectos">
-            <div className="listaProyectosHeader seccionHeader">
-                <h3 className="seccionTitulo">Proyectos</h3>
+            <div className="listaProyectosAcciones">
                 <div className="listaBusqueda">
                     <Search size={14} className="listaBusquedaIcono" />
                     <Input
