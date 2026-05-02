@@ -128,12 +128,6 @@
     margin: 0;
 }
 
-.configConfirmAcciones {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--spacing-sm);
-}
-
 @media (max-width: 480px) {
     .configAcciones {
         flex-direction: column;

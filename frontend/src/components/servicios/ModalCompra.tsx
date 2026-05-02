@@ -198,7 +198,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                         </div>
                     )}
                     {errorMsg && <p className="modalCompraErrorTexto">{errorMsg}</p>}
-                    <Button variante="primario" tamano="mediano" onClick={handleContinuar}>
+                    <Button variante="primario" tamano="mediano" onClick={handleContinuar} className="modalCompraBotonAncho">
                         {isHosting || isVps
                             ? t('purchase.continue_pay', 'Continuar al checkout')
                             : t('purchase.continue', 'Continuar')} ({precioFinal})
@@ -240,7 +240,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                             minLength={8}
                         />
                     )}
-                    <Button variante="primario" tamano="mediano" type="submit">
+                    <Button variante="primario" tamano="mediano" type="submit" className="modalCompraBotonAncho">
                         {isHosting || isVps
                             ? t('purchase.continue_pay', 'Continuar al checkout')
                             : t('purchase.continue_pay', 'Continuar al pago')} ({precioFinal})

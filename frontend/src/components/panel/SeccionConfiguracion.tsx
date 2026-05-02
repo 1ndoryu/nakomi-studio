@@ -117,7 +117,7 @@ export function SeccionConfiguracion() {
                             ? '¿Recrear datos de prueba? Se borrarán los existentes y se crearán nuevos usuarios y órdenes de test.'
                             : '¿Borrar todos los datos de prueba? Esta acción elimina usuarios test y sus órdenes/fases/chat.'}
                     </p>
-                    <div className="configConfirmAcciones">
+                    <div className="modalAcciones">
                         <Button variante="secundario" onClick={() => setConfirmando(null)}>
                             Cancelar
                         </Button>

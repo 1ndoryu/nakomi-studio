@@ -278,12 +278,6 @@
     min-width: 340px;
 }
 
-.hostingFormCrear h3 {
-    margin: 0;
-    font-family: var(--font-primary);
-    color: var(--brand-black);
-}
-
 .hostingSelect {
     padding: var(--spacing-xs) var(--spacing-sm);
     border: 1px solid var(--bg-accent);
@@ -296,12 +290,6 @@
 /* [084A-45] Eventos: quitado padding innecesario */
 .hostingEventos {
     min-width: 340px;
-}
-
-.hostingEventos h3 {
-    margin: 0 0 var(--spacing-sm);
-    font-family: var(--font-primary);
-    color: var(--brand-black);
 }
 
 .hostingEventosVacio {

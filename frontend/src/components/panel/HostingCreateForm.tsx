@@ -116,7 +116,7 @@ export function CreateHostingForm({
 
     return (
         <form className="hostingFormCrear" onSubmit={handleSubmit}>
-            <h3>Nueva suscripción de hosting</h3>
+            <h3 className="modalTitulo">Nueva suscripción de hosting</h3>
             <UserSelector onSelect={setSelectedUser} />
             {selectedUser && (
                 <p className="hostingFormNota">

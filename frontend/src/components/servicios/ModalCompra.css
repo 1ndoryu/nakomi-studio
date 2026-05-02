@@ -44,7 +44,7 @@
     margin-top: var(--spacing-md);
 }
 
-.modalCompraAcciones button {
+.modalCompraBotonAncho {
     width: 100%;
 }
 
@@ -84,10 +84,6 @@
     color: var(--text-dark);
     text-align: center;
     margin-bottom: var(--spacing-xs);
-}
-
-.modalCompraAuth button {
-    width: 100%;
 }
 
 .modalCompraProcesando {

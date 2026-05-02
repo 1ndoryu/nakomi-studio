@@ -37,7 +37,7 @@ export function EventsPanel({
 
     return (
         <div className="hostingEventos">
-            <h3>Historial: {clientName}</h3>
+            <h3 className="modalTitulo">Historial: {clientName}</h3>
             {cargando ? (
                 <p>Cargando...</p>
             ) : events.length === 0 ? (

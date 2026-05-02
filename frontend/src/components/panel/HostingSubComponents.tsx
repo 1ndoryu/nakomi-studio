@@ -198,7 +198,7 @@ export function HostingCard({
             {editing && (
                 <Modal abierto={editing} onCerrar={() => setEditing(false)}>
                     <div className="hostingFormCrear">
-                        <h3>Editar suscripción</h3>
+                        <h3 className="modalTitulo">Editar suscripción</h3>
                         <Select
                             className="hostingSelect"
                             value={editPlan}
