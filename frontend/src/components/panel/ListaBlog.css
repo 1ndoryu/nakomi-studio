@@ -85,11 +85,11 @@
 }
 
 .listaBlogStar--activo {
-    color: #f59e0b;
+    color: var(--color-warning);
 }
 
 .listaBlogStar--activo:hover {
-    color: #d97706;
+    color: var(--color-warning);
 }
 
 /* Miniatura compacta */

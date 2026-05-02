@@ -6,7 +6,7 @@
 .vpsSubscriptionCard {
     background: var(--bg-primary);
     border: 1px solid var(--border-light);
-    border-radius: 20px;
+    border-radius: var(--radius-xl);
     padding: 1.25rem;
     display: grid;
     gap: 1rem;
@@ -25,7 +25,7 @@
 
 .vpsSubscriptionTier {
     color: var(--text-tertiary);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
@@ -33,27 +33,27 @@
 .vpsSubscriptionStatus {
     border-radius: var(--radius-full);
     padding: 0.4rem 0.75rem;
-    font-size: 0.82rem;
+    font-size: var(--text-sm);
     font-weight: 600;
-    background: #f0ece6;
-    color: #6a5b51;
+    background: var(--bg-accent);
+    color: var(--text-muted);
 }
 
 .vpsSubscriptionStatus--pending_approval {
-    background: #fff2d6;
-    color: #946200;
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
 }
 
 .vpsSubscriptionStatus--active {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--color-success-bg);
+    color: var(--color-success-text);
 }
 
 .vpsSubscriptionStatus--suspended,
 .vpsSubscriptionStatus--rejected,
 .vpsSubscriptionStatus--cancelled {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--color-error-bg);
+    color: var(--color-error-text);
 }
 
 .vpsSubscriptionMeta {
@@ -69,7 +69,7 @@
 
 .vpsSubscriptionMeta span {
     color: var(--text-tertiary);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
 }
 
 .vpsSubscriptionNotes,
@@ -78,7 +78,7 @@
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
-    color: var(--color-texto-principal, #2c241f);
+    color: var(--text-primary);
 }
 
 .vpsSubscriptionNotes p,

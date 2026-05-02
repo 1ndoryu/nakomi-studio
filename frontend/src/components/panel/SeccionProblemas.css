@@ -114,15 +114,15 @@
 }
 
 .problemaBadge--open {
-    background-color: #e74c3c;
+    background-color: var(--color-error);
 }
 
 .problemaBadge--in_review {
-    background-color: #f39c12;
+    background-color: var(--color-warning);
 }
 
 .problemaBadge--resolved {
-    background-color: #27ae60;
+    background-color: var(--success-color);
 }
 
 .problemaBadge--dismissed {

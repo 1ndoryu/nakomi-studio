@@ -10,6 +10,7 @@ import {apiCreateHostingSubscription} from '../../api/hosting';
 import {useVps2DeploymentsPanel} from '../../hooks/useVps2DeploymentsPanel';
 import {CreateHostingForm} from './HostingCreateForm';
 import {Modal} from '../ui/Modal';
+import {Button} from '../ui/Button';
 import {toast} from '../../stores/toastStore';
 import './VpsPanel.css';
 
@@ -149,14 +150,16 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
                 </p>
                 {/* [304A-3] Botón para vincular despliegue huérfano creando una suscripción */}
                 {!isLinked && (
-                    <button
+                    <Button
+                        variante="secundario"
+                        tamano="pequeno"
                         className="vpsOrphanLinkBtn"
                         onClick={() => setShowCreateForm(true)}
                         type="button"
                     >
                         <PlusCircle size={14} />
                         Crear suscripción vinculada
-                    </button>
+                    </Button>
                 )}
             </div>
 

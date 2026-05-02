@@ -59,7 +59,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: var(--panel-card-icono-width, 140px);
+    width: var(--panel-card-icono-width);
     flex-shrink: 0;
     background: var(--panel-card-icono-bg, var(--bg-accent));
     color: var(--panel-card-icono-color, var(--text-tertiary));

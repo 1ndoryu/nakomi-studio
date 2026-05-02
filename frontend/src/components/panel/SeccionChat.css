@@ -231,8 +231,8 @@
     font-weight: 600;
     padding: 2px 8px;
     border-radius: var(--radius-full);
-    color: var(--color-warning-text, #92400e);
-    background: var(--color-warning-bg, #fef3c7);
+    color: var(--color-warning-text);
+    background: var(--color-warning-bg);
     white-space: nowrap;
     cursor: default;
 }
@@ -254,7 +254,7 @@
 }
 
 .chatBtnToggleAiInactivo:hover {
-    color: var(--text-dark, #555) !important;
+    color: var(--text-dark) !important;
     opacity: 1;
 }
 

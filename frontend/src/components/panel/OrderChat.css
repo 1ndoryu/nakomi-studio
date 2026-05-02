@@ -5,7 +5,7 @@
 .orderChatPanel {
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-xl);
-    background: rgba(245, 242, 239, 0.8);
+    background: var(--bg-glass-soft);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     display: flex;
@@ -26,14 +26,14 @@
 
 .orderChatVacio {
     color: var(--text-muted);
-    font-size: 0.8125rem;
+    font-size: var(--text-xs);
     text-align: center;
     margin: auto 0;
 }
 
 .orderChatCargando {
     color: var(--text-muted);
-    font-size: 0.8125rem;
+    font-size: var(--text-xs);
     text-align: center;
     padding: var(--spacing-lg);
 }
@@ -95,7 +95,7 @@
 }
 
 .orderChatBurbujaHora {
-    font-size: 0.6875rem;
+    font-size: var(--text-mini);
     color: var(--text-muted);
     white-space: nowrap;
     margin-top: 2px;

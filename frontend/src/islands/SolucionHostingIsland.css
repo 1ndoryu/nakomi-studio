@@ -67,7 +67,7 @@
 }
 
 .hostingFeaturesSubtitle {
-    font-size: 1rem;
+    font-size: var(--text-base);
     color: var(--brand-black);
     opacity: 0.6;
     margin: 0 0 var(--spacing-xl);
@@ -106,7 +106,7 @@
 }
 
 .hostingFeatureCard h3 {
-    font-size: 1rem;
+    font-size: var(--text-base);
     
     color: var(--brand-black);
     margin: 0;

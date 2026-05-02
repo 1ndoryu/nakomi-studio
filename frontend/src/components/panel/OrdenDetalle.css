@@ -587,12 +587,12 @@
 
 .ordenDetalleModalError {
     margin: 0;
-    color: var(--color-error, #e53e3e);
-    font-size: 0.8125rem;
+    color: var(--color-error);
+    font-size: var(--text-xs);
 }
 
 .ordenDetalleModalTexto--exito {
-    color: var(--color-success, #38a169);
+    color: var(--success-color);
 }
 
 /* [084A-8] Acciones ahora via .modalAcciones estándar */

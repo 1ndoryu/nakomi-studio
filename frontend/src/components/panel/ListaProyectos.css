@@ -86,11 +86,11 @@
 }
 
 .listaProyectosStar--activo {
-    color: #f59e0b;
+    color: var(--color-warning);
 }
 
 .listaProyectosStar--activo:hover {
-    color: #d97706;
+    color: var(--color-warning);
 }
 
 /* Miniatura de imagen (compacta para la fila) */

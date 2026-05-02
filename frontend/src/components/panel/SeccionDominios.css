@@ -86,8 +86,8 @@
 
 .dominioEstado--expired,
 .dominioEstado--cancelled {
-    background: color-mix(in srgb, var(--error, #f44336) 12%, transparent);
-    color: var(--error, #f44336);
+    background: color-mix(in srgb, var(--color-error) 12%, transparent);
+    color: var(--color-error);
 }
 
 .dominioVence {
@@ -125,7 +125,7 @@
 }
 
 .dominiosError {
-    color: var(--error, #f44336);
+    color: var(--color-error);
 }
 
 /* Icono giratorio de recarga */

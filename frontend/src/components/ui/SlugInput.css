@@ -57,7 +57,7 @@
     background: transparent;
     color: var(--text-tertiary);
     cursor: pointer;
-    font-size: 1.1rem;
+    font-size: var(--text-lg);
     transition: color 0.2s ease;
 }
 

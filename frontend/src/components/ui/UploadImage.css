@@ -52,7 +52,7 @@
 }
 
 .uploadImagenIcono {
-    font-size: 2rem;
+    font-size: var(--text-2xl);
 }
 
 .uploadImagenCargando {
@@ -83,7 +83,7 @@
     border-radius: 50%;
     background: var(--overlay-dark);
     color: var(--brand-white);
-    font-size: 1rem;
+    font-size: var(--text-base);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -103,5 +103,5 @@
 
 .uploadImagenError {
     font-size: var(--text-xs);
-    color: var(--color-peligro);
+    color: var(--color-error);
 }

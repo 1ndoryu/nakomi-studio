@@ -132,14 +132,16 @@ export const TabPlanes: React.FC<TabPlanesProps> = ({planes, onChange}) => {
                                 </span>
                             </div>
                             <div className="tabPlanCardAcciones">
-                                <button
+                                <Button
                                     type="button"
+                                    variante="texto"
+                                    tamano="pequeno"
                                     className="tabPlanBtnIcono tabPlanBtnEliminar"
                                     onClick={e => { e.stopPropagation(); eliminarPlan(plan.key); }}
                                     title="Eliminar plan"
                                 >
                                     <Trash2 size={14} />
-                                </button>
+                                </Button>
                                 {abierto ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                             </div>
                         </div>
@@ -214,22 +216,26 @@ export const TabPlanes: React.FC<TabPlanesProps> = ({planes, onChange}) => {
                                                 onChange={e => actualizarFeature(plan.key, idx, e.target.value)}
                                                 placeholder={`Característica ${idx + 1}`}
                                             />
-                                            <button
+                                            <Button
                                                 type="button"
+                                                variante="texto"
+                                                tamano="pequeno"
                                                 className="tabPlanBtnIcono tabPlanBtnEliminar"
                                                 onClick={() => eliminarFeature(plan.key, idx)}
                                             >
                                                 <Trash2 size={12} />
-                                            </button>
+                                            </Button>
                                         </div>
                                     ))}
-                                    <button
+                                    <Button
                                         type="button"
+                                        variante="outline"
+                                        tamano="pequeno"
                                         className="tabPlanBtnAgregar"
                                         onClick={() => agregarFeature(plan.key)}
                                     >
                                         <Plus size={12} /> Característica
-                                    </button>
+                                    </Button>
                                 </div>
 
                                 <div className="tabPlanSeccion">
@@ -238,13 +244,15 @@ export const TabPlanes: React.FC<TabPlanesProps> = ({planes, onChange}) => {
                                         <div key={fase.phaseNumber} className="tabPlanFase">
                                             <div className="tabPlanFaseHeader">
                                                 <span className="tabPlanFaseNum">Fase {fase.phaseNumber}</span>
-                                                <button
+                                                <Button
                                                     type="button"
+                                                    variante="texto"
+                                                    tamano="pequeno"
                                                     className="tabPlanBtnIcono tabPlanBtnEliminar"
                                                     onClick={() => eliminarFase(plan.key, fase.phaseNumber)}
                                                 >
                                                     <Trash2 size={12} />
-                                                </button>
+                                                </Button>
                                             </div>
                                             <div className="tabPlanFila">
                                                 <label className="tabPlanLabel">
@@ -288,13 +296,15 @@ export const TabPlanes: React.FC<TabPlanesProps> = ({planes, onChange}) => {
                                             </div>
                                         </div>
                                     ))}
-                                    <button
+                                    <Button
                                         type="button"
+                                        variante="outline"
+                                        tamano="pequeno"
                                         className="tabPlanBtnAgregar"
                                         onClick={() => agregarFase(plan.key)}
                                     >
                                         <Plus size={12} /> Fase
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         )}

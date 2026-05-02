@@ -136,12 +136,8 @@
     flex: 1;
 }
 
+/* tabPlanBtnIcono usa <Button variante="texto"> como base — aquí solo overrides de presentación */
 .tabPlanBtnIcono {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: var(--radius-sm);
     color: var(--text-tertiary);
     display: flex;
     align-items: center;
@@ -152,19 +148,13 @@
     color: var(--text-primary);
 }
 
+/* tabPlanBtnAgregar usa <Button variante="outline"> — solo dashed override y color */
 .tabPlanBtnAgregar {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: none;
-    border: 1px dashed var(--border-default);
+    border-style: dashed;
     color: var(--text-tertiary);
     font-size: var(--text-xs);
-    padding: 6px 10px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
     align-self: flex-start;
+    gap: 4px;
 }
 
 .tabPlanBtnAgregar:hover {

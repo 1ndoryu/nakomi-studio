@@ -169,24 +169,13 @@
     gap: var(--spacing-sm);
 }
 
-/* [304A-3] Botón para crear suscripción vinculada desde despliegue huérfano */
+/* [304A-3] vpsOrphanLinkBtn usa <Button variante="secundario"> como base.
+ * Solo override de color warning contextual. */
 .vpsOrphanLinkBtn {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    margin-left: auto;
-    padding: var(--spacing-xs) var(--spacing-sm);
     background: var(--color-warning-text);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
-    cursor: pointer;
+    color: var(--brand-white);
+    margin-left: auto;
     white-space: nowrap;
-}
-
-.vpsOrphanLinkBtn:hover {
-    opacity: 0.88;
 }
 
 /* [304A-3] Contenedor del formulario de creación inline bajo la card huérfana */

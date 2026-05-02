@@ -79,7 +79,7 @@
     color: var(--text-dark);
     text-decoration: none;
     padding: 2px 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     background: var(--bg-item-active);
     transition: background 0.2s;
 }
@@ -94,7 +94,7 @@
     align-items: center;
     gap: var(--spacing-xs);
     padding: 6px 12px 6px 16px;
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     background: var(--bg-warm);
     border: 1px solid var(--bg-item-active);
     font-family: var(--font-primary);

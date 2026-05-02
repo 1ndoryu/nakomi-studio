@@ -111,15 +111,17 @@ export const EditorBlog: React.FC<EditorBlogProps> = ({
                         </label>
 
                         {/* [124A-PROJ] Toggle destacado: controla si el post aparece en el inicio */}
-                        <button
+                        <Button
                             type="button"
+                            variante="outline"
+                            tamano="pequeno"
                             className={`editorBlogStarBtn ${form.isFeatured ? 'editorBlogStarBtn--activo' : ''}`}
                             onClick={() => form.setIsFeatured(!form.isFeatured)}
                             title={form.isFeatured ? 'Quitar de inicio' : 'Mostrar en inicio'}
                         >
                             <Star size={16} fill={form.isFeatured ? 'currentColor' : 'none'} />
                             {form.isFeatured ? 'Aparece en inicio' : 'No aparece en inicio'}
-                        </button>
+                        </Button>
                     </div>
                 )}
 
