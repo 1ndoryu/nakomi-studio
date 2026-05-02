@@ -69,15 +69,15 @@ export function VpsSubscriptionsPanel({
                 const rejectReason = rejectReasons[subscription.id] ?? '';
                 const canReview = isAdmin && subscription.status === 'pending_approval';
                 return (
-                    <article key={subscription.id} className="vpsSubscriptionCard">
+                    <article key={subscription.id} className="hostingCard">
                         <div className="panelCardIcono">
                             <Server size={28} strokeWidth={1.4} />
                         </div>
-                        <div className="vpsSubscriptionCardBody">
-                            <div className="vpsSubscriptionHeader">
+                        <div className="hostingCardBody">
+                            <div className="hostingCardHeader">
                                 <div>
-                                    <span className="vpsSubscriptionTier">{humanizeTier(subscription.tier_name)}</span>
-                                    <h3 className="vpsSubscriptionNombre">{subscription.requested_hostname || subscription.client_name}</h3>
+                                    <span className="hostingCardPlan">{humanizeTier(subscription.tier_name)}</span>
+                                    <h3 className="hostingCardTitulo">{subscription.requested_hostname || subscription.client_name}</h3>
                                 </div>
                                 <span className={`vpsSubscriptionStatus vpsSubscriptionStatus--${subscription.status}`}>
                                     {VPS_STATUS_LABELS[subscription.status] ?? subscription.status}
