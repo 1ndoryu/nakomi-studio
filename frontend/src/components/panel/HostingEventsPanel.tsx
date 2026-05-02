@@ -25,10 +25,8 @@ function EventItem({event}: {event: HostingEvent}) {
 
 export function EventsPanel({
     subscriptionId,
-    clientName,
 }: {
     subscriptionId: string;
-    clientName: string;
 }) {
     const {data: events = [], isLoading: cargando} = useQuery({
         queryKey: ['hosting-events', subscriptionId],
@@ -37,7 +35,6 @@ export function EventsPanel({
 
     return (
         <div className="hostingEventos">
-            <h3 className="modalTitulo">Historial: {clientName}</h3>
             {cargando ? (
                 <p>Cargando...</p>
             ) : events.length === 0 ? (

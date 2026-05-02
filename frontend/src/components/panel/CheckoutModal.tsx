@@ -77,9 +77,6 @@ export default function CheckoutModal(props: CheckoutModalProps) {
 
     return (
         <Modal abierto onCerrar={onClose} className="checkoutModal">
-            <h3 className="modalTitulo">
-                Pagar Orden #{props.orderNumber}
-            </h3>
             <p className="checkoutMonto">
                 {formatPrice(props.amountCents, props.currency)}
             </p>
@@ -87,16 +84,18 @@ export default function CheckoutModal(props: CheckoutModalProps) {
             {error && <p className="checkoutError">{error}</p>}
 
             {!clientSecret && (
-                <Button
-                    className="checkoutBoton"
-                    type="button"
-                    variante="primario"
-                    tamano="mediano"
-                    onClick={iniciar}
-                    disabled={loading}
-                >
-                    {loading ? 'Preparando...' : 'Continuar al pago'}
-                </Button>
+                <div className="modalAcciones">
+                    <Button
+                        className="checkoutBoton"
+                        type="button"
+                        variante="primario"
+                        tamano="mediano"
+                        onClick={iniciar}
+                        disabled={loading}
+                    >
+                        {loading ? 'Preparando...' : 'Continuar al pago'}
+                    </Button>
+                </div>
             )}
 
             {clientSecret && (
@@ -149,13 +148,15 @@ function FormularioPago({
     return (
         <form onSubmit={handleSubmit} className="checkoutForm">
             <PaymentElement />
-            <Button
-                type="submit"
-                className="checkoutBoton"
-                disabled={!stripe || procesando}
-            >
-                {procesando ? 'Procesando...' : 'Pagar ahora'}
-            </Button>
+            <div className="modalAcciones">
+                <Button
+                    type="submit"
+                    className="checkoutBoton"
+                    disabled={!stripe || procesando}
+                >
+                    {procesando ? 'Procesando...' : 'Pagar ahora'}
+                </Button>
+            </div>
         </form>
     );
 }

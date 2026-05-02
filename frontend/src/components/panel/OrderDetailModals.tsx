@@ -68,7 +68,6 @@ export function OrderDetailModals({
                 className="ordenDetalleModal"
             >
                 <div className="ordenDetalleModalContenido">
-                    <h3 className="modalTitulo">Cancelar orden</h3>
                     <p className="ordenDetalleModalTexto">
                         Esta acción no se puede deshacer. La orden #{orderNumber} quedará cancelada.
                     </p>
@@ -105,7 +104,6 @@ export function OrderDetailModals({
                 className="ordenDetalleModal"
             >
                 <div className="ordenDetalleModalContenido">
-                    <h3 className="modalTitulo">Reportar problema</h3>
                     {reportExito ? (
                         <>
                             <p className="ordenDetalleModalTexto ordenDetalleModalTexto--exito">

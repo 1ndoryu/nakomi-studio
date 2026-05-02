@@ -50,12 +50,6 @@
     background-color: var(--bg-primary);
 }
 
-.agregarTarjetaAcciones {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--spacing-sm);
-}
-
 .agregarTarjetaError {
     margin: 0;
     font-family: var(--font-serif);
@@ -64,8 +58,3 @@
     line-height: 1.5;
 }
 
-@media (max-width: 768px) {
-    .agregarTarjetaAcciones {
-        flex-direction: column-reverse;
-    }
-}

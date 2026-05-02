@@ -210,7 +210,7 @@ export function HostingDetalle({
                         planChangeLoading={planChangeLoading}
                     />
                 )}
-                {tabActiva === 'eventos' && <TabEventos hostingId={hostingId} clientName={sub.client_name} />}
+                {tabActiva === 'eventos' && <TabEventos hostingId={hostingId} />}
             </div>
         </div>
     );

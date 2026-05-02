@@ -155,13 +155,12 @@ export function TabRecursos({sub}: {sub: Subscription}) {
 export {TabDominio, TabAcceso} from './HostingDetalleAccess';
 
 /* ── Tab: Eventos ────────────────────────── */
-export function TabEventos({hostingId, clientName}: {
+export function TabEventos({hostingId}: {
     hostingId: string;
-    clientName: string;
 }) {
     return (
         <div className="hostingDetalleSection">
-            <EventsPanel subscriptionId={hostingId} clientName={clientName} />
+            <EventsPanel subscriptionId={hostingId} />
         </div>
     );
 }

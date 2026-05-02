@@ -47,7 +47,6 @@ export function EntregablesPanel({orderId, phaseNumber, canDeliver}: Entregables
             {/* [074A-53] Modal de entrega con notas y adjuntos */}
             <Modal abierto={modalAbierto} onCerrar={cerrarModal}>
                 <div className="entregablesModal">
-                    <h3 className="modalTitulo">Entregar fase</h3>
                     <p className="entregablesModalDesc">
                         Describe lo que entregas. Adjuntar archivos es opcional.
                     </p>
@@ -100,7 +99,7 @@ export function EntregablesPanel({orderId, phaseNumber, canDeliver}: Entregables
 
                     {error && <p className="entregablesError">{error}</p>}
 
-                    <div className="entregablesModalAcciones">
+                    <div className="modalAcciones">
                         <Button variante="texto" tamano="pequeno" onClick={cerrarModal} type="button">
                             Cancelar
                         </Button>

@@ -198,7 +198,6 @@ export function HostingCard({
             {editing && (
                 <Modal abierto={editing} onCerrar={() => setEditing(false)}>
                     <div className="hostingFormCrear">
-                        <h3 className="modalTitulo">Editar suscripción</h3>
                         <Select
                             className="hostingSelect"
                             value={editPlan}
@@ -214,9 +213,11 @@ export function HostingCard({
                             value={editDomain}
                             onChange={e => setEditDomain(e.target.value)}
                         />
-                        <Button type="button" onClick={handleEditSubmit}>
-                            Guardar cambios
-                        </Button>
+                        <div className="modalAcciones">
+                            <Button type="button" onClick={handleEditSubmit}>
+                                Guardar cambios
+                            </Button>
+                        </div>
                     </div>
                 </Modal>
             )}
@@ -225,7 +226,6 @@ export function HostingCard({
             {showStatusModal && isAdmin && (
                 <Modal abierto={showStatusModal} onCerrar={() => setShowStatusModal(false)}>
                     <div className="hostingFormCrear">
-                        <h3 className="modalTitulo">Cambiar estado</h3>
                         <p className="hostingStatusModalSub">
                             Estado actual: <strong>{HOSTING_STATUS_LABELS[sub.status] || sub.status}</strong>
                         </p>
@@ -254,9 +254,6 @@ export function HostingCard({
             {showAssignModal && isAdmin && onAssign && (
                 <Modal abierto={showAssignModal} onCerrar={() => setShowAssignModal(false)}>
                     <form className="hostingFormCrear" onSubmit={handleAssignSubmit}>
-                        <h3 className="modalTitulo">
-                            {sub.user_id ? 'Reasignar hosting' : 'Asignar hosting a cliente'}
-                        </h3>
                         <p className="hostingStatusModalSub">
                             Hosting: <strong>{sub.domain || sub.client_name}</strong>
                         </p>
@@ -275,9 +272,11 @@ export function HostingCard({
                         <p className="hostingFormNota">
                             El cliente debe tener cuenta registrada en el sistema.
                         </p>
-                        <Button type="submit" disabled={assignLoading || !assignEmail.trim()}>
-                            {assignLoading ? 'Asignando…' : 'Asignar'}
-                        </Button>
+                        <div className="modalAcciones">
+                            <Button type="submit" disabled={assignLoading || !assignEmail.trim()}>
+                                {assignLoading ? 'Asignando…' : 'Asignar'}
+                            </Button>
+                        </div>
                     </form>
                 </Modal>
             )}

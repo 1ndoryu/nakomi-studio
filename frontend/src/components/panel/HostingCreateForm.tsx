@@ -116,7 +116,6 @@ export function CreateHostingForm({
 
     return (
         <form className="hostingFormCrear" onSubmit={handleSubmit}>
-            <h3 className="modalTitulo">Nueva suscripción de hosting</h3>
             <UserSelector onSelect={setSelectedUser} />
             {selectedUser && (
                 <p className="hostingFormNota">
@@ -147,9 +146,11 @@ export function CreateHostingForm({
                     onChange={e => setForm(prev => ({...prev, coolify_site_name: e.target.value}))}
                 />
             )}
-            <Button type="submit" variante="secundario" tamano="pequeno" disabled={submitting || !selectedUser}>
-                {submitting ? 'Creando...' : 'Crear suscripción WordPress'}
-            </Button>
+            <div className="modalAcciones">
+                <Button type="submit" variante="secundario" tamano="pequeno" disabled={submitting || !selectedUser}>
+                    {submitting ? 'Creando...' : 'Crear suscripción WordPress'}
+                </Button>
+            </div>
         </form>
     );
 }

@@ -33,9 +33,8 @@ export function AddPaymentMethodModal({open, onClose, onSaved}: AddPaymentMethod
         return (
             <Modal abierto onCerrar={onClose} className="agregarTarjetaModal">
                 <div className="agregarTarjetaContenido">
-                    <h3 className="agregarTarjetaTitulo">Agregar tarjeta</h3>
                     <p className="agregarTarjetaError">Stripe no esta configurado en este entorno.</p>
-                    <div className="agregarTarjetaAcciones">
+                    <div className="modalAcciones">
                         <Button type="button" variante="outline" onClick={onClose}>Cerrar</Button>
                     </div>
                 </div>
@@ -46,7 +45,6 @@ export function AddPaymentMethodModal({open, onClose, onSaved}: AddPaymentMethod
     return (
         <Modal abierto onCerrar={onClose} className="agregarTarjetaModal">
             <div className="agregarTarjetaContenido">
-                <h3 className="agregarTarjetaTitulo">Agregar tarjeta</h3>
                 <p className="agregarTarjetaDescripcion">
                     La tarjeta se guardara en Stripe y quedara disponible para pagos futuros.
                 </p>
@@ -153,7 +151,7 @@ function AddPaymentMethodForm({
 
             {submitError && <p className="agregarTarjetaError">{submitError}</p>}
 
-            <div className="agregarTarjetaAcciones">
+            <div className="modalAcciones">
                 <Button type="button" variante="outline" onClick={onClose} disabled={isSubmitting}>
                     Cancelar
                 </Button>

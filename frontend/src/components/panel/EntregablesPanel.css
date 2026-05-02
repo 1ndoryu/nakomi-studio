@@ -180,9 +180,3 @@
 .entregablesModalFileRemove:hover {
     color: var(--color-error);
 }
-
-.entregablesModalAcciones {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--spacing-sm);
-}
