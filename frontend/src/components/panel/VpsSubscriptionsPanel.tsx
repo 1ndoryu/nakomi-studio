@@ -106,7 +106,7 @@ export function VpsSubscriptionsPanel({
 
                             {subscription.rejected_reason && (
                                 <div className="vpsSubscriptionRejected">
-                                    <strong>Motivo del rechazo:</strong> {subscription.rejected_reason}
+                                    Motivo del rechazo: {subscription.rejected_reason}
                                 </div>
                             )}
 
