@@ -1,13 +1,14 @@
 /* [015A-1+] ModalCrearUsuario extraido de SeccionUsuarios.tsx para cumplir limite de 300 lineas.
  * Form state local (email, password, role). Solo cierra en éxito; muestra error inline.
- * Gotcha: no usar estado global para el form — evita contaminar useUsersSection. */
+ * Gotcha: no usar estado global para el form — evita contaminar useUsersSection.
+ * [15A-SENT-1] Estado extraído a useModalCrearUsuario para cumplir limite de 3 useState. */
 
-import { useState, type FormEvent } from 'react';
 import { AlertCircle, ChevronDown } from 'lucide-react';
 import { MenuContextual } from '../ui/ContextMenu';
 import { ROLE_LABELS } from '../../api/admin-users';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { useModalCrearUsuario } from '../../hooks/useModalCrearUsuario';
 import './SeccionUsuarios.css';
 
 export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: {
@@ -16,28 +17,8 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
     isCreating: boolean;
     onCreated: () => void;
 }) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [role, setRole] = useState<'admin' | 'employee' | 'client'>('client');
-    const [error, setError] = useState<string | null>(null);
-    const [rolMenuAbierto, setRolMenuAbierto] = useState(false);
-
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setError(null);
-        try {
-            await onSubmit({ email, password, role });
-            onCreated();
-            onClose();
-        } catch (err: unknown) {
-            if (typeof err === 'object' && err !== null) {
-                const msg = (err as {response?: {data?: {message?: string}}}).response?.data?.message;
-                setError(typeof msg === 'string' && msg.trim() ? msg : 'No se pudo crear el usuario.');
-            } else {
-                setError(err instanceof Error ? err.message : 'No se pudo crear el usuario.');
-            }
-        }
-    };
+    const { email, setEmail, password, setPassword, role, setRole, error, rolMenuAbierto, setRolMenuAbierto, handleSubmit } =
+        useModalCrearUsuario({ onSubmit, onClose, onCreated });
 
     return (
         <form onSubmit={(e) => void handleSubmit(e)}>

@@ -26,14 +26,15 @@ function UserSelector({onSelect}: {onSelect: (user: AdminUserItem) => void}) {
         staleTime: 30_000,
     });
 
-    /* Cerrar al hacer click fuera */
-    /* sentinel-disable-next-line componente-artesanal: UserSelector es un combobox con
-     * búsqueda inline — MenuContextual solo soporta items estáticos, no input de búsqueda. */
+    /* Cerrar al hacer click fuera — UserSelector es un combobox con búsqueda inline;
+     * MenuContextual solo soporta items estáticos, no input de búsqueda. */
+    /* sentinel-disable-next-line componente-artesanal */
     useEffect(() => {
         if (!open) return;
         const handler = (e: MouseEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
         };
+        /* sentinel-disable-next-line componente-artesanal */
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, [open]);

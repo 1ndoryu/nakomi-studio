@@ -1,9 +1,9 @@
 /* [074A-63] HostingCard — sub-componente principal de SeccionHosting.
  * CreateHostingForm → HostingCreateForm.tsx, EventsPanel → HostingEventsPanel.tsx.
  * [074A-65] Incluye editar/eliminar en context menu.
- * [304A-3] Admin puede asignar hosting a cliente por email + generar link de pago. */
+ * [304A-3] Admin puede asignar hosting a cliente por email + generar link de pago.
+ * [15A-SENT-1] Estado extraído a useHostingCard para cumplir limite de 3 useState. */
 
-import React, {useState, useCallback} from 'react';
 import {Server, ExternalLink, UserCheck, Link} from 'lucide-react';
 import {
     HOSTING_PLAN_LABELS,
@@ -18,6 +18,7 @@ import {Select} from '../ui/Select';
 import {Button} from '../ui/Button';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
 import {HOSTING_PLAN_OPTIONS} from './hostingPlanOptions';
+import {useHostingCard} from '../../hooks/useHostingCard';
 
 /* [074A-57] Card de hosting — layout similar a ordenCard de proyectosLista
  * [074A-63] Titulo = dominio o nombre del hosting (identidad unica), plan va debajo.
@@ -49,13 +50,17 @@ export function HostingCard({
     checkoutLoading?: boolean;
     assignLoading?: boolean;
 }) {
-    const [menuOpen, setMenuOpen] = useState(false);
-    const [editing, setEditing] = useState(false);
-    const [showStatusModal, setShowStatusModal] = useState(false);
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [assignEmail, setAssignEmail] = useState('');
-    const [editPlan, setEditPlan] = useState(sub.plan);
-    const [editDomain, setEditDomain] = useState(sub.domain || '');
+    const {
+        menuOpen, setMenuOpen,
+        editing, setEditing,
+        showStatusModal, setShowStatusModal,
+        showAssignModal, setShowAssignModal,
+        assignEmail, setAssignEmail,
+        editPlan, setEditPlan,
+        editDomain, setEditDomain,
+        handleEditSubmit,
+        handleAssignSubmit,
+    } = useHostingCard({ sub, onUpdate, onAssign });
 
     /* [084A-13] Context menu simplificado: "Cambiar estado" abre modal,
      * ya no lista cada status individualmente en el menú. */
@@ -91,18 +96,6 @@ export function HostingCard({
     if (sub.status !== 'cancelled') {
         menuItems.push({id: 'cancel', label: 'Cancelar suscripción', onSelect: onCancel, danger: true});
     }
-
-    const handleEditSubmit = useCallback(() => {
-        onUpdate({plan: editPlan, domain: editDomain.trim() || undefined});
-        setEditing(false);
-    }, [editPlan, editDomain, onUpdate]);
-
-    const handleAssignSubmit = useCallback((e: React.FormEvent) => {
-        e.preventDefault();
-        if (!assignEmail.trim() || !onAssign) return;
-        onAssign(assignEmail.trim().toLowerCase());
-        setShowAssignModal(false);
-    }, [assignEmail, onAssign]);
 
     return (
         <>
