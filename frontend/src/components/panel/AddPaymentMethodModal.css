@@ -20,7 +20,7 @@
     margin: 0;
     font-family: var(--font-serif);
     font-size: var(--text-sm);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     line-height: 1.6;
 }
 

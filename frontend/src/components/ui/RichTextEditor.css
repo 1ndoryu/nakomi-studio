@@ -16,6 +16,8 @@
     background: var(--bg-accent);
 }
 
+/* sentinel-disable EstiloBotonEspecifico — botón 28×28px de toolbar rich-text;
+ * no existe variante icon-only en Button. Activo/inactivo vía --activo class. */
 .richTextBtn {
     display: flex;
     align-items: center;

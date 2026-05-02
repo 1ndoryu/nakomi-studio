@@ -188,10 +188,10 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     font-weight: 500;
     padding: 2px 8px;
-    border-radius: var(--radius-full, 9999px);
+    border-radius: var(--radius-full);
     cursor: default;
     white-space: nowrap;
 }
@@ -203,7 +203,7 @@
 
 .chatVisitorOffline {
     color: var(--text-muted);
-    background: var(--bg-secondary);
+    background: var(--bg-accent);
 }
 
 .chatVisitorDot {
@@ -216,7 +216,6 @@
 
 .chatVisitorOnline .chatVisitorDot {
     background: var(--color-success);
-    box-shadow: 0 0 0 2px var(--color-success-bg);
 }
 
 .chatVisitorOffline .chatVisitorDot {
@@ -231,7 +230,7 @@
     font-size: 0.72rem;
     font-weight: 600;
     padding: 2px 8px;
-    border-radius: var(--radius-full, 9999px);
+    border-radius: var(--radius-full);
     color: var(--color-warning-text, #92400e);
     background: var(--color-warning-bg, #fef3c7);
     white-space: nowrap;

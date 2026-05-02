@@ -52,7 +52,7 @@
 .listaBusquedaIcono {
     position: absolute;
     left: var(--spacing-sm);
-    color: var(--text-quaternary);
+    color: var(--text-muted);
     pointer-events: none;
 }
 

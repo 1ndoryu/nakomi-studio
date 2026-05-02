@@ -106,7 +106,6 @@
     background-color: var(--brand-white);
     border: 1px solid var(--bg-card-subtle);
     border-radius: var(--radius-md);
-    box-shadow: 0 4px 20px var(--bg-item-active);
     z-index: -1;
     animation: desplegableEntrada 0.15s ease-out;
 }

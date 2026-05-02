@@ -193,7 +193,7 @@
 .vpsOrphanCreateForm {
     padding: var(--spacing-md);
     border-top: 1px solid var(--border-color);
-    background: var(--bg-card);
+    background: var(--bg-card-subtle);
 }
 
 /* [304A-3] Estilos del selector de usuario en CreateHostingForm */
@@ -228,7 +228,6 @@
     background: var(--brand-white);
     border: 1px solid var(--bg-item-active);
     border-radius: var(--radius-md);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     z-index: 100;
     max-height: 220px;
     overflow-y: auto;

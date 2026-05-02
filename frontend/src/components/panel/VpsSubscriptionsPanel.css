@@ -4,8 +4,8 @@
 }
 
 .vpsSubscriptionCard {
-    background: var(--color-surface, #fff);
-    border: 1px solid var(--color-borde-suave, #e7dfd7);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
     border-radius: 20px;
     padding: 1.25rem;
     display: grid;
@@ -24,14 +24,14 @@
 }
 
 .vpsSubscriptionTier {
-    color: var(--color-texto-secundario, #7b6f66);
+    color: var(--text-tertiary);
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
 
 .vpsSubscriptionStatus {
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     padding: 0.4rem 0.75rem;
     font-size: 0.82rem;
     font-weight: 600;
@@ -68,7 +68,7 @@
 }
 
 .vpsSubscriptionMeta span {
-    color: var(--color-texto-secundario, #7b6f66);
+    color: var(--text-tertiary);
     font-size: 0.85rem;
 }
 
@@ -107,7 +107,7 @@
     place-items: center;
     gap: 0.75rem;
     text-align: center;
-    color: var(--color-texto-secundario, #7b6f66);
+    color: var(--text-tertiary);
 }
 
 @media (max-width: 767px) {

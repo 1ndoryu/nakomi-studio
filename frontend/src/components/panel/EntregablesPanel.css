@@ -86,6 +86,8 @@
     margin: 2px 0 0;
 }
 
+/* sentinel-disable EstiloBotonEspecifico — botón icono de descarga;
+ * transparente con padding mínimo, no es reemplazable por Button estándar. */
 .entregablesDownloadBtn {
     background: none;
     border: none;

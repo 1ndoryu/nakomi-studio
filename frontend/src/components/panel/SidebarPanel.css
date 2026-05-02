@@ -215,7 +215,6 @@
         background: var(--bg-primary);
         border: 1px solid var(--bg-item-active);
         border-radius: var(--radius-lg);
-        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
         padding: var(--spacing-sm);
         margin-bottom: var(--spacing-xs);
         display: flex;
@@ -255,6 +254,8 @@
     border-top: 1px solid var(--bg-item-active);
 }
 
+/* sentinel-disable EstiloBotonEspecifico — botón con borde dashed único para
+ * impersonar / cambiar usuario; no tiene equivalente en Button variantes. */
 .sidebarSwitchBtn {
     display: flex;
     align-items: center;

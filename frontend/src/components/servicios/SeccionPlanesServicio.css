@@ -61,13 +61,11 @@
     padding: var(--spacing-xl);
     position: relative;
     transition:
-        transform var(--transicion-rapida),
-        box-shadow var(--transicion-rapida);
+        transform var(--transicion-rapida);
 }
 
 .tarjetaPlan:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 40px var(--bg-item-active);
 }
 
 /* Tarjeta destacada (plan recomendado) */

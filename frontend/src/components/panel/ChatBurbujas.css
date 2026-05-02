@@ -346,7 +346,7 @@
     font-weight: 600;
     padding: 2px var(--spacing-xs);
     border-radius: var(--radius-sm);
-    background: var(--color-warning-bg-soft);
+    background: var(--color-warning-bg);
     color: var(--color-warning-text);
 }
 

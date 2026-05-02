@@ -12,7 +12,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
 }
 
 .dominiosHeader h2 {
@@ -80,8 +80,8 @@
 
 .dominioEstado--active,
 .dominioEstado--registered {
-    background: color-mix(in srgb, var(--success, #4caf50) 12%, transparent);
-    color: var(--success, #4caf50);
+    background: color-mix(in srgb, var(--success-color) 12%, transparent);
+    color: var(--success-color);
 }
 
 .dominioEstado--expired,

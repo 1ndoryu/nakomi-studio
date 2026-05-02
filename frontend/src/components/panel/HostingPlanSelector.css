@@ -34,20 +34,17 @@
     align-items: center;
     text-align: center;
     cursor: pointer;
-    transition: border-color var(--transicion-rapida),
-                box-shadow var(--transicion-rapida);
+    transition: border-color var(--transicion-rapida);
     position: relative;
 }
 
 .planCard:hover,
 .planCard:focus-visible {
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-primary) 20%, transparent);
 }
 
 .planCard--selected {
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-primary) 30%, transparent);
 }
 
 .planCard--recommended {

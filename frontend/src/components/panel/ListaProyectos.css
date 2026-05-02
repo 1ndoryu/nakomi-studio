@@ -43,7 +43,7 @@
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     background: var(--bg-primary);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s;
 }
 
 .listaProyectosFila:hover {
@@ -136,7 +136,7 @@
 
 /* Badge de status */
 .listaProyectosBadge {
-    font-size: 10px;
+    font-size: var(--text-2xs);
     padding: 2px 6px;
     border-radius: var(--radius-sm);
     font-weight: 500;

@@ -133,7 +133,7 @@
     flex-direction: column;
     gap: var(--spacing-md);
     padding: var(--spacing-lg);
-    background: white;
+    background: var(--brand-white);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-default);
 }
@@ -460,7 +460,7 @@
 
 .hostingDetalleDnsHost {
     font-family: 'JetBrains Mono', monospace;
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
 }
 
 .hostingDetalleDnsValue {
@@ -482,7 +482,7 @@
 .hostingDetalleDnsCheck {
     margin-top: var(--spacing-md);
     padding-top: var(--spacing-md);
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid var(--border-light);
 }
 
 .hostingDetalleDnsResult {
@@ -632,7 +632,7 @@
     padding: 6px 8px;
     border-radius: var(--radius-sm, 4px);
     border: 1px solid var(--border-default, #2a2a3e);
-    background: var(--bg-input, #111);
+    background: var(--bg-dark);
     color: var(--text-primary, #eee);
     font-size: var(--text-sm, 0.875rem);
 }

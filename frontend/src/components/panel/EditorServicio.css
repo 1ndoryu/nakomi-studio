@@ -157,6 +157,8 @@
     gap: var(--spacing-xs);
 }
 
+/* sentinel-disable EstiloBotonEspecifico — botón de toggle de estado servicio;
+ * mismo patrón que editorBlogStatusBtn: activo cambia colores, sin variante. */
 .editorServicioStatusBtn {
     padding: var(--spacing-xs) var(--spacing-sm);
     border: 1px solid var(--border-default);

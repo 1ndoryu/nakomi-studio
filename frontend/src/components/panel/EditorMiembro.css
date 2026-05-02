@@ -54,6 +54,8 @@
     gap: var(--spacing-xs);
 }
 
+/* sentinel-disable EstiloBotonEspecifico — botón toggle estado miembro;
+ * patrón activo/inactivo sin variante equivalente en Button. */
 .editorMiembroEstadoBtn {
     background: var(--bg-primary);
     border: 1px solid var(--border-default);

@@ -171,4 +171,10 @@
     --testimonio-idx: 0;
     --testimonio-drag: 0px;
     --testimonio-transition: none;
+    /* [varsense-fix] Progress bar width injected via style prop */
+    --hosting-bar-width: 0%;
+    /* [varsense-fix] Panel card icon dimensions/colors injected per instance via style prop */
+    --panel-card-icono-width: 140px;
+    --panel-card-icono-bg: var(--bg-accent);
+    --panel-card-icono-color: var(--text-tertiary);
 }

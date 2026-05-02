@@ -151,6 +151,8 @@
     gap: var(--spacing-xs);
 }
 
+/* sentinel-disable EstiloBotonEspecifico — botón de toggle de estado (borrador/publicado).
+ * El estado activo cambia border/color a brand-primary sin variante equivalente. */
 .editorBlogStatusBtn {
     padding: var(--spacing-xs) var(--spacing-sm);
     border: 1px solid var(--border-default);
@@ -201,8 +203,8 @@
 }
 
 .editorBlogStarBtn:hover {
-    border-color: var(--text-secondary);
-    color: var(--text-secondary);
+    border-color: var(--text-tertiary);
+    color: var(--text-tertiary);
 }
 
 .editorBlogStarBtn--activo {

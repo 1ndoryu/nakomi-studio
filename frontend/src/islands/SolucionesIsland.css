@@ -75,14 +75,12 @@
     background-color: var(--bg-accent);
     transition:
         border-color var(--transicion-media),
-        box-shadow var(--transicion-media),
         transform var(--transicion-media);
     min-height: 320px;
 }
 
 .tarjetaSolucion:hover {
     border-color: var(--border-hover);
-    box-shadow: 0 8px 32px var(--bg-item-active);
     transform: translateY(-4px);
 }
 
