@@ -16,7 +16,6 @@ import {HostingCard} from './HostingSubComponents';
 import {CreateHostingForm} from './HostingCreateForm';
 import {HostingDetalle} from './HostingDetalle';
 import {HostingPlanSelector} from './HostingPlanSelector';
-import {VpsSubscriptionsPanel} from './VpsSubscriptionsPanel';
 import './SeccionHosting.css';
 
 export const SeccionHosting: React.FC = () => {
@@ -141,14 +140,10 @@ export const SeccionHosting: React.FC = () => {
             {/* [084A-24] Contenido condicional por tab */}
             {/* [304A-1] 'deployments' y 'servidores' movidos a SeccionInfraestructura */}
             {tabActiva === 'vps' ? (
-                <VpsSubscriptionsPanel
-                    subscriptions={vpsSubscriptions}
-                    isAdmin={isAdmin}
-                    onApprove={(id) => approveMutation.mutate(id)}
-                    onReject={(id, reason) => rejectMutation.mutate({id, reason})}
-                    approveLoading={approveMutation.isPending}
-                    rejectLoading={rejectMutation.isPending}
-                />
+                <div className="hostingVacio">
+                    <Server size={36} strokeWidth={1.2} />
+                    <p>Los VPS estarán disponibles próximamente.</p>
+                </div>
             ) : subscriptions.length === 0 ? (
                 <div className="hostingVacio">
                     <Server size={48} strokeWidth={1.2} />
