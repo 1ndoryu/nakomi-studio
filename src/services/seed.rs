@@ -3,8 +3,9 @@
 /* [064A-62] Servicio de seed: recrea datos de prueba suplementarios desde el panel admin.
  * [084A-25] Limpieza: usuarios, órdenes, proyectos, equipo, hosting y pagos ahora
  * se gestionan con fixtures TOML en content/ (glory-rs ContentManager).
- * El seed solo crea datos suplementarios que no tienen fixture: notificaciones,
- * reviews, chat, activity log, hosting_events. */
+ * [025B-2] Fixtures nuevos: order_problems y vps_subscriptions.
+ * El seed suplementario crea: notificaciones, reviews, chat, activity, hosting_events,
+ * wallet con balance de prueba y withdrawal_requests en diferentes estados. */
 
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -175,12 +176,14 @@ impl SeedService {
         let chat_count = Self::create_seed_chat(pool, client_id, employee_id).await?;
         let activity_count = Self::create_seed_activity(pool, client_id, employee_id).await?;
         let events_count = Self::create_seed_hosting_events(pool, client_id).await?;
+        let (wallet_balance, withdrawal_count) = Self::create_seed_wallet(pool, client_id, employee_id).await?;
 
         Ok(format!(
             "Seed completado: {notif_count} notificaciones + {review_count} reviews + \
              {chat_count} mensajes chat + {activity_count} activity log + \
-             {events_count} hosting events. \
-             Credenciales: cliente@test.com/cliente, empleado@test.com/empleado"
+             {events_count} hosting events + wallet ${:.2} + {withdrawal_count} retiros. \
+             Credenciales: cliente@test.com/cliente, empleado@test.com/empleado",
+            f64::from(wallet_balance) / 100.0
         ))
     }
 
@@ -236,6 +239,20 @@ impl SeedService {
 
         /* Hosting events (las suscripciones son fixture-managed, pero los eventos no) */
         sqlx::query("DELETE FROM hosting_events WHERE subscription_id IN (SELECT id FROM hosting_subscriptions WHERE user_id = ANY($1))")
+            .bind(&ids)
+            .execute(pool)
+            .await?;
+
+        /* [025B-2] Withdrawal requests y wallet transactions son suplementales */
+        sqlx::query("DELETE FROM withdrawal_requests WHERE user_id = ANY($1)")
+            .bind(&ids)
+            .execute(pool)
+            .await?;
+        sqlx::query("DELETE FROM wallet_transactions WHERE user_id = ANY($1)")
+            .bind(&ids)
+            .execute(pool)
+            .await?;
+        sqlx::query("DELETE FROM user_wallets WHERE user_id = ANY($1)")
             .bind(&ids)
             .execute(pool)
             .await?;
@@ -400,6 +417,101 @@ impl SeedService {
         }
 
         Ok(count)
+    }
+
+    /* [025B-2] Crea wallet con balance de prueba + withdrawal_requests en diferentes estados.
+     * El cliente tiene saldo de $120 (liberado por órdenes completadas).
+     * El empleado tiene saldo de $38.40 (80% comisión de orden completada).
+     * Retornamos (balance_cents_cliente, num_withdrawals). */
+    async fn create_seed_wallet(pool: &PgPool, client_id: Uuid, employee_id: Uuid) -> Result<(i32, u32), sqlx::Error> {
+        /* Wallet cliente: $120.00 (pagos devueltos / créditos demo) */
+        let client_wallet_id: Uuid = sqlx::query_scalar(
+            "INSERT INTO user_wallets (user_id, balance_cents, currency)
+             VALUES ($1, 12000, 'USD')
+             ON CONFLICT (user_id) DO UPDATE SET balance_cents = 12000
+             RETURNING id",
+        )
+        .bind(client_id)
+        .fetch_one(pool)
+        .await?;
+
+        /* Wallet empleado: $38.40 (comisión 80% de orden completada $48) */
+        let employee_wallet_id: Uuid = sqlx::query_scalar(
+            "INSERT INTO user_wallets (user_id, balance_cents, currency)
+             VALUES ($1, 3840, 'USD')
+             ON CONFLICT (user_id) DO UPDATE SET balance_cents = 3840
+             RETURNING id",
+        )
+        .bind(employee_id)
+        .fetch_one(pool)
+        .await?;
+
+        /* Historial de transacciones del cliente */
+        let client_txs: &[(i32, &str, &str)] = &[
+            (15000, "credit",     "Crédito inicial de bienvenida"),
+            (-3000, "debit",      "Pago parcial — Diseño Web Básico fase 1"),
+            (3000,  "refund",     "Reembolso aprobado — Agentes IA parcial"),
+            (-3000, "withdrawal", "Retiro procesado vía PayPal"),
+        ];
+        let mut balance_after = 0i32;
+        for (amount, tx_type, desc) in client_txs {
+            balance_after += amount;
+            sqlx::query(
+                "INSERT INTO wallet_transactions (wallet_id, user_id, amount_cents, transaction_type, description, balance_after_cents)
+                 VALUES ($1, $2, $3, $4, $5, $6)",
+            )
+            .bind(client_wallet_id).bind(client_id).bind(amount).bind(tx_type).bind(desc).bind(balance_after)
+            .execute(pool)
+            .await?;
+        }
+
+        /* Historial del empleado */
+        let emp_txs: &[(i32, &str, &str)] = &[
+            (4800, "commission", "Comisión 80% — Agentes IA Básico completado"),
+            (-960, "withdrawal", "Retiro procesado vía transferencia bancaria"),
+        ];
+        let mut emp_balance = 0i32;
+        for (amount, tx_type, desc) in emp_txs {
+            emp_balance += amount;
+            sqlx::query(
+                "INSERT INTO wallet_transactions (wallet_id, user_id, amount_cents, transaction_type, description, balance_after_cents)
+                 VALUES ($1, $2, $3, $4, $5, $6)",
+            )
+            .bind(employee_wallet_id).bind(employee_id).bind(amount).bind(tx_type).bind(desc).bind(emp_balance)
+            .execute(pool)
+            .await?;
+        }
+
+        /* Withdrawal requests del cliente: pending + approved + rejected */
+        let withdrawals: &[(&str, i32, &str, &str, &str)] = &[
+            ("pending",  5000, "PayPal", "nakomi_cliente@gmail.com",  "Retiro mensual de saldo acumulado"),
+            ("approved", 3000, "bank",   "ES12 3456 7890 0123 4567",  "Retiro por transferencia SEPA"),
+            ("rejected", 8000, "crypto", "3FZbgi29cpjq2GjdwV8eyHuJJnkLtktZc5", "Retiro a Bitcoin wallet"),
+        ];
+        let mut withdrawal_count = 0u32;
+        for (status, amount, method, details, note) in withdrawals {
+            sqlx::query(
+                "INSERT INTO withdrawal_requests (user_id, amount_cents, status, payment_method, payment_details, admin_notes)
+                 VALUES ($1, $2, $3, $4, $5, $6)",
+            )
+            .bind(client_id).bind(amount).bind(status).bind(method).bind(details)
+            .bind(if *status == "rejected" { Some("Método de pago no soportado actualmente.") } else { Some(*note) })
+            .execute(pool)
+            .await?;
+            withdrawal_count += 1;
+        }
+
+        /* Withdrawal request del empleado: pending */
+        sqlx::query(
+            "INSERT INTO withdrawal_requests (user_id, amount_cents, status, payment_method, payment_details)
+             VALUES ($1, 3840, 'pending', 'bank', 'DE89 3704 0044 0532 0130 00')",
+        )
+        .bind(employee_id)
+        .execute(pool)
+        .await?;
+        withdrawal_count += 1;
+
+        Ok((12000, withdrawal_count))
     }
 
     /* [074A-2] Activity log para dashboard admin */

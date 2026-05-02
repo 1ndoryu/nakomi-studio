@@ -1,0 +1,58 @@
+# Suscripciones VPS de prueba — cubre los estados principales del ciclo de vida.
+# tier_name es FK a vps_plan_configs (vps1, vps2, vps3, vps4).
+# status: pending_payment | pending_approval | provisioning | active | rejected | cancelled
+
+[meta]
+table = "vps_subscriptions"
+id_field = "id"
+depends_on = ["users"]
+
+[meta.casts]
+id = "uuid"
+user_id = "uuid"
+approved_by = "uuid"
+approved_at = "timestamptz"
+provisioned_at = "timestamptz"
+
+# VPS 1: Activo — provisionado, con IP asignada (estado ideal)
+[[records]]
+id = "f0000001-0001-4000-8000-000000000001"
+user_id = "@users:cliente@test.com"
+client_name = "Cliente Test"
+client_email = "cliente@test.com"
+tier_name = "vps2"
+requested_hostname = "mi-servidor.nakomi.dev"
+status = "active"
+monthly_price_cents = 1238
+provisioning_ip = "185.245.96.1"
+access_username = "root"
+approved_by = "@users:admin@admin.com"
+approved_at = "2026-03-10T10:00:00Z"
+provisioned_at = "2026-03-10T10:30:00Z"
+client_notes = "Servidor para staging de app Node.js"
+
+# VPS 2: Pendiente de aprobación — pagó, esperando que admin apruebe
+[[records]]
+id = "f0000001-0001-4000-8000-000000000002"
+user_id = "@users:cliente@test.com"
+client_name = "Cliente Test"
+client_email = "cliente@test.com"
+tier_name = "vps1"
+requested_hostname = "dev-tools.nakomi.dev"
+status = "pending_approval"
+stripe_subscription_id = "sub_demo_vps_pending"
+monthly_price_cents = 688
+client_notes = "Para correr un agente de automatización 24/7"
+
+# VPS 3: Rechazado — admin rechazó la solicitud con razón
+[[records]]
+id = "f0000001-0001-4000-8000-000000000003"
+user_id = "@users:cliente@test.com"
+client_name = "Cliente Test"
+client_email = "cliente@test.com"
+tier_name = "vps3"
+requested_hostname = "heavy-compute.nakomi.dev"
+status = "rejected"
+monthly_price_cents = 2063
+rejected_reason = "El hostname solicitado contiene términos no permitidos por nuestra política. Puede re-solicitar con un hostname diferente."
+client_notes = "Servidor para procesamiento de video"
