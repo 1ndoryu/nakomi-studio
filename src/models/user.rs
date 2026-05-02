@@ -178,6 +178,18 @@ fn validate_user_status(status: &str) -> Result<(), validator::ValidationError> 
     }
 }
 
+/* [015A-1] Request para crear un usuario desde el panel admin.
+ * Role es opcional — por defecto 'client'. */
+/// Request para crear un usuario desde el panel admin
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct AdminCreateUserRequest {
+    #[validate(email(message = "Formato de email inválido"))]
+    pub email: String,
+    #[validate(length(min = 8, message = "La contraseña debe tener al menos 8 caracteres"))]
+    pub password: String,
+    pub role: Option<UserRole>,
+}
+
 /* [074A-23] Request para actualizar perfil (display_name + campos extendidos) */
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateProfileRequest {

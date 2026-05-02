@@ -98,6 +98,37 @@ impl UserRepository {
         .await
     }
 
+    /* [015A-1] Crea usuario con rol específico en una sola operación atómica.
+     * Genera username con sufijo del UUID para evitar colisiones cuando dos emails
+     * comparten el mismo prefijo (ej: john@gmail.com y john@yahoo.com). */
+    pub async fn create_with_role(
+        pool: &PgPool,
+        email: &str,
+        password_hash: &str,
+        role: UserRole,
+        password_set: bool,
+    ) -> Result<User, sqlx::Error> {
+        let id = Uuid::new_v4();
+        let email_prefix = email.split('@').next().unwrap_or("user").to_lowercase();
+        /* Usar los primeros 6 chars del UUID (sin guiones) como sufijo único */
+        let id_hex = id.to_string().replace('-', "");
+        let username = format!("{email_prefix}_{}", &id_hex[..6]);
+        sqlx::query_as::<_, User>(
+            r#"INSERT INTO users (id, email, password_hash, username, role, password_set)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id, email, password_hash, role, active_role,
+                       email_verified, status, avatar_url, display_name, username, created_at, password_set"#,
+        )
+        .bind(id)
+        .bind(email)
+        .bind(password_hash)
+        .bind(username)
+        .bind(role)
+        .bind(password_set)
+        .fetch_one(pool)
+        .await
+    }
+
     /// Busca un usuario por email
     pub async fn find_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, sqlx::Error> {
         sqlx::query_as!(

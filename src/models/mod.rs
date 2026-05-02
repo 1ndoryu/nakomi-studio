@@ -86,8 +86,8 @@ pub use dashboard::{
     DashboardAlerts, DashboardResponse, EmployeePerformance, OrderCounts, RevenueStats,
 };
 pub use user::{
-    AdminUserItem, AuthResponse, ChangeRoleRequest, ChangeStatusRequest, LoginRequest,
-    PaginatedUsers, QuickRegisterRequest, RegisterRequest, SetPasswordRequest,
+    AdminCreateUserRequest, AdminUserItem, AuthResponse, ChangeRoleRequest, ChangeStatusRequest,
+    LoginRequest, PaginatedUsers, QuickRegisterRequest, RegisterRequest, SetPasswordRequest,
     UpdateProfileRequest, User, UserResponse, UserRole,
 };
 pub use hosting::{

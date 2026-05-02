@@ -50,6 +50,18 @@ export async function apiDeleteUser(userId: string): Promise<void> {
   await axiosInstance.delete(`/api/admin/users/${userId}`);
 }
 
+/* [015A-1] Crear usuario desde panel admin */
+export interface AdminCreateUserPayload {
+  email: string;
+  password: string;
+  role?: 'admin' | 'employee' | 'client';
+}
+
+export async function apiCreateUser(payload: AdminCreateUserPayload): Promise<AdminUserItem> {
+  const { data } = await axiosInstance.post('/api/admin/users', payload);
+  return data;
+}
+
 /* Constantes de UI */
 
 export const ROLE_LABELS: Record<string, string> = {

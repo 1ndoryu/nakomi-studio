@@ -14,10 +14,11 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    AdminUserItem, ChangeRoleRequest, ChangeStatusRequest, PaginatedUsers, UserResponse, UserRole,
+    AdminCreateUserRequest, AdminUserItem, ChangeRoleRequest, ChangeStatusRequest,
+    PaginatedUsers, UserResponse, UserRole,
 };
 use crate::repositories::UserRepository;
-use crate::services::AuditService;
+use crate::services::{hash_password, AuditService};
 use crate::AppState;
 
 /// Query params para listar usuarios con paginación y filtros
@@ -253,9 +254,76 @@ pub async fn delete_user(
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
+/* [015A-1] Creación de usuario desde panel admin: atómica (rol incluido en INSERT),
+ * username único por sufijo UUID, password hasheado con el helper compartido. */
+/// Crea un nuevo usuario desde el panel admin
+#[utoipa::path(
+    post,
+    path = "/api/admin/users",
+    request_body = AdminCreateUserRequest,
+    responses(
+        (status = 201, description = "Usuario creado", body = AdminUserItem),
+        (status = 409, description = "Email ya registrado", body = crate::errors::ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
+pub async fn create_user(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(body): Json<AdminCreateUserRequest>,
+) -> Result<(axum::http::StatusCode, Json<AdminUserItem>), AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    body.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+
+    if UserRepository::find_by_email(&state.pool, &body.email)
+        .await?
+        .is_some()
+    {
+        return Err(AppError::Conflict("Email ya registrado".into()));
+    }
+
+    let password_hash = hash_password(&body.password)?;
+    let role = body.role.unwrap_or(UserRole::Client);
+
+    let user = UserRepository::create_with_role(
+        &state.pool,
+        &body.email,
+        &password_hash,
+        role,
+        true,
+    )
+    .await
+    .map_err(AppError::Database)?;
+
+    AuditService::log(
+        &state.pool,
+        "user_created_by_admin",
+        Some(auth.user_id),
+        None,
+        serde_json::json!({"new_user": user.id, "role": format!("{role}")}),
+    )
+    .await;
+
+    Ok((
+        axum::http::StatusCode::CREATED,
+        Json(AdminUserItem {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            email_verified: user.email_verified,
+            avatar_url: user.avatar_url,
+            display_name: user.display_name,
+            created_at: user.created_at,
+        }),
+    ))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/admin/users", get(list_users))
+        .route("/admin/users", get(list_users).post(create_user))
         .route("/admin/users/:user_id/role", patch(change_role))
         .route("/admin/users/:user_id/status", patch(change_status))
         .route("/admin/users/:user_id", delete(delete_user))

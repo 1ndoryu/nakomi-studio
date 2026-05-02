@@ -27,6 +27,7 @@ pub use ai_chat::{AiChatConfig, AiChatService, AiResponse, AiSessionContext};
 pub use assignment::AssignmentService;
 pub use audit::AuditService;
 pub use auth::AuthService;
+pub use auth::hash_password;
 pub use chat::ChatHub;
 pub use chat_timing::{ChatTimingService, RateCheckResult, TimingEvent, TimingSessionDeps};
 pub use contabo::{ContaboConfig, ContaboService, CreateInstanceParams};

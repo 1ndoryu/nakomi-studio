@@ -7,8 +7,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   apiChangeRole,
   apiChangeStatus,
+  apiCreateUser,
   apiDeleteUser,
   apiListUsers,
+  type AdminCreateUserPayload,
   type ListUsersParams,
   type PaginatedUsers,
 } from '../api/admin-users';
@@ -63,6 +65,14 @@ export function useAdminUsers() {
     },
   });
 
+  /* [015A-1] Crear usuario desde panel admin */
+  const createUserMut = useMutation({
+    mutationFn: (payload: AdminCreateUserPayload) => apiCreateUser(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [USERS_KEY] });
+    },
+  });
+
   const totalPages = data ? Math.ceil(data.total / data.per_page) : 0;
 
   return {
@@ -82,8 +92,10 @@ export function useAdminUsers() {
     changeRole: changeRoleMut.mutateAsync,
     changeStatus: changeStatusMut.mutateAsync,
     deleteUser: deleteUserMut.mutateAsync,
+    createUser: createUserMut.mutateAsync,
     isChangingRole: changeRoleMut.isPending,
     isChangingStatus: changeStatusMut.isPending,
     isDeletingUser: deleteUserMut.isPending,
+    isCreatingUser: createUserMut.isPending,
   };
 }

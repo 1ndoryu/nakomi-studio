@@ -1,9 +1,10 @@
 /* [054A-1] Sección admin: gestión de usuarios registrados.
  * Búsqueda por email/nombre, filtros por rol y status, paginación.
- * Acciones: cambiar rol, banear/reactivar. */
+ * Acciones: cambiar rol, banear/reactivar.
+ * [015A-1] Botón "Nuevo usuario" con modal de creación: email, contraseña, rol. */
 
-import { useState } from 'react';
-import { Loader2, AlertCircle, Search, Users, Shield, Ban, UserCheck, ChevronDown, Trash2 } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Loader2, AlertCircle, Search, Users, Shield, Ban, UserCheck, ChevronDown, Trash2, UserPlus } from 'lucide-react';
 import { useUsersSection } from '../../hooks/useUsersSection';
 import { ROLE_LABELS, STATUS_LABELS, STATUS_CLASS } from '../../api/admin-users';
 import type { AdminUserItem } from '../../api/admin-users';
@@ -25,6 +26,7 @@ export function SeccionUsuarios() {
         statusMenuAbierto,
         confirmAction,
         modalError,
+        modalCrear,
         isProcessing,
         setRolMenuAbierto,
         setStatusMenuAbierto,
@@ -33,6 +35,10 @@ export function SeccionUsuarios() {
         openDeleteConfirm,
         closeConfirm,
         handleConfirm,
+        openCreateModal,
+        closeCreateModal,
+        createUser,
+        isCreatingUser,
     } = useUsersSection();
 
     if (isLoading) {
@@ -105,6 +111,17 @@ export function SeccionUsuarios() {
                     <Users size={14} />
                     {total} usuario{total !== 1 ? 's' : ''}
                 </span>
+
+                <Button
+                    variante="primario"
+                    tamano="pequeno"
+                    onClick={openCreateModal}
+                    type="button"
+                    className="usuariosNuevoBtn"
+                >
+                    <UserPlus size={14} />
+                    Nuevo usuario
+                </Button>
             </div>
 
             {/* Tabla de usuarios */}
@@ -170,7 +187,7 @@ export function SeccionUsuarios() {
                 </div>
             )}
 
-            {/* Modal de confirmación */}
+            {/* [015A-1] Modal de confirmación de acción */}
             <Modal abierto={!!confirmAction} onCerrar={closeConfirm} className="usuariosModal">
                 <h3 className="modalTitulo">Confirmar acción</h3>
                 <p className="usuariosModalTexto">
@@ -207,6 +224,16 @@ export function SeccionUsuarios() {
                         {isProcessing ? 'Procesando...' : 'Confirmar'}
                     </Button>
                 </div>
+            </Modal>
+
+            {/* [015A-1] Modal para crear nuevo usuario */}
+            <Modal abierto={modalCrear} onCerrar={closeCreateModal} className="usuariosModal">
+                <ModalCrearUsuario
+                    onClose={closeCreateModal}
+                    onSubmit={createUser}
+                    isCreating={isCreatingUser}
+                    onCreated={() => setPage(1)}
+                />
             </Modal>
         </div>
     );
@@ -300,5 +327,115 @@ function UserRow({ user, onChangeRole, onChangeStatus, onDelete, canDelete }: {
                 />
             </td>
         </tr>
+    );
+}
+
+/* [015A-1] Modal para crear un nuevo usuario desde el panel admin.
+ * Form state local (email, password, role). Solo cierra en éxito; muestra error inline.
+ * Gotcha: no usar estado global para el form — evita contaminar useUsersSection. */
+function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: {
+    onClose: () => void;
+    onSubmit: (payload: { email: string; password: string; role?: 'admin' | 'employee' | 'client' }) => Promise<unknown>;
+    isCreating: boolean;
+    onCreated: () => void;
+}) {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [role, setRole] = useState<'admin' | 'employee' | 'client'>('client');
+    const [error, setError] = useState<string | null>(null);
+    const [rolMenuAbierto, setRolMenuAbierto] = useState(false);
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        try {
+            await onSubmit({ email, password, role });
+            onCreated();
+            onClose();
+        } catch (err: unknown) {
+            if (typeof err === 'object' && err !== null) {
+                const msg = (err as {response?: {data?: {message?: string}}}).response?.data?.message;
+                setError(typeof msg === 'string' && msg.trim() ? msg : 'No se pudo crear el usuario.');
+            } else {
+                setError(err instanceof Error ? err.message : 'No se pudo crear el usuario.');
+            }
+        }
+    };
+
+    return (
+        <form onSubmit={(e) => void handleSubmit(e)}>
+            <div className="usuariosCrearCampo">
+                <label className="usuariosCrearLabel" htmlFor="crear-email">Email</label>
+                <Input
+                    id="crear-email"
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="usuario@ejemplo.com"
+                    required
+                    disabled={isCreating}
+                />
+            </div>
+
+            <div className="usuariosCrearCampo">
+                <label className="usuariosCrearLabel" htmlFor="crear-password">Contraseña</label>
+                <Input
+                    id="crear-password"
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    minLength={8}
+                    required
+                    disabled={isCreating}
+                />
+            </div>
+
+            <div className="usuariosCrearCampo">
+                <label className="usuariosCrearLabel">Rol</label>
+                <MenuContextual
+                    abierto={rolMenuAbierto}
+                    onToggle={() => setRolMenuAbierto(prev => !prev)}
+                    onCerrar={() => setRolMenuAbierto(false)}
+                    ariaLabel="Seleccionar rol"
+                    triggerVariante="outline"
+                    triggerTamano="pequeno"
+                    triggerClassName="usuariosCrearRolBtn"
+                    triggerContent={<>{ROLE_LABELS[role]} <ChevronDown size={14} /></>}
+                    items={[
+                        { id: 'client', label: 'Cliente', onSelect: () => setRole('client') },
+                        { id: 'employee', label: 'Empleado', onSelect: () => setRole('employee') },
+                        { id: 'admin', label: 'Admin', onSelect: () => setRole('admin') },
+                    ]}
+                />
+            </div>
+
+            {error && (
+                <div className="usuariosError usuariosError--modal">
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                </div>
+            )}
+
+            <div className="modalAcciones">
+                <Button
+                    variante="secundario"
+                    tamano="pequeno"
+                    onClick={onClose}
+                    disabled={isCreating}
+                    type="button"
+                >
+                    Cancelar
+                </Button>
+                <Button
+                    variante="primario"
+                    tamano="pequeno"
+                    disabled={isCreating}
+                    type="submit"
+                >
+                    {isCreating ? 'Creando...' : 'Crear usuario'}
+                </Button>
+            </div>
+        </form>
     );
 }

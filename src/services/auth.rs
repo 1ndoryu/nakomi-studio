@@ -31,6 +31,16 @@ pub struct Claims {
 
 pub struct AuthService;
 
+/* [015A-1] Helper compartido para hashear contraseñas con Argon2.
+ * Reutilizado por register, quick_register y create_user admin. */
+pub fn hash_password(password: &str) -> Result<String, AppError> {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(password.as_bytes(), &salt)
+        .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {e}")))
+        .map(|h| h.to_string())
+}
+
 /* [104A-3] Verifica si el email está en GLORY_ADMIN_EMAILS y promueve a admin.
  * Env var es comma-separated, case-insensitive. Si no existe, no promueve a nadie. */
 fn is_admin_email(email: &str) -> bool {
@@ -51,11 +61,7 @@ impl AuthService {
     ) -> Result<AuthResponse, AppError> {
         let existing = UserRepository::find_by_email(pool, &req.email).await?;
 
-        let salt = SaltString::generate(&mut OsRng);
-        let password_hash = Argon2::default()
-            .hash_password(req.password.as_bytes(), &salt)
-            .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {e}")))?
-            .to_string();
+        let password_hash = hash_password(&req.password)?;
 
         let user = if let Some(existing_user) = existing {
             if existing_user.password_set {
@@ -110,11 +116,7 @@ impl AuthService {
             hex::encode(buf)
         };
 
-        let salt = SaltString::generate(&mut OsRng);
-        let password_hash = Argon2::default()
-            .hash_password(random_password.as_bytes(), &salt)
-            .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {e}")))?
-            .to_string();
+        let password_hash = hash_password(&random_password)?;
 
         let user = UserRepository::create(pool, &req.email, &password_hash, false).await?;
 
@@ -185,11 +187,7 @@ impl AuthService {
             ));
         }
 
-        let salt = SaltString::generate(&mut OsRng);
-        let password_hash = Argon2::default()
-            .hash_password(req.password.as_bytes(), &salt)
-            .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {e}")))?
-            .to_string();
+        let password_hash = hash_password(&req.password)?;
 
         UserRepository::set_password(pool, user_id, &password_hash).await?;
         Ok(())

@@ -11,9 +11,10 @@ use crate::models::{CancellationRequest, UserWallet, WalletTransaction};
 pub struct WalletRepository;
 
 impl WalletRepository {
-    /* Obtener o crear wallet del usuario (on-demand) */
+    /* Obtener o crear wallet del usuario (on-demand).
+     * Si el user_id no existe en users (FK 23503), el usuario fue eliminado — retorna Unauthorized. */
     pub async fn get_or_create(pool: &PgPool, user_id: Uuid) -> Result<UserWallet, AppError> {
-        let wallet = sqlx::query_as!(
+        let result = sqlx::query_as!(
             UserWallet,
             r#"
             INSERT INTO user_wallets (user_id)
@@ -24,8 +25,16 @@ impl WalletRepository {
             user_id
         )
         .fetch_one(pool)
-        .await?;
-        Ok(wallet)
+        .await;
+
+        match result {
+            Ok(wallet) => Ok(wallet),
+            Err(sqlx::Error::Database(db_err)) if db_err.code().as_deref() == Some("23503") => {
+                /* FK violation: el user_id no existe en users — token de usuario eliminado */
+                Err(AppError::Unauthorized)
+            }
+            Err(e) => Err(AppError::Database(e)),
+        }
     }
 
     /* Obtener wallet existente (sin crear) */

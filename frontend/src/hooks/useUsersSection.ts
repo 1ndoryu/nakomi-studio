@@ -28,6 +28,7 @@ export function useUsersSection() {
     const [statusMenuAbierto, setStatusMenuAbierto] = useState(false);
     const [confirmAction, setConfirmAction] = useState<ConfirmUserAction>(null);
     const [modalError, setModalError] = useState<string | null>(null);
+    const [modalCrear, setModalCrear] = useState(false);
 
     const isProcessing = adminUsers.isChangingRole
         || adminUsers.isChangingStatus
@@ -88,6 +89,7 @@ export function useUsersSection() {
         statusMenuAbierto,
         confirmAction,
         modalError,
+        modalCrear,
         isProcessing,
         setRolMenuAbierto,
         setStatusMenuAbierto,
@@ -96,5 +98,7 @@ export function useUsersSection() {
         openDeleteConfirm,
         closeConfirm,
         handleConfirm,
+        openCreateModal: () => setModalCrear(true),
+        closeCreateModal: () => setModalCrear(false),
     };
 }
