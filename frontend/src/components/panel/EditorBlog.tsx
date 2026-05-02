@@ -1,8 +1,5 @@
-/* [074A-11] Editor de blog post CMS — Modal con tabs: Contenido | Media | SEO.
- * Reutiliza componentes existentes: Modal, Input, SlugInput, UploadImage, RichTextEditor, Textarea.
- * Lógica de formulario extraída a useEditorBlog para cumplir max 3 useState.
- * sentinel-disable-file html-nativo-en-vez-de-componente: Tabs del editor y status toggles usan
- * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón EditorServicio). */
+/* [batch-4] Status toggles migrados a <Button>. Las tabs del editor siguen usando button nativo.
+ * sentinel-disable-file html-nativo-en-vez-de-componente: solo aplica a tabs del editor aún. */
 import React, {useState, useCallback} from 'react';
 import {Star} from 'lucide-react';
 import {Modal} from '../ui/Modal';
@@ -179,20 +176,24 @@ export const EditorBlog: React.FC<EditorBlogProps> = ({
 
             <div className="editorBlogAcciones">
                 <div className="editorBlogEstado">
-                    <button
+                    <Button
                         type="button"
-                        className={`editorBlogStatusBtn ${form.status === 'draft' ? 'editorBlogStatusBtn--activo' : ''}`}
+                        variante="outline"
+                        tamano="pequeno"
+                        className={form.status === 'draft' ? 'editorBlogStatusBtn--activo' : ''}
                         onClick={() => form.setStatus('draft')}
                     >
                         Borrador
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
-                        className={`editorBlogStatusBtn ${form.status === 'published' ? 'editorBlogStatusBtn--activo' : ''}`}
+                        variante="outline"
+                        tamano="pequeno"
+                        className={form.status === 'published' ? 'editorBlogStatusBtn--activo' : ''}
                         onClick={() => form.setStatus('published')}
                     >
                         Publicado
-                    </button>
+                    </Button>
                 </div>
                 <Button
                     variante="primario"

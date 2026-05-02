@@ -272,12 +272,12 @@
 }
 
 .hostingDetalleCodeBlock .hostingDetalleCopyBtn {
-    border-color: rgba(255, 255, 255, 0.2);
-    color: rgba(255, 255, 255, 0.6);
+    border-color: var(--white-20);
+    color: var(--white-60);
 }
 
 .hostingDetalleCodeBlock .hostingDetalleCopyBtn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     color: var(--brand-white);
 }
 

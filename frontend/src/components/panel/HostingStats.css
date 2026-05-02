@@ -48,7 +48,7 @@
 
 .hostingStatBarraFill {
     height: 100%;
-    width: var(--hosting-bar-width, 0%);
+    width: var(--hosting-bar-width);
     border-radius: var(--radius-xs);
     transition: width 0.3s ease;
 }

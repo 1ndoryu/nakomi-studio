@@ -85,9 +85,16 @@ export const EditorMiembro: React.FC<EditorMiembroProps> = ({miembro, abierto, g
                     <label>Estado</label>
                     <div className="editorMiembroEstados">
                         {['published', 'draft', 'archived'].map(s => (
-                            <button key={s} className={`editorMiembroEstadoBtn ${editor.status === s ? 'activo' : ''}`} onClick={() => editor.setStatus(s)}>
+                            <Button
+                                key={s}
+                                type="button"
+                                variante="outline"
+                                tamano="pequeno"
+                                className={editor.status === s ? 'editorMiembroEstadoBtn--activo' : ''}
+                                onClick={() => editor.setStatus(s)}
+                            >
                                 {s === 'published' ? 'Publicado' : s === 'draft' ? 'Borrador' : 'Archivado'}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>

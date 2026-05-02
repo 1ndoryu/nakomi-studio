@@ -83,15 +83,15 @@
 }
 
 .orderChatBurbuja--propia .orderChatBurbujaTexto {
-    background: #e9e7e4;
+    background: var(--bg-chat-bubble-own);
     color: var(--text-dark);
-    border-bottom-right-radius: 4px;
+    border-bottom-right-radius: var(--radius-sm);
 }
 
 .orderChatBurbuja--otra .orderChatBurbujaTexto {
-    background: rgba(253, 252, 252, 0.4);
+    background: var(--white-40);
     color: var(--text-dark);
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: var(--radius-sm);
 }
 
 .orderChatBurbujaHora {
@@ -112,10 +112,12 @@
     width: 100%;
     background: unset;
     border-color: var(--bg-item-active);
-    border-radius: 104px;
+    border-radius: var(--radius-full);
     padding-right: 48px;
 }
 
+/* [batch-4] orderChatEnviar usa <Button variante="texto">; background/cursor del reset global.
+ * Solo se mantienen props de layout y forma (circle). */
 .orderChatEnviar {
     position: absolute;
     right: calc(var(--spacing-sm) + 4px);
@@ -126,10 +128,7 @@
     min-width: 32px;
     border-radius: 50%;
     padding: 0;
-    background: none;
     color: var(--text-dark);
-    border: none;
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -147,14 +146,14 @@
 }
 
 .orderChatBurbuja--intermediaria .orderChatBurbujaTexto {
-    background: rgba(0, 119, 182, 0.08);
+    background: var(--color-intermediaria-bubble);
     color: var(--text-dark);
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: var(--radius-sm);
     border-left: 2px solid var(--accent-primary);
 }
 
 .orderChatLabelIntermed {
-    font-size: 0.6875rem;
+    font-size: var(--text-mini);
     color: var(--accent-primary);
     
     margin-bottom: 2px;

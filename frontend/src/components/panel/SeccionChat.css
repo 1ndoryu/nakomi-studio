@@ -227,7 +227,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.72rem;
+    font-size: var(--text-mini);
     font-weight: 600;
     padding: 2px 8px;
     border-radius: var(--radius-full);

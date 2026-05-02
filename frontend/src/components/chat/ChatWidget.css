@@ -54,7 +54,7 @@
     width: 380px;
     min-height: 440px;
     max-height: 520px;
-    background: rgba(245, 242, 239, 0.8);
+    background: var(--bg-glass-medium);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--bg-item-active);
@@ -100,7 +100,7 @@
 }
 
 .chatWidgetMinimizeBtn:hover {
-    background: #d9d7d3;
+    background: var(--bg-warm-deep);
 }
 
 /* [114A-13] Banner de contexto de reporte — visible cuando se abre desde "Reportar problema" */
@@ -198,14 +198,14 @@
 /* [064A-28] Burbujas propias: crema, ajenas: blanco. Ambas sobre fondo
  * semi-transparente del panel para contraste sutil. */
 .chatWidgetMsgBubbleOwn {
-    background: #e9e7e4;
+    background: var(--bg-chat-bubble-own);
     color: var(--text-dark);
     border-bottom-right-radius: 4px;
 }
 
 /* [064A-52] 60% transparente según indicación del usuario */
 .chatWidgetMsgBubbleOther {
-    background: rgba(253, 252, 252, 0.4);
+    background: var(--white-40);
     color: var(--text-dark);
     border-bottom-left-radius: 4px;
 }

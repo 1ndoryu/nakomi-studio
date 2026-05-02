@@ -1,9 +1,5 @@
-/* [074A-9] Editor de servicio CMS — Modal con tabs: General, Media, Planes, SEO.
- * Reutiliza componentes existentes: Modal, Input, SlugInput, UploadImage, RichTextEditor, Textarea.
- * Lógica de formulario extraída a useEditorServicio para cumplir max 3 useState.
- * [074A-66] Tab Planes agregada para editar planes de pricing inline.
- * sentinel-disable-file html-nativo-en-vez-de-componente: Tabs del editor y status toggles usan
- * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón 074A-47). */
+/* [batch-4] Status toggles migrados a <Button>. Las tabs del editor siguen usando button nativo.
+ * sentinel-disable-file html-nativo-en-vez-de-componente: solo aplica a tabs del editor aún. */
 import React, {useState, useCallback} from 'react';
 import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';
@@ -172,20 +168,24 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
 
             <div className="editorServicioAcciones">
                 <div className="editorServicioEstado">
-                    <button
+                    <Button
                         type="button"
-                        className={`editorServicioStatusBtn ${form.status === 'draft' ? 'editorServicioStatusBtn--activo' : ''}`}
+                        variante="outline"
+                        tamano="pequeno"
+                        className={form.status === 'draft' ? 'editorServicioStatusBtn--activo' : ''}
                         onClick={() => form.setStatus('draft')}
                     >
                         Borrador
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
-                        className={`editorServicioStatusBtn ${form.status === 'published' ? 'editorServicioStatusBtn--activo' : ''}`}
+                        variante="outline"
+                        tamano="pequeno"
+                        className={form.status === 'published' ? 'editorServicioStatusBtn--activo' : ''}
                         onClick={() => form.setStatus('published')}
                     >
                         Publicado
-                    </button>
+                    </Button>
                 </div>
                 <Button
                     variante="primario"

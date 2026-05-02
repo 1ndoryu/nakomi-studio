@@ -196,3 +196,11 @@ h2, h3, h4, h5, h6, title, p, span, label, button {
     font-weight: unset;
     font-family: var(--font-primary);
 }
+
+/* Reset estructural para elementos button nativos:
+ * evita que estilos de cada componente repitan cursor/background/border. */
+button {
+    cursor: pointer;
+    background: transparent;
+    border: none;
+}

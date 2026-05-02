@@ -94,7 +94,7 @@
 
 .uploadImagenEliminar:hover {
     opacity: 1;
-    background: rgba(220, 38, 38, 0.9);
+    background: var(--color-error-hover);
 }
 
 .uploadImagenInput {

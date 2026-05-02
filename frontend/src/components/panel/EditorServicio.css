@@ -157,25 +157,8 @@
     gap: var(--spacing-xs);
 }
 
-/* sentinel-disable EstiloBotonEspecifico — botón de toggle de estado servicio;
- * mismo patrón que editorBlogStatusBtn: activo cambia colores, sin variante. */
-.editorServicioStatusBtn {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border: 1px solid var(--border-default);
-    background: none;
-    color: var(--text-tertiary);
-    font-size: var(--text-xs);
-    font-family: var(--font-primary);
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: all 0.2s;
-}
-
-.editorServicioStatusBtn:hover {
-    border-color: var(--text-tertiary);
-}
-
-/* [084A-17] Removido color y border-color del estado activo por indicación de usuario */
+/* [batch-4] Status toggle migrado a <Button variante="outline">.
+ * La clase base ya no existe; el modificador solo sobreescribe colores activos. */
 .editorServicioStatusBtn--activo {
     background: var(--bg-item-active);
 }

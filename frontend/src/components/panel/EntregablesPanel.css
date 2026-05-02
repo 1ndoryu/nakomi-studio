@@ -86,17 +86,12 @@
     margin: 2px 0 0;
 }
 
-/* sentinel-disable EstiloBotonEspecifico — botón icono de descarga;
- * transparente con padding mínimo, no es reemplazable por Button estándar. */
+/* [batch-4] entregablesDownloadBtn ya renderizado por <Button variante="texto">:
+ * solo quedan color y display; props estructurales eliminados. */
 .entregablesDownloadBtn {
-    background: none;
-    border: none;
-    cursor: pointer;
     color: var(--color-info);
-    padding: 2px;
     display: flex;
     align-items: center;
-    border-radius: var(--radius-sm);
     transition: background-color var(--transicion-rapida);
     flex-shrink: 0;
 }

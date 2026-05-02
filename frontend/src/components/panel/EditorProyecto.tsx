@@ -336,20 +336,24 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
 
             <div className="editorProyectoAcciones">
                 <div className="editorProyectoEstado">
-                    <button
+                    <Button
                         type="button"
-                        className={`editorProyectoStatusBtn ${form.status === 'draft' ? 'editorProyectoStatusBtn--activo' : ''}`}
+                        variante="outline"
+                        tamano="pequeno"
+                        className={form.status === 'draft' ? 'editorProyectoStatusBtn--activo' : ''}
                         onClick={() => form.setStatus('draft')}
                     >
                         Borrador
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
-                        className={`editorProyectoStatusBtn ${form.status === 'published' ? 'editorProyectoStatusBtn--activo' : ''}`}
+                        variante="outline"
+                        tamano="pequeno"
+                        className={form.status === 'published' ? 'editorProyectoStatusBtn--activo' : ''}
                         onClick={() => form.setStatus('published')}
                     >
                         Publicado
-                    </button>
+                    </Button>
                 </div>
                 <Button
                     variante="primario"

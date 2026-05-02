@@ -13,9 +13,13 @@
     --bg-dark: #141413;
     --bg-accent: #f5f3f1;
     --bg-glass-soft: rgba(245, 242, 239, 0.92);
+    /* Variante con menor opacidad para paneles sobre fondo claro (chat widget) */
+    --bg-glass-medium: rgba(245, 242, 239, 0.8);
     /* [074A-4] Beige cálido para botón primario y elementos interactivos sutiles. */
     --bg-warm: #e8e6e2;
     --bg-warm-hover: #e0deda;
+    /* Beige profundo para hover en surfaces más oscuras */
+    --bg-warm-deep: #d9d7d3;
     --overlay-hover: rgba(0, 0, 0, 0.05);
 
     /* Colors - Cards */
@@ -67,6 +71,7 @@
     --white-15: rgba(255, 255, 255, 0.15);
     --white-20: rgba(255, 255, 255, 0.2);
     --white-40: rgba(255, 255, 255, 0.4);
+    --white-60: rgba(255, 255, 255, 0.6);
     --white-85: rgba(255, 255, 255, 0.85);
 
     /* Item States */
@@ -118,6 +123,7 @@
 
     /* Status - Error */
     --color-error: #ef4444;
+    --color-error-hover: rgba(220, 38, 38, 0.9);
     --color-error-text: #991b1b;
     --color-error-bg: #fee2e2;
     --color-error-bg-soft: #fef2f2;
@@ -149,6 +155,7 @@
 
     /* Neutral (cancelled, inactive) */
     --color-neutral-bg: #f3f4f6;
+    --color-neutral: #95a5a6;
 
     /* Overlays */
     --overlay-medium: rgba(0, 0, 0, 0.5);
@@ -166,6 +173,11 @@
 
     /* Spacing extras */
     --spacing-2xs: 0.25rem;
+
+    /* Chat bubble colors */
+    --bg-chat-bubble-own: #e9e7e4;
+    /* Burbuja de mensaje intermediario (IA) — azul info muy suave */
+    --color-intermediaria-bubble: rgba(0, 119, 182, 0.08);
 
     /* Runtime CSS custom properties (defaults — overridden via React style prop) */
     --testimonio-idx: 0;

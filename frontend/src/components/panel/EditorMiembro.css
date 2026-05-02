@@ -54,20 +54,9 @@
     gap: var(--spacing-xs);
 }
 
-/* sentinel-disable EstiloBotonEspecifico — botón toggle estado miembro;
- * patrón activo/inactivo sin variante equivalente en Button. */
-.editorMiembroEstadoBtn {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-default);
-    color: var(--text-tertiary);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.editorMiembroEstadoBtn.activo {
+/* [batch-4] Status toggle migrado a <Button variante="outline">.
+ * La clase base ya no existe; el modificador solo sobreescribe colores activos. */
+.editorMiembroEstadoBtn--activo {
     border-color: var(--text-primary);
     color: var(--text-primary);
 }

@@ -16,19 +16,16 @@
     background: var(--bg-accent);
 }
 
-/* sentinel-disable EstiloBotonEspecifico — botón 28×28px de toolbar rich-text;
- * no existe variante icon-only en Button. Activo/inactivo vía --activo class. */
+/* [batch-4] reset global (init.css) ya provee cursor:pointer y background:transparent.
+ * Solo quedan dimensiones, layout y color; props estructurales reducidas a 1 (border-radius). */
 .richTextBtn {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 28px;
     height: 28px;
-    border: none;
     border-radius: var(--radius-sm);
-    background: transparent;
     color: var(--text-tertiary);
-    cursor: pointer;
     transition: background var(--transicion-rapida), color var(--transicion-rapida);
 }
 

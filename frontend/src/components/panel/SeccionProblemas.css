@@ -126,7 +126,7 @@
 }
 
 .problemaBadge--dismissed {
-    background-color: #95a5a6;
+    background-color: var(--color-neutral);
 }
 
 .problemaOrden {

@@ -11,15 +11,9 @@
     position: relative;
 }
 
-/* [064A-41] Botón 3 puntos sin borde. */
-/* sentinel-disable EstiloBotonEspecifico — botón 3-puntos de menú contextual;
- * variante texto sin padding ni borde es componente-específico. */
+/* [batch-4] usuariosMenuBtn ya renderizado por <Button variante="texto">:
+ * solo quedan overrides visuales; props estructurales eliminados. */
 .usuariosMenuBtn {
-    padding: 4px 8px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    cursor: pointer;
     font-size: var(--text-lg);
     color: var(--brand-black);
     line-height: 1;
@@ -95,18 +89,10 @@
     gap: var(--spacing-md);
 }
 
-/* sentinel-disable EstiloBotonEspecifico — botón de paginación tabla;
- * outline con hover sutil, layout inline, no reemplazable por Button estándar aquí. */
+/* [batch-4] usuariosPaginacionBtn ya renderizado por <Button variante="outline" tamano="pequeno">:
+ * solo quedan overrides de hover específicos del contexto tabla. */
 .usuariosPaginacionBtn {
-    padding: 8px 16px;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    background: var(--bg-primary);
-    font-size: var(--text-sm);
     font-family: var(--font-primary);
-    color: var(--brand-black);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
 }
 
 .usuariosPaginacionBtn:hover:not(:disabled) {
