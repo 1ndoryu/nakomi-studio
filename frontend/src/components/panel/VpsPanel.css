@@ -148,7 +148,7 @@
     display: flex;
     align-items: flex-start;
     gap: var(--spacing-xs);
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md);
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
 }
@@ -163,10 +163,10 @@
 }
 
 .vpsDeploymentAudit--orphan {
-    background: var(--color-warning-bg);
     color: var(--color-warning-text);
     flex-wrap: wrap;
     gap: var(--spacing-sm);
+    border: 1px solid var(--border-default);
 }
 
 /* [304A-3] vpsOrphanLinkBtn usa <Button variante="secundario"> como base.

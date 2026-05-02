@@ -136,7 +136,7 @@
 
     /* Status - Warning */
     --color-warning: #f59e0b;
-    --color-warning-text: #92400e;
+    --color-warning-text: #92400ee0;
     --color-warning-bg: #fef3c7;
 
     /* Status - Info */
