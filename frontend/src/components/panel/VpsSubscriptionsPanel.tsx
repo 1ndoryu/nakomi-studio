@@ -84,23 +84,10 @@ export function VpsSubscriptionsPanel({
                                 </span>
                             </div>
 
-                            <div className="vpsSubscriptionMeta">
-                                <div>
-                                    <span>Precio</span>
-                                    <strong>{formatPrice(subscription.monthly_price_cents)}</strong>
-                                </div>
-                                <div>
-                                    <span>Cliente</span>
-                                    <strong>{subscription.client_email}</strong>
-                                </div>
-                                <div>
-                                    <span>IP</span>
-                                    <strong>{subscription.provisioning_ip || 'Pendiente'}</strong>
-                                </div>
-                                <div>
-                                    <span>Acceso</span>
-                                    <strong>{subscription.access_username || 'Se entrega al aprobar'}</strong>
-                                </div>
+                            <div className="hostingCardFooter">
+                                <span>{formatPrice(subscription.monthly_price_cents)}</span>
+                                <span>{subscription.client_email}</span>
+                                <span>{subscription.provisioning_ip || 'Sin IP'}</span>
                             </div>
 
                             {subscription.client_notes && (

@@ -6,22 +6,6 @@
     gap: var(--spacing-md);
 }
 
-.vpsSubscriptionMeta {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.85rem;
-}
-
-.vpsSubscriptionMeta div {
-    display: grid;
-    gap: 0.25rem;
-}
-
-.vpsSubscriptionMeta span {
-    color: var(--text-tertiary);
-    font-size: var(--text-sm);
-}
-
 .vpsSubscriptionNotes,
 .vpsSubscriptionInstance,
 .vpsSubscriptionRejected {
