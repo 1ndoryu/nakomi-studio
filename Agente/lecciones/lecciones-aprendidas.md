@@ -19,6 +19,8 @@
 ## PowerShell + cargo
 - cargo escribe progreso en stderr. PowerShell interpreta stderr como error.
 - `2>&1 | ForEach-Object { $_.ToString() }` y luego `$LASTEXITCODE` es el patrón correcto.
+- Comandos largos o ambiguos no se deben "esperar" por intuicion: si no tienen criterio de fin claro, se ejecutan en background/async y se validan con una senal puntual (puerto, health, proceso, archivo generado, ultimas lineas del log).
+- Si `npx` o una CLI puede pedir confirmacion, usar `-y` o modo no interactivo desde el inicio; si no, el flujo parece colgado aunque en realidad esta esperando input.
 
 ## Code Sentinel — sentinel-disable-file
 - Al crear sentinel-disable-file comments, SIEMPRE usar el ID exacto de la regla, no un alias inventado.
@@ -141,6 +143,10 @@
 ## Ordenes por fases — el CMS manda
 - Si un plan ya define `service_plan_phases`, la creacion de la orden no debe reescribir esos titulos/descripciones con placeholders genericos. Hacerlo rompe el contrato con el CMS y da la falsa impresion de que el empleado debe “definir” las fases a mano.
 - Si el checkout ofrece `payment_mode = phased`, un plan sin fases debe rechazarse en dos boundaries: al guardar el plan desde admin y al crear la orden, para que la inconsistencia no llegue a producción.
+
+## CMS de servicios — editar plan no puede reciclar IDs
+- Si una orden ya referencia `service_plans.id`, el CMS no puede hacer `DELETE + INSERT` para guardar planes. Hay que preservar el ID existente y tratar `service_plan_phases` como el hijo reemplazable.
+- Para permitir cambios de slug/nombre sin romper órdenes históricas, el frontend admin debe enviar `id` opcional por plan y el backend usarlo como llave estable antes de caer al slug.
 
 ## Chat de órdenes — sender_type también es contrato
 - Si el sistema persiste nuevos tipos semánticos de mensaje (`ai_intermediary`, por ejemplo), el esquema de `chat_messages.sender_type` debe crecer junto con el código. Dejarlo en `VARCHAR(10)` hace que la IA genere bien pero no pueda guardar la respuesta.

@@ -190,6 +190,18 @@ Repite y refuerza la regla `-2`: todo deploy, restart, logs, backup y exec contr
 Nunca ejecutes comandos que reinicien, recarguen o cierren VS Code (`workbench.action.reloadWindow`, `Developer: Reload Window`, etc.). Si una extension se modifica, el usuario decide cuando reiniciar. Reiniciar interrumpe terminales, agentes y contexto de sesion.
 </rule>
 
+<rule id="21" name="bounded-terminal-execution">
+**Prohibido quedarse esperando indefinidamente un comando ambiguo o de larga vida.** Antes de ejecutar cualquier comando, clasificalo como una de estas dos cosas:
+
+- **Comando acotado** (build, test, lint, migracion, script puntual): debe tener criterio claro de salida/fracaso. Ejecutalo en modo no interactivo siempre que sea posible (`-y`, flags equivalentes, preinstalar dependencia). Si tras un timeout razonable o una sola lectura el estado sigue ambiguo, **no sigas esperando**: haz una comprobacion discriminante (exit code, proceso, puerto, archivo generado, HTTP probe, log final) y decide.
+- **Comando de larga vida** (server, watch, tail, dev loop): ejecutalo en background/async y valida con una señal de readiness concreta (puerto escuchando, linea "listening", healthcheck, tarea viva). Nunca lo uses como validacion bloqueante ni te quedes pollando salida sin una hipotesis nueva.
+
+Reglas operativas obligatorias:
+- Si el comando pide confirmacion o instalacion interactiva, reejecutalo de forma no interactiva o responde de inmediato; no lo dejes colgado esperando input oculto.
+- Si una herramienta devuelve salida larga o stale, no la releas en bucle: cambia a una verificacion puntual del estado real.
+- Un comando no puede bloquear el ciclo solo porque "sigue corriendo"; o produce una senal verificable, o se trata como ambiguedad a resolver con una comprobacion mas barata.
+</rule>
+
 ---
 
 ## II. FLUJO DE TRABAJO (ciclo continuo, por bloque coherente)
@@ -381,6 +393,12 @@ Relee el roadmap completo. Ejecuta `npm run self-check -- -TareaId {ID}` (o IDs 
 | Antes del commit del bloque | `npm run self-check -- -TareaId {ID}` |
 | Lint + types integrado | `codeSentinel.runExternalTools` |
 </validation_table>
+
+<execution_discipline>
+- Para servidores, watchers y procesos que permanecen vivos: usar modo background/async + una comprobacion de readiness concreta. Nunca esperar "a ver si termina".
+- Para `npx`, instaladores o CLIs que puedan pedir confirmacion: forzar modo no interactivo (`-y` o equivalente) antes de ejecutarlos.
+- Si una validacion larga queda ambigua por timeout o salida truncada, la siguiente accion no es esperar mas: es una comprobacion puntual del estado real (exit code, puerto, proceso, health, archivo generado, ultimas lineas del log).
+</execution_discipline>
 
 <other_commands>
 - `codeSentinel.analyzeFile` — analizar archivo actual
