@@ -14,7 +14,9 @@ const cwd = resolve(scriptDir, '..');
 const cargoToml = resolve(cwd, 'Cargo.toml');
 const frontendDir = resolve(cwd, 'frontend');
 const envPath = resolve(cwd, '.env');
-const cargoTargetDir = process.env.CARGO_TARGET_DIR || (isWindowsPlatform() ? 'C:\\tmp\\glory-target' : resolve(tmpdir(), 'glory-target'));
+/* Cada rama usa su propio subdirectorio bajo glory-target para evitar
+ * que .rmeta de una rama contaminen el build de otra (fix: stale extern location). */
+const cargoTargetBase = process.env.CARGO_TARGET_DIR_BASE || (isWindowsPlatform() ? 'C:\\tmp\\glory-target' : resolve(tmpdir(), 'glory-target'));
 const cargoTargetMaxMb = process.env.GLORY_CARGO_TARGET_MAX_MB || '4096';
 const cargoCleanIntervalSeconds = process.env.GLORY_CARGO_CLEAN_INTERVAL_SECONDS || '120';
 
@@ -362,6 +364,9 @@ function detectBinName() {
 
 const envValues = parseEnvFile(envPath);
 const branch = detectBranch();
+/* Subdirectorio por rama: evita que .rmeta de una rama contaminen la siguiente. */
+const branchSlugForTarget = slugifyBranchName(branch);
+const cargoTargetDir = process.env.CARGO_TARGET_DIR || resolve(cargoTargetBase, branchSlugForTarget);
 const dbName = databaseNameForBranch(branch);
 if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
     console.error(`[glory-dev] Nombre de BD inseguro: ${dbName}`);
