@@ -9,7 +9,7 @@
     right: 0;
     width: 100%;
     z-index: 50;
-    padding: var(--spacing-md) var(--seccion-padding-x);
+    padding: var(--spacing-md) 0;
     background-color: var(--bg-primary);
     font-family: var(--font-primary);
     font-size: var(--text-sm);
