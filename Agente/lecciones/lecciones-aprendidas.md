@@ -131,6 +131,7 @@
 ## Modales — semantica compartida primero
 - Si un modal necesita copy neutral, usar `.modalTexto` en `Modal.css` antes de inventar `.algoModalTexto` o `.algoModalDescripcion`. Las clases locales solo deben conservar layout o estado.
 - En analyzers CSS por bloques, `sentinel-disable-next-line` debe anclarse a la linea real del selector y no al inicio de un comentario previo; si no, la supresion parece rota aunque el helper este bien.
+- La estructura comun del modal tambien es contrato: cuerpo y campos deben salir de `.modalFormulario` / `.modalCampo` o de `ModalBody` / `ModalField`. Clases como `.algoFormCrear` o `.algoCampo` vuelven a introducir especificaciones de diseno prohibidas.
 
 ## Checkout publico — cortar roles invalidos antes del request
 - Si el backend solo permite crear ordenes como `client` o `admin`, el modal publico no debe decidir solo por `logueado`. En local es frecuente quedar con sesion `employee` por pruebas del panel y eso reproduce `403` evitables.

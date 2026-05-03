@@ -10,21 +10,7 @@
     overflow-y: auto;
 }
 
-/* [084A-8] .modalTestimonioTitulo reemplazado por .modalTitulo (Modal.css) */
-
-.modalTestimonioSubtitulo {
-    font-family: var(--font-serif);
-    font-size: var(--text-base);
-    color: var(--text-muted);
-    margin: 0 0 var(--spacing-lg);
-}
-
-/* Formulario */
-.modalTestimonioFormulario {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-}
+/* [084A-8] Titulo/texto y cuerpo comparten la receta de Modal.css. */
 
 /* Foto de perfil */
 .testimonioFotoWrapper {
@@ -77,44 +63,8 @@
     gap: var(--spacing-md);
 }
 
-.testimonioCampo {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
 .testimonioCampoCompleto {
     grid-column: 1 / -1;
-}
-
-.testimonioCampo label {
-    font-family: var(--font-primary);
-    font-size: var(--text-sm);
-    color: var(--text-muted);
-    font-weight: 500;
-}
-
-.testimonioCampo input,
-.testimonioCampo textarea {
-    font-family: var(--font-primary);
-    font-size: var(--text-base);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-primary);
-    outline: none;
-    transition: border-color var(--transicion-rapida);
-}
-
-.testimonioCampo input:focus,
-.testimonioCampo textarea:focus {
-    border-color: var(--border-default);
-}
-
-.testimonioCampo textarea {
-    resize: vertical;
-    min-height: 100px;
 }
 
 /* Acciones */

@@ -8,12 +8,70 @@ import {createPortal} from 'react-dom';
 import {useFocusTrap} from '../../hooks/useFocusTrap';
 import './Modal.css';
 
+function combinarClases(...clases: Array<string | undefined>): string {
+    return clases.filter(Boolean).join(' ');
+}
+
 interface ModalProps {
     abierto: boolean;
     onCerrar: () => void;
     children: React.ReactNode;
     /** Clase CSS adicional para el contenedor interno */
     className?: string;
+}
+
+type ModalBodyBaseProps = {
+    className?: string;
+    children: React.ReactNode;
+};
+
+type ModalBodyDivProps = ModalBodyBaseProps
+    & { as?: 'div' }
+    & Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'className'>;
+
+type ModalBodyFormProps = ModalBodyBaseProps
+    & { as: 'form' }
+    & Omit<React.FormHTMLAttributes<HTMLFormElement>, 'children' | 'className'>;
+
+type ModalBodyProps = ModalBodyDivProps | ModalBodyFormProps;
+
+type ModalFieldProps = React.HTMLAttributes<HTMLDivElement> & {
+    children: React.ReactNode;
+};
+
+type ModalLabelProps = React.LabelHTMLAttributes<HTMLLabelElement> & {
+    children: React.ReactNode;
+};
+
+/* [035A-24] El layout comun de formularios/campos del modal vive en el sistema UI.
+ * Evita que cada modal redefina .algoFormCrear o .algoCampo para la misma receta. */
+export function ModalBody(props: ModalBodyDivProps): React.ReactElement;
+export function ModalBody(props: ModalBodyFormProps): React.ReactElement;
+export function ModalBody({as = 'div', className, children, ...rest}: ModalBodyProps) {
+    return React.createElement(
+        as,
+        {
+            ...(rest as Record<string, unknown>),
+            className: combinarClases('modalFormulario', className),
+        },
+        children,
+    );
+}
+
+export function ModalField({className, children, ...rest}: ModalFieldProps) {
+    return (
+        <div {...rest} className={combinarClases('modalCampo', className)}>
+            {children}
+        </div>
+    );
+}
+
+export function ModalLabel({className, children, ...rest}: ModalLabelProps) {
+    return (
+        <label {...rest} className={combinarClases('modalEtiqueta', className)}>
+            {children}
+        </label>
+    );
 }
 
 export const Modal: React.FC<ModalProps> = ({abierto, onCerrar, children, className}) => {
@@ -49,9 +107,7 @@ export const Modal: React.FC<ModalProps> = ({abierto, onCerrar, children, classN
         if (e.target === e.currentTarget) onCerrar();
     };
 
-    const claseContenedor = className
-        ? `modalBaseContenedor ${className}`
-        : 'modalBaseContenedor';
+    const claseContenedor = combinarClases('modalBaseContenedor', className);
 
     /* [114A-10] Portal a document.body para aislar de stacking contexts padre */
     return createPortal(

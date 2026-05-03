@@ -95,48 +95,6 @@
     border-bottom-color: var(--brand-black);
 }
 
-/* Formulario */
-.modalFormulario {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-}
-
-.modalCampo {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-}
-
-.modalEtiqueta {
-    font-family: var(--font-primary);
-    font-size: var(--text-sm);
-    color: var(--text-tertiary);
-    font-weight: 500;
-}
-
-.modalInput {
-    font-family: var(--font-primary);
-    font-size: var(--text-base);
-    color: var(--text-primary);
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-sm) var(--spacing-md);
-    outline: none;
-    transition: border-color var(--transicion-rapida);
-    width: 100%;
-}
-
-.modalInput:focus {
-    border-color: var(--border-default);
-}
-
-.modalInput::placeholder {
-    color: var(--text-tertiary);
-    opacity: 0.5;
-}
-
 /* Enlace de texto (olvidaste contraseña, volver) */
 .modalEnlaceTexto {
     font-family: var(--font-primary);

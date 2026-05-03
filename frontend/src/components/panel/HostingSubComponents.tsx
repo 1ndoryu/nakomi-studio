@@ -12,7 +12,7 @@ import {
     type HostingSubscription,
     type UpdateHostingRequest,
 } from '../../api/hosting';
-import {Modal} from '../ui/Modal';
+import {Modal, ModalBody} from '../ui/Modal';
 import {Input} from '../ui/Input';
 import {Select} from '../ui/Select';
 import {Button} from '../ui/Button';
@@ -197,7 +197,7 @@ export function HostingCard({
             {/* [074A-65] Modal de edición */}
             {editing && (
                 <Modal abierto={editing} onCerrar={() => setEditing(false)}>
-                    <div className="hostingFormCrear">
+                    <ModalBody className="hostingCrearContenido">
                         <Select
                             className="hostingSelect"
                             value={editPlan}
@@ -218,14 +218,14 @@ export function HostingCard({
                                 Guardar cambios
                             </Button>
                         </div>
-                    </div>
+                    </ModalBody>
                 </Modal>
             )}
 
             {/* [084A-13] Modal de cambio de estado — reemplaza los status sueltos del menú */}
             {showStatusModal && isAdmin && (
                 <Modal abierto={showStatusModal} onCerrar={() => setShowStatusModal(false)}>
-                    <div className="hostingFormCrear">
+                    <ModalBody className="hostingCrearContenido">
                         <p className="hostingStatusModalSub">
                             Estado actual: <strong>{HOSTING_STATUS_LABELS[sub.status] || sub.status}</strong>
                         </p>
@@ -246,14 +246,14 @@ export function HostingCard({
                                     </Button>
                                 ))}
                         </div>
-                    </div>
+                    </ModalBody>
                 </Modal>
             )}
 
             {/* [304A-3] Modal de asignación de hosting a cliente */}
             {showAssignModal && isAdmin && onAssign && (
                 <Modal abierto={showAssignModal} onCerrar={() => setShowAssignModal(false)}>
-                    <form className="hostingFormCrear" onSubmit={handleAssignSubmit}>
+                    <ModalBody as="form" className="hostingCrearContenido" onSubmit={handleAssignSubmit}>
                         <p className="hostingStatusModalSub">
                             Hosting: <strong>{sub.domain || sub.client_name}</strong>
                         </p>
@@ -277,7 +277,7 @@ export function HostingCard({
                                 {assignLoading ? 'Asignando…' : 'Asignar'}
                             </Button>
                         </div>
-                    </form>
+                    </ModalBody>
                 </Modal>
             )}
         </>

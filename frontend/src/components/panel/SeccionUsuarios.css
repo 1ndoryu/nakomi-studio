@@ -264,19 +264,6 @@
     white-space: nowrap;
 }
 
-.usuariosCrearCampo {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-    margin-top: var(--spacing-md);
-}
-
-.usuariosCrearLabel {
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--brand-black);
-}
-
 .usuariosCrearRolBtn {
     width: 100%;
     text-align: left;

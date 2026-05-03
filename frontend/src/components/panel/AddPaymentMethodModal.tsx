@@ -8,7 +8,7 @@ import {
 } from '../../api/payments';
 import {useAddPaymentMethodModal} from '../../hooks/useAddPaymentMethodModal';
 import {Button} from '../ui/Button';
-import {Modal} from '../ui/Modal';
+import {Modal, ModalBody, ModalField, ModalLabel} from '../ui/Modal';
 
 import './AddPaymentMethodModal.css';
 
@@ -32,25 +32,25 @@ export function AddPaymentMethodModal({open, onClose, onSaved}: AddPaymentMethod
     if (!stripePromise) {
         return (
             <Modal abierto onCerrar={onClose} className="agregarTarjetaModal">
-                <div className="agregarTarjetaContenido">
+                <ModalBody>
                     <p className="agregarTarjetaError">Stripe no esta configurado en este entorno.</p>
                     <div className="modalAcciones">
                         <Button type="button" variante="outline" tamano="pequeno" onClick={onClose}>Cerrar</Button>
                     </div>
-                </div>
+                </ModalBody>
             </Modal>
         );
     }
 
     return (
         <Modal abierto onCerrar={onClose} className="agregarTarjetaModal">
-            <div className="agregarTarjetaContenido">
-                <p className="agregarTarjetaDescripcion">
+            <ModalBody>
+                <p className="modalTexto">
                     La tarjeta se guardara en Stripe y quedara disponible para pagos futuros.
                 </p>
 
                 {loadError && <p className="agregarTarjetaError">{loadError}</p>}
-                {isLoadingIntent && <p className="agregarTarjetaEstado">Preparando formulario seguro...</p>}
+                {isLoadingIntent && <p className="modalTexto">Preparando formulario seguro...</p>}
 
                 {clientSecret && (
                     <Elements stripe={stripePromise}>
@@ -61,7 +61,7 @@ export function AddPaymentMethodModal({open, onClose, onSaved}: AddPaymentMethod
                         />
                     </Elements>
                 )}
-            </div>
+            </ModalBody>
         </Modal>
     );
 }
@@ -122,11 +122,11 @@ function AddPaymentMethodForm({
     };
 
     return (
-        <form className="agregarTarjetaFormulario" onSubmit={handleSubmit}>
-            <div className="agregarTarjetaCampo">
-                <label className="agregarTarjetaEtiqueta" htmlFor="agregarTarjetaCardElement">
+        <ModalBody as="form" onSubmit={handleSubmit}>
+            <ModalField>
+                <ModalLabel htmlFor="agregarTarjetaCardElement">
                     Datos de la tarjeta
-                </label>
+                </ModalLabel>
                 <div className="agregarTarjetaStripeField" id="agregarTarjetaCardElement">
                     <CardElement
                         options={{
@@ -147,7 +147,7 @@ function AddPaymentMethodForm({
                         }}
                     />
                 </div>
-            </div>
+            </ModalField>
 
             {submitError && <p className="agregarTarjetaError">{submitError}</p>}
 
@@ -159,6 +159,6 @@ function AddPaymentMethodForm({
                     {isSubmitting ? 'Guardando...' : 'Guardar tarjeta'}
                 </Button>
             </div>
-        </form>
+        </ModalBody>
     );
 }

@@ -7,7 +7,7 @@
 import React from 'react';
 import {useTranslation} from 'react-i18next';
 import CheckoutModal from '../panel/CheckoutModal';
-import {Modal} from '../ui/Modal';
+import {Modal, ModalBody} from '../ui/Modal';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
 import {Textarea} from '../ui/Textarea';
@@ -197,8 +197,8 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
 
             {/* [064A-3] Paso auth: solo email. Si email ya existe, muestra password */}
             {paso === 'auth' && (
-                <form className="modalCompraAuth" onSubmit={handleAuth}>
-                    <p className="modalCompraAuthTexto">
+                <ModalBody as="form" onSubmit={handleAuth}>
+                    <p className="modalTexto modalCompraAuthTexto">
                         {emailExiste
                             ? t('purchase.existing_account', 'Ya tienes cuenta. Introduce tu contraseña para continuar.')
                             : t('purchase.enter_email', 'Introduce tu email para continuar')}
@@ -234,7 +234,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                                 ? 'El cargo se confirma dentro de Stripe Checkout y la provisión queda sujeta a aprobación manual.'
                             : t('purchase.no_charge_yet', 'Aún no se te cobrará')}
                     </p>
-                </form>
+                </ModalBody>
             )}
 
             {/* Procesando */}

@@ -9,7 +9,7 @@ import React, {useState} from 'react';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
 import {Textarea} from '../ui/Textarea';
-import {Modal} from '../ui/Modal';
+import {Modal, ModalBody, ModalField, ModalLabel} from '../ui/Modal';
 import './ModalTestimonio.css';
 
 interface ModalTestimonioProps {
@@ -89,9 +89,9 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                     </div>
                 ) : (
                     <>
-                        <p className="modalTestimonioSubtitulo">Comparte tu experiencia trabajando con nosotros.</p>
+                        <p className="modalTexto">Comparte tu experiencia trabajando con nosotros.</p>
 
-                        <form className="modalTestimonioFormulario" onSubmit={handleSubmit}>
+                        <ModalBody as="form" onSubmit={handleSubmit}>
                             {/* Foto de perfil */}
                             <div className="testimonioFotoWrapper">
                                 <label htmlFor="testimonioFoto" className="testimonioFotoLabel">
@@ -117,8 +117,8 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
 
                             <div className="testimonioGridCampos">
                                 {/* Nombre */}
-                                <div className="testimonioCampo">
-                                    <label htmlFor="testimonioNombre">Nombre completo *</label>
+                                <ModalField>
+                                    <ModalLabel htmlFor="testimonioNombre">Nombre completo *</ModalLabel>
                                     <Input
                                         type="text"
                                         id="testimonioNombre"
@@ -128,11 +128,11 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                                         placeholder="Tu nombre"
                                         required
                                     />
-                                </div>
+                                </ModalField>
 
                                 {/* Cargo / Puesto */}
-                                <div className="testimonioCampo">
-                                    <label htmlFor="testimonioCargo">Puesto / Empresa</label>
+                                <ModalField>
+                                    <ModalLabel htmlFor="testimonioCargo">Puesto / Empresa</ModalLabel>
                                     <Input
                                         type="text"
                                         id="testimonioCargo"
@@ -141,11 +141,11 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                                         onChange={handleChange}
                                         placeholder="CEO, Empresa XYZ"
                                     />
-                                </div>
+                                </ModalField>
 
                                 {/* Proyecto / Servicio relacionado */}
-                                <div className="testimonioCampo">
-                                    <label htmlFor="testimonioProyecto">Servicio o proyecto relacionado</label>
+                                <ModalField>
+                                    <ModalLabel htmlFor="testimonioProyecto">Servicio o proyecto relacionado</ModalLabel>
                                     <Input
                                         type="text"
                                         id="testimonioProyecto"
@@ -154,11 +154,11 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                                         onChange={handleChange}
                                         placeholder="Diseño Web, Branding, etc."
                                     />
-                                </div>
+                                </ModalField>
 
                                 {/* Red social */}
-                                <div className="testimonioCampo">
-                                    <label htmlFor="testimonioRedSocial">Red social (perfil)</label>
+                                <ModalField>
+                                    <ModalLabel htmlFor="testimonioRedSocial">Red social (perfil)</ModalLabel>
                                     <Input
                                         type="url"
                                         id="testimonioRedSocial"
@@ -167,12 +167,12 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                                         onChange={handleChange}
                                         placeholder="https://linkedin.com/in/..."
                                     />
-                                </div>
+                                </ModalField>
                             </div>
 
                             {/* Comentario */}
-                            <div className="testimonioCampo testimonioCampoCompleto">
-                                <label htmlFor="testimonioComentario">Tu comentario *</label>
+                            <ModalField className="testimonioCampoCompleto">
+                                <ModalLabel htmlFor="testimonioComentario">Tu comentario *</ModalLabel>
                                 <Textarea
                                     id="testimonioComentario"
                                     name="comentario"
@@ -182,7 +182,7 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                                     rows={4}
                                     required
                                 />
-                            </div>
+                            </ModalField>
 
                             <div className="testimonioFormZona">
                                 <Button variante="primario" className="testimonioAccionEnviar" disabled={estado === 'enviando'}>
@@ -195,7 +195,7 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
                                     Tu comentario será revisado antes de publicarse.
                                 </p>
                             </div>
-                        </form>
+                        </ModalBody>
                     </>
                 )}
         </Modal>

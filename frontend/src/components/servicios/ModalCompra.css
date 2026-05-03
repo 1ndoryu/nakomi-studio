@@ -60,15 +60,7 @@
     text-align: center;
 }
 
-.modalCompraAuth {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-}
-
 .modalCompraAuthTexto {
-    font-size: var(--text-sm);
-    color: var(--text-dark);
     text-align: center;
     margin-bottom: var(--spacing-xs);
 }

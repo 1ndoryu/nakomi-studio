@@ -9,6 +9,7 @@ import { MenuContextual } from '../ui/ContextMenu';
 import { ROLE_LABELS } from '../../api/admin-users';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { ModalBody, ModalField, ModalLabel } from '../ui/Modal';
 import { useModalCrearUsuario } from '../../hooks/useModalCrearUsuario';
 import './SeccionUsuarios.css';
 
@@ -22,9 +23,9 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
         useModalCrearUsuario({ onSubmit, onClose, onCreated });
 
     return (
-        <div>
-            <div className="usuariosCrearCampo">
-                <label className="usuariosCrearLabel" htmlFor="crear-email">Email</label>
+        <ModalBody>
+            <ModalField>
+                <ModalLabel htmlFor="crear-email">Email</ModalLabel>
                 <Input
                     id="crear-email"
                     type="email"
@@ -34,10 +35,10 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
                     required
                     disabled={isCreating}
                 />
-            </div>
+            </ModalField>
 
-            <div className="usuariosCrearCampo">
-                <label className="usuariosCrearLabel" htmlFor="crear-password">Contraseña</label>
+            <ModalField>
+                <ModalLabel htmlFor="crear-password">Contraseña</ModalLabel>
                 <Input
                     id="crear-password"
                     type="password"
@@ -48,10 +49,10 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
                     required
                     disabled={isCreating}
                 />
-            </div>
+            </ModalField>
 
-            <div className="usuariosCrearCampo">
-                <label className="usuariosCrearLabel">Rol</label>
+            <ModalField>
+                <ModalLabel>Rol</ModalLabel>
                 <MenuContextual
                     abierto={rolMenuAbierto}
                     onToggle={() => setRolMenuAbierto(prev => !prev)}
@@ -67,7 +68,7 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
                         { id: 'admin', label: 'Admin', onSelect: () => setRole('admin') },
                     ]}
                 />
-            </div>
+            </ModalField>
 
             {error && (
                 <div className="usuariosError usuariosError--modal">
@@ -96,6 +97,6 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
                     {isCreating ? 'Creando...' : 'Crear usuario'}
                 </Button>
             </div>
-        </div>
+        </ModalBody>
     );
 }

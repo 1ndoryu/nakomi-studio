@@ -11,6 +11,7 @@ import {apiListUsers, type AdminUserItem} from '../../api/admin-users';
 import {Input} from '../ui/Input';
 import {Select} from '../ui/Select';
 import {Button} from '../ui/Button';
+import {ModalBody} from '../ui/Modal';
 import {HOSTING_PLAN_OPTIONS} from './hostingPlanOptions';
 
 /* Selector de usuario con búsqueda. Devuelve el usuario seleccionado via onSelect. */
@@ -115,7 +116,7 @@ export function CreateHostingForm({
     );
 
     return (
-        <form className="hostingFormCrear" onSubmit={handleSubmit}>
+        <ModalBody as="form" className="hostingCrearContenido" onSubmit={handleSubmit}>
             <UserSelector onSelect={setSelectedUser} />
             {selectedUser && (
                 <p className="hostingFormNota">
@@ -151,6 +152,6 @@ export function CreateHostingForm({
                     {submitting ? 'Creando...' : 'Crear suscripción WordPress'}
                 </Button>
             </div>
-        </form>
+        </ModalBody>
     );
 }

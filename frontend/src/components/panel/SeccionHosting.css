@@ -270,11 +270,9 @@
 }
 
 /* ── Form crear ────────────────────────────── */
-/* [074A-15] Eliminado padding innecesario del form crear */
-.hostingFormCrear {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
+/* [035A-24] El layout base del cuerpo del modal ahora sale de .modalFormulario.
+ * Esta clase solo conserva el ancho extra de hosting cuando hace falta. */
+.hostingCrearContenido {
     min-width: 340px;
 }
 
