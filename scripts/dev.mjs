@@ -20,13 +20,6 @@ const cargoTargetBase = process.env.CARGO_TARGET_DIR_BASE || (isWindowsPlatform(
 const cargoTargetMaxMb = process.env.GLORY_CARGO_TARGET_MAX_MB || '4096';
 const cargoCleanIntervalSeconds = process.env.GLORY_CARGO_CLEAN_INTERVAL_SECONDS || '120';
 
-const branchDatabaseMap = new Map([
-    ['glory-rust-nakomi', 'nakomi_db'],
-    ['main', 'nakomi_db'],
-    ['kamples', 'glory_kamples'],
-    ['glory-rust-kamples', 'glory_kamples'],
-    ['glory-rs-rest', 'glory_rest_db'],
-]);
 
 if (!existsSync(cargoToml)) {
     console.error('[glory-dev] No se encontro Cargo.toml en', cwd);
@@ -106,21 +99,19 @@ function detectBranch() {
     return runGit(['branch', '--show-current']) || runGit(['rev-parse', '--short', 'HEAD']) || 'local';
 }
 
+function detectPackageName() {
+    const toml = readFileSync(cargoToml, 'utf8');
+    const match = toml.match(/^name\s*=\s*"([^"]+)"/m);
+    return (match ? match[1] : 'glory').replace(/-/g, '_');
+}
+
 function databaseNameForBranch(branch) {
     if (process.env.GLORY_DEV_DB_NAME) {
         return process.env.GLORY_DEV_DB_NAME;
     }
-
-    const normalized = branch.toLowerCase();
-    if (branchDatabaseMap.has(normalized)) {
-        return branchDatabaseMap.get(normalized);
-    }
-
-    if (normalized.includes('kamples')) {
-        return 'glory_kamples';
-    }
-
-    return `glory_${slugifyBranchName(branch)}_db`;
+    const pkgName = detectPackageName();
+    const isDefault = branch === 'main' || branch === 'master';
+    return isDefault ? pkgName : `${pkgName}_${slugifyBranchName(branch)}`;
 }
 
 function databaseUrlForName(envValues, dbName) {
@@ -129,7 +120,7 @@ function databaseUrlForName(envValues, dbName) {
         return template.replaceAll('{db}', dbName);
     }
 
-    const baseUrl = process.env.DATABASE_URL || envValues.get('DATABASE_URL') || 'postgres://postgres:root@localhost:5432/nakomi_db';
+    const baseUrl = process.env.DATABASE_URL || envValues.get('DATABASE_URL') || 'postgres://postgres:root@localhost:5432/postgres';
     const parsed = new URL(baseUrl);
     parsed.pathname = `/${dbName}`;
     return parsed.toString();
@@ -364,9 +355,9 @@ function detectBinName() {
 
 const envValues = parseEnvFile(envPath);
 const branch = detectBranch();
-/* Subdirectorio por rama: evita que .rmeta de una rama contaminen la siguiente. */
-const branchSlugForTarget = slugifyBranchName(branch);
-const cargoTargetDir = process.env.CARGO_TARGET_DIR || resolve(cargoTargetBase, branchSlugForTarget);
+/* Subdirectorio por proyecto+rama: aísla artefactos entre proyectos Y entre ramas.
+ * Formato: {pkg_name}_{branch_slug}  →  C:\tmp\glory-target\glory_backend_glory_rust_nakomi */
+const cargoTargetDir = process.env.CARGO_TARGET_DIR || resolve(cargoTargetBase, `${detectPackageName()}_${slugifyBranchName(branch)}`);
 const dbName = databaseNameForBranch(branch);
 if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
     console.error(`[glory-dev] Nombre de BD inseguro: ${dbName}`);
