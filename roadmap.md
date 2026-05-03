@@ -26,7 +26,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 ## Tareas pendientes 
 
 - Completar el barrido de bordes neutrales: `--border-default` ya es `#dcdcdc`, pero todavia quedan componentes usando `border: 1px solid var(--bg-item-active)` como borde generico cuando no representan un estado activo/seleccionado.
-- Estoy revisando un proyecto activo de esos que se generan para pruebas, veo el apartado de fases pero en modo empleado pero no veo que se puedan modificar las fases lo cual esta mal, tampoco se como se generan las fases porque ajam, ahora los servicios son dimaicos y se generan a través del cms, si el cliente elige pagar por fases creo que lo mas logico es que las fases esten prehechas para cada servicio a través del cms, un servicio necesita obligatoriamente fases en caso de que el cliente vaya a pagar por fase. 
 - El checkout publico local ya no cae en `POST /api/orders` con `403`, pero el siguiente paso falla con `404` al iniciar el pago despues de crear la orden; revisar el contrato/configuracion local del checkout.
 - si estoy dentro un proyecto (en el panel) debería generar una url para poder compartir en el panel y recargar estar dentro de ese proyecto (obviamente ), lo mismo con cualquier otra cosa si estoy dentro de los detalles de un hosting, etc.
 - En la vista de un proyecto dentro de un panel en el usuario de cliente veo que puedo cambiar la descripción de un proyecto, los cliente no deben cambiar la descripciones de sus proyectos.

@@ -134,6 +134,15 @@ impl OrderService {
 
         let plan_phases = ServiceRepository::list_plan_phases(pool, plan.id).await?;
 
+        /* [035A-10] En pagos por fases, el CMS define la estructura de trabajo.
+         * No se deben crear órdenes con fases vacías ni sobrescribir plantillas del plan
+         * con placeholders genéricos, porque eso rompe el contrato con el catálogo. */
+        if payment_mode == PaymentMode::Phased && plan_phases.is_empty() {
+            return Err(AppError::BadRequest(
+                "Este plan no tiene fases configuradas en el CMS para pago por fases".into(),
+            ));
+        }
+
         let order = OrderRepository::create_order(
             pool,
             CreateOrderParams {
@@ -161,21 +170,13 @@ impl OrderService {
                 PhaseStatus::Locked
             };
 
-            let (title, description) = Self::resolve_phase_definition(
-                payment_mode,
-                tmpl.phase_number,
-                &tmpl.title,
-                tmpl.description.as_deref(),
-                project_description.as_deref(),
-            );
-
             OrderRepository::create_order_phase(
                 pool,
                 CreatePhaseParams {
                     order_id: order.id,
                     phase_number: tmpl.phase_number,
-                    title: &title,
-                    description: description.as_deref(),
+                    title: &tmpl.title,
+                    description: tmpl.description.as_deref(),
                     price_cents: phase_price,
                     status,
                     max_revisions: tmpl.max_revisions,
@@ -712,38 +713,6 @@ impl OrderService {
             PaymentMode::Full => PhaseStatus::Paid,
             PaymentMode::HalfHalf | PaymentMode::Phased => PhaseStatus::PendingPayment,
         }
-    }
-
-    fn resolve_phase_definition(
-        payment_mode: PaymentMode,
-        phase_number: i32,
-        title: &str,
-        description: Option<&str>,
-        project_description: Option<&str>,
-    ) -> (String, Option<String>) {
-        if payment_mode != PaymentMode::Phased {
-            return (title.to_string(), description.map(ToOwned::to_owned));
-        }
-
-        if phase_number == 1 {
-            let detail = project_description
-                .filter(|value| !value.trim().is_empty())
-                .map_or_else(|| {
-                    "RevisiÃ³n del brief del cliente y definiciÃ³n del alcance inicial del proyecto.".to_string()
-                }, |value| {
-                    format!(
-                        "Brief inicial del cliente: {value}. Esta fase sirve para revisar alcance, prioridades y la estructura del proyecto."
-                    )
-                });
-            return ("DefiniciÃ³n del proyecto".to_string(), Some(detail));
-        }
-
-        (
-            format!("Fase {phase_number} por definir"),
-            Some(
-                "Esta fase serÃ¡ definida por el especialista cuando revise el brief y la conversaciÃ³n con el cliente.".to_string(),
-            ),
-        )
     }
 }
 

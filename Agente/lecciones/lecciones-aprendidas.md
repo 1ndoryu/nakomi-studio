@@ -132,6 +132,30 @@
 - Si el backend solo permite crear ordenes como `client` o `admin`, el modal publico no debe decidir solo por `logueado`. En local es frecuente quedar con sesion `employee` por pruebas del panel y eso reproduce `403` evitables.
 - Para validar ese caso sin tocar backend, basta simular `auth_user` en `localStorage`, recargar la SPA y comprobar que el guard del frontend muestra el mensaje en vez de entrar al estado de procesamiento.
 
+## Ordenes por fases — el CMS manda
+- Si un plan ya define `service_plan_phases`, la creacion de la orden no debe reescribir esos titulos/descripciones con placeholders genericos. Hacerlo rompe el contrato con el CMS y da la falsa impresion de que el empleado debe “definir” las fases a mano.
+- Si el checkout ofrece `payment_mode = phased`, un plan sin fases debe rechazarse en dos boundaries: al guardar el plan desde admin y al crear la orden, para que la inconsistencia no llegue a producción.
+
+*** Add File: c:\Users\Owner\OneDrive\Documentos\glory-rust-template\Agente\documentacion\orders\fases-cms-phased-2026-05-03.md
+# Fases CMS en pagos por fases
+
+Fecha: 2026-05-03
+
+## Contrato
+
+- `service_plan_phases` es la fuente de verdad para la estructura de trabajo de un plan.
+- Cuando una orden se crea con `payment_mode = phased`, las fases de `order_phases` deben copiar exactamente el título, descripción, porcentaje, días estimados y revisiones definidas en el CMS.
+- El backend no debe inventar títulos como "Fase n por definir" ni sobrescribir la plantilla del plan con texto derivado del brief.
+
+## Guardarrailes
+
+- `POST /api/orders` rechaza compras `phased` si el plan no tiene fases configuradas.
+- `PUT /api/admin/services/{id}/plans` rechaza guardar un plan sin fases.
+
+## Motivo
+
+El catálogo público ya vende planes dinámicos desde CMS. Si las fases se vuelven genéricas al crear la orden, el empleado termina viendo un proyecto activo sin una estructura clara y parece que la edición manual fuera el flujo principal, cuando debería ser solo una excepción.
+
 ## Upstreams opcionales - no esconderlos tras 500 internos
 - Si una integración externa opcional falla (Contabo, por ejemplo), no devolver `Internal` genérico desde el handler. Clasificar y exponer un `message` accionable evita perseguir fantasmas de backend cuando el bloqueo real es `invalid_grant`, parseo o indisponibilidad del proveedor.
 - Cuando una credencial legacy es ambigua (`PASSWORD_CONTABO`), documentar y soportar una variable explícita (`CONTABO_API_PASSWORD`) reduce drift entre proyectos y evita repetir el mismo diagnóstico en cada repo.

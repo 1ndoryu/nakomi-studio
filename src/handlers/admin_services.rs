@@ -248,6 +248,15 @@ async fn save_plans(
     auth.require_role(&[UserRole::Admin])?;
     body.validate().map_err(|e| AppError::Validation(e.to_string()))?;
 
+    /* [035A-10] El checkout público siempre ofrece pago por fases para servicios.
+     * Si el CMS guarda un plan sin fases, la orden queda sin estructura de trabajo.
+     * Se corta en el boundary admin para que el catálogo siga siendo fuente de verdad. */
+    if let Some(plan) = body.plans.iter().find(|plan| plan.phases.is_empty()) {
+        return Err(AppError::Validation(
+            format!("El plan '{}' debe tener al menos una fase configurada", plan.name),
+        ));
+    }
+
     ServiceRepository::find_service_by_id(&state.pool, id)
         .await?
         .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
