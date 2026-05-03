@@ -38,11 +38,8 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 Sin movimientos aún
 Solicitudes de retiro
 No has solicitado retiros aún"
-- esto que pusiste de "**Refuerzo operativo obligatorio para modales y paneles:**
-- Reutiliza siempre las clases semanticas compartidas del sistema antes de crear una local. Para modales: `.modalTitulo`, `.modalTexto`, `.modalAcciones`.
-- Queda prohibido crear `.algoModalTitulo`, `.algoModalTexto`, `.algoModalDescripcion`, `.algoModalAcciones` si solo redefinen tipografia, color, spacing o alineacion ya resueltos por el sistema.
-- Si falta una receta compartida, se crea primero en el componente base del sistema y luego se consume desde el componente concreto." No parece que sea generico, no es algo especifico que debe hacerse con solo con los modales tiene que ser con todo los componentes el refeurzo.
-- Veo muchas cosas en planes que no estan en completados, hay que revisarlos todo 
+- Veo muchas cosas en planes que no estan en completados, hay que revisarlos todo y ver que no esta completado y completarloy luego mover a completado
+- El historial de pago esta mal visualmente, debería ver como
 
 
 ## Notas de infraestructura
