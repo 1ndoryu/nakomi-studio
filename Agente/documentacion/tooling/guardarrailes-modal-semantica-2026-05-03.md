@@ -23,6 +23,7 @@ Fecha: 2026-05-03
 
 - `modal-semantica-no-canonica` detecta clases como `.ordenDetalleModalTexto`, `.usuariosModalTexto` o `.modalCompraDescripcion` cuando redefinen tipografia, color, alineacion o layout semantico que ya pertenece al sistema compartido de modales.
 - `modal-estructura-no-canonica` detecta cuerpos o campos locales como `.hostingFormCrear`, `.agregarTarjetaFormulario` o `.usuariosCrearCampo` y fuerza el uso de `modalFormulario` / `modalCampo` o de los helpers del componente base.
+- `modal-estructura-no-canonica` tambien detecta `className` local sobre el propio `<Modal>` cuando redefine el contenedor compartido, por ejemplo `.usuariosModal`.
 - Si un componente necesita un ajuste puntual, la clase local debe quedarse solo con spacing o estado, no con la receta visual base.
 - Estas reglas cubren ya semantica y estructura; el principio debe extenderse al resto de componentes compartidos del sistema.
 

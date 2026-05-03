@@ -187,7 +187,7 @@ export function SeccionUsuarios() {
             )}
 
             {/* [015A-1] Modal de confirmación de acción */}
-            <Modal abierto={!!confirmAction} onCerrar={closeConfirm} className="usuariosModal">
+            <Modal abierto={!!confirmAction} onCerrar={closeConfirm}>
                 <p className="modalTexto usuariosModalMensaje">
                     {confirmAction?.type === 'role'
                         ? `¿Cambiar rol de ${confirmAction.email} a ${ROLE_LABELS[confirmAction.value] || confirmAction.value}?`
@@ -225,7 +225,7 @@ export function SeccionUsuarios() {
             </Modal>
 
             {/* [015A-1] Modal para crear nuevo usuario */}
-            <Modal abierto={modalCrear} onCerrar={closeCreateModal} className="usuariosModal">
+            <Modal abierto={modalCrear} onCerrar={closeCreateModal}>
                 <ModalCrearUsuario
                     onClose={closeCreateModal}
                     onSubmit={createUser}

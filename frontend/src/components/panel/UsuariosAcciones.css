@@ -111,15 +111,8 @@
     opacity: 0.6;
 }
 
-/* Modal de confirmación (usa <Modal> base, estilos adicionales) */
-
-.usuariosModal {
-    max-width: 400px;
-}
-
-/* [084A-8][035A-6] .usuariosModalTitulo/.usuariosModalTexto/.usuariosModalAcciones
- * reemplazados por .modalTitulo/.modalTexto/.modalAcciones.
- * Esta clase solo conserva spacing local. */
+/* Modal de confirmación: contenedor compartido de <Modal> sin clase local de ancho.
+ * [035A-24] .usuariosModal removida: el contenedor base ya cubre este caso. */
 
 .usuariosModalMensaje {
     margin-bottom: var(--spacing-lg);
