@@ -36,16 +36,27 @@
     padding: 0;
 }
 
-/* [084A-8] Clases estandarizadas para titulos y acciones de modales.
+/* [084A-8][035A-6] Clases estandarizadas para titulos, texto y acciones.
  * Todos los modales que necesiten titulo deben usar .modalTitulo (h3).
+ * Todo copy neutral debe usar .modalTexto.
  * Todos los que necesiten footer de acciones deben usar .modalAcciones.
- * Esto centraliza la consistencia visual evitando clases custom por modal. */
+ * Si falta una receta compartida, se agrega aqui antes de crear clases por modal. */
 .modalTitulo {
     font-size: var(--text-lg);
     
     color: var(--brand-black);
     margin: 0;
     font-family: var(--font-primary);
+}
+
+.modalTexto {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.modalTextoExito {
+    color: var(--success-color);
 }
 
 .modalAcciones {

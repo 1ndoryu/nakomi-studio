@@ -68,7 +68,7 @@ export function OrderDetailModals({
                 className="ordenDetalleModal"
             >
                 <div className="ordenDetalleModalContenido">
-                    <p className="ordenDetalleModalTexto">
+                    <p className="modalTexto">
                         Esta acción no se puede deshacer. La orden #{orderNumber} quedará cancelada.
                     </p>
                     {isEmployee && (
@@ -106,7 +106,7 @@ export function OrderDetailModals({
                 <div className="ordenDetalleModalContenido">
                     {reportExito ? (
                         <>
-                            <p className="ordenDetalleModalTexto ordenDetalleModalTexto--exito">
+                            <p className="modalTexto modalTextoExito">
                                 Tu reporte fue enviado. El equipo lo revisará pronto.
                             </p>
                             <div className="modalAcciones">
@@ -118,7 +118,7 @@ export function OrderDetailModals({
                         </>
                     ) : (
                         <>
-                            <p className="ordenDetalleModalTexto">
+                            <p className="modalTexto">
                                 Describe el problema con la orden #{orderNumber}. El equipo de soporte lo revisará.
                             </p>
                             <Textarea

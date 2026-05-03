@@ -124,6 +124,11 @@ Razon: Claude tiende por defecto a inyectar paletas, tipografias y "house style"
 - Estado one-off no parametrizable (ej: animacion contextual de un splash screen).
 - Componente de marca (logo, hero unico) que por definicion no se reutiliza.
 
+**Refuerzo operativo obligatorio para modales y paneles:**
+- Reutiliza siempre las clases semanticas compartidas del sistema antes de crear una local. Para modales: `.modalTitulo`, `.modalTexto`, `.modalAcciones`.
+- Queda prohibido crear `.algoModalTitulo`, `.algoModalTexto`, `.algoModalDescripcion`, `.algoModalAcciones` si solo redefinen tipografia, color, spacing o alineacion ya resueltos por el sistema.
+- Si falta una receta compartida, se crea primero en el componente base del sistema y luego se consume desde el componente concreto.
+
 Si dudas, consume tokens existentes; si falta un token, anadelo a `variables.css` y luego usalo.
 </rule>
 

@@ -117,13 +117,12 @@
     max-width: 400px;
 }
 
-/* [084A-8] .usuariosModalTitulo/.usuariosModalAcciones reemplazados por .modalTitulo/.modalAcciones (Modal.css) */
+/* [084A-8][035A-6] .usuariosModalTitulo/.usuariosModalTexto/.usuariosModalAcciones
+ * reemplazados por .modalTitulo/.modalTexto/.modalAcciones.
+ * Esta clase solo conserva spacing local. */
 
-.usuariosModalTexto {
-    margin: 0 0 var(--spacing-lg);
-    font-size: var(--text-sm);
-    color: var(--brand-black);
-    opacity: 0.7;
+.usuariosModalMensaje {
+    margin-bottom: var(--spacing-lg);
 }
 
 /* [084A-8] .usuariosModalAcciones/.usuariosModalCancelar/.usuariosModalConfirmar

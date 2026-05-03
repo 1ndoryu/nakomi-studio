@@ -551,21 +551,15 @@
     gap: var(--spacing-md);
 }
 
-/* [084A-8] .ordenDetalleModalTitulo/.ordenDetalleModalAcciones reemplazados por .modalTitulo/.modalAcciones (Modal.css) */
-
-.ordenDetalleModalTexto {
-    margin: 0;
-    font-family: inherit;
-    color: var(--text-muted);
-    line-height: 1.5;
-}
+/* [084A-8][035A-6] .ordenDetalleModalTitulo/.ordenDetalleModalTexto/.ordenDetalleModalAcciones
+ * migrados a .modalTitulo/.modalTexto/.modalAcciones compartidos. */
 
 /* [104A-28] Textarea para razón de cancelación/reporte */
 .ordenDetalleModalTextarea {
     width: 100%;
     min-height: 80px;
     padding: var(--spacing-sm);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-sm);
     background: var(--bg-primary);
     color: var(--text-primary);
@@ -589,10 +583,6 @@
     margin: 0;
     color: var(--color-error);
     font-size: var(--text-xs);
-}
-
-.ordenDetalleModalTexto--exito {
-    color: var(--success-color);
 }
 
 /* [084A-8] Acciones ahora via .modalAcciones estándar */

@@ -124,6 +124,10 @@
 - Antes de crear o modificar CSS, leer primero `variables.css`, los componentes atómicos en `ui/` y los patrones de componentes similares. Cada clase ad-hoc que duplica un token existente es deuda visual que se acumula.
 - Badge siempre en grises (sin color semántico) fue una decisión de diseño Nakomi. Footers, headers, cards deben compartir un patrón unificado.
 
+## Modales — semantica compartida primero
+- Si un modal necesita copy neutral, usar `.modalTexto` en `Modal.css` antes de inventar `.algoModalTexto` o `.algoModalDescripcion`. Las clases locales solo deben conservar layout o estado.
+- En analyzers CSS por bloques, `sentinel-disable-next-line` debe anclarse a la linea real del selector y no al inicio de un comentario previo; si no, la supresion parece rota aunque el helper este bien.
+
 ## Upstreams opcionales - no esconderlos tras 500 internos
 - Si una integración externa opcional falla (Contabo, por ejemplo), no devolver `Internal` genérico desde el handler. Clasificar y exponer un `message` accionable evita perseguir fantasmas de backend cuando el bloqueo real es `invalid_grant`, parseo o indisponibilidad del proveedor.
 - Cuando una credencial legacy es ambigua (`PASSWORD_CONTABO`), documentar y soportar una variable explícita (`CONTABO_API_PASSWORD`) reduce drift entre proyectos y evita repetir el mismo diagnóstico en cada repo.

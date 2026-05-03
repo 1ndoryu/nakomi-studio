@@ -25,58 +25,24 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes 
 
-(sin tareas pendientes)
-
-### 9. Tooling local común entre ramas
-
-- ✅ `npm run dev` usa BD local aislada por rama/proyecto y repara historiales SQLx incompatibles en desarrollo.
-- ✅ `npm run dev` fuerza `CARGO_TARGET_DIR` fuera de OneDrive y usa `sccache` si está disponible.
-- ✅ `npm run dev` arranca watcher de limpieza de `C:\tmp\glory-target` para evitar crecimiento indefinido del target Rust.
-
-### ~~1. Imágenes pesadas en inicio~~ ✅ COMPLETADO
-Causa raíz: image-webp 0.2.4 solo soporta WebP lossless → 1.5MB por imagen. Solucionado: backend ahora devuelve JPEG lossy para peticiones WebP (196KB vs 1.5MB). Frontend deshabilitó srcSet WebP. Cache limpiada.
-
-### ~~2. Auditoría completa del sistema de hosting~~ ✅ COMPLETADO (excepto auto-login WP)
-
-- ✅ Que comprar un hosting wordpress funcione
-- ✅ Que el usuario pueda administrar su hosting wordpress
-- ⬜ Que pueda ir al wp-admin ya logeado con un boton *(requiere plugin WP — fuera de scope actual)*
-- ✅ Que pueda comprar un dominio *(API Contabo Domains integrada — backend + frontend)*
-- ✅ Que pueda administrar los archivos de wordpress (SFTP)
-- ✅ Que pueda asignar un dominio *(BD + Coolify FQDN update automático)*
-- ✅ Que pueda cambiar el dominio *(ídem anterior — reconfigura Coolify al cambiar)*
-- ✅ Que pueda transferir un dominio *(API Contabo auth-code + transfer)*
-- ✅ Que pueda reiniciar el wordpress, detener, arrancar el wordpress *(endpoints + UI implementados)*
-- ✅ Que pueda acceder por ssh
-- ✅ Que pueda ver su almacenamiento y status *(du vía SSH ahora en storage_used_mb)*
-- ✅ Que pueda ver su ram y status (Docker stats vía SSH)
-- ✅ Que no pueda cambiar sus valores asignados
-- ✅ Necesito una forma de testear la compra de hosting *(admin-test-subscribe: bypass Stripe)*
-- ✅ Que todos los despliegues reales de VPS2 salgan en panel admin (Coolify services en tab separado; Contabo queda como vista de infraestructura)
-- ✅ Eliminar hosting del panel borra el hosting real en Coolify
-- ✅ Asegurar que VPS1 no esté relacionada (solo VPS2 configurada en CoolifyConfig)
-- ✅ Que el cliente pueda cambiar las DNS de su hosting *(DnsManager + client endpoints)*
-
-### ~~3. Error react-helmet-async + redirect a localhost~~ ✅ COMPLETADO
-npm install restauró react-helmet-async. Redirect arreglado con resolve_public_base_url() que lee Origin/Referer headers.
-
-### ~~4. Sincronización de env locales con producción~~ ✅ COMPLETADO
-Implementado en coolify-manager-rs: comando `sync-env --name <sitio> --direction diff|push|pull [--dry-run] [--env-file <path>]`. Compara .env local con vars de Coolify API, soporta push bulk y pull a archivo local con output coloreado y mascarado para secrets.
-
-### ~~5. API del CMS — edición de contenido~~ ✅ COMPLETADO
-Implementado `GET/POST /api/admin/fixtures` para sincronizar archivos TOML de content/ con BD desde el panel admin. Frontend: hook `useFixtureSync` + bloque UI en SeccionConfiguracion.
-
-### Pendientes menores
-- ~~Cambiar "Hosting" → "Hosting WordPress" en nav/soluciones con logo WP~~ ✅ COMPLETADO
-- ~~Planificar solución de hosting compartido + reventa VPS Contabo~~ ✅ COMPLETADO — Plan implementado en backend/frontend con margen bruto objetivo del 20%, hosting auto-provisionado y VPS con aprobación manual.
-
-- ~~el backend local no funciona~~ ✅ CORREGIDO — BD tenía migraciones de proyecto anterior (restaurant/CRM). Reset DB resolvió `VersionMissing(20260325100000)`.
-
-- ✅ Ya que tenemos una forma de comprar y adquirir dominios tenemos margenes de ganacias (pequeños). 
-- ✅ Me falto decir que el cliente pueda cambiar las dns de su hosting *(DnsManager component + client endpoints)*
-- ✅ Que las imagenes de inicio del carrusel esten en w=1200&q=80 *(CarruselShowcase ahora fuerza fixedWidth=1200 y quality=80 para evitar buckets mayores por DPR)*
-- ✅ En local dice "Contabo rechazó la autenticación..." — `first_env()` ahora hace `.trim()` al valor, elimina espacios al final en variables de entorno.
-- ✅ Despliegue real sin vínculo — en `Vps2DeploymentsPanel` se agrega botón "Crear suscripción vinculada" inline en cards huérfanas; `CreateHostingRequest` acepta `coolify_site_name` para pre-vincular al crear.
+- Completar el barrido de bordes neutrales: `--border-default` ya es `#dcdcdc`, pero todavia quedan componentes usando `border: 1px solid var(--bg-item-active)` como borde generico cuando no representan un estado activo/seleccionado.
+- Estoy revisando un proyecto activo de esos que se generan para pruebas, veo el apartado de fases pero en modo empleado pero no veo que se puedan modificar las fases lo cual esta mal, tampoco se como se generan las fases porque ajam, ahora los servicios son dimaicos y se generan a través del cms, si el cliente elige pagar por fases creo que lo mas logico es que las fases esten prehechas para cada servicio a través del cms, un servicio necesita obligatoriamente fases en caso de que el cliente vaya a pagar por fase. 
+- Simplificar `ModalCompra`: `modalCompraResumen` sobra y `Describe tu proyecto` deberia ocurrir despues de la compra, no dentro del modal de checkout inicial.
+- Investigar y corregir el `POST /api/orders` local que falla con `403 (Forbidden)` al contratar un servicio.
+- si estoy dentro un proyecto (en el panel) debería generar una url para poder compartir en el panel y recargar estar dentro de ese proyecto (obviamente ), lo mismo con cualquier otra cosa si estoy dentro de los detalles de un hosting, etc.
+- En la vista de un proyecto dentro de un panel en el usuario de cliente veo que puedo cambiar la descripción de un proyecto, los cliente no deben cambiar la descripciones de sus proyectos.
+- Veo que al cliente llega la notificación de que recibio un mensaje dentro del un proyecto que tiene activo pero al dar click no hace nada, debería redirigirlo al proyecto
+- En los proyectos los empleados tienen un boton de IA para activar, esto hace que la IA responda por ellos cuando el cliente escribe pero no funciona, hice la prueba (con los datos de prueba locales), y no recibi ninguna respuesta enviando mensaje desde el modo cliente. 
+- Necesito datos de prueba para, necesito ver como se ve. 
+"Historial de movimientos
+Sin movimientos aún
+Solicitudes de retiro
+No has solicitado retiros aún"
+- esto que pusiste de "**Refuerzo operativo obligatorio para modales y paneles:**
+- Reutiliza siempre las clases semanticas compartidas del sistema antes de crear una local. Para modales: `.modalTitulo`, `.modalTexto`, `.modalAcciones`.
+- Queda prohibido crear `.algoModalTitulo`, `.algoModalTexto`, `.algoModalDescripcion`, `.algoModalAcciones` si solo redefinen tipografia, color, spacing o alineacion ya resueltos por el sistema.
+- Si falta una receta compartida, se crea primero en el componente base del sistema y luego se consume desde el componente concreto." No parece que sea generico, no es algo especifico que debe hacerse con solo con los modales tiene que ser con todo los componentes el refeurzo.
+- Veo muchas cosas en planes que no estan en completados, hay que revisarlos todo 
 
 
 ## Notas de infraestructura

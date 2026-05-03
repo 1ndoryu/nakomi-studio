@@ -188,7 +188,7 @@ export function SeccionUsuarios() {
 
             {/* [015A-1] Modal de confirmación de acción */}
             <Modal abierto={!!confirmAction} onCerrar={closeConfirm} className="usuariosModal">
-                <p className="usuariosModalTexto">
+                <p className="modalTexto usuariosModalMensaje">
                     {confirmAction?.type === 'role'
                         ? `¿Cambiar rol de ${confirmAction.email} a ${ROLE_LABELS[confirmAction.value] || confirmAction.value}?`
                         : confirmAction?.type === 'status'
