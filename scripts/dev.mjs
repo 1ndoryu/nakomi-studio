@@ -238,6 +238,8 @@ function spawnCargoTargetWatcher(env) {
         return;
     }
 
+    /* El watcher debe podar el pool completo de targets compartidos fuera de OneDrive.
+     * Asi limpia tambien ramas/proyectos viejos cuando cambias de contexto. */
     spawnProc(
         'cargo-target-watch',
         'powershell',
@@ -247,7 +249,7 @@ function spawnCargoTargetWatcher(env) {
             '-File',
             watcherScript,
             '-TargetDirs',
-            cargoTargetDir,
+            cargoTargetBase,
             '-MaxTotalMB',
             cargoTargetMaxMb,
             '-IntervalSeconds',
