@@ -14,7 +14,7 @@ use crate::models::{
     ChatMessage, ChatMessageResponse, CreateNotification, SendMessageRequest, NOTIF_NEW_MESSAGE,
 };
 use crate::repositories::OrderRepository;
-use crate::services::AiChatService;
+use crate::services::{AiChatService, AiResponse};
 use crate::AppState;
 
 use super::{enrich_messages, MessagesQuery};
@@ -208,10 +208,13 @@ async fn handle_ai_and_escalation(
             .await;
     }
 
-    let _ = state
+    if let Err(err) = state
         .chat_hub
         .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
-        .await;
+        .await
+    {
+        tracing::error!("No se pudo guardar la respuesta AI en sesión {session_id}: {err}");
+    }
 
     /* [T-6] [114A-8] Escalación: notificar admins + enviar email */
     if ai_resp.needs_escalation {
@@ -274,22 +277,48 @@ fn spawn_intermediary_if_enabled(
         };
 
         /* Generar respuesta con prompt de intermediario */
-        let ai_resp = match AiChatService::generate_intermediary_response(
-            &pool, &ai_config, &http_client, session_id, &order, user_id, &content,
+        let ai_resp = match tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            AiChatService::generate_intermediary_response(
+                &pool, &ai_config, &http_client, session_id, &order, user_id, &content,
+            ),
         )
         .await
         {
-            Ok(r) => r,
-            Err(e) => {
+            Ok(Ok(r)) => r,
+            Ok(Err(e)) => {
+                /* [035A-12] El intermediario no puede fallar en silencio.
+                 * Si el proveedor IA cae, dejar acuse visible al cliente. */
                 tracing::error!("Error IA intermediaria orden #{}: {e}", order.order_number);
-                return;
+                AiResponse {
+                    text: "He recibido tu mensaje y lo compartiré con el equipo. Te responderemos pronto.".to_string(),
+                    needs_escalation: true,
+                    rich_messages: Vec::new(),
+                }
+            }
+            Err(_) => {
+                tracing::error!(
+                    "Timeout IA intermediaria orden #{} tras 10s; usando acuse de respaldo",
+                    order.order_number,
+                );
+                AiResponse {
+                    text: "He recibido tu mensaje y lo compartiré con el equipo. Te responderemos pronto.".to_string(),
+                    needs_escalation: true,
+                    rich_messages: Vec::new(),
+                }
             }
         };
 
         /* Enviar respuesta como ai_intermediary */
-        let _ = hub
+        if let Err(err) = hub
             .send_message(session_id, "ai_intermediary", Some("ai"), &ai_resp.text)
-            .await;
+            .await
+        {
+            tracing::error!(
+                "No se pudo guardar la respuesta IA intermediaria en sesión {session_id}: {err}",
+            );
+            return;
+        }
 
         /* [T-10c] Auto-resumen si >5 mensajes en la sesión */
         if let Ok(msgs) =

@@ -1,8 +1,15 @@
 # Auditoría Completa del Sistema de Chat/Chatbot
 
-> **Fecha:** 2026-04-16
+> **Fecha:** 2026-05-03
 > **Estado:** Auditoría completada, issues identificados
 > **Cobertura:** Backend (Rust/Axum), Frontend (React), WebSocket, IA (Groq/Gemini), Stripe
+
+## Actualización [035A-12]
+
+- El toggle de IA intermediaria en órdenes sí estaba activando la generación del modelo, pero el mensaje nunca llegaba al chat porque `chat_messages.sender_type` seguía en `VARCHAR(10)`.
+- `ai_intermediary` excedía ese límite, el insert fallaba y el error quedaba oculto por `let _ = send_message(...).await`.
+- Se amplió la columna a `VARCHAR(32)`, se añadió logging explícito cuando persistir la respuesta IA falla y se acotó la espera del proveedor a 10 segundos con acuse visible de respaldo.
+- Validación real: orden `#1` de prueba, toggle activado por `empleado@test.com`, mensaje enviado por `cliente@test.com` y respuesta `sender_type = ai_intermediary` persistida en la sesión `bf23c932-6c5e-439e-9ec2-ddf823788a58`.
 
 ---
 

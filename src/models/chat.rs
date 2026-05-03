@@ -1,6 +1,6 @@
 /* [044A-38 Fase 5] Modelos de chat: sesiones, mensajes y tipos WebSocket.
  * chat_sessions vinculadas opcionalmente a orders (order_id).
- * sender_type: client|ai|employee|admin (roles marketplace). */
+ * sender_type: client|ai|ai_intermediary|employee|admin (roles marketplace). */
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

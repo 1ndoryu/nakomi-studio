@@ -137,6 +137,10 @@
 - Si un plan ya define `service_plan_phases`, la creacion de la orden no debe reescribir esos titulos/descripciones con placeholders genericos. Hacerlo rompe el contrato con el CMS y da la falsa impresion de que el empleado debe “definir” las fases a mano.
 - Si el checkout ofrece `payment_mode = phased`, un plan sin fases debe rechazarse en dos boundaries: al guardar el plan desde admin y al crear la orden, para que la inconsistencia no llegue a producción.
 
+## Chat de órdenes — sender_type también es contrato
+- Si el sistema persiste nuevos tipos semánticos de mensaje (`ai_intermediary`, por ejemplo), el esquema de `chat_messages.sender_type` debe crecer junto con el código. Dejarlo en `VARCHAR(10)` hace que la IA genere bien pero no pueda guardar la respuesta.
+- En rutas de chat con `tokio::spawn`, ignorar el resultado de `send_message().await` convierte un fallo de persistencia en un "la IA no responde" imposible de diagnosticar desde la UI. Al menos hay que registrar el error explícitamente.
+
 ## Upstreams opcionales - no esconderlos tras 500 internos
 - Si una integración externa opcional falla (Contabo, por ejemplo), no devolver `Internal` genérico desde el handler. Clasificar y exponer un `message` accionable evita perseguir fantasmas de backend cuando el bloqueo real es `invalid_grant`, parseo o indisponibilidad del proveedor.
 - Cuando una credencial legacy es ambigua (`PASSWORD_CONTABO`), documentar y soportar una variable explícita (`CONTABO_API_PASSWORD`) reduce drift entre proyectos y evita repetir el mismo diagnóstico en cada repo.

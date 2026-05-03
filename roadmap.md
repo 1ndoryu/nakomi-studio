@@ -29,7 +29,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 - si estoy dentro un proyecto (en el panel) debería generar una url para poder compartir en el panel y recargar estar dentro de ese proyecto (obviamente ), lo mismo con cualquier otra cosa si estoy dentro de los detalles de un hosting, etc.
 - En la vista de un proyecto dentro de un panel en el usuario de cliente veo que puedo cambiar la descripción de un proyecto, los cliente no deben cambiar la descripciones de sus proyectos.
 - Veo que al cliente llega la notificación de que recibio un mensaje dentro del un proyecto que tiene activo pero al dar click no hace nada, debería redirigirlo al proyecto
-- En los proyectos los empleados tienen un boton de IA para activar, esto hace que la IA responda por ellos cuando el cliente escribe pero no funciona, hice la prueba (con los datos de prueba locales), y no recibi ninguna respuesta enviando mensaje desde el modo cliente. 
 - Necesito datos de prueba para, necesito ver como se ve. 
 "Historial de movimientos
 Sin movimientos aún
