@@ -20,6 +20,11 @@
 - El detalle individual ahora carga el servicio real desde `/api/services/:slug`, usa `apiData.plans` como fuente de verdad y devuelve 404 visual si el slug no existe en la API pública.
 - Con esto, el usuario ya no puede abrir un checkout contra un servicio inexistente y disparar `Servicio '...' no encontrado` al crear la orden.
 
+## Ajuste adicional [035A-11]
+- El alias de `service_slug` para `diseno-web` quedó invertido y seguía enviando `diseno-de-sitios-web` aunque el backend actual, los fixtures y la URL pública ya usan `diseno-web`.
+- `frontend/src/api/orders.ts` volvió a tratar `diseno-web` como slug canónico y dejó `diseno-de-sitios-web` solo como alias legacy de entrada.
+- Validación real: el flujo público local de `Diseño de Sitios Web` dejó de fallar con `404` en `POST /api/orders` y avanzó hasta el modal de Stripe.
+
 ## Validación
 - `npm --prefix frontend run type-check`
 - `npm --prefix frontend run build`

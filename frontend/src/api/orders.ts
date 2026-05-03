@@ -92,12 +92,12 @@ export interface UpdateOrderPhaseDefinitionRequest {
 }
 
 /* [094A-21] El catálogo frontend mantiene IDs legacy (`web-basico`, `diseno-web`),
- * mientras el backend resuelve slugs canónicos (`basico`, `diseno-de-sitios-web`).
+ * mientras el backend resuelve slugs canónicos (`basico`, `diseno-web`).
  * Normalizamos aquí para que la compra siga funcionando aunque el catálogo visual
  * y el contrato de la API hayan evolucionado por separado. */
 const ORDER_SERVICE_SLUG_ALIASES: Record<string, string> = {
-    'diseno-web': 'diseno-de-sitios-web',
-    'diseno-de-sitios-web': 'diseno-de-sitios-web',
+    'diseno-web': 'diseno-web',
+    'diseno-de-sitios-web': 'diseno-web',
     'desarrollo-de-aplicaciones': 'desarrollo-apps',
     'agentes-de-ia': 'agentes-ia',
     'identidad-de-marca': 'branding',

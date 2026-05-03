@@ -70,6 +70,7 @@
 
 ## Checkout de órdenes — IDs visuales no son contrato
 - Si el catálogo frontend usa IDs compuestos para UI/traducciones (`web-basico`, `apps-medio`) pero el backend persiste slugs canónicos (`basico`, `medio`), normalizar en el cliente API antes del POST. Un `404` en creación puede ser un `NotFound` de dominio, no una ruta faltante.
+- Los alias de `service_slug` también envejecen: si el backend vuelve a usar `diseno-web` como canónico y el cliente lo sigue remapeando a `diseno-de-sitios-web`, reaparece un `404` aunque el `plan_slug` ya esté bien normalizado.
 
 ## Catálogo público — no vender servicios fantasma
 - Si la compra depende del catálogo real del backend, el detalle/listado público no debe caer a datasets estáticos que incluyan servicios ya no publicados. Aunque `apiCreateOrder()` normalice slugs, seguir mostrando `ecommerce`/`seo`/`marketing-digital` cuando la API solo expone 4 servicios termina reproduciendo 404 de negocio igualmente.
@@ -135,26 +136,6 @@
 ## Ordenes por fases — el CMS manda
 - Si un plan ya define `service_plan_phases`, la creacion de la orden no debe reescribir esos titulos/descripciones con placeholders genericos. Hacerlo rompe el contrato con el CMS y da la falsa impresion de que el empleado debe “definir” las fases a mano.
 - Si el checkout ofrece `payment_mode = phased`, un plan sin fases debe rechazarse en dos boundaries: al guardar el plan desde admin y al crear la orden, para que la inconsistencia no llegue a producción.
-
-*** Add File: c:\Users\Owner\OneDrive\Documentos\glory-rust-template\Agente\documentacion\orders\fases-cms-phased-2026-05-03.md
-# Fases CMS en pagos por fases
-
-Fecha: 2026-05-03
-
-## Contrato
-
-- `service_plan_phases` es la fuente de verdad para la estructura de trabajo de un plan.
-- Cuando una orden se crea con `payment_mode = phased`, las fases de `order_phases` deben copiar exactamente el título, descripción, porcentaje, días estimados y revisiones definidas en el CMS.
-- El backend no debe inventar títulos como "Fase n por definir" ni sobrescribir la plantilla del plan con texto derivado del brief.
-
-## Guardarrailes
-
-- `POST /api/orders` rechaza compras `phased` si el plan no tiene fases configuradas.
-- `PUT /api/admin/services/{id}/plans` rechaza guardar un plan sin fases.
-
-## Motivo
-
-El catálogo público ya vende planes dinámicos desde CMS. Si las fases se vuelven genéricas al crear la orden, el empleado termina viendo un proyecto activo sin una estructura clara y parece que la edición manual fuera el flujo principal, cuando debería ser solo una excepción.
 
 ## Upstreams opcionales - no esconderlos tras 500 internos
 - Si una integración externa opcional falla (Contabo, por ejemplo), no devolver `Internal` genérico desde el handler. Clasificar y exponer un `message` accionable evita perseguir fantasmas de backend cuando el bloqueo real es `invalid_grant`, parseo o indisponibilidad del proveedor.

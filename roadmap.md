@@ -26,7 +26,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 ## Tareas pendientes 
 
 - Completar el barrido de bordes neutrales: `--border-default` ya es `#dcdcdc`, pero todavia quedan componentes usando `border: 1px solid var(--bg-item-active)` como borde generico cuando no representan un estado activo/seleccionado.
-- El checkout publico local ya no cae en `POST /api/orders` con `403`, pero el siguiente paso falla con `404` al iniciar el pago despues de crear la orden; revisar el contrato/configuracion local del checkout.
 - si estoy dentro un proyecto (en el panel) debería generar una url para poder compartir en el panel y recargar estar dentro de ese proyecto (obviamente ), lo mismo con cualquier otra cosa si estoy dentro de los detalles de un hosting, etc.
 - En la vista de un proyecto dentro de un panel en el usuario de cliente veo que puedo cambiar la descripción de un proyecto, los cliente no deben cambiar la descripciones de sus proyectos.
 - Veo que al cliente llega la notificación de que recibio un mensaje dentro del un proyecto que tiene activo pero al dar click no hace nada, debería redirigirlo al proyecto
