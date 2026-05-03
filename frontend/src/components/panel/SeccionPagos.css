@@ -348,8 +348,8 @@
 .pagosFacturaSubtitulo {
     font-size: var(--text-sm);
     margin-bottom: var(--spacing-sm);
-    font-weight: var(--font-semibold);
-    color: var(--text-secondary);
+    font-weight: 600;
+    color: var(--text-muted);
 }
 
 /* Separación superior del bloque de acciones en el modal de factura */
@@ -367,7 +367,7 @@
     margin-bottom: var(--spacing-sm);
 }
 
-/* Acciones del modal de reembolso con separación superior */
-.pagosReembolsoAcciones {
-    margin-top: var(--spacing-md);
+/* El textarea deja el aire antes del footer compartido del modal */
+.pagoModalTextarea {
+    margin-bottom: var(--spacing-md);
 }

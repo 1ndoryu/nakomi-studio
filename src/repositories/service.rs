@@ -3,12 +3,164 @@
 /* sentinel-disable-file sqlx-query-sin-macro sqlx-query-as-sin-macro: 3 queries dinámicas
  * legacy (DELETE plans, archive, check exists) que no usan macros. */
 
-use sqlx::PgPool;
+use std::collections::{HashMap, HashSet};
+
+use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
-use crate::models::{SavePlanItem, ServicePlan, ServicePlanPhase, ServiceRecord};
+use crate::models::{SavePhaseItem, SavePlanItem, ServicePlan, ServicePlanPhase, ServiceRecord};
 
 pub struct ServiceRepository;
+
+async fn fetch_existing_service_plans(
+    tx: &mut Transaction<'_, Postgres>,
+    service_id: Uuid,
+) -> Result<Vec<ServicePlan>, sqlx::Error> {
+    sqlx::query_as::<_, ServicePlan>(
+        r"SELECT id, service_id, slug, name, price_cents, description, features,
+           is_highlighted, is_custom, stripe_price_id, sort_order
+           FROM service_plans WHERE service_id = $1 ORDER BY sort_order",
+    )
+    .bind(service_id)
+    .fetch_all(&mut **tx)
+    .await
+}
+
+fn build_service_plan_lookups(
+    existing_plans: &[ServicePlan],
+) -> (HashMap<Uuid, Uuid>, HashMap<String, Uuid>) {
+    let mut existing_by_id = HashMap::new();
+    let mut existing_by_slug = HashMap::new();
+
+    for existing in existing_plans {
+        existing_by_id.insert(existing.id, existing.id);
+        existing_by_slug.insert(existing.slug.clone(), existing.id);
+    }
+
+    (existing_by_id, existing_by_slug)
+}
+
+fn resolve_existing_plan_id(
+    plan: &SavePlanItem,
+    existing_by_id: &HashMap<Uuid, Uuid>,
+    existing_by_slug: &HashMap<String, Uuid>,
+) -> Option<Uuid> {
+    plan.id
+        .and_then(|incoming_id| existing_by_id.get(&incoming_id).copied())
+        .or_else(|| existing_by_slug.get(&plan.slug).copied())
+}
+
+async fn upsert_service_plan(
+    tx: &mut Transaction<'_, Postgres>,
+    service_id: Uuid,
+    plan: &SavePlanItem,
+    existing_id: Option<Uuid>,
+) -> Result<Uuid, sqlx::Error> {
+    if let Some(existing_id) = existing_id {
+        sqlx::query(
+            r"UPDATE service_plans
+               SET slug = $3,
+                   name = $4,
+                   price_cents = $5,
+                   description = $6,
+                   features = $7,
+                   is_highlighted = $8,
+                   is_custom = $9,
+                   sort_order = $10
+             WHERE id = $1 AND service_id = $2",
+        )
+        .bind(existing_id)
+        .bind(service_id)
+        .bind(&plan.slug)
+        .bind(&plan.name)
+        .bind(plan.price_cents)
+        .bind(&plan.description)
+        .bind(&plan.features)
+        .bind(plan.is_highlighted)
+        .bind(plan.is_custom)
+        .bind(plan.sort_order)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(existing_id)
+    } else {
+        sqlx::query_scalar::<_, Uuid>(
+            r"INSERT INTO service_plans
+               (service_id, slug, name, price_cents, description, features,
+                is_highlighted, is_custom, sort_order)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING id",
+        )
+        .bind(service_id)
+        .bind(&plan.slug)
+        .bind(&plan.name)
+        .bind(plan.price_cents)
+        .bind(&plan.description)
+        .bind(&plan.features)
+        .bind(plan.is_highlighted)
+        .bind(plan.is_custom)
+        .bind(plan.sort_order)
+        .fetch_one(&mut **tx)
+        .await
+    }
+}
+
+async fn replace_service_plan_phases(
+    tx: &mut Transaction<'_, Postgres>,
+    plan_id: Uuid,
+    phases: &[SavePhaseItem],
+) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM service_plan_phases WHERE plan_id = $1")
+        .bind(plan_id)
+        .execute(&mut **tx)
+        .await?;
+
+    for phase in phases {
+        sqlx::query(
+            r"INSERT INTO service_plan_phases
+               (plan_id, phase_number, title, description,
+                percentage_of_total, estimated_days, max_revisions)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        )
+        .bind(plan_id)
+        .bind(phase.phase_number)
+        .bind(&phase.title)
+        .bind(&phase.description)
+        .bind(phase.percentage_of_total)
+        .bind(phase.estimated_days)
+        .bind(phase.max_revisions)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn delete_removed_service_plans(
+    tx: &mut Transaction<'_, Postgres>,
+    service_id: Uuid,
+    existing_plans: Vec<ServicePlan>,
+    persisted_plan_ids: &HashSet<Uuid>,
+) -> Result<(), sqlx::Error> {
+    for existing in existing_plans {
+        if persisted_plan_ids.contains(&existing.id) {
+            continue;
+        }
+
+        sqlx::query("DELETE FROM service_plan_phases WHERE plan_id = $1")
+            .bind(existing.id)
+            .execute(&mut **tx)
+            .await?;
+
+        sqlx::query("DELETE FROM service_plans WHERE id = $1 AND service_id = $2")
+            .bind(existing.id)
+            .bind(service_id)
+            .execute(&mut **tx)
+            .await?;
+    }
+
+    Ok(())
+}
 
 impl ServiceRepository {
     /* Slugs de servicios públicos para sitemap.xml.
@@ -100,8 +252,9 @@ impl ServiceRepository {
         .await
     }
 
-    /* [074A-66] Batch replace de planes para un servicio.
-     * DELETE CASCADE elimina planes y fases existentes, luego inserta los nuevos. */
+    /* [074A-66] [035A-26] Persistencia estable de planes para un servicio.
+     * Preserva `service_plans.id` en planes existentes para que órdenes históricas sigan
+     * apuntando al mismo plan aunque el CMS edite sus fases o metadatos. */
     pub async fn save_plans_for_service(
         pool: &PgPool,
         service_id: Uuid,
@@ -109,51 +262,21 @@ impl ServiceRepository {
     ) -> Result<(), sqlx::Error> {
         let mut tx = pool.begin().await?;
 
-        sqlx::query!(
-            "DELETE FROM service_plans WHERE service_id = $1",
-            service_id,
-        )
-        .execute(&mut *tx)
-        .await?;
+        let existing_plans = fetch_existing_service_plans(&mut tx, service_id).await?;
+        let (existing_by_id, existing_by_slug) = build_service_plan_lookups(&existing_plans);
+        let mut persisted_plan_ids = HashSet::new();
 
         for plan in plans {
-            let plan_id = sqlx::query_scalar!(
-                r#"INSERT INTO service_plans
-                   (service_id, slug, name, price_cents, description, features,
-                    is_highlighted, is_custom, sort_order)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                 RETURNING id"#,
-                service_id,
-                plan.slug,
-                plan.name,
-                plan.price_cents,
-                plan.description,
-                plan.features,
-                plan.is_highlighted,
-                plan.is_custom,
-                plan.sort_order,
-            )
-            .fetch_one(&mut *tx)
-            .await?;
+            let existing_id = resolve_existing_plan_id(plan, &existing_by_id, &existing_by_slug);
+            let plan_id = upsert_service_plan(&mut tx, service_id, plan, existing_id).await?;
 
-            for phase in &plan.phases {
-                sqlx::query!(
-                    r#"INSERT INTO service_plan_phases
-                       (plan_id, phase_number, title, description,
-                        percentage_of_total, estimated_days, max_revisions)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-                    plan_id,
-                    phase.phase_number,
-                    phase.title,
-                    phase.description,
-                    phase.percentage_of_total,
-                    phase.estimated_days,
-                    phase.max_revisions,
-                )
-                .execute(&mut *tx)
-                .await?;
-            }
+            persisted_plan_ids.insert(plan_id);
+
+            replace_service_plan_phases(&mut tx, plan_id, &plan.phases).await?;
         }
+
+        delete_removed_service_plans(&mut tx, service_id, existing_plans, &persisted_plan_ids)
+            .await?;
 
         tx.commit().await?;
         Ok(())

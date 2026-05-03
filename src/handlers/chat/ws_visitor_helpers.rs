@@ -65,6 +65,88 @@ pub async fn handle_reset(state: &AppState, session_id: uuid::Uuid, visitor_id: 
     tracing::info!("Reset ejecutado: session={session_id}, visitor={visitor_id}");
 }
 
+enum VisitorTextFlow {
+    Continue,
+    Close,
+}
+
+fn truncate_visitor_message(content: String) -> String {
+    let max_length = crate::services::ChatTimingService::max_message_length();
+    if content.len() > max_length {
+        content[..max_length].to_string()
+    } else {
+        content
+    }
+}
+
+async fn apply_rate_limit_feedback(
+    state: &AppState,
+    session_id: uuid::Uuid,
+    rate_result: RateCheckResult,
+    rate_msg: Option<String>,
+) -> Option<bool> {
+    if let Some(message) = rate_msg {
+        let _ = state
+            .chat_hub
+            .send_message(session_id, "ai", Some("ai"), &message)
+            .await;
+    }
+
+    match rate_result {
+        RateCheckResult::Muted => Some(false),
+        RateCheckResult::Closed => Some(true),
+        RateCheckResult::Warning | RateCheckResult::Ok => None,
+    }
+}
+
+async fn handle_visitor_text_message(
+    state: &AppState,
+    session_id: uuid::Uuid,
+    visitor_id: &str,
+    client_ip: Option<&str>,
+    timing_tx: &tokio::sync::mpsc::Sender<TimingEvent>,
+    content: String,
+) -> VisitorTextFlow {
+    if content.trim().eq_ignore_ascii_case("/reset") {
+        handle_reset(state, session_id, visitor_id).await;
+        return VisitorTextFlow::Close;
+    }
+
+    let content = truncate_visitor_message(content);
+
+    if let Some(ip) = client_ip {
+        let (ip_result, ip_msg) = state.chat_timing.check_ip_rate(ip);
+        if let Some(should_close) =
+            apply_rate_limit_feedback(state, session_id, ip_result, ip_msg).await
+        {
+            return if should_close {
+                VisitorTextFlow::Close
+            } else {
+                VisitorTextFlow::Continue
+            };
+        }
+    }
+
+    let (rate_result, rate_msg) = state.chat_timing.check_rate(visitor_id);
+    if let Some(should_close) =
+        apply_rate_limit_feedback(state, session_id, rate_result, rate_msg).await
+    {
+        return if should_close {
+            VisitorTextFlow::Close
+        } else {
+            VisitorTextFlow::Continue
+        };
+    }
+
+    let _ = state
+        .chat_hub
+        .send_message(session_id, "client", Some(visitor_id), &content)
+        .await;
+    let _ = timing_tx.send(TimingEvent::Message(content)).await;
+
+    VisitorTextFlow::Continue
+}
+
 /* [T-4] Loop principal de procesamiento de mensajes del visitante.
  * Aplica rate limiting (por visitor_id + IP), persiste mensajes y envía eventos al timing service.
  * Retorna true si el cierre fue explícito (usuario o rate limit), false si el stream terminó. */
@@ -87,85 +169,20 @@ pub async fn process_visitor_messages(
 
         match ws_msg {
             WsClientMessage::Message { content } => {
-                /* [084A-40] Comando /reset: limpiar sesión, mensajes y perfil del visitante */
-                if content.trim().eq_ignore_ascii_case("/reset") {
-                    handle_reset(state, session_id, visitor_id).await;
+                if matches!(
+                    handle_visitor_text_message(
+                        state,
+                        session_id,
+                        visitor_id,
+                        client_ip,
+                        timing_tx,
+                        content,
+                    )
+                    .await,
+                    VisitorTextFlow::Close
+                ) {
                     return true;
                 }
-
-                /* [084A-42] Truncar mensajes largos para prevenir token drain */
-                let content = if content.len()
-                    > crate::services::ChatTimingService::max_message_length()
-                {
-                    content[..crate::services::ChatTimingService::max_message_length()].to_string()
-                } else {
-                    content
-                };
-
-                /* [084A-42] Rate limiting por IP (paralelo al de visitor_id) */
-                if let Some(ip) = client_ip {
-                    let (ip_result, ip_msg) = state.chat_timing.check_ip_rate(ip);
-                    match ip_result {
-                        RateCheckResult::Muted => {
-                            if let Some(w) = ip_msg {
-                                let _ = state
-                                    .chat_hub
-                                    .send_message(session_id, "ai", Some("ai"), &w)
-                                    .await;
-                            }
-                            continue;
-                        }
-                        RateCheckResult::Closed => {
-                            if let Some(w) = ip_msg {
-                                let _ = state
-                                    .chat_hub
-                                    .send_message(session_id, "ai", Some("ai"), &w)
-                                    .await;
-                            }
-                            return true;
-                        }
-                        _ => {}
-                    }
-                }
-
-                /* [T-1] Rate limiting antes de procesar */
-                let (rate_result, rate_msg) = state.chat_timing.check_rate(visitor_id);
-                match rate_result {
-                    RateCheckResult::Muted => {
-                        if let Some(w) = rate_msg {
-                            let _ = state
-                                .chat_hub
-                                .send_message(session_id, "ai", Some("ai"), &w)
-                                .await;
-                        }
-                        continue;
-                    }
-                    RateCheckResult::Closed => {
-                        if let Some(w) = rate_msg {
-                            let _ = state
-                                .chat_hub
-                                .send_message(session_id, "ai", Some("ai"), &w)
-                                .await;
-                        }
-                        /* [T-4] Rate limit forzó cierre — cierre explícito para todas las conexiones */
-                        return true;
-                    }
-                    RateCheckResult::Warning => {
-                        if let Some(w) = rate_msg {
-                            let _ = state
-                                .chat_hub
-                                .send_message(session_id, "ai", Some("ai"), &w)
-                                .await;
-                        }
-                    }
-                    RateCheckResult::Ok => {}
-                }
-
-                let _ = state
-                    .chat_hub
-                    .send_message(session_id, "client", Some(visitor_id), &content)
-                    .await;
-                let _ = timing_tx.send(TimingEvent::Message(content)).await;
             }
             WsClientMessage::Typing { content, .. } => {
                 state.chat_hub.send_typing(session_id, "client", &content);

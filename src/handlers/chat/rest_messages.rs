@@ -53,6 +53,93 @@ pub async fn get_messages(
     Ok(Json(enriched))
 }
 
+fn sender_type_for(role: crate::models::UserRole) -> &'static str {
+    match role {
+        crate::models::UserRole::Admin => "admin",
+        crate::models::UserRole::Employee => "employee",
+        crate::models::UserRole::Client => "client",
+    }
+}
+
+/* [174A-2] Separa la política de quién puede hablar en un chat de orden del handler REST. */
+async fn enforce_order_chat_sender_permission(
+    state: &AppState,
+    session_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), AppError> {
+    if let Ok(Some(session)) =
+        crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
+    {
+        if let Some(order_id) = session.order_id {
+            let participants = OrderRepository::get_order_participants(&state.pool, order_id)
+                .await
+                .ok()
+                .flatten();
+
+            if let Some((client_id, assigned_staff_id)) = participants {
+                let is_client = user_id == client_id;
+                let is_assigned = assigned_staff_id == Some(user_id);
+                if !is_client && !is_assigned {
+                    return Err(AppError::Forbidden(
+                        "Solo el cliente y el empleado asignado pueden enviar mensajes en este chat."
+                            .to_string(),
+                    ));
+                }
+
+                if is_assigned {
+                    let _ =
+                        OrderRepository::toggle_ai_intermediary(&state.pool, order_id, false).await;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/* [174A-2] Mantiene la notificación al interlocutor fuera del flujo principal del envío. */
+async fn notify_chat_recipient(
+    state: &AppState,
+    session_id: Uuid,
+    sender_type: &str,
+    content: &str,
+) {
+    if let Ok(Some(session)) =
+        crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
+    {
+        let recipient_id = if sender_type == "client" {
+            session.assigned_staff_id
+        } else if let Some(order_id) = session.order_id {
+            OrderRepository::client_id_by_id(&state.pool, order_id)
+                .await
+                .ok()
+                .flatten()
+        } else {
+            None
+        };
+
+        if let Some(recipient_id) = recipient_id {
+            let preview: String = content.chars().take(80).collect();
+            let panel_link = session.order_id.map_or_else(
+                || format!("/panel?seccion=mensajes&chat={session_id}"),
+                |order_id| format!("/panel?order={order_id}"),
+            );
+            let _ = state
+                .notification_hub
+                .notify(CreateNotification {
+                    user_id: recipient_id,
+                    notification_type: NOTIF_NEW_MESSAGE.to_string(),
+                    title: "Nuevo mensaje en el chat".to_string(),
+                    body: Some(preview),
+                    link: Some(panel_link),
+                    reference_type: Some("chat_session".to_string()),
+                    reference_id: Some(session_id),
+                })
+                .await;
+        }
+    }
+}
+
 /// Enviar mensaje REST (alternativa a WebSocket)
 #[utoipa::path(
     post,
@@ -86,91 +173,22 @@ pub async fn send_message(
         }
     }
 
-    let sender_type = match auth.effective_role {
-        crate::models::UserRole::Admin => "admin",
-        crate::models::UserRole::Employee => "employee",
-        crate::models::UserRole::Client => "client",
-    };
+    let sender_type = sender_type_for(auth.effective_role);
 
     /* [154A-15e] Restricción de chat de orden: solo 2 personas (cliente + empleado asignado).
      * Admin solo puede enviar si es el empleado asignado. Si no es sesión de orden, sin restricción. */
-    if let Ok(Some(sess)) =
-        crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
-    {
-        if let Some(order_id) = sess.order_id {
-            let participants = OrderRepository::get_order_participants(&state.pool, order_id)
-                .await
-                .ok()
-                .flatten();
+    enforce_order_chat_sender_permission(&state, session_id, auth.user_id).await?;
 
-            if let Some(p) = &participants {
-                let is_client = auth.user_id == p.0;
-                let is_assigned = p.1 == Some(auth.user_id);
-                if !is_client && !is_assigned {
-                    return Err(AppError::Forbidden(
-                        "Solo el cliente y el empleado asignado pueden enviar mensajes en este chat."
-                            .to_string(),
-                    ));
-                }
-
-                /* [154A-15e] Auto-desactivar IA cuando el empleado asignado responde */
-                if is_assigned {
-                    let _ = crate::repositories::OrderRepository::toggle_ai_intermediary(
-                        &state.pool,
-                        order_id,
-                        false,
-                    )
-                    .await;
-                }
-            }
-        }
-    }
+    let sender_id = auth.user_id.to_string();
 
     let msg = state
         .chat_hub
-        .send_message(
-            session_id,
-            sender_type,
-            Some(&auth.user_id.to_string()),
-            &req.content,
-        )
+        .send_message(session_id, sender_type, Some(&sender_id), &req.content)
         .await?;
 
     /* [104A-38] Notificar al otro participante del chat (solo sesiones de orden).
      * Cliente envía → notificar staff asignado. Staff/admin envía → notificar cliente. */
-    if let Ok(Some(session)) =
-        crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id).await
-    {
-        let recipient_id = if sender_type == "client" {
-            session.assigned_staff_id
-        } else if let Some(oid) = session.order_id {
-            OrderRepository::client_id_by_id(&state.pool, oid)
-                .await
-                .ok()
-                .flatten()
-        } else {
-            None
-        };
-        if let Some(rid) = recipient_id {
-            let preview: String = req.content.chars().take(80).collect();
-            let panel_link = session.order_id.map_or_else(
-                || format!("/panel?seccion=mensajes&chat={session_id}"),
-                |order_id| format!("/panel?order={order_id}"),
-            );
-            let _ = state
-                .notification_hub
-                .notify(CreateNotification {
-                    user_id: rid,
-                    notification_type: NOTIF_NEW_MESSAGE.to_string(),
-                    title: "Nuevo mensaje en el chat".to_string(),
-                    body: Some(preview),
-                    link: Some(panel_link),
-                    reference_type: Some("chat_session".to_string()),
-                    reference_id: Some(session_id),
-                })
-                .await;
-        }
-    }
+    notify_chat_recipient(&state, session_id, sender_type, &req.content).await;
 
     /* Si IA habilitada y sender es client, generar respuesta */
     if sender_type == "client" {

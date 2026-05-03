@@ -184,8 +184,9 @@ impl From<ServicePlanPhase> for ServicePlanPhaseResponse {
     }
 }
 
-/* [074A-66] Request para guardar planes de un servicio (batch replace).
- * Se eliminan todos los planes existentes y se insertan los nuevos en una transacción. */
+/* [074A-66] [035A-26] Request para guardar planes de un servicio.
+ * Los planes existentes preservan su ID para no romper órdenes históricas que referencian
+ * `service_plans.id`; los planes nuevos se insertan y solo los eliminados se borran. */
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct SaveServicePlansRequest {
     #[validate(nested)]
@@ -194,6 +195,7 @@ pub struct SaveServicePlansRequest {
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct SavePlanItem {
+    pub id: Option<Uuid>,
     #[validate(length(min = 1, max = 50))]
     pub slug: String,
     #[validate(length(min = 1, max = 100))]

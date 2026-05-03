@@ -44,6 +44,167 @@ async fn insert_hosting_event(
     Ok(())
 }
 
+async fn insert_hosting_event_batch(
+    pool: &PgPool,
+    sub_id: &Uuid,
+    events: Vec<(&str, serde_json::Value, &str)>,
+) -> Result<u32, sqlx::Error> {
+    let mut count = 0u32;
+    for (event_type, details, interval) in events {
+        insert_hosting_event(pool, sub_id, event_type, details, interval).await?;
+        count += 1;
+    }
+    Ok(count)
+}
+
+async fn create_hosting_status_events(
+    pool: &PgPool,
+    sub_id: &Uuid,
+    status: &str,
+    domain_str: &str,
+) -> Result<u32, sqlx::Error> {
+    match status {
+        "active" => {
+            insert_hosting_event_batch(
+                pool,
+                sub_id,
+                vec![
+                    (
+                        "provisioning_completed",
+                        serde_json::json!({"message": "Hosting provisionado exitosamente en Coolify", "server_ip": "66.94.100.241", "coolify_site_name": "mitienda-test"}),
+                        "29 days 22 hours",
+                    ),
+                    (
+                        "dns_configured",
+                        serde_json::json!({"message": format!("Registros DNS de {} apuntan correctamente al servidor", domain_str), "records": ["A @ → 66.94.100.241", "A www → 66.94.100.241"]}),
+                        "29 days 20 hours",
+                    ),
+                    (
+                        "ssl_issued",
+                        serde_json::json!({"message": format!("Certificado SSL emitido para {}", domain_str), "provider": "Let's Encrypt", "expires": "2026-07-10"}),
+                        "29 days 19 hours",
+                    ),
+                    (
+                        "status_changed",
+                        serde_json::json!({"from": "provisioning", "to": "active", "message": "Hosting activado y funcionando"}),
+                        "29 days 18 hours",
+                    ),
+                    (
+                        "payment_received",
+                        serde_json::json!({"message": "Pago mensual procesado: $10.00", "amount_cents": 1000, "source": "stripe_webhook"}),
+                        "1 day",
+                    ),
+                ],
+            )
+            .await
+        }
+        "suspended" => {
+            insert_hosting_event_batch(
+                pool,
+                sub_id,
+                vec![
+                    (
+                        "provisioning_completed",
+                        serde_json::json!({"message": "Hosting provisionado exitosamente"}),
+                        "60 days",
+                    ),
+                    (
+                        "payment_failed",
+                        serde_json::json!({"message": "Falló el cobro mensual — tarjeta rechazada", "amount_cents": 1500, "retry_count": 3}),
+                        "5 days",
+                    ),
+                    (
+                        "status_changed",
+                        serde_json::json!({"from": "active", "to": "suspended", "message": "Hosting suspendido por falta de pago tras 3 intentos fallidos"}),
+                        "2 days",
+                    ),
+                ],
+            )
+            .await
+        }
+        _ => {
+            insert_hosting_event(
+                pool,
+                sub_id,
+                "status_changed",
+                serde_json::json!({
+                    "from": "pending", "to": "provisioning",
+                    "message": "Servidor asignado, provisioning en curso..."
+                }),
+                "1 hour",
+            )
+            .await?;
+            Ok(1)
+        }
+    }
+}
+
+async fn upsert_seed_wallet(
+    pool: &PgPool,
+    user_id: Uuid,
+    balance_cents: i32,
+) -> Result<Uuid, sqlx::Error> {
+    sqlx::query_scalar(
+        "INSERT INTO user_wallets (user_id, balance_cents, currency)
+         VALUES ($1, $2, 'USD')
+         ON CONFLICT (user_id) DO UPDATE SET balance_cents = $2
+         RETURNING id",
+    )
+    .bind(user_id)
+    .bind(balance_cents)
+    .fetch_one(pool)
+    .await
+}
+
+async fn insert_wallet_history(
+    pool: &PgPool,
+    wallet_id: Uuid,
+    user_id: Uuid,
+    transactions: &[(i32, &str, &str)],
+) -> Result<(), sqlx::Error> {
+    let mut balance_after = 0i32;
+    for (amount, tx_type, description) in transactions {
+        balance_after += amount;
+        sqlx::query(
+            "INSERT INTO wallet_transactions (wallet_id, user_id, amount_cents, transaction_type, description, balance_after_cents)
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(wallet_id)
+        .bind(user_id)
+        .bind(amount)
+        .bind(tx_type)
+        .bind(description)
+        .bind(balance_after)
+        .execute(pool)
+        .await?;
+    }
+    Ok(())
+}
+
+async fn insert_seed_withdrawal_request(
+    pool: &PgPool,
+    user_id: Uuid,
+    amount_cents: i32,
+    status: &str,
+    payment_method: &str,
+    payment_details: &str,
+    admin_notes: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO withdrawal_requests (user_id, amount_cents, status, payment_method, payment_details, admin_notes)
+         VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind(user_id)
+    .bind(amount_cents)
+    .bind(status)
+    .bind(payment_method)
+    .bind(payment_details)
+    .bind(admin_notes)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 impl SeedService {
     /// Elimina todos los datos generados por el seed (usuarios test + sus órdenes/fases/chat)
     pub async fn delete_test_data(pool: &PgPool) -> Result<u64, sqlx::Error> {
@@ -282,98 +443,30 @@ impl SeedService {
             let domain_str = domain.as_deref().unwrap_or("sin dominio");
 
             /* Eventos comunes: creación + provisioning iniciado */
-            insert_hosting_event(
+            count += insert_hosting_event_batch(
                 pool,
                 sub_id,
-                "created",
-                serde_json::json!({
-                    "source": "stripe_webhook", "plan": "pro", "domain": domain_str,
-                    "message": "Suscripción de hosting creada tras confirmación de pago"
-                }),
-                "30 days",
+                vec![
+                    (
+                        "created",
+                        serde_json::json!({
+                            "source": "stripe_webhook", "plan": "pro", "domain": domain_str,
+                            "message": "Suscripción de hosting creada tras confirmación de pago"
+                        }),
+                        "30 days",
+                    ),
+                    (
+                        "provisioning_started",
+                        serde_json::json!({
+                            "message": "Servidor VPS asignado, instalando WordPress + SSL",
+                            "server": "vps1.nakomi.studio"
+                        }),
+                        "29 days 23 hours",
+                    ),
+                ],
             )
             .await?;
-            insert_hosting_event(
-                pool,
-                sub_id,
-                "provisioning_started",
-                serde_json::json!({
-                    "message": "Servidor VPS asignado, instalando WordPress + SSL",
-                    "server": "vps1.nakomi.studio"
-                }),
-                "29 days 23 hours",
-            )
-            .await?;
-            count += 2;
-
-            if status == "active" {
-                let events = vec![
-                    (
-                        "provisioning_completed",
-                        serde_json::json!({"message": "Hosting provisionado exitosamente en Coolify", "server_ip": "66.94.100.241", "coolify_site_name": "mitienda-test"}),
-                        "29 days 22 hours",
-                    ),
-                    (
-                        "dns_configured",
-                        serde_json::json!({"message": format!("Registros DNS de {} apuntan correctamente al servidor", domain_str), "records": ["A @ → 66.94.100.241", "A www → 66.94.100.241"]}),
-                        "29 days 20 hours",
-                    ),
-                    (
-                        "ssl_issued",
-                        serde_json::json!({"message": format!("Certificado SSL emitido para {}", domain_str), "provider": "Let's Encrypt", "expires": "2026-07-10"}),
-                        "29 days 19 hours",
-                    ),
-                    (
-                        "status_changed",
-                        serde_json::json!({"from": "provisioning", "to": "active", "message": "Hosting activado y funcionando"}),
-                        "29 days 18 hours",
-                    ),
-                    (
-                        "payment_received",
-                        serde_json::json!({"message": "Pago mensual procesado: $10.00", "amount_cents": 1000, "source": "stripe_webhook"}),
-                        "1 day",
-                    ),
-                ];
-                for (etype, details, interval) in events {
-                    insert_hosting_event(pool, sub_id, etype, details, interval).await?;
-                    count += 1;
-                }
-            } else if status == "suspended" {
-                let events = vec![
-                    (
-                        "provisioning_completed",
-                        serde_json::json!({"message": "Hosting provisionado exitosamente"}),
-                        "60 days",
-                    ),
-                    (
-                        "payment_failed",
-                        serde_json::json!({"message": "Falló el cobro mensual — tarjeta rechazada", "amount_cents": 1500, "retry_count": 3}),
-                        "5 days",
-                    ),
-                    (
-                        "status_changed",
-                        serde_json::json!({"from": "active", "to": "suspended", "message": "Hosting suspendido por falta de pago tras 3 intentos fallidos"}),
-                        "2 days",
-                    ),
-                ];
-                for (etype, details, interval) in events {
-                    insert_hosting_event(pool, sub_id, etype, details, interval).await?;
-                    count += 1;
-                }
-            } else {
-                insert_hosting_event(
-                    pool,
-                    sub_id,
-                    "status_changed",
-                    serde_json::json!({
-                        "from": "pending", "to": "provisioning",
-                        "message": "Servidor asignado, provisioning en curso..."
-                    }),
-                    "1 hour",
-                )
-                .await?;
-                count += 1;
-            }
+            count += create_hosting_status_events(pool, sub_id, status, domain_str).await?;
         }
 
         Ok(count)
@@ -548,26 +641,10 @@ impl SeedService {
         employee_id: Uuid,
     ) -> Result<(i32, u32), sqlx::Error> {
         /* Wallet cliente: $120.00 (pagos devueltos / créditos demo) */
-        let client_wallet_id: Uuid = sqlx::query_scalar(
-            "INSERT INTO user_wallets (user_id, balance_cents, currency)
-             VALUES ($1, 12000, 'USD')
-             ON CONFLICT (user_id) DO UPDATE SET balance_cents = 12000
-             RETURNING id",
-        )
-        .bind(client_id)
-        .fetch_one(pool)
-        .await?;
+        let client_wallet_id = upsert_seed_wallet(pool, client_id, 12000).await?;
 
         /* Wallet empleado: $38.40 (comisión 80% de orden completada $48) */
-        let employee_wallet_id: Uuid = sqlx::query_scalar(
-            "INSERT INTO user_wallets (user_id, balance_cents, currency)
-             VALUES ($1, 3840, 'USD')
-             ON CONFLICT (user_id) DO UPDATE SET balance_cents = 3840
-             RETURNING id",
-        )
-        .bind(employee_id)
-        .fetch_one(pool)
-        .await?;
+        let employee_wallet_id = upsert_seed_wallet(pool, employee_id, 3840).await?;
 
         /* Historial de transacciones del cliente */
         let client_txs: &[(i32, &str, &str)] = &[
@@ -576,17 +653,7 @@ impl SeedService {
             (3000, "refund", "Reembolso aprobado — Agentes IA parcial"),
             (-3000, "withdrawal", "Retiro procesado vía PayPal"),
         ];
-        let mut balance_after = 0i32;
-        for (amount, tx_type, desc) in client_txs {
-            balance_after += amount;
-            sqlx::query(
-                "INSERT INTO wallet_transactions (wallet_id, user_id, amount_cents, transaction_type, description, balance_after_cents)
-                 VALUES ($1, $2, $3, $4, $5, $6)",
-            )
-            .bind(client_wallet_id).bind(client_id).bind(amount).bind(tx_type).bind(desc).bind(balance_after)
-            .execute(pool)
-            .await?;
-        }
+        insert_wallet_history(pool, client_wallet_id, client_id, client_txs).await?;
 
         /* Historial del empleado */
         let emp_txs: &[(i32, &str, &str)] = &[
@@ -601,62 +668,57 @@ impl SeedService {
                 "Retiro procesado vía transferencia bancaria",
             ),
         ];
-        let mut emp_balance = 0i32;
-        for (amount, tx_type, desc) in emp_txs {
-            emp_balance += amount;
-            sqlx::query(
-                "INSERT INTO wallet_transactions (wallet_id, user_id, amount_cents, transaction_type, description, balance_after_cents)
-                 VALUES ($1, $2, $3, $4, $5, $6)",
-            )
-            .bind(employee_wallet_id).bind(employee_id).bind(amount).bind(tx_type).bind(desc).bind(emp_balance)
-            .execute(pool)
-            .await?;
-        }
+        insert_wallet_history(pool, employee_wallet_id, employee_id, emp_txs).await?;
 
         /* Withdrawal requests del cliente: pending + approved + rejected */
-        let withdrawals: &[(&str, i32, &str, &str, &str)] = &[
+        let withdrawals: &[(&str, i32, &str, &str, Option<&str>)] = &[
             (
                 "pending",
                 5000,
                 "PayPal",
                 "nakomi_cliente@gmail.com",
-                "Retiro mensual de saldo acumulado",
+                Some("Retiro mensual de saldo acumulado"),
             ),
             (
                 "approved",
                 3000,
                 "bank",
                 "ES12 3456 7890 0123 4567",
-                "Retiro por transferencia SEPA",
+                Some("Retiro por transferencia SEPA"),
             ),
             (
                 "rejected",
                 8000,
                 "crypto",
                 "3FZbgi29cpjq2GjdwV8eyHuJJnkLtktZc5",
-                "Retiro a Bitcoin wallet",
+                Some("Método de pago no soportado actualmente."),
             ),
         ];
         let mut withdrawal_count = 0u32;
-        for (status, amount, method, details, note) in withdrawals {
-            sqlx::query(
-                "INSERT INTO withdrawal_requests (user_id, amount_cents, status, payment_method, payment_details, admin_notes)
-                 VALUES ($1, $2, $3, $4, $5, $6)",
+        for (status, amount, method, details, admin_notes) in withdrawals {
+            insert_seed_withdrawal_request(
+                pool,
+                client_id,
+                *amount,
+                status,
+                method,
+                details,
+                *admin_notes,
             )
-            .bind(client_id).bind(amount).bind(status).bind(method).bind(details)
-            .bind(if *status == "rejected" { Some("Método de pago no soportado actualmente.") } else { Some(*note) })
-            .execute(pool)
             .await?;
             withdrawal_count += 1;
         }
 
         /* Withdrawal request del empleado: pending */
-        sqlx::query(
-            "INSERT INTO withdrawal_requests (user_id, amount_cents, status, payment_method, payment_details)
-             VALUES ($1, 3840, 'pending', 'bank', 'DE89 3704 0044 0532 0130 00')",
+        insert_seed_withdrawal_request(
+            pool,
+            employee_id,
+            3840,
+            "pending",
+            "bank",
+            "DE89 3704 0044 0532 0130 00",
+            None,
         )
-        .bind(employee_id)
-        .execute(pool)
         .await?;
         withdrawal_count += 1;
 

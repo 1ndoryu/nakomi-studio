@@ -32,5 +32,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
-- Una vez que la orden esta crea no se puede cambiar las "Fases del proyecto" pero debería, ya lo habia comentado antes, 
-- SIGUEN HABIENDO PLANES EN Agente\planes QUE NO ESTAN COMPLETADOS; TE DIJE QUE HABIA REVISARLOS TODOS PARA VER QUE NO ESTA COMPLETADO Y COMPLETARLO Y LO QUE ESTA COMPLETADO MOVERLO A COMPLETADO
+(sin tareas pendientes)

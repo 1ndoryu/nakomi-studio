@@ -6,6 +6,7 @@ import type {AdminService, CreateServiceBody, UpdateServiceBody, SavePlanBody} f
 
 /* Estructura local editable para un plan */
 export interface PlanEditable {
+    id?: string;
     key: string;
     slug: string;
     name: string;
@@ -73,6 +74,7 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
      * Siempre normalizamos a string[] extrayendo el campo texto si es objeto. */
     const parsePlans = useCallback((svc: AdminService): PlanEditable[] => {
         return svc.plans.map((p, i) => ({
+            id: p.id,
             key: `${p.id}-${i}`,
             slug: p.slug,
             name: p.name,
@@ -148,6 +150,7 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
     /* [074A-66] Convierte PlanEditable[] a SavePlanBody[] para el API */
     const buildPlansBody = useCallback((): SavePlanBody[] => {
         return planes.map((p, i) => ({
+            id: p.id,
             slug: p.slug,
             name: p.name,
             price_cents: p.priceCents,

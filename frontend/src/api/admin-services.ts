@@ -103,6 +103,7 @@ export async function apiDestroyService(id: string): Promise<void> {
 
 /* [074A-66] Guardar (reemplazar) planes de un servicio */
 export interface SavePlanBody {
+    id?: string;
     slug: string;
     name: string;
     price_cents: number;

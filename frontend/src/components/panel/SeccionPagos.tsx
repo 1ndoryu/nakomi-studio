@@ -245,7 +245,7 @@ export function SeccionPagos() {
                         onChange={(e) => setRefundRazon(e.target.value)}
                         rows={4}
                     />
-                    <div className="modalAcciones pagosReembolsoAcciones">
+                    <div className="modalAcciones">
                         <Button
                             variante="outline"
                             onClick={cerrarModal}

@@ -32,29 +32,7 @@ async fn ws_visitor(
     Query(params): Query<VisitorWsParams>,
 ) -> impl IntoResponse {
     /* [064A-72] [074A-41] Capturar IP (proxy headers → fallback a socket) y User-Agent */
-    let visitor_ip = headers
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
-        .or_else(|| {
-            headers
-                .get("x-real-ip")
-                .and_then(|v| v.to_str().ok())
-                .map(String::from)
-        })
-        .or_else(|| Some(addr.ip().to_string()));
-    let visitor_ua = headers
-        .get("user-agent")
-        .and_then(|v| v.to_str().ok())
-        .map(String::from);
-
-    /* [124A-PAIS] País: CF-IPCountry header (Cloudflare) → fallback geo-lookup por IP.
-     * "XX" = Cloudflare no reconoce el país — tratar como None. */
-    let visitor_country = headers
-        .get("cf-ipcountry")
-        .and_then(|v| v.to_str().ok())
-        .filter(|&c| c != "XX" && c != "T1") /* T1 = Tor */
-        .map(String::from);
+    let (visitor_ip, visitor_ua, visitor_country) = extract_visitor_context(&headers, addr);
     let visitor_country_clone = visitor_country.clone();
     let visitor_ip_clone = visitor_ip.clone();
     let http_client_clone = state.http_client.clone();
@@ -111,6 +89,74 @@ fn try_extract_user_id(token: Option<&str>, jwt_secret: &str) -> Option<uuid::Uu
     })
 }
 
+fn extract_visitor_context(
+    headers: &axum::http::HeaderMap,
+    addr: SocketAddr,
+) -> (Option<String>, Option<String>, Option<String>) {
+    let visitor_ip = headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
+        .or_else(|| {
+            headers
+                .get("x-real-ip")
+                .and_then(|v| v.to_str().ok())
+                .map(String::from)
+        })
+        .or_else(|| Some(addr.ip().to_string()));
+    let visitor_ua = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .map(String::from);
+    let visitor_country = headers
+        .get("cf-ipcountry")
+        .and_then(|v| v.to_str().ok())
+        .filter(|&c| c != "XX" && c != "T1")
+        .map(String::from);
+
+    (visitor_ip, visitor_ua, visitor_country)
+}
+
+fn spawn_visitor_send_task(
+    mut sender: futures::stream::SplitSink<WebSocket, Message>,
+    mut rx: tokio::sync::broadcast::Receiver<WsServerMessage>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        while let Ok(msg) = rx.recv().await {
+            if let Ok(json) = serde_json::to_string(&msg) {
+                if sender.send(Message::Text(json)).await.is_err() {
+                    break;
+                }
+            }
+        }
+    })
+}
+
+fn register_visitor_timing_session(
+    state: &AppState,
+    session: &crate::models::ChatSession,
+    session_id: Uuid,
+    params: &VisitorWsParams,
+    user_id: Option<Uuid>,
+) -> tokio::sync::mpsc::Sender<TimingEvent> {
+    state.chat_timing.register_session(
+        session_id,
+        session.visitor_name.clone(),
+        crate::services::TimingSessionDeps {
+            pool: state.pool.clone(),
+            ai_config: state.ai_config.clone(),
+            hub: state.chat_hub.clone(),
+            notification_hub: state.notification_hub.clone(),
+            http_client: state.http_client.clone(),
+            stripe_key: state.stripe_secret_key.clone(),
+            visitor_id: params.visitor_id.clone(),
+            user_id,
+            context: params.context.clone(),
+            email_config: state.email_config.clone(),
+        },
+    )
+}
+
 /* [035A-21] Orquestador WS legacy: handshake, anti-bot, spawn de tareas y cleanup final.
  * Se documenta la excepción hasta dividir el flujo por fases sin cambiar comportamiento. */
 #[allow(clippy::too_many_lines)]
@@ -154,7 +200,7 @@ async fn handle_visitor_ws(
     };
 
     let session_id = session.id;
-    let mut rx = state.chat_hub.subscribe(session_id);
+    let rx = state.chat_hub.subscribe(session_id);
     let (mut sender, mut receiver) = socket.split();
 
     /* [T-3] Upsert visitor_profile: crea o actualiza perfil persistente.
@@ -202,33 +248,11 @@ async fn handle_visitor_ws(
     );
 
     /* Task: enviar mensajes del broadcast al WS del visitante */
-    let send_task = tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
-            if let Ok(json) = serde_json::to_string(&msg) {
-                if sender.send(Message::Text(json)).await.is_err() {
-                    break;
-                }
-            }
-        }
-    });
+    let send_task = spawn_visitor_send_task(sender, rx);
 
     /* [T-1] Registrar sesión en timing service */
-    let timing_tx = state.chat_timing.register_session(
-        session_id,
-        session.visitor_name.clone(),
-        crate::services::TimingSessionDeps {
-            pool: state.pool.clone(),
-            ai_config: state.ai_config.clone(),
-            hub: state.chat_hub.clone(),
-            notification_hub: state.notification_hub.clone(),
-            http_client: state.http_client.clone(),
-            stripe_key: state.stripe_secret_key.clone(),
-            visitor_id: params.visitor_id.clone(),
-            user_id,
-            context: params.context.clone(),
-            email_config: state.email_config.clone(),
-        },
-    );
+    let timing_tx =
+        register_visitor_timing_session(&state, &session, session_id, &params, user_id);
 
     /* Procesar mensajes del visitante. Retorna true si el cierre fue explícito
      * (usuario cerró chat o rate limit forzó cierre). */

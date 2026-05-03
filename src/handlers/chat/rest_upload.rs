@@ -75,35 +75,29 @@ fn mime_to_message_type(mime: &str) -> &'static str {
     }
 }
 
-/// Upload de archivo en sesión de chat (imágenes, audio, PDF)
-#[utoipa::path(
-    post,
-    path = "/api/chat/sessions/{session_id}/upload",
-    params(("session_id" = Uuid, Path, description = "ID de la sesión")),
-    responses(
-        (status = 201, description = "Archivo subido", body = ChatUploadResponse),
-        (status = 400, description = "Archivo inválido"),
-        (status = 413, description = "Archivo demasiado grande"),
-    ),
-    tag = "chat"
-)]
-/* [035A-21] Upload REST combina validación multipart, límites, storage y persistencia.
- * Mantenerlo lineal aquí evita fragmentar un flujo de errores ya delicado. */
-#[allow(clippy::too_many_lines)]
-pub async fn upload_chat_file(
-    State(state): State<AppState>,
-    Path(session_id): Path<Uuid>,
-    mut multipart: Multipart,
-) -> Result<(StatusCode, Json<ChatUploadResponse>), AppError> {
-    /* Verificar que la sesión existe y está activa */
+struct UploadPayload {
+    original_name: String,
+    content_type: String,
+    data: Vec<u8>,
+    file_size: u64,
+}
+
+/* [174A-2] Valida que la sesión exista antes de tocar multipart o disco. */
+async fn ensure_session_accepts_upload(
+    state: &AppState,
+    session_id: Uuid,
+) -> Result<(), AppError> {
     let session = crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Sesión no encontrada".into()))?;
     if session.status == "closed" {
         return Err(AppError::BadRequest("La sesión está cerrada".into()));
     }
+    Ok(())
+}
 
-    /* Leer archivo del multipart */
+/* [174A-2] Centraliza validación MIME/tamaño del primer campo multipart aceptado. */
+async fn read_validated_upload(multipart: &mut Multipart) -> Result<UploadPayload, AppError> {
     let field = multipart
         .next_field()
         .await
@@ -125,7 +119,8 @@ pub async fn upload_chat_file(
     let data = field
         .bytes()
         .await
-        .map_err(|e| AppError::BadRequest(format!("Error leyendo archivo: {e}")))?;
+        .map_err(|e| AppError::BadRequest(format!("Error leyendo archivo: {e}")))?
+        .to_vec();
 
     #[allow(clippy::cast_possible_truncation)]
     let file_size = data.len() as u64;
@@ -135,20 +130,72 @@ pub async fn upload_chat_file(
         )));
     }
 
-    /* [084A-30] Seguridad: mapear MIME type a extensión segura.
-     * Nunca confiar en la extensión del nombre original (puede ser .php, .exe, etc.) */
-    let ext = mime_to_safe_extension(&content_type);
+    Ok(UploadPayload {
+        original_name,
+        content_type,
+        data,
+        file_size,
+    })
+}
+
+/* [174A-2] Aísla storage del archivo para mantener el handler centrado en chat/persistencia. */
+async fn persist_upload_file(
+    session_id: Uuid,
+    content_type: &str,
+    data: &[u8],
+) -> Result<String, AppError> {
+    let ext = mime_to_safe_extension(content_type);
     let unique_name = format!("{}.{ext}", Uuid::new_v4());
     let upload_dir = std::path::PathBuf::from(CHAT_UPLOAD_DIR).join(session_id.to_string());
     tokio::fs::create_dir_all(&upload_dir)
         .await
         .map_err(|e| AppError::Internal(format!("Error creando directorio: {e}")))?;
     let file_path = upload_dir.join(&unique_name);
-    tokio::fs::write(&file_path, &data)
+    tokio::fs::write(&file_path, data)
         .await
         .map_err(|e| AppError::Internal(format!("Error guardando archivo: {e}")))?;
 
-    let relative_path = format!("{CHAT_UPLOAD_DIR}/{session_id}/{unique_name}");
+    Ok(format!("{CHAT_UPLOAD_DIR}/{session_id}/{unique_name}"))
+}
+
+fn upload_display_content(msg_type: &str, original_name: &str) -> String {
+    match msg_type {
+        "image" => format!("📷 {original_name}"),
+        "audio" => format!("🎵 {original_name}"),
+        _ => format!("📄 {original_name}"),
+    }
+}
+
+/// Upload de archivo en sesión de chat (imágenes, audio, PDF)
+#[utoipa::path(
+    post,
+    path = "/api/chat/sessions/{session_id}/upload",
+    params(("session_id" = Uuid, Path, description = "ID de la sesión")),
+    responses(
+        (status = 201, description = "Archivo subido", body = ChatUploadResponse),
+        (status = 400, description = "Archivo inválido"),
+        (status = 413, description = "Archivo demasiado grande"),
+    ),
+    tag = "chat"
+)]
+/* [035A-21] Upload REST combina validación multipart, límites, storage y persistencia.
+ * Mantenerlo lineal aquí evita fragmentar un flujo de errores ya delicado. */
+#[allow(clippy::too_many_lines)]
+pub async fn upload_chat_file(
+    State(state): State<AppState>,
+    Path(session_id): Path<Uuid>,
+    mut multipart: Multipart,
+) -> Result<(StatusCode, Json<ChatUploadResponse>), AppError> {
+    ensure_session_accepts_upload(&state, session_id).await?;
+
+    let UploadPayload {
+        original_name,
+        content_type,
+        data,
+        file_size,
+    } = read_validated_upload(&mut multipart).await?;
+
+    let relative_path = persist_upload_file(session_id, &content_type, &data).await?;
     let msg_type = mime_to_message_type(&content_type);
 
     /* Crear mensaje rico con metadata del archivo */
@@ -159,11 +206,7 @@ pub async fn upload_chat_file(
         "file_url": format!("/{relative_path}"),
     });
 
-    let display_content = match msg_type {
-        "image" => format!("📷 {original_name}"),
-        "audio" => format!("🎵 {original_name}"),
-        _ => format!("📄 {original_name}"),
-    };
+    let display_content = upload_display_content(msg_type, &original_name);
 
     let msg = state
         .chat_hub
@@ -206,7 +249,7 @@ pub async fn upload_chat_file(
         session_id,
         attachment_id: attachment.id,
         mime_type: content_type.clone(),
-        data: data.to_vec(),
+        data,
         file_path: relative_path,
     });
 
