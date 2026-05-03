@@ -20,7 +20,7 @@ export const OrderChat: React.FC<OrderChatProps> = ({orderId}) => {
     const [input, setInput] = useState('');
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const userId = useAuthStore(s => s.user?.userId);
-    const {sessionId, mensajes, enviando, creando, iniciarSesion, enviarMensaje} =
+    const {sessionId, session, mensajes, enviando, creando, iniciarSesion, enviarMensaje} =
         useOrderChat(orderId);
 
     /* Iniciar sesión al montar */
@@ -57,8 +57,21 @@ export const OrderChat: React.FC<OrderChatProps> = ({orderId}) => {
         );
     }
 
+    /* Nombres de participantes visibles en la cabecera */
+    const participantes = [
+        session?.client_name,
+        session?.employee_name,
+    ].filter(Boolean);
+
     return (
         <div className="orderChatPanel">
+            {participantes.length > 0 && (
+                <div className="orderChatParticipantes">
+                    {participantes.map(nombre => (
+                        <span key={nombre} className="orderChatParticipante">{nombre}</span>
+                    ))}
+                </div>
+            )}
             <div className="orderChatMensajes" ref={messagesContainerRef}>
                 {mensajes.length === 0 && (
                     <p className="orderChatVacio">
@@ -79,12 +92,15 @@ export const OrderChat: React.FC<OrderChatProps> = ({orderId}) => {
                                 <OptimizedImage
                                     className="orderChatBurbujaAvatar"
                                     src={msg.sender_avatar_url || DEFAULT_PROFILE_AVATAR}
-                                    alt=""
+                                    alt={msg.sender_display_name || ''}
                                 />
                             )}
                             <div className="orderChatBurbujaContenido">
                                 {esIntermediaria && (
                                     <span className="orderChatLabelIntermed">Asistente</span>
+                                )}
+                                {!esPropio && !esIntermediaria && msg.sender_display_name && (
+                                    <span className="orderChatNombreSender">{msg.sender_display_name}</span>
                                 )}
                                 <div className="orderChatBurbujaTexto">{msg.content}</div>
                                 <span className="orderChatBurbujaHora">

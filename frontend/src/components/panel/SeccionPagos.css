@@ -1,5 +1,7 @@
 /* [044A-38 Fase 3] Estilos del historial de pagos.
- * [035A-18] Editado para alinear estrictamente con el sistema de diseño minimalista. */
+ * [035A-18] Editado para alinear estrictamente con el sistema de diseño minimalista.
+ * [035A-23] Clases extraídas de inline styles: pagoResumenCardBadge, pagosFacturaSubtitulo,
+ *            pagosFacturaAcciones, pagosReembolsoIcon, pagosReembolsoIntro, pagosReembolsoAcciones. */
 
 .pagosContenedor {
     display: flex;
@@ -18,7 +20,7 @@
     flex-direction: row;
     gap: var(--spacing-md);
     padding: 0;
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     background: var(--brand-white);
     overflow: hidden;
@@ -79,8 +81,8 @@
     border-radius: var(--radius-full);
     white-space: nowrap;
     flex-shrink: 0;
-    background-color: var(--brand-black);
-    color: var(--brand-white);
+    background-color: var(--bg-item-active);
+    color: var(--brand-black);
 }
 
 .pagoResumenCardFooter {
@@ -261,7 +263,7 @@
 }
 
 .pagosFacturaResumenReembolsado {
-    color: var(--prompt-text, var(--text-tertiary));
+    color: var(--text-tertiary);
 }
 
 /* Status badge — pill con color de fondo mínimo */
@@ -338,4 +340,34 @@
         align-items: flex-end;
         gap: var(--spacing-sm);
     }
+}
+
+/* [035A-23] Estilos extraídos de inline styles de SeccionPagos.tsx */
+
+/* Subtítulo de sección dentro del modal de factura (no es el título del modal) */
+.pagosFacturaSubtitulo {
+    font-size: var(--text-sm);
+    margin-bottom: var(--spacing-sm);
+    font-weight: var(--font-semibold);
+    color: var(--text-secondary);
+}
+
+/* Separación superior del bloque de acciones en el modal de factura */
+.pagosFacturaAcciones {
+    padding-top: var(--spacing-md);
+}
+
+/* Espacio a la derecha del icono de reembolso dentro del botón */
+.pagosReembolsoIcon {
+    margin-right: 6px;
+}
+
+/* Texto introductorio del modal de reembolso */
+.pagosReembolsoIntro {
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Acciones del modal de reembolso con separación superior */
+.pagosReembolsoAcciones {
+    margin-top: var(--spacing-md);
 }

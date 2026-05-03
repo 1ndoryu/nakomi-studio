@@ -1,9 +1,10 @@
 /* [064A-31] Estilos del chat dentro de pedidos.
  * [064A-67] Rediseñado para coincidir con chatWidgetPanel (glassmorphism, pill input).
- * [074A-33] Sin sombra, min-height 440px, sin encabezado. */
+ * [074A-33] Sin sombra, min-height 440px, sin encabezado.
+ * [035A-22] Header de participantes + nombre del sender en burbujas ajenas. */
 
 .orderChatPanel {
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);
     background: var(--bg-glass-soft);
     backdrop-filter: blur(12px);
@@ -158,4 +159,30 @@
     
     margin-bottom: 2px;
     padding-left: var(--spacing-xs);
+}
+
+/* [035A-22] Cabecera de participantes del chat */
+.orderChatParticipantes {
+    display: flex;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-bottom: 1px solid var(--border-default);
+    flex-wrap: wrap;
+}
+
+.orderChatParticipante {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    background: var(--bg-item);
+    border-radius: var(--radius-full);
+    padding: 2px var(--spacing-xs);
+}
+
+/* [035A-22] Nombre del remitente sobre burbujas ajenas */
+.orderChatNombreSender {
+    font-size: var(--text-mini);
+    color: var(--text-muted);
+    padding-left: var(--spacing-xs);
+    margin-bottom: 2px;
+    display: block;
 }

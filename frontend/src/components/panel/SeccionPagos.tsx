@@ -1,89 +1,26 @@
 /* [044A-38 Fase 3] Sección de historial de pagos en el panel.
- * [035A-18] Rehecha como lista compacta de cards con imagen del servicio y modal 
- * tipo factura para concentrar los detalles, 100% alineado al sistema visual. */
+ * [035A-18] Rehecha como lista compacta de cards con imagen del servicio y modal
+ * tipo factura para concentrar los detalles, 100% alineado al sistema visual.
+ * [035A-23] Sub-componentes extraídos a SeccionPagos.parts.tsx para cumplir límite de 300 líneas. */
 
 import { useMemo, useState } from 'react';
 import { Loader2, AlertCircle, RotateCcw, Package, CreditCard } from 'lucide-react';
 import { useOrdenes } from '../../hooks/useOrdenes';
 import { usePagos } from '../../hooks/usePagos';
 import { useRefundModal } from '../../hooks/useRefundModal';
-import {
-    PAYMENT_STATUS_LABELS,
-    PAYMENT_STATUS_CLASS,
-    type PaymentResponse,
-} from '../../api/payments';
-import { PAYMENT_MODE_LABELS, formatPrice, type OrderResponse } from '../../api/orders';
 import { useAuthStore } from '../../stores/authStore';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import OptimizedImage from '../ui/OptimizedImage';
+import { PAYMENT_MODE_LABELS, formatPrice } from '../../api/orders';
 import { getServiceImage } from '../../utils/serviceImages';
+import { PagoResumenCard, FacturaLinea } from './SeccionPagos.parts';
 import './SeccionPagos.css';
 
-function PagoResumenCard({ order, onOpen }: { order: OrderResponse; onOpen: () => void }) {
-    return (
-        <Button 
-            type="button" 
-            className="pagoResumenCard" 
-            onClick={onOpen}
-            variante="texto"
-            aria-label={`Ver pagos de la orden #${order.order_number}`}
-        >
-            <div className="pagoResumenCardImagenWrapper">
-                <OptimizedImage
-                    className="pagoResumenCardImagen"
-                    src={getServiceImage(order.service_slug)}
-                    alt={order.service_title}
-                    loading="lazy"
-                />
-            </div>
-            <div className="pagoResumenCardBody">
-                <div className="pagoResumenCardHeader">
-                    <h3 className="pagoResumenCardTitulo">{order.service_title}</h3>
-                    <span className="pagoResumenCardBadge" style={{ backgroundColor: 'var(--bg-item-active)', color: 'var(--brand-black)' }}>
-                        Orden #{order.order_number}
-                    </span>
-                </div>
-                <div className="pagoResumenCardFooter">
-                    <span className="pagoResumenCardPrecio">{formatPrice(order.final_price_cents, order.currency)}</span>
-                    <span className="pagoResumenCardModo">{PAYMENT_MODE_LABELS[order.payment_mode]}</span>
-                    <span className="pagoResumenCardFecha">
-                        {new Date(order.created_at).toLocaleDateString('es-ES', {
-                            day: 'numeric', month: 'short'
-                        })}
-                    </span>
-                </div>
-            </div>
-        </Button>
-    );
-}
-
-function FacturaLinea({ payment }: { payment: PaymentResponse }) {
-    return (
-        <div className="pagosFacturaLinea">
-            <div className="pagosFacturaLineaInfo">
-                <span className="pagosFacturaLineaConcepto">
-                    {payment.description || (payment.phase_number ? `Fase ${payment.phase_number}` : 'Pago')}
-                </span>
-                <span className="pagosFacturaLineaFecha">
-                    {new Date(payment.created_at).toLocaleDateString('es-ES', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                    })}
-                </span>
-            </div>
-            <div className="pagosFacturaLineaEstado">
-                <span className={`pagoEstadoBadge ${PAYMENT_STATUS_CLASS[payment.status]}`}>
-                    {PAYMENT_STATUS_LABELS[payment.status]}
-                </span>
-            </div>
-            <strong className="pagosFacturaLineaMonto">
-                {formatPrice(payment.amount_cents, payment.currency)}
-            </strong>
-        </div>
-    );
-}
+/*
+ * PagoResumenCard y FacturaLinea están en SeccionPagos.parts.tsx
+ * para mantener este archivo bajo 300 líneas. */
 
 export function SeccionPagos() {
     const { ordenes, cargando, error } = useOrdenes();
@@ -214,7 +151,7 @@ export function SeccionPagos() {
 
                         {/* Lineas de Transacciones */}
                         <div className="pagosFacturaLineasBloque">
-                            <h4 className="modalTitulo" style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--spacing-sm)' }}>
+                            <h4 className="pagosFacturaSubtitulo">
                                 Movimientos de pago
                             </h4>
                             
@@ -277,7 +214,7 @@ export function SeccionPagos() {
                         </div>
 
                         {puedeSolicitarReembolso && (
-                            <div className="modalAcciones" style={{ paddingTop: 'var(--spacing-md)' }}>
+                            <div className="modalAcciones pagosFacturaAcciones">
                                 <Button
                                     variante="outline"
                                     tamano="pequeno"
@@ -286,7 +223,7 @@ export function SeccionPagos() {
                                         abrirModal(ordenActiva.id);
                                     }}
                                 >
-                                    <RotateCcw size={14} style={{ marginRight: '6px' }} />
+                                    <RotateCcw size={14} className="pagosReembolsoIcon" />
                                     Solicitar Reembolso
                                 </Button>
                             </div>
@@ -298,8 +235,7 @@ export function SeccionPagos() {
             {/* Modal de solicitud de reembolso */}
             <Modal abierto={!!refundOrderId} onCerrar={cerrarModal}>
                 <div className="pagoModalContenido">
-                    <h3 className="modalTitulo">Solicitar Reembolso</h3>
-                    <p className="modalTexto" style={{ marginBottom: 'var(--spacing-sm)' }}>
+                    <p className="modalTexto pagosReembolsoIntro">
                         Describe el motivo de tu solicitud de reembolso. Un administrador la revisará.
                     </p>
                     <Textarea
@@ -309,7 +245,7 @@ export function SeccionPagos() {
                         onChange={(e) => setRefundRazon(e.target.value)}
                         rows={4}
                     />
-                    <div className="modalAcciones" style={{ marginTop: 'var(--spacing-md)' }}>
+                    <div className="modalAcciones pagosReembolsoAcciones">
                         <Button
                             variante="outline"
                             onClick={cerrarModal}

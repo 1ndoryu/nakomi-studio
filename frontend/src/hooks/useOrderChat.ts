@@ -9,11 +9,13 @@ import {
     apiCreateChatSession,
     apiGetMessages,
     apiSendMessage,
+    type ChatSession,
 } from '../api/chat';
 
 export function useOrderChat(orderId: string) {
     const queryClient = useQueryClient();
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [session, setSession] = useState<ChatSession | null>(null);
     const [creando, setCreando] = useState(false);
     const inicializado = useRef(false);
 
@@ -23,8 +25,9 @@ export function useOrderChat(orderId: string) {
         inicializado.current = true;
         setCreando(true);
         try {
-            const session = await apiCreateChatSession(orderId);
-            setSessionId(session.id);
+            const s = await apiCreateChatSession(orderId);
+            setSessionId(s.id);
+            setSession(s);
         } catch (err) {
             console.error('Error creando sesión de chat de orden:', err);
             inicializado.current = false;
@@ -59,6 +62,7 @@ export function useOrderChat(orderId: string) {
 
     return {
         sessionId,
+        session,
         mensajes,
         enviando,
         creando,

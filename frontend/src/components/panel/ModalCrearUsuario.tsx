@@ -1,7 +1,8 @@
 /* [015A-1+] ModalCrearUsuario extraido de SeccionUsuarios.tsx para cumplir limite de 300 lineas.
  * Form state local (email, password, role). Solo cierra en éxito; muestra error inline.
  * Gotcha: no usar estado global para el form — evita contaminar useUsersSection.
- * [15A-SENT-1] Estado extraído a useModalCrearUsuario para cumplir limite de 3 useState. */
+ * [15A-SENT-1] Estado extraído a useModalCrearUsuario para cumplir limite de 3 useState.
+ * [035A-23] <form> cambiado a <div> para evitar inconsistencia visual con otros modales. */
 
 import { AlertCircle, ChevronDown } from 'lucide-react';
 import { MenuContextual } from '../ui/ContextMenu';
@@ -21,7 +22,7 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
         useModalCrearUsuario({ onSubmit, onClose, onCreated });
 
     return (
-        <form onSubmit={(e) => void handleSubmit(e)}>
+        <div>
             <div className="usuariosCrearCampo">
                 <label className="usuariosCrearLabel" htmlFor="crear-email">Email</label>
                 <Input
@@ -89,11 +90,12 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
                     variante="primario"
                     tamano="pequeno"
                     disabled={isCreating}
-                    type="submit"
+                    type="button"
+                    onClick={() => void handleSubmit()}
                 >
                     {isCreating ? 'Creando...' : 'Crear usuario'}
                 </Button>
             </div>
-        </form>
+        </div>
     );
 }

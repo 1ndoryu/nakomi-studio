@@ -1,9 +1,11 @@
 /* [15A-SENT-1] Hook extraído de ModalCrearUsuario: gestiona los 5 useState del form.
  * Extracción requerida por sentinel usestate-excesivo (max 3 por componente).
  * Gotcha: onSubmit es async genérico — el tipo de error se normaliza aquí para no
- * contaminar el componente con manejo de errores de red. */
+ * contaminar el componente con manejo de errores de red.
+ * [035A-23] Se eliminó FormEvent — handleSubmit ahora sin args para que el componente
+ * no necesite un <form> (evita inconsistencia visual con otros modales). */
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 
 type Role = 'admin' | 'employee' | 'client';
 
@@ -20,8 +22,7 @@ export function useModalCrearUsuario({ onSubmit, onClose, onCreated }: Opciones)
     const [error, setError] = useState<string | null>(null);
     const [rolMenuAbierto, setRolMenuAbierto] = useState(false);
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         setError(null);
         try {
             await onSubmit({ email, password, role });
