@@ -73,10 +73,13 @@ impl DockerStatsCache {
 
     pub async fn set(&self, key: String, stats: HostingResourceStats) {
         let mut entries = self.entries.write().await;
-        entries.insert(key, CacheEntry {
-            stats,
-            fetched_at: Instant::now(),
-        });
+        entries.insert(
+            key,
+            CacheEntry {
+                stats,
+                fetched_at: Instant::now(),
+            },
+        );
 
         /* Limpieza periódica: eliminar entradas expiradas si hay >50 */
         if entries.len() > 50 {
@@ -103,10 +106,14 @@ pub async fn fetch_docker_stats(
 
     let output = tokio::process::Command::new("ssh")
         .args([
-            "-i", ssh_key_path,
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-o", "ConnectTimeout=5",
-            "-o", "BatchMode=yes",
+            "-i",
+            ssh_key_path,
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=5",
+            "-o",
+            "BatchMode=yes",
             &format!("root@{server_ip}"),
             &docker_cmd,
         ])
@@ -232,10 +239,14 @@ pub async fn fetch_storage_usage(
 
     let output = tokio::process::Command::new("ssh")
         .args([
-            "-i", ssh_key_path,
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-o", "ConnectTimeout=5",
-            "-o", "BatchMode=yes",
+            "-i",
+            ssh_key_path,
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=5",
+            "-o",
+            "BatchMode=yes",
             &format!("root@{server_ip}"),
             &docker_cmd,
         ])

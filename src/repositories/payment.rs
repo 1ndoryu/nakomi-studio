@@ -176,7 +176,7 @@ impl PaymentRepository {
      * runtime query (sin macro). Retorna false ante cualquier error de BD. */
     pub async fn is_event_processed(pool: &PgPool, event_id: &str) -> bool {
         sqlx::query_scalar::<_, bool>(
-            "SELECT EXISTS(SELECT 1 FROM stripe_processed_events WHERE event_id = $1)"
+            "SELECT EXISTS(SELECT 1 FROM stripe_processed_events WHERE event_id = $1)",
         )
         .bind(event_id)
         .fetch_one(pool)

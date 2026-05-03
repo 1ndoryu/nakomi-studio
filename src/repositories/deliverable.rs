@@ -115,10 +115,7 @@ impl DeliverableRepository {
     }
 
     /// Obtiene el número de revisión actual (max `revision_number`) de una fase
-    pub async fn current_revision_number(
-        pool: &PgPool,
-        phase_id: Uuid,
-    ) -> Result<i32, AppError> {
+    pub async fn current_revision_number(pool: &PgPool, phase_id: Uuid) -> Result<i32, AppError> {
         let val: Option<i32> = sqlx::query_scalar!(
             r#"SELECT MAX(revision_number) FROM phase_deliverables WHERE phase_id = $1"#,
             phase_id,

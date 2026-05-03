@@ -52,10 +52,7 @@ impl PaymentMethodRepository {
         .await
     }
 
-    pub async fn has_default_for_user(
-        pool: &PgPool,
-        user_id: Uuid,
-    ) -> Result<bool, sqlx::Error> {
+    pub async fn has_default_for_user(pool: &PgPool, user_id: Uuid) -> Result<bool, sqlx::Error> {
         let row = sqlx::query!(
             "SELECT EXISTS(SELECT 1 FROM user_payment_methods WHERE user_id = $1 AND is_default = TRUE) AS \"exists!\"",
             user_id,
@@ -136,7 +133,10 @@ impl PaymentMethodRepository {
         .fetch_optional(&mut *tx)
         .await?;
 
-        if deleted_method.as_ref().is_some_and(|method| method.is_default) {
+        if deleted_method
+            .as_ref()
+            .is_some_and(|method| method.is_default)
+        {
             sqlx::query!(
                 r#"UPDATE user_payment_methods
                    SET is_default = TRUE, updated_at = NOW()

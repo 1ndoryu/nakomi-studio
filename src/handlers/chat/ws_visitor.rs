@@ -17,12 +17,12 @@ use crate::services::TimingEvent;
 use crate::AppState;
 use uuid::Uuid;
 
-use super::VisitorWsParams;
 use super::ws_visitor_helpers::{process_visitor_messages, send_history};
+use super::VisitorWsParams;
 
 /* ============================================================
-   WEBSOCKET: VISITOR (anónimo o cliente autenticado)
-   ============================================================ */
+WEBSOCKET: VISITOR (anónimo o cliente autenticado)
+============================================================ */
 
 async fn ws_visitor(
     ws: WebSocketUpgrade,
@@ -75,14 +75,21 @@ async fn ws_visitor(
 async fn lookup_country_from_ip(client: &reqwest::Client, ip: Option<&str>) -> Option<String> {
     let ip = ip?;
     /* Saltar IPs privadas/loopback */
-    if ip == "127.0.0.1" || ip.starts_with("192.168.") || ip.starts_with("10.")
-        || ip.starts_with("172.16.") || ip == "::1" {
+    if ip == "127.0.0.1"
+        || ip.starts_with("192.168.")
+        || ip.starts_with("10.")
+        || ip.starts_with("172.16.")
+        || ip == "::1"
+    {
         return None;
     }
     let url = format!("https://ipapi.co/{ip}/country_name/");
     match tokio::time::timeout(
         std::time::Duration::from_secs(2),
-        client.get(&url).header("User-Agent", "nakomi-studio/1.0").send(),
+        client
+            .get(&url)
+            .header("User-Agent", "nakomi-studio/1.0")
+            .send(),
     )
     .await
     {
@@ -96,7 +103,6 @@ async fn lookup_country_from_ip(client: &reqwest::Client, ip: Option<&str>) -> O
     }
 }
 
-
 fn try_extract_user_id(token: Option<&str>, jwt_secret: &str) -> Option<uuid::Uuid> {
     token.and_then(|t| {
         crate::services::AuthService::verify_token(t, jwt_secret)
@@ -105,6 +111,9 @@ fn try_extract_user_id(token: Option<&str>, jwt_secret: &str) -> Option<uuid::Uu
     })
 }
 
+/* [035A-21] Orquestador WS legacy: handshake, anti-bot, spawn de tareas y cleanup final.
+ * Se documenta la excepción hasta dividir el flujo por fases sin cambiar comportamiento. */
+#[allow(clippy::too_many_lines)]
 async fn handle_visitor_ws(
     socket: WebSocket,
     state: AppState,
@@ -173,16 +182,16 @@ async fn handle_visitor_ws(
 
     /* [104A-40] Registrar timestamp de conexión y notificar al staff que el visitante está online.
      * Sirve como confirmación de lectura: si el visitante está online, vio los mensajes. */
-    let visitor_online_at: chrono::DateTime<chrono::Utc> = crate::repositories::ChatRepository::update_visitor_last_connected(
-        &state.pool,
-        session_id,
-    )
-    .await
-    .unwrap_or_else(|e| {
-        tracing::warn!("Error actualizando visitor_last_connected_at: {e}");
-        chrono::Utc::now()
-    });
-    state.chat_hub.notify_visitor_online(session_id, visitor_online_at);
+    let visitor_online_at: chrono::DateTime<chrono::Utc> =
+        crate::repositories::ChatRepository::update_visitor_last_connected(&state.pool, session_id)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!("Error actualizando visitor_last_connected_at: {e}");
+                chrono::Utc::now()
+            });
+    state
+        .chat_hub
+        .notify_visitor_online(session_id, visitor_online_at);
 
     /* Notificar a staff de nueva sesión */
     state.chat_hub.broadcast(
@@ -233,7 +242,15 @@ async fn handle_visitor_ws(
     )
     .await;
 
-    cleanup_visitor_session(&state, session_id, &ip_for_tracking, explicit_close, visitor_online_at, &timing_tx).await;
+    cleanup_visitor_session(
+        &state,
+        session_id,
+        &ip_for_tracking,
+        explicit_close,
+        visitor_online_at,
+        &timing_tx,
+    )
+    .await;
     send_task.abort();
 }
 
@@ -248,7 +265,9 @@ async fn cleanup_visitor_session(
 ) {
     let remaining = state.chat_hub.unsubscribe(session_id);
     if explicit_close || remaining == 0 {
-        state.chat_hub.notify_visitor_offline(session_id, Some(visitor_online_at));
+        state
+            .chat_hub
+            .notify_visitor_offline(session_id, Some(visitor_online_at));
         let _ = timing_tx.send(TimingEvent::Disconnect).await;
         state.chat_timing.unregister_session(session_id);
         let _ = state.chat_hub.close_session(session_id).await;
@@ -259,8 +278,8 @@ async fn cleanup_visitor_session(
 }
 
 /* ============================================================
-   ROUTES (WebSocket — montadas en root, no bajo /api)
-   ============================================================ */
+ROUTES (WebSocket — montadas en root, no bajo /api)
+============================================================ */
 
 pub fn ws_routes() -> Router<AppState> {
     Router::new().route("/ws/chat/visitor", get(ws_visitor))

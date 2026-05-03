@@ -19,8 +19,16 @@ const MAX_CHAT_FILE_SIZE: u64 = 10 * 1024 * 1024; /* 10 MB */
 
 /* MIME types permitidos para chat: imágenes, audio, PDF, documentos */
 const ALLOWED_CHAT_MIMES: &[&str] = &[
-    "image/jpeg", "image/png", "image/webp", "image/gif",
-    "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm", "audio/mp4", "audio/flac",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "audio/mpeg",
+    "audio/ogg",
+    "audio/wav",
+    "audio/webm",
+    "audio/mp4",
+    "audio/flac",
     "application/pdf",
 ];
 
@@ -79,6 +87,9 @@ fn mime_to_message_type(mime: &str) -> &'static str {
     ),
     tag = "chat"
 )]
+/* [035A-21] Upload REST combina validación multipart, límites, storage y persistencia.
+ * Mantenerlo lineal aquí evita fragmentar un flujo de errores ya delicado. */
+#[allow(clippy::too_many_lines)]
 pub async fn upload_chat_file(
     State(state): State<AppState>,
     Path(session_id): Path<Uuid>,
@@ -154,8 +165,16 @@ pub async fn upload_chat_file(
         _ => format!("📄 {original_name}"),
     };
 
-    let msg = state.chat_hub
-        .send_rich_message(session_id, "client", None, &display_content, msg_type, &metadata)
+    let msg = state
+        .chat_hub
+        .send_rich_message(
+            session_id,
+            "client",
+            None,
+            &display_content,
+            msg_type,
+            &metadata,
+        )
         .await?;
 
     /* Guardar attachment en BD */
@@ -221,24 +240,43 @@ struct FileAiContext {
 fn spawn_file_ai_processing(ctx: FileAiContext) {
     tokio::spawn(async move {
         let description = process_file_with_ai(
-            &ctx.pool, &ctx.ai_config, &ctx.http_client, &ctx.mime_type, &ctx.data, &ctx.file_path,
-        ).await;
+            &ctx.pool,
+            &ctx.ai_config,
+            &ctx.http_client,
+            &ctx.mime_type,
+            &ctx.data,
+            &ctx.file_path,
+        )
+        .await;
 
         if let Some(desc) = &description {
             let _ = crate::repositories::ChatRepository::update_attachment_description(
-                &ctx.pool, ctx.attachment_id, desc,
-            ).await;
+                &ctx.pool,
+                ctx.attachment_id,
+                desc,
+            )
+            .await;
 
-            if let Ok(Some(s)) = crate::repositories::ChatRepository::find_session_by_id(&ctx.pool, ctx.session_id).await {
+            if let Ok(Some(s)) =
+                crate::repositories::ChatRepository::find_session_by_id(&ctx.pool, ctx.session_id)
+                    .await
+            {
                 if s.ai_enabled {
                     let user_msg = match ctx.mime_type.as_str() {
-                        m if m.starts_with("image/") => format!("[El cliente envió una imagen. Descripción: {desc}]"),
-                        m if m.starts_with("audio/") => format!("[El cliente envió un audio. Transcripción: {desc}]"),
+                        m if m.starts_with("image/") => {
+                            format!("[El cliente envió una imagen. Descripción: {desc}]")
+                        }
+                        m if m.starts_with("audio/") => {
+                            format!("[El cliente envió un audio. Transcripción: {desc}]")
+                        }
                         _ => format!("[El cliente envió un archivo PDF. Contenido: {desc}]"),
                     };
 
                     if let Ok(ai_resp) = AiChatService::generate_response(
-                        &ctx.pool, &ctx.ai_config, &ctx.http_client, None,
+                        &ctx.pool,
+                        &ctx.ai_config,
+                        &ctx.http_client,
+                        None,
                         crate::services::AiSessionContext {
                             session_id: ctx.session_id,
                             visitor_id: s.visitor_id.as_deref(),
@@ -246,18 +284,29 @@ fn spawn_file_ai_processing(ctx: FileAiContext) {
                             context: None,
                         },
                         &user_msg,
-                    ).await {
+                    )
+                    .await
+                    {
                         for rm in &ai_resp.rich_messages {
-                            let _ = ctx.chat_hub.send_rich_message(
-                                ctx.session_id, "ai", Some("ai"),
-                                &rm.content, &rm.message_type, &rm.metadata,
-                            ).await;
+                            let _ = ctx
+                                .chat_hub
+                                .send_rich_message(
+                                    ctx.session_id,
+                                    "ai",
+                                    Some("ai"),
+                                    &rm.content,
+                                    &rm.message_type,
+                                    &rm.metadata,
+                                )
+                                .await;
                         }
-                        let _ = ctx.chat_hub.send_message(ctx.session_id, "ai", Some("ai"), &ai_resp.text).await;
+                        let _ = ctx
+                            .chat_hub
+                            .send_message(ctx.session_id, "ai", Some("ai"), &ai_resp.text)
+                            .await;
                     }
                 }
             }
         }
     });
 }
-

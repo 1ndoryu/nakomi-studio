@@ -46,7 +46,7 @@
  * era ilegible con texto negro. */
 .reembolsoCard {
     background: var(--bg-primary);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     padding: var(--spacing-md);
     display: flex;
@@ -74,7 +74,7 @@
 .reembolsosTabs {
     display: flex;
     gap: var(--spacing-xs);
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
     padding-bottom: 0;
 }
 

@@ -86,7 +86,7 @@
 .hostingDetalleTabs {
     display: flex;
     gap: 0;
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -241,7 +241,7 @@
     justify-content: space-between;
     padding: var(--spacing-xs) var(--spacing-sm);
     background: var(--bg-card-subtle);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
 }
 
@@ -287,7 +287,7 @@
     gap: var(--spacing-sm);
     padding: var(--spacing-md);
     background: var(--bg-card-subtle);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
 }
 
@@ -344,7 +344,7 @@
     gap: var(--spacing-md);
     padding: var(--spacing-md);
     background: var(--bg-card-subtle);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     transition: border-color var(--transicion-rapida);
 }
@@ -441,7 +441,7 @@
     gap: var(--spacing-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
     background: var(--bg-card-subtle);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
 }

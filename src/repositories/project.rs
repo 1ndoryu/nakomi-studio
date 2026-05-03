@@ -107,10 +107,7 @@ impl ProjectRepository {
     }
 
     /// Buscar proyecto por ID (admin)
-    pub async fn find_by_id(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<Option<Project>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Project>, sqlx::Error> {
         sqlx::query_as::<_, Project>(
             "SELECT id, title, slug, client, description, featured_image, gallery_image,
                     gallery, categories, technologies, links, skills,
@@ -227,12 +224,10 @@ impl ProjectRepository {
 
     /// Archivar un proyecto (soft delete: status = 'archived')
     pub async fn archive(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE projects SET status = 'archived', updated_at = NOW() WHERE id = $1"
-        )
-        .bind(id)
-        .execute(pool)
-        .await?;
+        sqlx::query("UPDATE projects SET status = 'archived', updated_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 
@@ -248,10 +243,7 @@ impl ProjectRepository {
     /* [124A-CMS3] Reordenar proyectos en batch.
      * Recibe pares (id, sort_order) y actualiza todos en una sola transacción.
      * Usa CTE con UNNEST para evitar N+1 queries. */
-    pub async fn reorder(
-        pool: &PgPool,
-        items: &[(Uuid, i32)],
-    ) -> Result<(), sqlx::Error> {
+    pub async fn reorder(pool: &PgPool, items: &[(Uuid, i32)]) -> Result<(), sqlx::Error> {
         if items.is_empty() {
             return Ok(());
         }
@@ -264,7 +256,7 @@ impl ProjectRepository {
                 sort_order = v.new_order,
                 updated_at = NOW()
              FROM (SELECT UNNEST($1::uuid[]) AS id, UNNEST($2::int[]) AS new_order) AS v
-             WHERE p.id = v.id"
+             WHERE p.id = v.id",
         )
         .bind(&ids)
         .bind(&orders)
@@ -278,11 +270,10 @@ impl ProjectRepository {
      * runtime query (sin macro) para no requerir sqlx prepare contra BD en vivo. */
     pub async fn public_slugs(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
         let rows = sqlx::query_scalar::<_, String>(
-            "SELECT slug FROM projects WHERE slug IS NOT NULL AND slug != ''"
+            "SELECT slug FROM projects WHERE slug IS NOT NULL AND slug != ''",
         )
         .fetch_all(pool)
         .await?;
         Ok(rows)
     }
-
 }

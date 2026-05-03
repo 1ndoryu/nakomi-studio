@@ -25,7 +25,7 @@
 /* Card individual de dominio */
 .dominioCard {
     background: var(--brand-white);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     padding: var(--spacing-md);
     display: flex;

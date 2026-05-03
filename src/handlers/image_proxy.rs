@@ -82,9 +82,7 @@ pub async fn image_proxy(
     };
 
     /* Validar calidad */
-    let quality = params
-        .q
-        .map_or(80, |q| q.clamp(MIN_QUALITY, MAX_QUALITY));
+    let quality = params.q.map_or(80, |q| q.clamp(MIN_QUALITY, MAX_QUALITY));
 
     /* Validar formato */
     let format = OutputFormat::from_str_opt(params.fmt.as_deref());
@@ -99,24 +97,24 @@ pub async fn image_proxy(
     let (source_root, original_path) = resolve_source_path(&state, &path);
 
     /* Verificar que el archivo existe y está dentro de la raíz permitida */
-    let canonical = original_path
-        .canonicalize()
-        .map_err(|e| {
-            tracing::warn!(
-                path = %path,
-                resolved = %original_path.display(),
-                error = %e,
-                "Imagen no encontrada en disco"
-            );
-            AppError::NotFound("Imagen no encontrada".into())
-        })?;
+    let canonical = original_path.canonicalize().map_err(|e| {
+        tracing::warn!(
+            path = %path,
+            resolved = %original_path.display(),
+            error = %e,
+            "Imagen no encontrada en disco"
+        );
+        AppError::NotFound("Imagen no encontrada".into())
+    })?;
 
     let source_root = source_root
         .canonicalize()
         .map_err(|_| AppError::Internal("Directorio de imágenes no encontrado".into()))?;
 
     if !canonical.starts_with(&source_root) {
-        return Err(AppError::BadRequest("Ruta fuera de directorio permitido".into()));
+        return Err(AppError::BadRequest(
+            "Ruta fuera de directorio permitido".into(),
+        ));
     }
 
     /* Verificar que es un formato de imagen soportado */
@@ -141,7 +139,10 @@ pub async fn image_proxy(
         return Ok((
             [
                 (header::CONTENT_TYPE, content_type.to_string()),
-                (header::CACHE_CONTROL, "public, max-age=31536000, immutable".to_string()),
+                (
+                    header::CACHE_CONTROL,
+                    "public, max-age=31536000, immutable".to_string(),
+                ),
             ],
             bytes,
         ));
@@ -154,7 +155,10 @@ pub async fn image_proxy(
     Ok((
         [
             (header::CONTENT_TYPE, content_type.to_string()),
-            (header::CACHE_CONTROL, "public, max-age=31536000, immutable".to_string()),
+            (
+                header::CACHE_CONTROL,
+                "public, max-age=31536000, immutable".to_string(),
+            ),
         ],
         bytes,
     ))
@@ -162,10 +166,10 @@ pub async fn image_proxy(
 
 fn resolve_source_path(state: &AppState, path: &str) -> (PathBuf, PathBuf) {
     if path.starts_with("assets/") {
-        let root = state.static_dir.as_deref().map_or_else(
-            || PathBuf::from("frontend/public"),
-            PathBuf::from,
-        );
+        let root = state
+            .static_dir
+            .as_deref()
+            .map_or_else(|| PathBuf::from("frontend/public"), PathBuf::from);
         return (root.clone(), root.join(path));
     }
 

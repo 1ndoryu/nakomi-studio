@@ -185,9 +185,13 @@ impl UserRepository {
         user_id: Uuid,
         avatar_url: &str,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query!("UPDATE users SET avatar_url = $2 WHERE id = $1", user_id, avatar_url)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE users SET avatar_url = $2 WHERE id = $1",
+            user_id,
+            avatar_url
+        )
+        .execute(pool)
+        .await?;
         Ok(())
     }
 
@@ -433,7 +437,7 @@ impl UserRepository {
         user_id: Uuid,
     ) -> Result<String, sqlx::Error> {
         let name = sqlx::query_scalar::<_, String>(
-            "SELECT COALESCE(display_name, email) FROM users WHERE id = $1"
+            "SELECT COALESCE(display_name, email) FROM users WHERE id = $1",
         )
         .bind(user_id)
         .fetch_optional(pool)
@@ -447,7 +451,7 @@ impl UserRepository {
      * runtime query (sin macro) para no requerir sqlx prepare. */
     pub async fn available_employee_ids(pool: &PgPool) -> Result<Vec<Uuid>, sqlx::Error> {
         let rows = sqlx::query_scalar::<_, Uuid>(
-            "SELECT user_id FROM employee_profiles WHERE availability = 'available'"
+            "SELECT user_id FROM employee_profiles WHERE availability = 'available'",
         )
         .fetch_all(pool)
         .await?;
@@ -486,7 +490,10 @@ impl UserRepository {
     /* [124A-R1] Obtener display_name de un usuario por ID.
      * display_name es nullable en la BD → query_scalar devuelve Option<Option<String>>;
      * flatten() colapsa ambos niveles en Option<String>. */
-    pub async fn get_display_name(pool: &PgPool, user_id: Uuid) -> Result<Option<String>, sqlx::Error> {
+    pub async fn get_display_name(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<Option<String>, sqlx::Error> {
         sqlx::query_scalar!(r#"SELECT display_name FROM users WHERE id = $1"#, user_id)
             .fetch_optional(pool)
             .await
@@ -519,11 +526,14 @@ impl UserRepository {
         /* ANY($1) con &[Uuid] no es compatible con query_as! macro. */
         // sentinel-disable-next-line sqlx-query-as-sin-macro
         let rows = sqlx::query_as::<_, Row>(
-            "SELECT id, avatar_url, display_name FROM users WHERE id = ANY($1)"
+            "SELECT id, avatar_url, display_name FROM users WHERE id = ANY($1)",
         )
         .bind(ids)
         .fetch_all(pool)
         .await?;
-        Ok(rows.into_iter().map(|r| (r.id, r.avatar_url, r.display_name)).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| (r.id, r.avatar_url, r.display_name))
+            .collect())
     }
 }

@@ -242,7 +242,7 @@
     background: var(--bg-glass-soft);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     max-width: 340px;
     width: 100%;
     padding: var(--spacing-lg);

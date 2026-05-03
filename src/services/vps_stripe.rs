@@ -97,12 +97,17 @@ impl VpsStripeService {
             .http_client
             .post("https://api.stripe.com/v1/checkout/sessions")
             .basic_auth(params.stripe_key, Option::<&str>::None)
-            .header("Idempotency-Key", format!("vps-checkout-{}", params.subscription_id))
+            .header(
+                "Idempotency-Key",
+                format!("vps-checkout-{}", params.subscription_id),
+            )
             .form(&form)
             .send()
             .await
             .map_err(|error| {
-                AppError::Internal(format!("Stripe checkout VPS falló al enviar request: {error}"))
+                AppError::Internal(format!(
+                    "Stripe checkout VPS falló al enviar request: {error}"
+                ))
             })?;
 
         if !response.status().is_success() {
@@ -173,7 +178,9 @@ impl VpsStripeService {
             .as_str()
             .filter(|value| !value.is_empty())
             .ok_or_else(|| {
-                tracing::warn!("Webhook VPS checkout.session.completed sin subscription ID para {vps_id}");
+                tracing::warn!(
+                    "Webhook VPS checkout.session.completed sin subscription ID para {vps_id}"
+                );
                 AppError::BadRequest("Missing subscription field in VPS checkout event".into())
             })?;
 
@@ -206,7 +213,10 @@ impl VpsStripeService {
                 let notification = CreateNotification {
                     user_id: Uuid::nil(),
                     notification_type: NOTIF_VPS_PENDING_APPROVAL.to_string(),
-                    title: format!("VPS pendiente de aprobación: {}", humanize_tier_name(&existing.tier_name)),
+                    title: format!(
+                        "VPS pendiente de aprobación: {}",
+                        humanize_tier_name(&existing.tier_name)
+                    ),
                     body: Some(format!(
                         "{} pagó {} y quedó esperando aprobación manual.",
                         existing.client_email,
@@ -216,7 +226,9 @@ impl VpsStripeService {
                     reference_type: Some("vps_subscription".to_string()),
                     reference_id: Some(existing.id),
                 };
-                let _ = notification_hub.notify_many(&admin_ids, &notification).await;
+                let _ = notification_hub
+                    .notify_many(&admin_ids, &notification)
+                    .await;
             }
         }
 
@@ -242,7 +254,9 @@ impl VpsStripeService {
             _ => return Ok(false),
         };
 
-        let Some(vps_subscription) = VpsRepository::find_by_stripe_subscription(pool, stripe_sub_id).await? else {
+        let Some(vps_subscription) =
+            VpsRepository::find_by_stripe_subscription(pool, stripe_sub_id).await?
+        else {
             return Ok(false);
         };
 
@@ -273,12 +287,20 @@ impl VpsStripeService {
             _ => return Ok(false),
         };
 
-        let Some(vps_subscription) = VpsRepository::find_by_stripe_subscription(pool, stripe_sub_id).await? else {
+        let Some(vps_subscription) =
+            VpsRepository::find_by_stripe_subscription(pool, stripe_sub_id).await?
+        else {
             return Ok(false);
         };
 
         VpsRepository::update_status(pool, vps_subscription.id, "cancelled").await?;
-        let _ = VpsRepository::add_event(pool, vps_subscription.id, "stripe_subscription_cancelled", None).await;
+        let _ = VpsRepository::add_event(
+            pool,
+            vps_subscription.id,
+            "stripe_subscription_cancelled",
+            None,
+        )
+        .await;
         Ok(true)
     }
 
@@ -292,7 +314,9 @@ impl VpsStripeService {
             _ => return Ok(false),
         };
 
-        let Some(vps_subscription) = VpsRepository::find_by_stripe_subscription(pool, stripe_sub_id).await? else {
+        let Some(vps_subscription) =
+            VpsRepository::find_by_stripe_subscription(pool, stripe_sub_id).await?
+        else {
             return Ok(false);
         };
 
@@ -330,19 +354,20 @@ impl VpsStripeService {
         stripe_key: &str,
         stripe_subscription_id: &str,
     ) -> Result<(), AppError> {
-        let latest_payment_intent = Self::fetch_latest_payment_intent_id(
-            http_client,
-            stripe_key,
-            stripe_subscription_id,
-        )
-        .await?;
+        let latest_payment_intent =
+            Self::fetch_latest_payment_intent_id(http_client, stripe_key, stripe_subscription_id)
+                .await?;
 
         let cancel_response = http_client
-            .delete(format!("https://api.stripe.com/v1/subscriptions/{stripe_subscription_id}"))
+            .delete(format!(
+                "https://api.stripe.com/v1/subscriptions/{stripe_subscription_id}"
+            ))
             .basic_auth(stripe_key, Option::<&str>::None)
             .send()
             .await
-            .map_err(|error| AppError::Internal(format!("Stripe cancel subscription failed: {error}")))?;
+            .map_err(|error| {
+                AppError::Internal(format!("Stripe cancel subscription failed: {error}"))
+            })?;
 
         if !cancel_response.status().is_success() {
             let status = cancel_response.status();
@@ -396,10 +421,9 @@ impl VpsStripeService {
             return Ok(None);
         }
 
-        let payload: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|error| AppError::Internal(format!("Stripe subscription parse failed: {error}")))?;
+        let payload: serde_json::Value = response.json().await.map_err(|error| {
+            AppError::Internal(format!("Stripe subscription parse failed: {error}"))
+        })?;
 
         Ok(payload["latest_invoice"]["payment_intent"]["id"]
             .as_str()

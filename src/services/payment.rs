@@ -35,9 +35,7 @@ impl PaymentService {
 
         if let Some(cid) = client_id {
             if order.client_id != cid {
-                return Err(AppError::Forbidden(
-                    "No tienes acceso a esta orden".into(),
-                ));
+                return Err(AppError::Forbidden("No tienes acceso a esta orden".into()));
             }
         }
 
@@ -109,8 +107,7 @@ impl PaymentService {
                     .as_str()
                     .ok_or_else(|| AppError::BadRequest("Missing payment_intent id".into()))?;
 
-                if let Some(payment) =
-                    PaymentRepository::find_by_stripe_intent(pool, pi_id).await?
+                if let Some(payment) = PaymentRepository::find_by_stripe_intent(pool, pi_id).await?
                 {
                     PaymentRepository::update_status(pool, payment.id, PaymentStatus::Failed)
                         .await?;
@@ -151,9 +148,12 @@ impl PaymentService {
         Ok(payments
             .into_iter()
             .map(|p| {
-                let phase_number = p
-                    .phase_id
-                    .and_then(|pid| phases.iter().find(|ph| ph.id == pid).map(|ph| ph.phase_number));
+                let phase_number = p.phase_id.and_then(|pid| {
+                    phases
+                        .iter()
+                        .find(|ph| ph.id == pid)
+                        .map(|ph| ph.phase_number)
+                });
                 PaymentResponse {
                     id: p.id,
                     order_id: p.order_id,
@@ -221,8 +221,8 @@ impl PaymentService {
     }
 
     /* ============================================================
-       HELPERS PRIVADOS
-       ============================================================ */
+    HELPERS PRIVADOS
+    ============================================================ */
 
     /// Resuelve monto, `phase_id` y descripción según `payment_mode`
     async fn resolve_payment_amount(
@@ -258,7 +258,10 @@ impl PaymentService {
 
                 let half = order.final_price_cents / 2;
                 let (amount, desc) = if paid_count == 0 {
-                    (half, format!("Primer pago 50% - Orden #{}", order.order_number))
+                    (
+                        half,
+                        format!("Primer pago 50% - Orden #{}", order.order_number),
+                    )
                 } else {
                     (
                         order.final_price_cents - half,
@@ -306,10 +309,7 @@ impl PaymentService {
             ("amount".to_string(), amount.to_string()),
             ("currency".to_string(), currency.to_lowercase()),
             ("capture_method".to_string(), "manual".to_string()),
-            (
-                "metadata[order_id]".to_string(),
-                order_id.to_string(),
-            ),
+            ("metadata[order_id]".to_string(), order_id.to_string()),
         ];
         if let Some(pn) = phase_number {
             form.push(("metadata[phase_number]".to_string(), pn.to_string()));
@@ -346,9 +346,7 @@ impl PaymentService {
         api_key: &str,
         payment_intent_id: &str,
     ) -> Result<(), AppError> {
-        let url = format!(
-            "https://api.stripe.com/v1/payment_intents/{payment_intent_id}/capture"
-        );
+        let url = format!("https://api.stripe.com/v1/payment_intents/{payment_intent_id}/capture");
         let resp = client
             .post(&url)
             .basic_auth(api_key, None::<&str>)
@@ -360,18 +358,13 @@ impl PaymentService {
             let body = resp.text().await.unwrap_or_default();
             /* [064A-73] Log explícito de errores Stripe para debugging */
             tracing::error!("Stripe capture falló: {body}");
-            return Err(AppError::Internal(format!(
-                "Stripe capture error: {body}"
-            )));
+            return Err(AppError::Internal(format!("Stripe capture error: {body}")));
         }
         Ok(())
     }
 
     /// Post-pago: avanza la máquina de estados de la orden según `payment_mode`
-    async fn handle_payment_success(
-        pool: &PgPool,
-        payment: &OrderPayment,
-    ) -> Result<(), AppError> {
+    async fn handle_payment_success(pool: &PgPool, payment: &OrderPayment) -> Result<(), AppError> {
         let order = OrderRepository::find_order_by_id(pool, payment.order_id)
             .await?
             .ok_or_else(|| AppError::Internal("Orden no encontrada post-pago".into()))?;
@@ -407,12 +400,8 @@ impl PaymentService {
                             && (phase.status == PhaseStatus::PendingPayment
                                 || phase.status == PhaseStatus::Locked)
                         {
-                            OrderRepository::update_phase_status(
-                                pool,
-                                phase.id,
-                                PhaseStatus::Paid,
-                            )
-                            .await?;
+                            OrderRepository::update_phase_status(pool, phase.id, PhaseStatus::Paid)
+                                .await?;
                         }
                     }
                 }
@@ -423,12 +412,8 @@ impl PaymentService {
                         if phase.status == PhaseStatus::Locked
                             || phase.status == PhaseStatus::PendingPayment
                         {
-                            OrderRepository::update_phase_status(
-                                pool,
-                                phase.id,
-                                PhaseStatus::Paid,
-                            )
-                            .await?;
+                            OrderRepository::update_phase_status(pool, phase.id, PhaseStatus::Paid)
+                                .await?;
                         }
                     }
                 }
@@ -436,8 +421,7 @@ impl PaymentService {
             PaymentMode::Phased => {
                 /* Pago de fase individual → actualizar esa fase a Paid */
                 if let Some(phase_id) = payment.phase_id {
-                    OrderRepository::update_phase_status(pool, phase_id, PhaseStatus::Paid)
-                        .await?;
+                    OrderRepository::update_phase_status(pool, phase_id, PhaseStatus::Paid).await?;
                 }
                 /* Si la orden estaba en payment_held y la primera fase se pagó, avanzar */
                 if order.status == OrderStatus::PaymentHeld {
@@ -459,16 +443,12 @@ impl PaymentService {
         let pi_id = payment
             .stripe_payment_intent_id
             .as_deref()
-            .ok_or_else(|| {
-                AppError::Internal("Pago sin PaymentIntent de Stripe".into())
-            })?;
+            .ok_or_else(|| AppError::Internal("Pago sin PaymentIntent de Stripe".into()))?;
 
         match payment.status {
             PaymentStatus::Held => {
                 /* Fondos retenidos → cancelar PaymentIntent libera el dinero */
-                let url = format!(
-                    "https://api.stripe.com/v1/payment_intents/{pi_id}/cancel"
-                );
+                let url = format!("https://api.stripe.com/v1/payment_intents/{pi_id}/cancel");
                 let resp = http_client
                     .post(&url)
                     .basic_auth(stripe_key, None::<&str>)
@@ -481,9 +461,7 @@ impl PaymentService {
                 if !resp.status().is_success() {
                     let body = resp.text().await.unwrap_or_default();
                     tracing::error!("Stripe cancel falló: {body}");
-                    return Err(AppError::Internal(format!(
-                        "Stripe cancel error: {body}"
-                    )));
+                    return Err(AppError::Internal(format!("Stripe cancel error: {body}")));
                 }
                 /* Para cancel, el refund_id es el PI id mismo */
                 Ok(format!("cancel_{pi_id}"))
@@ -496,16 +474,12 @@ impl PaymentService {
                     .form(&[("payment_intent", pi_id)])
                     .send()
                     .await
-                    .map_err(|e| {
-                        AppError::Internal(format!("Error creando refund Stripe: {e}"))
-                    })?;
+                    .map_err(|e| AppError::Internal(format!("Error creando refund Stripe: {e}")))?;
 
                 if !resp.status().is_success() {
                     let body = resp.text().await.unwrap_or_default();
                     tracing::error!("Stripe refund falló: {body}");
-                    return Err(AppError::Internal(format!(
-                        "Stripe refund error: {body}"
-                    )));
+                    return Err(AppError::Internal(format!("Stripe refund error: {body}")));
                 }
 
                 let refund_resp = resp.json::<StripeRefundMin>().await.map_err(|e| {
@@ -529,7 +503,9 @@ impl PaymentService {
         let (error_type, message) = match &parsed {
             Ok(json) => (
                 json["error"]["type"].as_str().unwrap_or("unknown"),
-                json["error"]["message"].as_str().unwrap_or("Error desconocido de Stripe"),
+                json["error"]["message"]
+                    .as_str()
+                    .unwrap_or("Error desconocido de Stripe"),
             ),
             Err(_) => return AppError::BadRequest("Error inesperado del servicio de pagos".into()),
         };
@@ -541,9 +517,9 @@ impl PaymentService {
             "invalid_request_error" | "card_error" => {
                 AppError::BadRequest(format!("Error de pago: {message}"))
             }
-            "rate_limit_error" => {
-                AppError::BadRequest("Demasiadas solicitudes de pago, intenta de nuevo en unos segundos".into())
-            }
+            "rate_limit_error" => AppError::BadRequest(
+                "Demasiadas solicitudes de pago, intenta de nuevo en unos segundos".into(),
+            ),
             _ => AppError::BadRequest("Servicio de pagos no disponible temporalmente".into()),
         }
     }

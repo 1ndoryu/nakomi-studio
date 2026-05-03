@@ -16,9 +16,8 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateNotification, DeliverPhaseResponse, OrderStatus, PhaseDeliverablesResponse,
-    PhaseStatus, UserRole, ALLOWED_MIME_TYPES, MAX_FILES_PER_DELIVERY, MAX_FILE_SIZE,
-    NOTIF_PHASE_DELIVERED,
+    CreateNotification, DeliverPhaseResponse, OrderStatus, PhaseDeliverablesResponse, PhaseStatus,
+    UserRole, ALLOWED_MIME_TYPES, MAX_FILES_PER_DELIVERY, MAX_FILE_SIZE, NOTIF_PHASE_DELIVERED,
 };
 use crate::repositories::{CreateDeliverableParams, DeliverableRepository, OrderRepository};
 use crate::AppState;
@@ -27,8 +26,8 @@ use crate::AppState;
 const UPLOAD_DIR: &str = "uploads/deliverables";
 
 /* ============================================================
-   ENTREGAR FASE CON ARCHIVOS (multipart)
-   ============================================================ */
+ENTREGAR FASE CON ARCHIVOS (multipart)
+============================================================ */
 
 /// Empleado entrega una fase con archivos adjuntos (multipart/form-data).
 /// Campos: `notes` (text, opcional), `files` (file, hasta 5).
@@ -83,8 +82,7 @@ pub async fn deliver_phase_with_files(
     }
 
     /* Calcular revision_number */
-    let current_rev =
-        DeliverableRepository::current_revision_number(&state.pool, phase.id).await?;
+    let current_rev = DeliverableRepository::current_revision_number(&state.pool, phase.id).await?;
     let revision_number = current_rev + 1;
 
     /* Crear directorio de uploads */
@@ -105,25 +103,27 @@ pub async fn deliver_phase_with_files(
         phase_number,
         revision_number,
     };
-    let (_notes, saved_files) = process_multipart_files(
-        &mut multipart,
-        &ctx,
-    )
-    .await?;
+    let (_notes, saved_files) = process_multipart_files(&mut multipart, &ctx).await?;
 
     /* Marcar fase como entregada */
     OrderRepository::deliver_phase(&state.pool, phase.id).await?;
 
     /* [104A-38] Notificar al cliente que la fase fue entregada */
-    let _ = state.notification_hub.notify(CreateNotification {
-        user_id: order.client_id,
-        notification_type: NOTIF_PHASE_DELIVERED.to_string(),
-        title: format!("Entrega lista — Orden #{}, Fase {}", order.order_number, phase_number),
-        body: Some("Revisa los archivos entregados y aprueba o solicita revisión".to_string()),
-        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
-        reference_type: Some("order".to_string()),
-        reference_id: Some(order.id),
-    }).await;
+    let _ = state
+        .notification_hub
+        .notify(CreateNotification {
+            user_id: order.client_id,
+            notification_type: NOTIF_PHASE_DELIVERED.to_string(),
+            title: format!(
+                "Entrega lista — Orden #{}, Fase {}",
+                order.order_number, phase_number
+            ),
+            body: Some("Revisa los archivos entregados y aprueba o solicita revisión".to_string()),
+            link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+            reference_type: Some("order".to_string()),
+            reference_id: Some(order.id),
+        })
+        .await;
 
     /* Actualizar estado de orden si estaba en InProgress */
     if order.status == OrderStatus::InProgress {
@@ -139,8 +139,8 @@ pub async fn deliver_phase_with_files(
 }
 
 /* ============================================================
-   LISTAR ENTREGABLES DE UNA FASE
-   ============================================================ */
+LISTAR ENTREGABLES DE UNA FASE
+============================================================ */
 
 /// Listar entregables de una fase con estado de aprobación
 #[utoipa::path(
@@ -185,8 +185,8 @@ pub async fn list_deliverables(
 }
 
 /* ============================================================
-   DESCARGAR ENTREGABLE
-   ============================================================ */
+DESCARGAR ENTREGABLE
+============================================================ */
 
 /// Descargar un archivo entregable
 #[utoipa::path(
@@ -215,8 +215,8 @@ pub async fn download_deliverable(
         .await
         .map_err(AppError::Database)?;
 
-    let order_id = order_id
-        .ok_or_else(|| AppError::NotFound("Fase asociada no encontrada".into()))?;
+    let order_id =
+        order_id.ok_or_else(|| AppError::NotFound("Fase asociada no encontrada".into()))?;
 
     let order = OrderRepository::find_order_by_id(&state.pool, order_id)
         .await?
@@ -260,8 +260,8 @@ pub async fn download_deliverable(
 }
 
 /* ============================================================
-   RUTAS
-   ============================================================ */
+RUTAS
+============================================================ */
 
 /* [204A-15] DefaultBodyLimit para que axum no rechace antes del handler.
  * MAX_FILE_SIZE = 10 MB × MAX_FILES_PER_DELIVERY = 5 → hasta 50 MB por request. */
@@ -286,8 +286,8 @@ pub fn routes() -> Router<AppState> {
 }
 
 /* ============================================================
-   UTILIDADES
-   ============================================================ */
+UTILIDADES
+============================================================ */
 
 /// Verifica que el usuario tiene acceso a una orden
 /// [074A-50] Admin real siempre tiene acceso, `effective_role` solo afecta UI.
@@ -414,7 +414,8 @@ async fn process_multipart_files(
             );
 
             let file_url = format!(
-                "/uploads/deliverables/{}/{}/{unique_name}", ctx.order_id, ctx.phase_number
+                "/uploads/deliverables/{}/{}/{unique_name}",
+                ctx.order_id, ctx.phase_number
             );
 
             #[allow(clippy::cast_possible_wrap)]
@@ -492,19 +493,11 @@ fn validate_magic_bytes(data: &[u8], claimed_mime: &str) -> bool {
             let prefix = String::from_utf8_lossy(&data[..check_len]);
             prefix.contains("<svg")
         }
-        "image/webp" => {
-            data.len() >= 12
-                && data.starts_with(b"RIFF")
-                && &data[8..12] == b"WEBP"
-        }
-        "video/mp4" => {
-            data.len() >= 8 && &data[4..8] == b"ftyp"
-        }
+        "image/webp" => data.len() >= 12 && data.starts_with(b"RIFF") && &data[8..12] == b"WEBP",
+        "video/mp4" => data.len() >= 8 && &data[4..8] == b"ftyp",
         "application/zip" => data.starts_with(&[0x50, 0x4B]),
         "application/x-rar-compressed" => data.starts_with(b"Rar!"),
-        "application/x-7z-compressed" => {
-            data.starts_with(&[0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C])
-        }
+        "application/x-7z-compressed" => data.starts_with(&[0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C]),
         /* octet-stream es genérico, no se puede validar por contenido */
         "application/octet-stream" => true,
         /* MIME desconocido que pasó la whitelist: rechazar por precaución */

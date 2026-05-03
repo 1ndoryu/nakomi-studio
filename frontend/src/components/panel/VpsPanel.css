@@ -21,7 +21,7 @@
     gap: 4px;
     padding: var(--spacing-sm) var(--spacing-md);
     background: var(--brand-white);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
 }
 
@@ -47,7 +47,7 @@
 /* [304A-2] Background y borde coherentes con hostingCard */
 .vpsCard {
     background: var(--brand-white);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     padding: var(--spacing-md);
     display: flex;
@@ -215,7 +215,7 @@
     left: 0;
     right: 0;
     background: var(--brand-white);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     z-index: 100;
     max-height: 220px;

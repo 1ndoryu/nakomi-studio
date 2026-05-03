@@ -15,9 +15,8 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::UserRole;
 use crate::services::contabo_domains::{
-    ContaboDomain, ContaboHandle, CreateDnsRecordRequest, CreateHandleRequest,
-    DnsRecord, DnsZone, Nameserver, OrderDomainRequest, UpdateDnsRecordRequest,
-    DomainHandles,
+    ContaboDomain, ContaboHandle, CreateDnsRecordRequest, CreateHandleRequest, DnsRecord, DnsZone,
+    DomainHandles, Nameserver, OrderDomainRequest, UpdateDnsRecordRequest,
 };
 use crate::AppState;
 
@@ -203,10 +202,7 @@ pub async fn create_handle(
 ) -> Result<(StatusCode, Json<ContaboHandle>), AppError> {
     require_admin(&auth)?;
     let svc = contabo(&state)?;
-    let handle = svc
-        .create_handle(&body)
-        .await
-        .map_err(AppError::Internal)?;
+    let handle = svc.create_handle(&body).await.map_err(AppError::Internal)?;
     Ok((StatusCode::CREATED, Json(handle)))
 }
 
@@ -218,10 +214,7 @@ pub async fn list_dns_zones(
 ) -> Result<Json<Vec<DnsZone>>, AppError> {
     require_admin(&auth)?;
     let svc = contabo(&state)?;
-    let zones = svc
-        .list_dns_zones()
-        .await
-        .map_err(AppError::Internal)?;
+    let zones = svc.list_dns_zones().await.map_err(AppError::Internal)?;
     Ok(Json(zones))
 }
 
@@ -320,8 +313,8 @@ pub async fn delete_dns_record(
 /* El cliente solo puede gestionar registros DNS del dominio ligado a su suscripción.
  * La zona DNS se deduce del dominio de la suscripción. */
 
-use uuid::Uuid;
 use crate::repositories::HostingRepository;
+use uuid::Uuid;
 
 async fn client_zone(state: &AppState, auth: &AuthUser, sub_id: Uuid) -> Result<String, AppError> {
     let sub = HostingRepository::find_by_id(&state.pool, sub_id)
@@ -331,7 +324,9 @@ async fn client_zone(state: &AppState, auth: &AuthUser, sub_id: Uuid) -> Result<
     let is_owner = sub.user_id == Some(auth.user_id);
     let is_admin = auth.effective_role == UserRole::Admin;
     if !is_owner && !is_admin {
-        return Err(AppError::Forbidden("No tienes acceso a esta suscripción".into()));
+        return Err(AppError::Forbidden(
+            "No tienes acceso a esta suscripción".into(),
+        ));
     }
 
     sub.domain
@@ -346,7 +341,10 @@ pub async fn client_list_dns_records(
 ) -> Result<Json<Vec<DnsRecord>>, AppError> {
     let zone = client_zone(&state, &auth, sub_id).await?;
     let svc = contabo(&state)?;
-    let records = svc.list_dns_records(&zone).await.map_err(AppError::Internal)?;
+    let records = svc
+        .list_dns_records(&zone)
+        .await
+        .map_err(AppError::Internal)?;
     Ok(Json(records))
 }
 
@@ -358,7 +356,10 @@ pub async fn client_create_dns_record(
 ) -> Result<(StatusCode, Json<DnsRecord>), AppError> {
     let zone = client_zone(&state, &auth, sub_id).await?;
     let svc = contabo(&state)?;
-    let record = svc.create_dns_record(&zone, &body).await.map_err(AppError::Internal)?;
+    let record = svc
+        .create_dns_record(&zone, &body)
+        .await
+        .map_err(AppError::Internal)?;
     Ok((StatusCode::CREATED, Json(record)))
 }
 
@@ -370,7 +371,10 @@ pub async fn client_update_dns_record(
 ) -> Result<Json<DnsRecord>, AppError> {
     let zone = client_zone(&state, &auth, sub_id).await?;
     let svc = contabo(&state)?;
-    let record = svc.update_dns_record(&zone, record_id, &body).await.map_err(AppError::Internal)?;
+    let record = svc
+        .update_dns_record(&zone, record_id, &body)
+        .await
+        .map_err(AppError::Internal)?;
     Ok(Json(record))
 }
 
@@ -381,7 +385,9 @@ pub async fn client_delete_dns_record(
 ) -> Result<StatusCode, AppError> {
     let zone = client_zone(&state, &auth, sub_id).await?;
     let svc = contabo(&state)?;
-    svc.delete_dns_record(&zone, record_id).await.map_err(AppError::Internal)?;
+    svc.delete_dns_record(&zone, record_id)
+        .await
+        .map_err(AppError::Internal)?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -394,10 +400,7 @@ pub fn domain_routes() -> Router<AppState> {
             "/hosting/domains/check/:domain",
             get(check_domain_availability),
         )
-        .route(
-            "/hosting/domains",
-            get(list_domains).post(order_domain),
-        )
+        .route("/hosting/domains", get(list_domains).post(order_domain))
         .route(
             "/hosting/domains/:domain",
             get(get_domain).patch(update_domain),
@@ -411,10 +414,7 @@ pub fn domain_routes() -> Router<AppState> {
             axum::routing::post(get_auth_code),
         )
         /* Handles */
-        .route(
-            "/hosting/handles",
-            get(list_handles).post(create_handle),
-        )
+        .route("/hosting/handles", get(list_handles).post(create_handle))
         /* DNS Zones (admin) */
         .route(
             "/hosting/dns/zones",
@@ -431,8 +431,7 @@ pub fn domain_routes() -> Router<AppState> {
         )
         .route(
             "/hosting/dns/zones/:zone/records/:record_id",
-            axum::routing::patch(update_dns_record)
-                .delete(delete_dns_record),
+            axum::routing::patch(update_dns_record).delete(delete_dns_record),
         )
         /* DNS Records (client — por suscripción) */
         .route(
@@ -441,7 +440,6 @@ pub fn domain_routes() -> Router<AppState> {
         )
         .route(
             "/hosting/subscriptions/:sub_id/dns/:record_id",
-            axum::routing::patch(client_update_dns_record)
-                .delete(client_delete_dns_record),
+            axum::routing::patch(client_update_dns_record).delete(client_delete_dns_record),
         )
 }

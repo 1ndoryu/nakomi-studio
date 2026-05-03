@@ -187,8 +187,8 @@ fn req_id() -> String {
 
 impl ContaboService {
     /* ============================
-       DOMINIOS
-       ============================ */
+    DOMINIOS
+    ============================ */
 
     /// Verificar si un dominio está disponible para registro.
     /// Retorna true si disponible (204), false si no (404).
@@ -197,7 +197,9 @@ impl ContaboService {
 
         let resp = self
             .client
-            .post(format!("{API_BASE}/registries-domains/{domain}/check-availability"))
+            .post(format!(
+                "{API_BASE}/registries-domains/{domain}/check-availability"
+            ))
             .bearer_auth(&token)
             .header("x-request-id", req_id())
             .send()
@@ -272,10 +274,7 @@ impl ContaboService {
     }
 
     /// Registrar o transferir un dominio.
-    pub async fn order_domain(
-        &self,
-        req: &OrderDomainRequest,
-    ) -> Result<ContaboDomain, String> {
+    pub async fn order_domain(&self, req: &OrderDomainRequest) -> Result<ContaboDomain, String> {
         let token = self.get_token().await?;
 
         let resp = self
@@ -347,11 +346,7 @@ impl ContaboService {
     }
 
     /// Cancelar un dominio.
-    pub async fn cancel_domain(
-        &self,
-        domain: &str,
-        reason: Option<&str>,
-    ) -> Result<(), String> {
+    pub async fn cancel_domain(&self, domain: &str, reason: Option<&str>) -> Result<(), String> {
         let token = self.get_token().await?;
 
         let body = serde_json::json!({
@@ -407,8 +402,8 @@ impl ContaboService {
     }
 
     /* ============================
-       HANDLES (contactos WHOIS)
-       ============================ */
+    HANDLES (contactos WHOIS)
+    ============================ */
 
     /// Listar todos los handles (contactos registrados en Contabo).
     pub async fn list_handles(&self) -> Result<Vec<ContaboHandle>, String> {
@@ -438,10 +433,7 @@ impl ContaboService {
     }
 
     /// Crear un handle (contacto para dominios).
-    pub async fn create_handle(
-        &self,
-        req: &CreateHandleRequest,
-    ) -> Result<ContaboHandle, String> {
+    pub async fn create_handle(&self, req: &CreateHandleRequest) -> Result<ContaboHandle, String> {
         let token = self.get_token().await?;
 
         let resp = self
@@ -472,8 +464,8 @@ impl ContaboService {
     }
 
     /* ============================
-       DNS ZONES
-       ============================ */
+    DNS ZONES
+    ============================ */
 
     /// Listar todas las zonas DNS.
     pub async fn list_dns_zones(&self) -> Result<Vec<DnsZone>, String> {
@@ -554,14 +546,11 @@ impl ContaboService {
     }
 
     /* ============================
-       DNS RECORDS
-       ============================ */
+    DNS RECORDS
+    ============================ */
 
     /// Listar registros de una zona DNS.
-    pub async fn list_dns_records(
-        &self,
-        zone_name: &str,
-    ) -> Result<Vec<DnsRecord>, String> {
+    pub async fn list_dns_records(&self, zone_name: &str) -> Result<Vec<DnsRecord>, String> {
         let token = self.get_token().await?;
 
         let resp = self
@@ -660,11 +649,7 @@ impl ContaboService {
     }
 
     /// Eliminar un registro DNS.
-    pub async fn delete_dns_record(
-        &self,
-        zone_name: &str,
-        record_id: i64,
-    ) -> Result<(), String> {
+    pub async fn delete_dns_record(&self, zone_name: &str, record_id: i64) -> Result<(), String> {
         let token = self.get_token().await?;
 
         let resp = self

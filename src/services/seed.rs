@@ -47,12 +47,10 @@ async fn insert_hosting_event(
 impl SeedService {
     /// Elimina todos los datos generados por el seed (usuarios test + sus órdenes/fases/chat)
     pub async fn delete_test_data(pool: &PgPool) -> Result<u64, sqlx::Error> {
-        let ids: Vec<Uuid> = sqlx::query_scalar(
-            "SELECT id FROM users WHERE email = ANY($1)",
-        )
-        .bind(&TEST_EMAILS[..])
-        .fetch_all(pool)
-        .await?;
+        let ids: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM users WHERE email = ANY($1)")
+            .bind(&TEST_EMAILS[..])
+            .fetch_all(pool)
+            .await?;
 
         if ids.is_empty() {
             return Ok(0);
@@ -167,8 +165,11 @@ impl SeedService {
         let employee_id = Self::find_user(pool, "empleado@test.com").await?;
 
         let (Some(client_id), Some(employee_id)) = (client_id, employee_id) else {
-            return Ok("No se encontraron usuarios de prueba (cliente@test.com / empleado@test.com). \
-                Reiniciar el servidor para que los fixtures de content/ se sincronicen primero.".into());
+            return Ok(
+                "No se encontraron usuarios de prueba (cliente@test.com / empleado@test.com). \
+                Reiniciar el servidor para que los fixtures de content/ se sincronicen primero."
+                    .into(),
+            );
         };
 
         let notif_count = Self::create_seed_notifications(pool, client_id, employee_id).await?;
@@ -176,7 +177,8 @@ impl SeedService {
         let chat_count = Self::create_seed_chat(pool, client_id, employee_id).await?;
         let activity_count = Self::create_seed_activity(pool, client_id, employee_id).await?;
         let events_count = Self::create_seed_hosting_events(pool, client_id).await?;
-        let (wallet_balance, withdrawal_count) = Self::create_seed_wallet(pool, client_id, employee_id).await?;
+        let (wallet_balance, withdrawal_count) =
+            Self::create_seed_wallet(pool, client_id, employee_id).await?;
 
         Ok(format!(
             "Seed completado: {notif_count} notificaciones + {review_count} reviews + \
@@ -198,14 +200,14 @@ impl SeedService {
     /* [084A-25] Borra solo datos suplementarios (no gestionados por fixtures).
      * No toca users, orders, phases, payments, hosting, projects, team_members. */
     async fn delete_supplemental_data(pool: &PgPool) -> Result<(), sqlx::Error> {
-        let ids: Vec<Uuid> = sqlx::query_scalar(
-            "SELECT id FROM users WHERE email = ANY($1)",
-        )
-        .bind(&TEST_EMAILS[..])
-        .fetch_all(pool)
-        .await?;
+        let ids: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM users WHERE email = ANY($1)")
+            .bind(&TEST_EMAILS[..])
+            .fetch_all(pool)
+            .await?;
 
-        if ids.is_empty() { return Ok(()) }
+        if ids.is_empty() {
+            return Ok(());
+        }
 
         /* Reviews de test users */
         sqlx::query("DELETE FROM order_reviews WHERE client_id = ANY($1) OR employee_id = ANY($1)")
@@ -263,7 +265,11 @@ impl SeedService {
     /* [104A-seed] Crea hosting_events realistas que simulan el ciclo de vida completo
      * de un hosting comprado: pago → provisioning → DNS → SSL → activo.
      * Para hostings suspendidos agrega evento de suspensión por falta de pago. */
-    async fn create_seed_hosting_events(pool: &PgPool, client_id: Uuid) -> Result<u32, sqlx::Error> {
+    #[allow(clippy::too_many_lines)]
+    async fn create_seed_hosting_events(
+        pool: &PgPool,
+        client_id: Uuid,
+    ) -> Result<u32, sqlx::Error> {
         let sub_ids: Vec<(Uuid, String, Option<String>)> = sqlx::query_as(
             "SELECT id, status, domain FROM hosting_subscriptions WHERE user_id = $1",
         )
@@ -276,23 +282,57 @@ impl SeedService {
             let domain_str = domain.as_deref().unwrap_or("sin dominio");
 
             /* Eventos comunes: creación + provisioning iniciado */
-            insert_hosting_event(pool, sub_id, "created", serde_json::json!({
-                "source": "stripe_webhook", "plan": "pro", "domain": domain_str,
-                "message": "Suscripción de hosting creada tras confirmación de pago"
-            }), "30 days").await?;
-            insert_hosting_event(pool, sub_id, "provisioning_started", serde_json::json!({
-                "message": "Servidor VPS asignado, instalando WordPress + SSL",
-                "server": "vps1.nakomi.studio"
-            }), "29 days 23 hours").await?;
+            insert_hosting_event(
+                pool,
+                sub_id,
+                "created",
+                serde_json::json!({
+                    "source": "stripe_webhook", "plan": "pro", "domain": domain_str,
+                    "message": "Suscripción de hosting creada tras confirmación de pago"
+                }),
+                "30 days",
+            )
+            .await?;
+            insert_hosting_event(
+                pool,
+                sub_id,
+                "provisioning_started",
+                serde_json::json!({
+                    "message": "Servidor VPS asignado, instalando WordPress + SSL",
+                    "server": "vps1.nakomi.studio"
+                }),
+                "29 days 23 hours",
+            )
+            .await?;
             count += 2;
 
             if status == "active" {
                 let events = vec![
-                    ("provisioning_completed", serde_json::json!({"message": "Hosting provisionado exitosamente en Coolify", "server_ip": "66.94.100.241", "coolify_site_name": "mitienda-test"}), "29 days 22 hours"),
-                    ("dns_configured", serde_json::json!({"message": format!("Registros DNS de {} apuntan correctamente al servidor", domain_str), "records": ["A @ → 66.94.100.241", "A www → 66.94.100.241"]}), "29 days 20 hours"),
-                    ("ssl_issued", serde_json::json!({"message": format!("Certificado SSL emitido para {}", domain_str), "provider": "Let's Encrypt", "expires": "2026-07-10"}), "29 days 19 hours"),
-                    ("status_changed", serde_json::json!({"from": "provisioning", "to": "active", "message": "Hosting activado y funcionando"}), "29 days 18 hours"),
-                    ("payment_received", serde_json::json!({"message": "Pago mensual procesado: $10.00", "amount_cents": 1000, "source": "stripe_webhook"}), "1 day"),
+                    (
+                        "provisioning_completed",
+                        serde_json::json!({"message": "Hosting provisionado exitosamente en Coolify", "server_ip": "66.94.100.241", "coolify_site_name": "mitienda-test"}),
+                        "29 days 22 hours",
+                    ),
+                    (
+                        "dns_configured",
+                        serde_json::json!({"message": format!("Registros DNS de {} apuntan correctamente al servidor", domain_str), "records": ["A @ → 66.94.100.241", "A www → 66.94.100.241"]}),
+                        "29 days 20 hours",
+                    ),
+                    (
+                        "ssl_issued",
+                        serde_json::json!({"message": format!("Certificado SSL emitido para {}", domain_str), "provider": "Let's Encrypt", "expires": "2026-07-10"}),
+                        "29 days 19 hours",
+                    ),
+                    (
+                        "status_changed",
+                        serde_json::json!({"from": "provisioning", "to": "active", "message": "Hosting activado y funcionando"}),
+                        "29 days 18 hours",
+                    ),
+                    (
+                        "payment_received",
+                        serde_json::json!({"message": "Pago mensual procesado: $10.00", "amount_cents": 1000, "source": "stripe_webhook"}),
+                        "1 day",
+                    ),
                 ];
                 for (etype, details, interval) in events {
                     insert_hosting_event(pool, sub_id, etype, details, interval).await?;
@@ -300,19 +340,38 @@ impl SeedService {
                 }
             } else if status == "suspended" {
                 let events = vec![
-                    ("provisioning_completed", serde_json::json!({"message": "Hosting provisionado exitosamente"}), "60 days"),
-                    ("payment_failed", serde_json::json!({"message": "Falló el cobro mensual — tarjeta rechazada", "amount_cents": 1500, "retry_count": 3}), "5 days"),
-                    ("status_changed", serde_json::json!({"from": "active", "to": "suspended", "message": "Hosting suspendido por falta de pago tras 3 intentos fallidos"}), "2 days"),
+                    (
+                        "provisioning_completed",
+                        serde_json::json!({"message": "Hosting provisionado exitosamente"}),
+                        "60 days",
+                    ),
+                    (
+                        "payment_failed",
+                        serde_json::json!({"message": "Falló el cobro mensual — tarjeta rechazada", "amount_cents": 1500, "retry_count": 3}),
+                        "5 days",
+                    ),
+                    (
+                        "status_changed",
+                        serde_json::json!({"from": "active", "to": "suspended", "message": "Hosting suspendido por falta de pago tras 3 intentos fallidos"}),
+                        "2 days",
+                    ),
                 ];
                 for (etype, details, interval) in events {
                     insert_hosting_event(pool, sub_id, etype, details, interval).await?;
                     count += 1;
                 }
             } else {
-                insert_hosting_event(pool, sub_id, "status_changed", serde_json::json!({
-                    "from": "pending", "to": "provisioning",
-                    "message": "Servidor asignado, provisioning en curso..."
-                }), "1 hour").await?;
+                insert_hosting_event(
+                    pool,
+                    sub_id,
+                    "status_changed",
+                    serde_json::json!({
+                        "from": "pending", "to": "provisioning",
+                        "message": "Servidor asignado, provisioning en curso..."
+                    }),
+                    "1 hour",
+                )
+                .await?;
                 count += 1;
             }
         }
@@ -321,14 +380,54 @@ impl SeedService {
     }
 
     /* [074A-2] Notificaciones de prueba para que la campanita muestre algo */
-    async fn create_seed_notifications(pool: &PgPool, client_id: Uuid, employee_id: Uuid) -> Result<u32, sqlx::Error> {
+    async fn create_seed_notifications(
+        pool: &PgPool,
+        client_id: Uuid,
+        employee_id: Uuid,
+    ) -> Result<u32, sqlx::Error> {
         let notifs: &[(&str, Uuid, &str, &str, Option<&str>)] = &[
-            ("order_assigned", employee_id, "Nueva orden asignada", "Se te asignó la orden #1 de Diseño Web Básico.", Some("/panel?tab=ordenes")),
-            ("payment_received", client_id, "Pago confirmado", "Tu pago de $100.00 fue procesado exitosamente.", Some("/panel?tab=ordenes")),
-            ("phase_delivered", client_id, "Entrega lista para revisión", "El freelancer entregó la Fase 1 de tu orden.", Some("/panel?tab=ordenes")),
-            ("message_received", client_id, "Nuevo mensaje", "Empleado te envió un mensaje en el chat de la orden.", Some("/panel?tab=mensajes")),
-            ("order_completed", client_id, "Orden completada", "Tu orden de Agentes IA ha sido completada. ¡Déjanos una reseña!", Some("/panel?tab=ordenes")),
-            ("order_completed", employee_id, "Orden completada", "La orden #3 de Agentes IA fue marcada como completada.", Some("/panel?tab=ordenes")),
+            (
+                "order_assigned",
+                employee_id,
+                "Nueva orden asignada",
+                "Se te asignó la orden #1 de Diseño Web Básico.",
+                Some("/panel?tab=ordenes"),
+            ),
+            (
+                "payment_received",
+                client_id,
+                "Pago confirmado",
+                "Tu pago de $100.00 fue procesado exitosamente.",
+                Some("/panel?tab=ordenes"),
+            ),
+            (
+                "phase_delivered",
+                client_id,
+                "Entrega lista para revisión",
+                "El freelancer entregó la Fase 1 de tu orden.",
+                Some("/panel?tab=ordenes"),
+            ),
+            (
+                "message_received",
+                client_id,
+                "Nuevo mensaje",
+                "Empleado te envió un mensaje en el chat de la orden.",
+                Some("/panel?tab=mensajes"),
+            ),
+            (
+                "order_completed",
+                client_id,
+                "Orden completada",
+                "Tu orden de Agentes IA ha sido completada. ¡Déjanos una reseña!",
+                Some("/panel?tab=ordenes"),
+            ),
+            (
+                "order_completed",
+                employee_id,
+                "Orden completada",
+                "La orden #3 de Agentes IA fue marcada como completada.",
+                Some("/panel?tab=ordenes"),
+            ),
         ];
 
         for (ntype, user_id, title, body, link) in notifs {
@@ -336,7 +435,11 @@ impl SeedService {
                 "INSERT INTO notifications (user_id, notification_type, title, body, link, read)
                  VALUES ($1, $2, $3, $4, $5, $6)",
             )
-            .bind(user_id).bind(ntype).bind(title).bind(body).bind(link)
+            .bind(user_id)
+            .bind(ntype)
+            .bind(title)
+            .bind(body)
+            .bind(link)
             .bind(ntype == &"order_completed") /* completada = ya leída */
             .execute(pool)
             .await?;
@@ -347,7 +450,11 @@ impl SeedService {
     }
 
     /* [074A-2] Review en la orden completada */
-    async fn create_seed_reviews(pool: &PgPool, client_id: Uuid, employee_id: Uuid) -> Result<u32, sqlx::Error> {
+    async fn create_seed_reviews(
+        pool: &PgPool,
+        client_id: Uuid,
+        employee_id: Uuid,
+    ) -> Result<u32, sqlx::Error> {
         let completed_order: Option<Uuid> = sqlx::query_scalar(
             "SELECT id FROM orders WHERE client_id = $1 AND status = 'completed' LIMIT 1",
         )
@@ -355,7 +462,9 @@ impl SeedService {
         .fetch_optional(pool)
         .await?;
 
-        let Some(order_id) = completed_order else { return Ok(0) };
+        let Some(order_id) = completed_order else {
+            return Ok(0);
+        };
 
         sqlx::query(
             "INSERT INTO order_reviews (order_id, client_id, employee_id, rating, comment, employee_response, employee_responded_at)
@@ -370,7 +479,11 @@ impl SeedService {
     }
 
     /* [074A-2] Chat con mensajes entre cliente y empleado en la orden in_progress */
-    async fn create_seed_chat(pool: &PgPool, client_id: Uuid, employee_id: Uuid) -> Result<u32, sqlx::Error> {
+    async fn create_seed_chat(
+        pool: &PgPool,
+        client_id: Uuid,
+        employee_id: Uuid,
+    ) -> Result<u32, sqlx::Error> {
         let in_progress_order: Option<Uuid> = sqlx::query_scalar(
             "SELECT id FROM orders WHERE client_id = $1 AND status = 'in_progress' LIMIT 1",
         )
@@ -378,20 +491,25 @@ impl SeedService {
         .fetch_optional(pool)
         .await?;
 
-        let Some(order_id) = in_progress_order else { return Ok(0) };
+        let Some(order_id) = in_progress_order else {
+            return Ok(0);
+        };
 
         let session_id: Uuid = sqlx::query_scalar(
             "INSERT INTO chat_sessions (user_id, order_id, status, assigned_staff_id, ai_enabled)
              VALUES ($1, $2, 'active', $3, false)
              RETURNING id",
         )
-        .bind(client_id).bind(order_id).bind(employee_id)
+        .bind(client_id)
+        .bind(order_id)
+        .bind(employee_id)
         .fetch_one(pool)
         .await?;
 
         /* Vincular sesión a la orden */
         sqlx::query("UPDATE orders SET chat_session_id = $1 WHERE id = $2")
-            .bind(session_id).bind(order_id)
+            .bind(session_id)
+            .bind(order_id)
             .execute(pool)
             .await?;
 
@@ -423,7 +541,12 @@ impl SeedService {
      * El cliente tiene saldo de $120 (liberado por órdenes completadas).
      * El empleado tiene saldo de $38.40 (80% comisión de orden completada).
      * Retornamos (balance_cents_cliente, num_withdrawals). */
-    async fn create_seed_wallet(pool: &PgPool, client_id: Uuid, employee_id: Uuid) -> Result<(i32, u32), sqlx::Error> {
+    #[allow(clippy::too_many_lines)]
+    async fn create_seed_wallet(
+        pool: &PgPool,
+        client_id: Uuid,
+        employee_id: Uuid,
+    ) -> Result<(i32, u32), sqlx::Error> {
         /* Wallet cliente: $120.00 (pagos devueltos / créditos demo) */
         let client_wallet_id: Uuid = sqlx::query_scalar(
             "INSERT INTO user_wallets (user_id, balance_cents, currency)
@@ -448,9 +571,9 @@ impl SeedService {
 
         /* Historial de transacciones del cliente */
         let client_txs: &[(i32, &str, &str)] = &[
-            (15000, "credit",     "Crédito inicial de bienvenida"),
-            (-3000, "debit",      "Pago parcial — Diseño Web Básico fase 1"),
-            (3000,  "refund",     "Reembolso aprobado — Agentes IA parcial"),
+            (15000, "credit", "Crédito inicial de bienvenida"),
+            (-3000, "debit", "Pago parcial — Diseño Web Básico fase 1"),
+            (3000, "refund", "Reembolso aprobado — Agentes IA parcial"),
             (-3000, "withdrawal", "Retiro procesado vía PayPal"),
         ];
         let mut balance_after = 0i32;
@@ -467,8 +590,16 @@ impl SeedService {
 
         /* Historial del empleado */
         let emp_txs: &[(i32, &str, &str)] = &[
-            (4800, "commission", "Comisión 80% — Agentes IA Básico completado"),
-            (-960, "withdrawal", "Retiro procesado vía transferencia bancaria"),
+            (
+                4800,
+                "commission",
+                "Comisión 80% — Agentes IA Básico completado",
+            ),
+            (
+                -960,
+                "withdrawal",
+                "Retiro procesado vía transferencia bancaria",
+            ),
         ];
         let mut emp_balance = 0i32;
         for (amount, tx_type, desc) in emp_txs {
@@ -484,9 +615,27 @@ impl SeedService {
 
         /* Withdrawal requests del cliente: pending + approved + rejected */
         let withdrawals: &[(&str, i32, &str, &str, &str)] = &[
-            ("pending",  5000, "PayPal", "nakomi_cliente@gmail.com",  "Retiro mensual de saldo acumulado"),
-            ("approved", 3000, "bank",   "ES12 3456 7890 0123 4567",  "Retiro por transferencia SEPA"),
-            ("rejected", 8000, "crypto", "3FZbgi29cpjq2GjdwV8eyHuJJnkLtktZc5", "Retiro a Bitcoin wallet"),
+            (
+                "pending",
+                5000,
+                "PayPal",
+                "nakomi_cliente@gmail.com",
+                "Retiro mensual de saldo acumulado",
+            ),
+            (
+                "approved",
+                3000,
+                "bank",
+                "ES12 3456 7890 0123 4567",
+                "Retiro por transferencia SEPA",
+            ),
+            (
+                "rejected",
+                8000,
+                "crypto",
+                "3FZbgi29cpjq2GjdwV8eyHuJJnkLtktZc5",
+                "Retiro a Bitcoin wallet",
+            ),
         ];
         let mut withdrawal_count = 0u32;
         for (status, amount, method, details, note) in withdrawals {
@@ -515,7 +664,11 @@ impl SeedService {
     }
 
     /* [074A-2] Activity log para dashboard admin */
-    async fn create_seed_activity(pool: &PgPool, client_id: Uuid, employee_id: Uuid) -> Result<u32, sqlx::Error> {
+    async fn create_seed_activity(
+        pool: &PgPool,
+        client_id: Uuid,
+        employee_id: Uuid,
+    ) -> Result<u32, sqlx::Error> {
         let orders: Vec<Uuid> = sqlx::query_scalar(
             "SELECT id FROM orders WHERE client_id = $1 ORDER BY created_at LIMIT 4",
         )
@@ -523,7 +676,9 @@ impl SeedService {
         .fetch_all(pool)
         .await?;
 
-        if orders.is_empty() { return Ok(0) }
+        if orders.is_empty() {
+            return Ok(0);
+        }
 
         let mut count = 0u32;
         for (idx, order_id) in orders.iter().enumerate() {
@@ -553,5 +708,4 @@ impl SeedService {
 
         Ok(count)
     }
-
 }

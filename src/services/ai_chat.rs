@@ -1,4 +1,4 @@
-﻿/* [064A-29] AI Chat Service: integraciÃ³n con Groq API (OpenAI-compatible).
+/* [064A-29] AI Chat Service: integraciÃ³n con Groq API (OpenAI-compatible).
  * Rotacion de 3 API keys por mensaje (round-robin via AtomicUsize).
  * System prompt dinÃ¡mico: pre-venta (servicios, precios) vs soporte de orden
  * (contexto de orden, fase actual, historial). Usa reqwest HTTP client. */
@@ -10,8 +10,8 @@ use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::repositories::{ChatRepository, OrderRepository};
 use crate::models::{ChatMessage, Order};
+use crate::repositories::{ChatRepository, OrderRepository};
 use crate::services::ai_tools::{self, RichMessage};
 
 /* [084A-30] Sanitiza texto controlado por el usuario antes de inyectarlo en el system prompt.
@@ -77,8 +77,7 @@ impl AiChatConfig {
             }
         }
 
-        let model = std::env::var("AI_MODEL")
-            .unwrap_or_else(|_| "openai/gpt-oss-120b".to_string());
+        let model = std::env::var("AI_MODEL").unwrap_or_else(|_| "openai/gpt-oss-120b".to_string());
 
         /* [084A-36] Whitelist de modelos Groq, ordenada por inteligencia descendente.
          * GPT-OSS-120B como primario. Maverick eliminado (deprecated en Groq).
@@ -98,14 +97,15 @@ impl AiChatConfig {
             "openai/gpt-oss-120b".to_string()
         };
 
-        let api_url = std::env::var("AI_API_URL").unwrap_or_else(|_| {
-            "https://api.groq.com/openai/v1/chat/completions".to_string()
-        });
+        let api_url = std::env::var("AI_API_URL")
+            .unwrap_or_else(|_| "https://api.groq.com/openai/v1/chat/completions".to_string());
 
         /* [084A-37] Google Gemini como proveedor secundario.
          * La API de Gemini es OpenAI-compatible: mismo formato de request,
          * diferente base_url y api_key. Se usa como fallback cuando Groq falla. */
-        let gemini_key = std::env::var("GOOGLE_GEMINI_API").ok().filter(|k| !k.is_empty());
+        let gemini_key = std::env::var("GOOGLE_GEMINI_API")
+            .ok()
+            .filter(|k| !k.is_empty());
         let gemini_url = std::env::var("GEMINI_API_URL").unwrap_or_else(|_| {
             "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions".to_string()
         });
@@ -120,7 +120,14 @@ impl AiChatConfig {
             .map(|v| !v.eq_ignore_ascii_case("false") && v != "0")
             .unwrap_or(true);
         ROTATION_ENABLED.store(rotation_from_env, Ordering::Relaxed);
-        tracing::info!("AI: rotación de API keys {}", if rotation_from_env { "activada" } else { "desactivada (AI_ROTATION_ENABLED=false)" });
+        tracing::info!(
+            "AI: rotación de API keys {}",
+            if rotation_from_env {
+                "activada"
+            } else {
+                "desactivada (AI_ROTATION_ENABLED=false)"
+            }
+        );
 
         Self {
             api_keys: keys,
@@ -152,7 +159,10 @@ impl AiChatConfig {
     /* [114A-12] Control de rotaciÃ³n desde el panel admin */
     pub fn set_rotation_enabled(enabled: bool) {
         ROTATION_ENABLED.store(enabled, Ordering::Relaxed);
-        tracing::info!("RotaciÃ³n de API keys: {}", if enabled { "activada" } else { "desactivada" });
+        tracing::info!(
+            "RotaciÃ³n de API keys: {}",
+            if enabled { "activada" } else { "desactivada" }
+        );
     }
 
     #[must_use]
@@ -241,7 +251,14 @@ impl AiChatService {
             });
         }
 
-        let system_prompt = build_system_prompt(pool, ctx.session_id, ctx.visitor_id, ctx.user_id, ctx.context).await;
+        let system_prompt = build_system_prompt(
+            pool,
+            ctx.session_id,
+            ctx.visitor_id,
+            ctx.user_id,
+            ctx.context,
+        )
+        .await;
         let history = ChatRepository::list_messages(pool, ctx.session_id, 20, 0)
             .await
             .unwrap_or_default();
@@ -264,10 +281,20 @@ impl AiChatService {
                 /* La IA quiere llamar tools â€” ejecutarlas */
                 messages.push(choice["message"].clone());
                 let tool_results = process_tool_calls(
-                    pool, http_client, stripe_key, ctx.visitor_id, ctx.session_id, tool_calls, &mut rich_messages,
-                ).await;
+                    pool,
+                    http_client,
+                    stripe_key,
+                    ctx.visitor_id,
+                    ctx.session_id,
+                    tool_calls,
+                    &mut rich_messages,
+                )
+                .await;
 
-                if tool_results.iter().any(|r| r.contains("\"status\":\"escalated\"")) {
+                if tool_results
+                    .iter()
+                    .any(|r| r.contains("\"status\":\"escalated\""))
+                {
                     needs_escalation = true;
                 }
 
@@ -279,7 +306,11 @@ impl AiChatService {
                     }));
                 }
 
-                tracing::debug!("AI tool call iteration {}, {} tools executed", iteration + 1, tool_results.len());
+                tracing::debug!(
+                    "AI tool call iteration {}, {} tools executed",
+                    iteration + 1,
+                    tool_results.len()
+                );
                 continue;
             }
 
@@ -344,9 +375,9 @@ impl AiChatService {
         }
 
         let resp = call_groq_api(config, &messages, None).await?;
-        let text = resp["choices"][0]["message"]["content"]
-            .as_str()
-            .unwrap_or("Disculpa, no pude procesar tu mensaje. Un miembro del equipo te asistirÃ¡.");
+        let text = resp["choices"][0]["message"]["content"].as_str().unwrap_or(
+            "Disculpa, no pude procesar tu mensaje. Un miembro del equipo te asistirÃ¡.",
+        );
         let (clean_text, escalation) = parse_escalation(text);
         Ok(AiResponse {
             text: clean_text,
@@ -364,7 +395,9 @@ impl AiChatService {
         order_id: Uuid,
         msgs: &[ChatMessage],
     ) {
-        let Some(api_key) = config.next_key() else { return };
+        let Some(api_key) = config.next_key() else {
+            return;
+        };
 
         let mut conversation = String::new();
         for m in msgs.iter().take(50) {
@@ -439,7 +472,16 @@ async fn process_tool_calls(
         };
         tracing::debug!("AI tool call: {name}({args})");
 
-        let result = ai_tools::execute_tool(pool, http_client, stripe_key, visitor_id, session_id, name, &args).await;
+        let result = ai_tools::execute_tool(
+            pool,
+            http_client,
+            stripe_key,
+            visitor_id,
+            session_id,
+            name,
+            &args,
+        )
+        .await;
         if let Some(rm) = result.rich_message {
             rich_messages.push(rm);
         }
@@ -518,7 +560,10 @@ fn build_context_messages(
         /* [084A-32] Resumen mÃ¡s generoso: 8k chars, priorizando los msgs mÃ¡s recientes del lote truncado */
         let summary_text = if truncated.len() > 8000 {
             let tail = &truncated[truncated.len().saturating_sub(7500)..];
-            format!("[...{} mensajes omitidos...]\n{tail}", fit_from.saturating_sub(5))
+            format!(
+                "[...{} mensajes omitidos...]\n{tail}",
+                fit_from.saturating_sub(5)
+            )
         } else {
             truncated
         };
@@ -529,12 +574,18 @@ fn build_context_messages(
                 fit_from, summary_text
             )
         }));
-        tracing::debug!("AI context: {fit_from} msgs truncados, {} recientes",
-            history.len() - fit_from);
+        tracing::debug!(
+            "AI context: {fit_from} msgs truncados, {} recientes",
+            history.len() - fit_from
+        );
     }
 
     for msg in &history[fit_from..] {
-        let role = if msg.sender_type == "ai" { "assistant" } else { "user" };
+        let role = if msg.sender_type == "ai" {
+            "assistant"
+        } else {
+            "user"
+        };
         messages.push(serde_json::json!({"role": role, "content": msg.content}));
     }
     messages.push(serde_json::json!({"role": "user", "content": user_message}));
@@ -542,7 +593,7 @@ fn build_context_messages(
 }
 
 /* [174A-2] Prompts extraidos a ai_prompts.rs */
-use super::ai_prompts::{build_system_prompt, build_intermediary_prompt};
+use super::ai_prompts::{build_intermediary_prompt, build_system_prompt};
 
 /* [084A-33] Unit tests para funciones puras del servicio AI chat.
  * Cubren: sanitizaciÃ³n, estimaciÃ³n tokens, contexto, parseo escalaciÃ³n,
@@ -603,16 +654,24 @@ mod tests {
     fn build_context_fits_all_short_history() {
         let history = vec![
             ChatMessage {
-                id: Uuid::new_v4(), session_id: Uuid::new_v4(),
-                sender_type: "user".into(), content: "Hola".into(),
-                sender_id: None, created_at: chrono::Utc::now(),
-                message_type: None, metadata: None,
+                id: Uuid::new_v4(),
+                session_id: Uuid::new_v4(),
+                sender_type: "user".into(),
+                content: "Hola".into(),
+                sender_id: None,
+                created_at: chrono::Utc::now(),
+                message_type: None,
+                metadata: None,
             },
             ChatMessage {
-                id: Uuid::new_v4(), session_id: Uuid::new_v4(),
-                sender_type: "ai".into(), content: "Â¡Hola! Â¿En quÃ© puedo ayudarte?".into(),
-                sender_id: None, created_at: chrono::Utc::now(),
-                message_type: None, metadata: None,
+                id: Uuid::new_v4(),
+                session_id: Uuid::new_v4(),
+                sender_type: "ai".into(),
+                content: "Â¡Hola! Â¿En quÃ© puedo ayudarte?".into(),
+                sender_id: None,
+                created_at: chrono::Utc::now(),
+                message_type: None,
+                metadata: None,
             },
         ];
         let msgs = build_context_messages("System prompt", &history, "Nueva pregunta");
@@ -629,7 +688,8 @@ mod tests {
             model: model.to_string(),
             api_url: "https://api.groq.com".into(),
             gemini_key: None,
-            gemini_url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions".into(),
+            gemini_url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+                .into(),
         }
     }
 
@@ -652,7 +712,10 @@ mod tests {
         let chain = config.model_fallback_chain();
         assert_eq!(chain[0], "openai/gpt-oss-120b");
         assert_eq!(
-            chain.iter().filter(|m| **m == "openai/gpt-oss-120b").count(),
+            chain
+                .iter()
+                .filter(|m| **m == "openai/gpt-oss-120b")
+                .count(),
             1,
         );
         assert_eq!(chain.len(), 6);
@@ -696,6 +759,8 @@ mod tests {
     #[test]
     fn gemini_url_default() {
         let config = test_config(vec![], "test");
-        assert!(config.gemini_url.contains("generativelanguage.googleapis.com"));
+        assert!(config
+            .gemini_url
+            .contains("generativelanguage.googleapis.com"));
     }
 }

@@ -32,7 +32,9 @@ pub(crate) async fn call_groq_api(
         }
     }
 
-    Err(format!("AI: todos los proveedores fallaron. Último error: {last_error}"))
+    Err(format!(
+        "AI: todos los proveedores fallaron. Último error: {last_error}"
+    ))
 }
 
 /* Intenta Groq con rotación de modelos (fallback_chain) × keys (round-robin). */
@@ -51,7 +53,9 @@ async fn try_groq_provider(
         let mut all_rate_limited = true;
 
         for attempt in 0..num_keys {
-            let Some(api_key) = config.next_key() else { break };
+            let Some(api_key) = config.next_key() else {
+                break;
+            };
             let key_hint = &api_key[..api_key.len().min(8)];
 
             let resp = client
@@ -64,19 +68,27 @@ async fn try_groq_provider(
 
             match resp {
                 Err(e) => {
-                    tracing::error!("AI Groq [{model}] key {key_hint}... intento {}/{num_keys}: error red: {e}", attempt + 1);
+                    tracing::error!(
+                        "AI Groq [{model}] key {key_hint}... intento {}/{num_keys}: error red: {e}",
+                        attempt + 1
+                    );
                     last_error = format!("Groq error de red: {e}");
                     all_rate_limited = false;
                 }
                 Ok(response) => {
                     let status = response.status();
                     if status.is_success() {
-                        let json: Value = response.json().await
+                        let json: Value = response
+                            .json()
+                            .await
                             .map_err(|e| format!("AI parse error: {e}"))?;
                         if model == &fallback_chain[0] {
                             tracing::info!("AI OK: proveedor=Groq, modelo={model}, key={key_hint}..., intento={}", attempt + 1);
                         } else {
-                            tracing::info!("AI fallback Groq: modelo={model}, key={key_hint}..., intento={}", attempt + 1);
+                            tracing::info!(
+                                "AI fallback Groq: modelo={model}, key={key_hint}..., intento={}",
+                                attempt + 1
+                            );
                         }
                         return Ok(json);
                     }
@@ -107,7 +119,10 @@ async fn try_gemini_provider(
     messages: &[Value],
     tools: Option<&Value>,
 ) -> Result<Value, String> {
-    let gemini_key = config.gemini_key.as_deref().ok_or("Gemini no configurado")?;
+    let gemini_key = config
+        .gemini_key
+        .as_deref()
+        .ok_or("Gemini no configurado")?;
     let gemini_models = [
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
@@ -138,7 +153,9 @@ async fn try_gemini_provider(
             Ok(response) => {
                 let status = response.status();
                 if status.is_success() {
-                    let json: Value = response.json().await
+                    let json: Value = response
+                        .json()
+                        .await
                         .map_err(|e| format!("AI parse error: {e}"))?;
                     tracing::info!("AI fallback Gemini: modelo={model}, key={key_hint}...");
                     return Ok(json);

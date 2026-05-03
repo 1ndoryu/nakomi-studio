@@ -5,9 +5,9 @@
  * campos con #[sqlx(default)] (visitor_ip, visitor_user_agent).
  * Queries con prepared statements. Soporta sesiones anónimas y autenticadas. */
 
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 use crate::models::{ChatAttachment, ChatMessage, ChatSession, ChatSessionNote, VisitorProfile};
 
@@ -15,8 +15,8 @@ pub struct ChatRepository;
 
 impl ChatRepository {
     /* ============================================================
-       SESIONES
-       ============================================================ */
+    SESIONES
+    ============================================================ */
 
     /// Crear sesión de chat (pre-venta o vinculada a orden)
     pub async fn create_session(
@@ -117,9 +117,7 @@ impl ChatRepository {
     }
 
     /// Todas las sesiones activas (panel staff)
-    pub async fn list_active_sessions(
-        pool: &PgPool,
-    ) -> Result<Vec<ChatSession>, sqlx::Error> {
+    pub async fn list_active_sessions(pool: &PgPool) -> Result<Vec<ChatSession>, sqlx::Error> {
         /* [074A-30] Filtrar sesiones sin mensajes — no tiene sentido mostrarlas */
         sqlx::query_as::<_, ChatSession>(
             "SELECT id, visitor_id, visitor_name, user_id, order_id, status, \
@@ -163,7 +161,11 @@ impl ChatRepository {
         session_id: Uuid,
         enabled: bool,
     ) -> Result<ChatSession, sqlx::Error> {
-        let new_status = if enabled { "ai_handling" } else { "staff_handling" };
+        let new_status = if enabled {
+            "ai_handling"
+        } else {
+            "staff_handling"
+        };
         sqlx::query_as::<_, ChatSession>(
             "UPDATE chat_sessions SET ai_enabled = $2, status = $3, \
              updated_at = NOW() WHERE id = $1 \
@@ -217,16 +219,11 @@ impl ChatRepository {
 
     /* [104A-39] Marcar sesión como vista por staff — actualiza last_viewed_at = NOW().
      * Permite que el badge de ChatBell solo cuente sesiones con mensajes no leídos. */
-    pub async fn mark_session_viewed(
-        pool: &PgPool,
-        session_id: Uuid,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE chat_sessions SET last_viewed_at = NOW() WHERE id = $1",
-        )
-        .bind(session_id)
-        .execute(pool)
-        .await?;
+    pub async fn mark_session_viewed(pool: &PgPool, session_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE chat_sessions SET last_viewed_at = NOW() WHERE id = $1")
+            .bind(session_id)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 
@@ -252,12 +249,10 @@ impl ChatRepository {
         pool: &PgPool,
         session_id: Uuid,
     ) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query(
-            "DELETE FROM chat_messages WHERE session_id = $1",
-        )
-        .bind(session_id)
-        .execute(pool)
-        .await?;
+        let result = sqlx::query("DELETE FROM chat_messages WHERE session_id = $1")
+            .bind(session_id)
+            .execute(pool)
+            .await?;
         Ok(result.rows_affected())
     }
 
@@ -267,18 +262,16 @@ impl ChatRepository {
         pool: &PgPool,
         visitor_id: &str,
     ) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query(
-            "DELETE FROM visitor_profiles WHERE visitor_id = $1",
-        )
-        .bind(visitor_id)
-        .execute(pool)
-        .await?;
+        let result = sqlx::query("DELETE FROM visitor_profiles WHERE visitor_id = $1")
+            .bind(visitor_id)
+            .execute(pool)
+            .await?;
         Ok(result.rows_affected())
     }
 
     /* ============================================================
-       MENSAJES
-       ============================================================ */
+    MENSAJES
+    ============================================================ */
 
     /// Guardar mensaje en BD
     pub async fn save_message(
@@ -387,8 +380,8 @@ impl ChatRepository {
     }
 
     /* ============================================================
-       TYPING
-       ============================================================ */
+    TYPING
+    ============================================================ */
 
     /// Actualizar typing preview
     pub async fn update_typing(
@@ -409,8 +402,8 @@ impl ChatRepository {
     }
 
     /* ============================================================
-       NOTAS DE SESIÓN (064A-72)
-       ============================================================ */
+    NOTAS DE SESIÓN (064A-72)
+    ============================================================ */
 
     /// Listar notas de una sesión
     pub async fn list_session_notes(
@@ -452,19 +445,17 @@ impl ChatRepository {
         session_id: Uuid,
         name: &str,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE chat_sessions SET visitor_name = $2, updated_at = NOW() WHERE id = $1",
-        )
-        .bind(session_id)
-        .bind(name)
-        .execute(pool)
-        .await?;
+        sqlx::query("UPDATE chat_sessions SET visitor_name = $2, updated_at = NOW() WHERE id = $1")
+            .bind(session_id)
+            .bind(name)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 
     /* ============================================================
-       VISITOR PROFILES (T-3 — Memoria usuario + contexto)
-       ============================================================ */
+    VISITOR PROFILES (T-3 — Memoria usuario + contexto)
+    ============================================================ */
 
     /* [T-3] Buscar perfil por visitor_id (localStorage UUID del visitante) */
     pub async fn find_visitor_profile(
@@ -595,8 +586,8 @@ impl ChatRepository {
     }
 
     /* ============================================================
-       ATTACHMENTS (T-5 — Archivos en chat)
-       ============================================================ */
+    ATTACHMENTS (T-5 — Archivos en chat)
+    ============================================================ */
 
     /* [T-5] Guardar adjunto vinculado a un mensaje de chat.
      * ai_description se actualiza después con el resultado de Vision/Whisper/PDF. */
@@ -628,13 +619,11 @@ impl ChatRepository {
         attachment_id: Uuid,
         description: &str,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE chat_attachments SET ai_description = $2 WHERE id = $1",
-        )
-        .bind(attachment_id)
-        .bind(description)
-        .execute(pool)
-        .await?;
+        sqlx::query("UPDATE chat_attachments SET ai_description = $2 WHERE id = $1")
+            .bind(attachment_id)
+            .bind(description)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 

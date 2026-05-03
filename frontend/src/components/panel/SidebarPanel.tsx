@@ -11,8 +11,9 @@ import { useClickOutside } from '../../hooks/useClickOutside';
 import {obtenerTabsPorRol, type SeccionPanel} from '../../data/panel';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {useAuthStore} from '../../stores/authStore';
-import {apiSwitchRole} from '../../api/auth';
+import {apiSwitchRole, extraerMensajeError} from '../../api/auth';
 import type {UserRole} from '../../api/auth';
+import {toast} from '../../stores/toastStore';
 import {Button} from '../ui/Button';
 import OptimizedImage from '../ui/OptimizedImage';
 import './SidebarPanel.css';
@@ -59,6 +60,7 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
     const {perfil, avatarUrl} = useCurrentProfile();
     const authUser = useAuthStore(s => s.user);
     const actualizarRol = useAuthStore(s => s.actualizarRol);
+    const logout = useAuthStore(s => s.logout);
     const [switchingRole, setSwitchingRole] = useState(false);
 
     const effectiveRole: UserRole = authUser?.effectiveRole || 'client';
@@ -94,16 +96,28 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
             const resp = await apiSwitchRole(nextRole);
             actualizarRol(resp.token, resp.user_id, resp.role, resp.effective_role, resp.impersonating);
             /* Resetear a la primera tab del nuevo rol */
-            const newTabs = obtenerTabsPorRol(nextRole);
+            const newTabs = obtenerTabsPorRol(resp.effective_role);
             if (newTabs.length > 0) {
                 onCambiarSeccion(newTabs[0].id);
             }
-        } catch {
-            console.error('[SidebarPanel] Error al cambiar rol');
+        } catch (error) {
+            const message = extraerMensajeError(error);
+            const status = typeof error === 'object' && error !== null && 'response' in error
+                ? (error as {response?: {status?: number}}).response?.status
+                : undefined;
+
+            /* [035A-21] Si el backend detecta una impersonación huérfana tras reseed,
+             * limpiamos la sesión local para evitar un bucle de 500 en el navegador. */
+            if (status === 401 || (status === 403 && message.includes('sesión de impersonación'))) {
+                logout();
+            }
+
+            toast.error(message);
+            console.error('[SidebarPanel] Error al cambiar rol', error);
         } finally {
             setSwitchingRole(false);
         }
-    }, [switchingRole, isAdmin, isImpersonating, effectiveRole, actualizarRol, onCambiarSeccion]);
+    }, [switchingRole, isAdmin, isImpersonating, effectiveRole, actualizarRol, logout, onCambiarSeccion]);
 
     return (
         <aside className="panelSidebar" aria-label={t('accessibility.panel_nav')}>

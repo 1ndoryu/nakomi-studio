@@ -6,7 +6,9 @@ use validator::Validate;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
-use crate::models::{AuthResponse, LoginRequest, QuickRegisterRequest, RegisterRequest, SetPasswordRequest};
+use crate::models::{
+    AuthResponse, LoginRequest, QuickRegisterRequest, RegisterRequest, SetPasswordRequest,
+};
 use crate::services::{AuditService, AuthService};
 use crate::AppState;
 

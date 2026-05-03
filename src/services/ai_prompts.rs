@@ -7,7 +7,9 @@ use std::fmt::Write;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::repositories::{ChatRepository, HostingRepository, OrderRepository, ServiceRepository, UserRepository};
+use crate::repositories::{
+    ChatRepository, HostingRepository, OrderRepository, ServiceRepository, UserRepository,
+};
 
 /* Re-usar sanitize_for_prompt del módulo ai_chat */
 use super::ai_chat::sanitize_for_prompt;
@@ -162,18 +164,20 @@ async fn append_visitor_context(prompt: &mut String, pool: &PgPool, visitor_id: 
                 }
             }
         }
-        prompt.push_str("Usa esta información para personalizar la atención. Si el visitante \
-                        vuelve, salúdalo por su nombre si lo conoces.\n\n");
+        prompt.push_str(
+            "Usa esta información para personalizar la atención. Si el visitante \
+                        vuelve, salúdalo por su nombre si lo conoces.\n\n",
+        );
     }
 }
 
 /* [T-9] Helper: agrega contexto de cliente registrado (usuario, pedidos, hosting) */
 async fn append_registered_client_context(prompt: &mut String, pool: &PgPool, uid: Uuid) {
-    let Ok(Some(user)) = UserRepository::find_by_id(pool, uid).await else { return };
+    let Ok(Some(user)) = UserRepository::find_by_id(pool, uid).await else {
+        return;
+    };
     prompt.push_str("CLIENTE REGISTRADO:\n");
-    let display = sanitize_for_prompt(
-        user.display_name.as_deref().unwrap_or(&user.username), 100,
-    );
+    let display = sanitize_for_prompt(user.display_name.as_deref().unwrap_or(&user.username), 100);
     let email = sanitize_for_prompt(&user.email, 200);
     let _ = writeln!(prompt, "- Nombre: {display} ({email})");
     let _ = writeln!(prompt, "- Rol: {:?}", user.role);
@@ -183,22 +187,16 @@ async fn append_registered_client_context(prompt: &mut String, pool: &PgPool, ui
         if !orders.is_empty() {
             prompt.push_str("PEDIDOS DEL CLIENTE:\n");
             for order in orders.iter().take(5) {
-                let svc_info = OrderRepository::get_order_display_info(
-                    pool, order.service_id, order.plan_id,
-                )
-                .await
-                .ok();
-                let svc_title = svc_info
-                    .as_ref()
-                    .map_or("Servicio", |(t, _, _)| t.as_str());
-                let plan_name = svc_info
-                    .as_ref()
-                    .map_or("", |(_, _, p)| p.as_str());
+                let svc_info =
+                    OrderRepository::get_order_display_info(pool, order.service_id, order.plan_id)
+                        .await
+                        .ok();
+                let svc_title = svc_info.as_ref().map_or("Servicio", |(t, _, _)| t.as_str());
+                let plan_name = svc_info.as_ref().map_or("", |(_, _, p)| p.as_str());
                 let _ = writeln!(
                     prompt,
                     "- Orden #{}: {} ({}) — Estado: {:?}, Fase: {}",
-                    order.order_number, svc_title, plan_name,
-                    order.status, order.current_phase,
+                    order.order_number, svc_title, plan_name, order.status, order.current_phase,
                 );
             }
             prompt.push_str("Puedes responder preguntas sobre el estado de sus pedidos.\n\n");
@@ -232,22 +230,28 @@ async fn append_page_context(prompt: &mut String, pool: &PgPool, ctx: &str) {
             if let Ok(uid) = Uuid::parse_str(parts[1]) {
                 if let Ok(Some(h)) = HostingRepository::find_by_id(pool, uid).await {
                     let domain = h.domain.as_deref().unwrap_or("sin dominio");
-                    prompt.push_str("CONTEXTO DE ORIGEN: El usuario abrió el chat desde \
-                                     el botón de soporte de su hosting.\n");
+                    prompt.push_str(
+                        "CONTEXTO DE ORIGEN: El usuario abrió el chat desde \
+                                     el botón de soporte de su hosting.\n",
+                    );
                     let _ = writeln!(
                         prompt,
                         "- Plan: {} — Dominio: {domain} — Estado: {}",
                         h.plan, h.status,
                     );
-                    prompt.push_str("Saluda al usuario mencionando su hosting y pregunta \
-                                     en qué puedes ayudarle con él.\n\n");
+                    prompt.push_str(
+                        "Saluda al usuario mencionando su hosting y pregunta \
+                                     en qué puedes ayudarle con él.\n\n",
+                    );
                 }
             }
         }
         "service" => {
             if let Ok(Some(svc)) = ServiceRepository::find_service_by_slug(pool, parts[1]).await {
-                prompt.push_str("CONTEXTO DE ORIGEN: El usuario abrió el chat desde \
-                                 la página del servicio.\n");
+                prompt.push_str(
+                    "CONTEXTO DE ORIGEN: El usuario abrió el chat desde \
+                                 la página del servicio.\n",
+                );
                 let _ = writeln!(
                     prompt,
                     "- Servicio: {} — Desde ${:.2} USD",
@@ -257,8 +261,10 @@ async fn append_page_context(prompt: &mut String, pool: &PgPool, ctx: &str) {
                 if let Some(desc) = &svc.description {
                     let _ = writeln!(prompt, "- Descripción: {desc}");
                 }
-                prompt.push_str("Saluda al usuario mencionando el servicio que estaba \
-                                 viendo y ofrece información sobre él.\n\n");
+                prompt.push_str(
+                    "Saluda al usuario mencionando el servicio que estaba \
+                                 viendo y ofrece información sobre él.\n\n",
+                );
             }
         }
         "page" => {
@@ -272,10 +278,15 @@ async fn append_page_context(prompt: &mut String, pool: &PgPool, ctx: &str) {
         "problem" => {
             if let Ok(uid) = Uuid::parse_str(parts[1]) {
                 if let Ok(Some(order)) = OrderRepository::find_order_by_id(pool, uid).await {
-                    let (svc_title, _, plan_name) =
-                        OrderRepository::get_order_display_info(pool, order.service_id, order.plan_id)
-                            .await
-                            .unwrap_or_else(|_| ("Servicio".to_string(), String::new(), "Plan".to_string()));
+                    let (svc_title, _, plan_name) = OrderRepository::get_order_display_info(
+                        pool,
+                        order.service_id,
+                        order.plan_id,
+                    )
+                    .await
+                    .unwrap_or_else(|_| {
+                        ("Servicio".to_string(), String::new(), "Plan".to_string())
+                    });
                     prompt.push_str(
                         "CONTEXTO CRÍTICO: El usuario abrió el chat desde el botón \
                          'Reportar problema' de su pedido. Tiene un problema que necesita resolver.\n",
@@ -284,8 +295,7 @@ async fn append_page_context(prompt: &mut String, pool: &PgPool, ctx: &str) {
                         prompt,
                         "- Pedido #{}: {} ({})\n\
                          - Estado: {:?} — Fase: {}\n",
-                        order.order_number, svc_title, plan_name,
-                        order.status, order.current_phase,
+                        order.order_number, svc_title, plan_name, order.status, order.current_phase,
                     );
                     prompt.push_str(
                         "INSTRUCCIONES:\n\
@@ -306,22 +316,24 @@ async fn append_page_context(prompt: &mut String, pool: &PgPool, ctx: &str) {
 }
 
 /* [T-10] Construye system prompt para IA intermediaria de una orden */
-pub(crate) async fn build_intermediary_prompt(pool: &PgPool, order: &crate::models::Order, user_id: Uuid) -> String {
+pub(crate) async fn build_intermediary_prompt(
+    pool: &PgPool,
+    order: &crate::models::Order,
+    user_id: Uuid,
+) -> String {
     let mut prompt = String::new();
 
-    let (svc_title, _, plan_name) = OrderRepository::get_order_display_info(
-        pool, order.service_id, order.plan_id,
-    )
-    .await
-    .unwrap_or_else(|_| ("Servicio".to_string(), String::new(), "Plan".to_string()));
+    let (svc_title, _, plan_name) =
+        OrderRepository::get_order_display_info(pool, order.service_id, order.plan_id)
+            .await
+            .unwrap_or_else(|_| ("Servicio".to_string(), String::new(), "Plan".to_string()));
 
-    let employee_name = OrderRepository::get_employee_display_name(
-        pool, order.assigned_employee_id,
-    )
-    .await
-    .ok()
-    .flatten()
-    .unwrap_or_else(|| "No asignado".to_string());
+    let employee_name =
+        OrderRepository::get_employee_display_name(pool, order.assigned_employee_id)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "No asignado".to_string());
 
     let _ = write!(
         prompt,

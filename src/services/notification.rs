@@ -52,10 +52,7 @@ impl NotificationHub {
     }
 
     /// Crea una notificación en BD y la emite por WS al usuario si está conectado
-    pub async fn notify(
-        &self,
-        params: CreateNotification,
-    ) -> Result<Notification, AppError> {
+    pub async fn notify(&self, params: CreateNotification) -> Result<Notification, AppError> {
         let user_id = params.user_id;
 
         /* Persistir en BD */
@@ -115,8 +112,7 @@ impl NotificationHub {
 
     /// Limpia canales de usuarios sin receivers activos (housekeeping)
     pub fn cleanup_empty_channels(&self) {
-        self.channels.retain(|_user_id, sender| {
-            sender.receiver_count() > 0
-        });
+        self.channels
+            .retain(|_user_id, sender| sender.receiver_count() > 0);
     }
 }

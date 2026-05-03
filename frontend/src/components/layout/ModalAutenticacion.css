@@ -57,7 +57,7 @@
     display: flex;
     gap: 0;
     margin-bottom: calc(var(--spacing-xl) / 2);
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
 }
 
 /* [044A-13] Mensaje de error de autenticación */

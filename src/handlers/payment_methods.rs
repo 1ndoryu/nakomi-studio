@@ -6,7 +6,9 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
-use crate::models::{PaymentMethodResponse, SavePaymentMethodRequest, SetupIntentResponse, UserRole};
+use crate::models::{
+    PaymentMethodResponse, SavePaymentMethodRequest, SetupIntentResponse, UserRole,
+};
 use crate::services::PaymentMethodService;
 use crate::AppState;
 
@@ -137,7 +139,13 @@ pub async fn delete_payment_method(
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/payment-methods", get(list_payment_methods).post(save_payment_method))
+        .route(
+            "/payment-methods",
+            get(list_payment_methods).post(save_payment_method),
+        )
         .route("/payment-methods/setup-intent", post(create_setup_intent))
-        .route("/payment-methods/:payment_method_id", delete(delete_payment_method))
+        .route(
+            "/payment-methods/:payment_method_id",
+            delete(delete_payment_method),
+        )
 }

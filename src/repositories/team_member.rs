@@ -64,7 +64,10 @@ impl TeamMemberRepository {
         .await
     }
 
-    pub async fn find_published_by_slug(pool: &PgPool, slug: &str) -> Result<Option<TeamMember>, sqlx::Error> {
+    pub async fn find_published_by_slug(
+        pool: &PgPool,
+        slug: &str,
+    ) -> Result<Option<TeamMember>, sqlx::Error> {
         sqlx::query_as::<_, TeamMember>(
             "SELECT id, name, slug, role, bio, avatar, linkedin, twitter, github, status, sort_order, created_at, updated_at
              FROM team_members WHERE slug = $1 AND status = 'published'"
@@ -74,7 +77,10 @@ impl TeamMemberRepository {
         .await
     }
 
-    pub async fn create(pool: &PgPool, params: CreateTeamMemberParams<'_>) -> Result<TeamMember, sqlx::Error> {
+    pub async fn create(
+        pool: &PgPool,
+        params: CreateTeamMemberParams<'_>,
+    ) -> Result<TeamMember, sqlx::Error> {
         sqlx::query_as::<_, TeamMember>(
             "INSERT INTO team_members (name, slug, role, bio, avatar, linkedin, twitter, github, status, sort_order)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -94,7 +100,11 @@ impl TeamMemberRepository {
         .await
     }
 
-    pub async fn update(pool: &PgPool, id: Uuid, params: UpdateTeamMemberParams<'_>) -> Result<Option<TeamMember>, sqlx::Error> {
+    pub async fn update(
+        pool: &PgPool,
+        id: Uuid,
+        params: UpdateTeamMemberParams<'_>,
+    ) -> Result<Option<TeamMember>, sqlx::Error> {
         sqlx::query_as::<_, TeamMember>(
             "UPDATE team_members SET
              name = COALESCE($2, name),

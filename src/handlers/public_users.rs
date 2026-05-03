@@ -25,7 +25,10 @@ pub struct ReviewPaginationParams {
 pub fn public_routes() -> Router<AppState> {
     Router::new()
         .route("/users/:username", get(get_profile))
-        .route("/users/:username/reviews/received", get(get_reviews_received))
+        .route(
+            "/users/:username/reviews/received",
+            get(get_reviews_received),
+        )
         .route("/users/:username/reviews/given", get(get_reviews_given))
         .route("/users/:username/ratings", get(get_rating_distribution))
 }
@@ -78,23 +81,31 @@ async fn get_reviews_received(
     let per_page = params.per_page.unwrap_or(10).clamp(1, 50);
     let offset = (page - 1) * per_page;
 
-    let (rows, total) = PublicProfileRepository::list_reviews_received(
-        &state.pool, user_id, per_page, offset,
-    ).await?;
+    let (rows, total) =
+        PublicProfileRepository::list_reviews_received(&state.pool, user_id, per_page, offset)
+            .await?;
 
-    let reviews: Vec<PublicReviewItem> = rows.into_iter().map(|r| PublicReviewItem {
-        id: r.id.to_string(),
-        rating: r.rating,
-        comment: r.comment,
-        employee_response: r.employee_response,
-        author_name: r.client_name,
-        author_avatar: r.client_avatar,
-        author_username: r.client_username,
-        service_title: r.service_title,
-        created_at: r.created_at.to_rfc3339(),
-    }).collect();
+    let reviews: Vec<PublicReviewItem> = rows
+        .into_iter()
+        .map(|r| PublicReviewItem {
+            id: r.id.to_string(),
+            rating: r.rating,
+            comment: r.comment,
+            employee_response: r.employee_response,
+            author_name: r.client_name,
+            author_avatar: r.client_avatar,
+            author_username: r.client_username,
+            service_title: r.service_title,
+            created_at: r.created_at.to_rfc3339(),
+        })
+        .collect();
 
-    Ok(Json(PaginatedPublicReviews { reviews, total, page, per_page }))
+    Ok(Json(PaginatedPublicReviews {
+        reviews,
+        total,
+        page,
+        per_page,
+    }))
 }
 
 /// Reviews dadas como cliente (paginado)
@@ -124,23 +135,30 @@ async fn get_reviews_given(
     let per_page = params.per_page.unwrap_or(10).clamp(1, 50);
     let offset = (page - 1) * per_page;
 
-    let (rows, total) = PublicProfileRepository::list_reviews_given(
-        &state.pool, user_id, per_page, offset,
-    ).await?;
+    let (rows, total) =
+        PublicProfileRepository::list_reviews_given(&state.pool, user_id, per_page, offset).await?;
 
-    let reviews: Vec<PublicReviewItem> = rows.into_iter().map(|r| PublicReviewItem {
-        id: r.id.to_string(),
-        rating: r.rating,
-        comment: r.comment,
-        employee_response: r.employee_response,
-        author_name: r.employee_name,
-        author_avatar: r.employee_avatar,
-        author_username: r.employee_username,
-        service_title: r.service_title,
-        created_at: r.created_at.to_rfc3339(),
-    }).collect();
+    let reviews: Vec<PublicReviewItem> = rows
+        .into_iter()
+        .map(|r| PublicReviewItem {
+            id: r.id.to_string(),
+            rating: r.rating,
+            comment: r.comment,
+            employee_response: r.employee_response,
+            author_name: r.employee_name,
+            author_avatar: r.employee_avatar,
+            author_username: r.employee_username,
+            service_title: r.service_title,
+            created_at: r.created_at.to_rfc3339(),
+        })
+        .collect();
 
-    Ok(Json(PaginatedPublicReviews { reviews, total, page, per_page }))
+    Ok(Json(PaginatedPublicReviews {
+        reviews,
+        total,
+        page,
+        per_page,
+    }))
 }
 
 /// Distribución de ratings (estrellas 1-5) de un usuario como empleado

@@ -49,7 +49,7 @@
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-lg);
     background: var(--bg-warm);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 }
@@ -96,7 +96,7 @@
     padding: 6px 12px 6px 16px;
     border-radius: var(--radius-full);
     background: var(--bg-warm);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     font-family: var(--font-primary);
     font-size: var(--text-sm);
     font-weight: 500;

@@ -1,4 +1,4 @@
-﻿/* [154A-15a] Handlers de wallet: saldo virtual de usuarios.
+/* [154A-15a] Handlers de wallet: saldo virtual de usuarios.
  * GET /api/wallet â€” obtener saldo actual
  * GET /api/wallet/transactions â€” historial paginado
  * Incluye endpoints de cancellation requests y withdrawal requests.
@@ -19,18 +19,16 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateNotification, CreateWithdrawalRequest, ResolveWithdrawalRequest,
-    UserRole, WithdrawalRequestResponse, WithdrawalRequestsPage,
+    CreateNotification, CreateWithdrawalRequest, ResolveWithdrawalRequest, UserRole,
+    WithdrawalRequestResponse, WithdrawalRequestsPage,
 };
-use crate::repositories::{
-    UserRepository, WalletRepository, WithdrawalRequestRepository,
-};
+use crate::repositories::{UserRepository, WalletRepository, WithdrawalRequestRepository};
 use crate::services::WalletService;
 use crate::AppState;
 
 /* ============================================================
-   GET /api/wallet â€” Saldo actual del usuario
-   ============================================================ */
+GET /api/wallet â€” Saldo actual del usuario
+============================================================ */
 
 #[utoipa::path(
     get,
@@ -49,8 +47,8 @@ pub async fn get_balance(
 }
 
 /* ============================================================
-   GET /api/wallet/transactions â€” Historial paginado
-   ============================================================ */
+GET /api/wallet/transactions â€” Historial paginado
+============================================================ */
 
 #[derive(Debug, Deserialize)]
 pub struct TransactionQuery {
@@ -86,10 +84,10 @@ pub async fn list_transactions(
 }
 
 /* ============================================================
-   POST /api/wallet/withdraw — Solicitar retiro de fondos
-   [184A-1] El usuario solicita retirar saldo a un medio de pago externo.
-   Solo se permite una solicitud pendiente a la vez.
-   ============================================================ */
+POST /api/wallet/withdraw — Solicitar retiro de fondos
+[184A-1] El usuario solicita retirar saldo a un medio de pago externo.
+Solo se permite una solicitud pendiente a la vez.
+============================================================ */
 
 #[utoipa::path(
     post,
@@ -112,9 +110,8 @@ pub async fn create_withdrawal(
 
     /* [204A-11] Verificar saldo disponible para retiro (crÃ©ditos con >7 dÃ­as).
      * Las ganancias recientes no son retirables hasta cumplir 7 dÃ­as. */
-    let withdrawable = WalletRepository::get_withdrawable_balance(
-        &state.pool, auth.user_id,
-    ).await?;
+    let withdrawable =
+        WalletRepository::get_withdrawable_balance(&state.pool, auth.user_id).await?;
     if withdrawable < body.amount_cents {
         return Err(AppError::BadRequest(
             format!(
@@ -156,12 +153,15 @@ pub async fn create_withdrawal(
     };
     let _ = state.notification_hub.notify_many(&admins, &base).await;
 
-    Ok((StatusCode::CREATED, Json(WithdrawalRequestResponse::from(&req))))
+    Ok((
+        StatusCode::CREATED,
+        Json(WithdrawalRequestResponse::from(&req)),
+    ))
 }
 
 /* ============================================================
-   GET /api/wallet/withdrawals â€” Listar solicitudes del usuario
-   ============================================================ */
+GET /api/wallet/withdrawals â€” Listar solicitudes del usuario
+============================================================ */
 
 #[utoipa::path(
     get,
@@ -197,8 +197,8 @@ pub async fn list_withdrawals(
 }
 
 /* ============================================================
-   GET /api/admin/withdrawals â€” Admin: listar pendientes
-   ============================================================ */
+GET /api/admin/withdrawals â€” Admin: listar pendientes
+============================================================ */
 
 #[utoipa::path(
     get,
@@ -235,9 +235,9 @@ pub async fn admin_list_withdrawals(
 }
 
 /* ============================================================
-   PATCH /api/admin/withdrawals/:id â€” Admin aprueba/rechaza
-   [184A-1] Al aprobar, debita del wallet del usuario.
-   ============================================================ */
+PATCH /api/admin/withdrawals/:id â€” Admin aprueba/rechaza
+[184A-1] Al aprobar, debita del wallet del usuario.
+============================================================ */
 
 #[utoipa::path(
     patch,
@@ -290,13 +290,19 @@ pub async fn admin_resolve_withdrawal(
     .await?;
 
     /* Notificar al usuario */
-    let status_msg = if body.approve { "aprobada" } else { "rechazada" };
+    let status_msg = if body.approve {
+        "aprobada"
+    } else {
+        "rechazada"
+    };
     let amount_fmt = format!("${:.2}", f64::from(req.amount_cents) / 100.0);
     let notif = CreateNotification {
         user_id: req.user_id,
         notification_type: "withdrawal_resolved".to_string(),
         title: format!("Retiro {status_msg}"),
-        body: Some(format!("Tu solicitud de retiro por {amount_fmt} fue {status_msg}")),
+        body: Some(format!(
+            "Tu solicitud de retiro por {amount_fmt} fue {status_msg}"
+        )),
         link: Some("/panel?seccion=wallet".to_string()),
         reference_type: Some("withdrawal".to_string()),
         reference_id: Some(id),
@@ -307,8 +313,8 @@ pub async fn admin_resolve_withdrawal(
 }
 
 /* ============================================================
-   ROUTES
-   ============================================================ */
+ROUTES
+============================================================ */
 
 pub fn wallet_routes() -> Router<AppState> {
     Router::new()

@@ -15,7 +15,7 @@
     border-radius: var(--radius-full);
     background: var(--bg-warm);
     color: var(--text-dark);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     cursor: pointer;
     z-index: 9990;
     font-size: var(--text-sm);
@@ -57,7 +57,7 @@
     background: var(--bg-glass-medium);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);
     display: flex;
     flex-direction: column;

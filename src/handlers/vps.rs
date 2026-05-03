@@ -13,8 +13,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    PublicVpsPlan, RejectVpsRequest, SelfSubscribeVpsRequest, SelfSubscribeVpsResponse,
-    UserRole, VpsPlanConfig, VpsSubscriptionResponse,
+    PublicVpsPlan, RejectVpsRequest, SelfSubscribeVpsRequest, SelfSubscribeVpsResponse, UserRole,
+    VpsPlanConfig, VpsSubscriptionResponse,
 };
 use crate::repositories::{CreateVpsSubscriptionParams, UserRepository, VpsRepository};
 use crate::services::{CreateInstanceParams, EmailService, VpsCheckoutParams, VpsStripeService};
@@ -88,7 +88,13 @@ fn sanitize_hostname(requested_hostname: Option<&str>, subscription_id: Uuid) ->
         .trim()
         .to_ascii_lowercase()
         .chars()
-        .map(|character| if character.is_ascii_alphanumeric() { character } else { '-' })
+        .map(|character| {
+            if character.is_ascii_alphanumeric() {
+                character
+            } else {
+                '-'
+            }
+        })
         .collect::<String>()
         .trim_matches('-')
         .to_string();
@@ -142,12 +148,14 @@ fn map_contabo_error(message: &str) -> AppError {
 
     if lower.contains("invalid_grant") || lower.contains("unauthorized") {
         return AppError::ServiceUnavailable(
-            "Contabo rechazó la autenticación del flujo VPS. Revisa las credenciales OAuth2.".into(),
+            "Contabo rechazó la autenticación del flujo VPS. Revisa las credenciales OAuth2."
+                .into(),
         );
     }
 
     AppError::ServiceUnavailable(
-        "No se pudo completar la operación con Contabo. Revisa la configuración del proveedor.".into(),
+        "No se pudo completar la operación con Contabo. Revisa la configuración del proveedor."
+            .into(),
     )
 }
 
@@ -163,7 +171,9 @@ pub async fn list_public_plans(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<PublicVpsPlan>>, AppError> {
     let configs = VpsRepository::list_plan_configs(&state.pool).await?;
-    Ok(Json(configs.into_iter().map(public_plan_from_config).collect()))
+    Ok(Json(
+        configs.into_iter().map(public_plan_from_config).collect(),
+    ))
 }
 
 #[utoipa::path(
@@ -180,11 +190,12 @@ pub async fn list_subscriptions(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<Vec<VpsSubscriptionResponse>>, AppError> {
-    let subscriptions = if auth.effective_role == UserRole::Admin || auth.effective_role == UserRole::Employee {
-        VpsRepository::list_all(&state.pool).await?
-    } else {
-        VpsRepository::list_by_user_id(&state.pool, auth.user_id).await?
-    };
+    let subscriptions =
+        if auth.effective_role == UserRole::Admin || auth.effective_role == UserRole::Employee {
+            VpsRepository::list_all(&state.pool).await?
+        } else {
+            VpsRepository::list_by_user_id(&state.pool, auth.user_id).await?
+        };
 
     Ok(Json(subscriptions.into_iter().map(Into::into).collect()))
 }
@@ -210,7 +221,9 @@ pub async fn get_subscription(
         .ok_or(AppError::NotFound("Suscripción VPS no encontrada".into()))?;
 
     if auth.effective_role == UserRole::Client && subscription.user_id != Some(auth.user_id) {
-        return Err(AppError::Forbidden("Sin permisos para ver esta suscripción VPS".into()));
+        return Err(AppError::Forbidden(
+            "Sin permisos para ver esta suscripción VPS".into(),
+        ));
     }
 
     Ok(Json(subscription.into()))
@@ -234,7 +247,8 @@ pub async fn subscribe_self(
     headers: HeaderMap,
     Json(req): Json<SelfSubscribeVpsRequest>,
 ) -> Result<(StatusCode, Json<SelfSubscribeVpsResponse>), AppError> {
-    req.validate().map_err(|error| AppError::Validation(error.to_string()))?;
+    req.validate()
+        .map_err(|error| AppError::Validation(error.to_string()))?;
 
     let plan_config = VpsRepository::get_plan_config(&state.pool, &req.tier)
         .await?
@@ -337,14 +351,17 @@ pub async fn approve_subscription(
     let plan_config = VpsRepository::get_plan_config(&state.pool, &subscription.tier_name)
         .await?
         .filter(|config| config.is_active)
-        .ok_or_else(|| AppError::NotFound(format!("Tier '{}' no encontrado", subscription.tier_name)))?;
+        .ok_or_else(|| {
+            AppError::NotFound(format!("Tier '{}' no encontrado", subscription.tier_name))
+        })?;
 
     let contabo_service = state
         .contabo_service
         .as_ref()
         .ok_or_else(|| AppError::ServiceUnavailable("Contabo API no configurada".into()))?;
 
-    let requested_hostname = sanitize_hostname(subscription.requested_hostname.as_deref(), subscription.id);
+    let requested_hostname =
+        sanitize_hostname(subscription.requested_hostname.as_deref(), subscription.id);
     let access_username = "nakomi";
     let initial_password = generate_initial_password();
     let cloud_init = build_cloud_init(&requested_hostname);
@@ -451,7 +468,8 @@ pub async fn reject_subscription(
     Json(req): Json<RejectVpsRequest>,
 ) -> Result<StatusCode, AppError> {
     auth.require_role(&[UserRole::Admin])?;
-    req.validate().map_err(|error| AppError::Validation(error.to_string()))?;
+    req.validate()
+        .map_err(|error| AppError::Validation(error.to_string()))?;
 
     let subscription = VpsRepository::find_by_id(&state.pool, id)
         .await?
@@ -498,7 +516,13 @@ pub async fn reject_subscription(
         let plan_name = VpsRepository::get_plan_config(&state.pool, &subscription.tier_name)
             .await?
             .map_or_else(|| subscription.tier_name.clone(), |plan| plan.display_name);
-        EmailService::send_vps_rejected(config, &subscription.client_email, &plan_name, &req.reason).await;
+        EmailService::send_vps_rejected(
+            config,
+            &subscription.client_email,
+            &plan_name,
+            &req.reason,
+        )
+        .await;
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -510,8 +534,14 @@ pub fn routes() -> Router<AppState> {
         .route("/vps/subscriptions", get(list_subscriptions))
         .route("/vps/subscriptions/:id", get(get_subscription))
         .route("/vps/subscribe", axum::routing::post(subscribe_self))
-        .route("/admin/vps/subscriptions/:id/approve", axum::routing::post(approve_subscription))
-        .route("/admin/vps/subscriptions/:id/reject", axum::routing::post(reject_subscription))
+        .route(
+            "/admin/vps/subscriptions/:id/approve",
+            axum::routing::post(approve_subscription),
+        )
+        .route(
+            "/admin/vps/subscriptions/:id/reject",
+            axum::routing::post(reject_subscription),
+        )
 }
 
 #[cfg(test)]

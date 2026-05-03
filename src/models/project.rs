@@ -157,14 +157,19 @@ impl Project {
     pub fn into_response(self) -> ProjectResponse {
         /* [124A-PROJ1] Gallery: intenta formato nuevo {url, layout} primero,
          * si falla intenta legacy ["url"] y convierte a GalleryImage con layout "full" */
-        let gallery: Vec<GalleryImage> = serde_json::from_value::<Vec<GalleryImage>>(self.gallery.clone())
-            .unwrap_or_else(|_| {
-                serde_json::from_value::<Vec<String>>(self.gallery)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|url| GalleryImage { url, layout: "full".to_string() })
-                    .collect()
-            });
+        let gallery: Vec<GalleryImage> = serde_json::from_value::<Vec<GalleryImage>>(
+            self.gallery.clone(),
+        )
+        .unwrap_or_else(|_| {
+            serde_json::from_value::<Vec<String>>(self.gallery)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|url| GalleryImage {
+                    url,
+                    layout: "full".to_string(),
+                })
+                .collect()
+        });
         let categories: Vec<String> = serde_json::from_value(self.categories).unwrap_or_default();
         let technologies: Vec<String> =
             serde_json::from_value(self.technologies).unwrap_or_default();

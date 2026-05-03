@@ -63,7 +63,8 @@ pub async fn get_fixture_status(
         }));
     }
 
-    let table_stats: Vec<FixtureTableStat> = FixtureRepository::list_table_stats(&state.pool).await?;
+    let table_stats: Vec<FixtureTableStat> =
+        FixtureRepository::list_table_stats(&state.pool).await?;
     let tracked_records: i64 = table_stats.iter().map(|s| s.record_count).sum();
     let tables = table_stats
         .into_iter()
@@ -97,7 +98,9 @@ pub async fn trigger_sync(
     auth.require_role(&[UserRole::Admin])?;
 
     let manager = state.fixture_manager.as_ref().ok_or_else(|| {
-        AppError::Internal("Fixture manager no disponible — directorio content/ no encontrado".into())
+        AppError::Internal(
+            "Fixture manager no disponible — directorio content/ no encontrado".into(),
+        )
     })?;
 
     let report = manager

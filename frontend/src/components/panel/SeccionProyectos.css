@@ -97,7 +97,7 @@
 .proyectosTabs {
     display: flex;
     gap: var(--spacing-xs);
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
     padding-bottom: 0;
 }
 
@@ -135,7 +135,7 @@
     gap: var(--spacing-md);
     padding: 0;
     background: var(--brand-white);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     transition: all var(--transicion-rapida);
     text-align: left;

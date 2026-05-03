@@ -70,7 +70,7 @@
     text-decoration: none;
     color: inherit;
     padding: var(--spacing-xl);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     background-color: var(--bg-accent);
     transition:

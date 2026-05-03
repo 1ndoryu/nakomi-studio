@@ -1,4 +1,4 @@
-﻿/* [174A-2] Handlers de cancellation requests. Extraido de wallet.rs para SRP.
+/* [174A-2] Handlers de cancellation requests. Extraido de wallet.rs para SRP.
  * POST /api/orders/:order_id/cancel-request
  * POST /api/orders/:order_id/cancel-request/:request_id/respond
  * GET /api/orders/:order_id/cancel-request */
@@ -15,19 +15,19 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CancellationRequestResponse, CreateCancellationRequest, CreateNotification,
-    Order, RespondCancellationRequest, UserRole, NOTIF_ORDER_CANCELLED,
+    CancellationRequestResponse, CreateCancellationRequest, CreateNotification, Order,
+    RespondCancellationRequest, UserRole, NOTIF_ORDER_CANCELLED,
 };
 use crate::repositories::{
-    ActivityLogRepository, CancellationRequestRepository, OrderRepository,
-    UserRepository, WalletRepository,
+    ActivityLogRepository, CancellationRequestRepository, OrderRepository, UserRepository,
+    WalletRepository,
 };
 use crate::AppState;
 
 /* ============================================================
-   POST /api/orders/:order_id/cancel-request â€” Cliente o empleado solicita cancelaciÃ³n
-   [204A-13] Ambas partes pueden solicitar. La otra parte responde.
-   ============================================================ */
+POST /api/orders/:order_id/cancel-request â€” Cliente o empleado solicita cancelaciÃ³n
+[204A-13] Ambas partes pueden solicitar. La otra parte responde.
+============================================================ */
 
 #[utoipa::path(
     post,
@@ -79,21 +79,30 @@ pub async fn create_cancellation_request(
     /* [204A-13] Notificar a la otra parte (clienteâ†’empleado o empleadoâ†’cliente) */
     let (notify_id, notify_body) = if is_client {
         let emp = order.assigned_employee_id.unwrap_or(Uuid::nil());
-        (emp, format!(
-            "El cliente solicita cancelar tu orden. Motivo: {}",
-            truncate_str(&body.reason, 120)
-        ))
+        (
+            emp,
+            format!(
+                "El cliente solicita cancelar tu orden. Motivo: {}",
+                truncate_str(&body.reason, 120)
+            ),
+        )
     } else {
-        (order.client_id, format!(
-            "El responsable solicita cancelar tu orden. Motivo: {}",
-            truncate_str(&body.reason, 120)
-        ))
+        (
+            order.client_id,
+            format!(
+                "El responsable solicita cancelar tu orden. Motivo: {}",
+                truncate_str(&body.reason, 120)
+            ),
+        )
     };
     if notify_id != Uuid::nil() {
         let notif = CreateNotification {
             user_id: notify_id,
             notification_type: "cancellation_requested".to_string(),
-            title: format!("Solicitud de cancelaciÃ³n â€” Orden #{}", order.order_number),
+            title: format!(
+                "Solicitud de cancelaciÃ³n â€” Orden #{}",
+                order.order_number
+            ),
             body: Some(notify_body),
             link: Some(format!("/panel?seccion=proyectos&orden={order_id}")),
             reference_type: Some("order".to_string()),
@@ -110,7 +119,8 @@ pub async fn create_cancellation_request(
         "order",
         order_id,
         Some(serde_json::json!({ "reason": body.reason })),
-    ).await;
+    )
+    .await;
 
     let resp = CancellationRequestResponse {
         id: req.id,
@@ -128,9 +138,9 @@ pub async fn create_cancellation_request(
 }
 
 /* ============================================================
-   POST /api/orders/:order_id/cancel-request/:request_id/respond
-   â€” La parte opuesta acepta o rechaza cancelaciÃ³n
-   ============================================================ */
+POST /api/orders/:order_id/cancel-request/:request_id/respond
+â€” La parte opuesta acepta o rechaza cancelaciÃ³n
+============================================================ */
 
 #[utoipa::path(
     post,
@@ -187,7 +197,9 @@ pub async fn respond_cancellation_request(
     }
 
     if req.order_id != order_id {
-        return Err(AppError::NotFound("Solicitud no pertenece a esta orden".into()));
+        return Err(AppError::NotFound(
+            "Solicitud no pertenece a esta orden".into(),
+        ));
     }
 
     /* Resolver la solicitud */
@@ -217,8 +229,8 @@ pub async fn respond_cancellation_request(
 }
 
 /* ============================================================
-   HELPERS - LÃ³gica de aceptaciÃ³n/rechazo de cancelaciÃ³n
-   ============================================================ */
+HELPERS - LÃ³gica de aceptaciÃ³n/rechazo de cancelaciÃ³n
+============================================================ */
 
 async fn handle_cancellation_accepted(
     state: &AppState,
@@ -237,7 +249,10 @@ async fn handle_cancellation_accepted(
         "refund_credit",
         Some("order"),
         Some(order_id),
-        Some(&format!("Reembolso por cancelaciÃ³n de orden #{}", order.order_number)),
+        Some(&format!(
+            "Reembolso por cancelaciÃ³n de orden #{}",
+            order.order_number
+        )),
     )
     .await;
 
@@ -263,7 +278,8 @@ async fn handle_cancellation_accepted(
         "order",
         order_id,
         Some(serde_json::json!({ "refund_cents": order.final_price_cents })),
-    ).await;
+    )
+    .await;
 }
 
 async fn handle_cancellation_rejected(
@@ -281,7 +297,9 @@ async fn handle_cancellation_rejected(
             user_id: emp_id,
             notification_type: "cancellation_rejected".into(),
             title: format!("CancelaciÃ³n rechazada â€” Orden #{}", order.order_number),
-            body: Some("El cliente rechazÃ³ tu solicitud. La orden volverÃ¡ a estar disponible.".into()),
+            body: Some(
+                "El cliente rechazÃ³ tu solicitud. La orden volverÃ¡ a estar disponible.".into(),
+            ),
             link: None,
             reference_type: Some("order".into()),
             reference_id: Some(order_id),
@@ -315,12 +333,13 @@ async fn handle_cancellation_rejected(
         "order",
         order_id,
         None,
-    ).await;
+    )
+    .await;
 }
 
 /* ============================================================
-   GET /api/orders/:order_id/cancel-request â€” Lista solicitudes de cancelaciÃ³n
-   ============================================================ */
+GET /api/orders/:order_id/cancel-request â€” Lista solicitudes de cancelaciÃ³n
+============================================================ */
 
 #[utoipa::path(
     get,
@@ -347,7 +366,9 @@ pub async fn list_cancellation_requests(
         || order.assigned_employee_id == Some(auth.user_id)
         || auth.effective_role == crate::models::UserRole::Admin;
     if !is_involved {
-        return Err(AppError::Forbidden("Sin permiso para ver solicitudes".into()));
+        return Err(AppError::Forbidden(
+            "Sin permiso para ver solicitudes".into(),
+        ));
     }
 
     let requests = CancellationRequestRepository::list_by_order(&state.pool, order_id).await?;

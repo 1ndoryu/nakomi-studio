@@ -148,6 +148,12 @@
 - Si una vista interna del panel debe sobrevivir recargas, compartirse por URL o abrirse desde una notificación, `localStorage`/`sessionStorage` y custom events no bastan. La URL debe ser una fuente observable de verdad y los hooks dueños del detalle deben hidratarse desde `location.search`.
 - Al sincronizar estado profundo (`order`, `hostingId`, `chat`) a la URL, no borrar el query param en el primer render si ese mismo param todavía está intentando hidratar el estado. El orden correcto es: leer URL, seleccionar recurso, luego persistir el estado ya resuelto.
 
+## Sesiones impersonadas — no degradar a 500
+- Si un JWT con `impersonator` sobrevive a un reseed local y el admin original ya no existe, volver a `admin` no debe caer en `500`. El backend debe responder `401/403` con mensaje accionable y el frontend debe limpiar la sesión persistida para cortar el bucle.
+
+## Tokens visuales — activo no equivale a neutro
+- `--bg-item-active` no sirve como borde base. Los bordes genéricos del sistema deben usar `--border-default`; reservar el token activo evita que estados normales parezcan seleccionados y simplifica los barridos visuales.
+
 ## Upstreams opcionales - no esconderlos tras 500 internos
 - Si una integración externa opcional falla (Contabo, por ejemplo), no devolver `Internal` genérico desde el handler. Clasificar y exponer un `message` accionable evita perseguir fantasmas de backend cuando el bloqueo real es `invalid_grant`, parseo o indisponibilidad del proveedor.
 - Cuando una credencial legacy es ambigua (`PASSWORD_CONTABO`), documentar y soportar una variable explícita (`CONTABO_API_PASSWORD`) reduce drift entre proyectos y evita repetir el mismo diagnóstico en cada repo.

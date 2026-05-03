@@ -83,10 +83,7 @@ pub async fn upload_image(
     }
 
     /* Generar nombre único con UUID para evitar colisiones */
-    let extension = original_name
-        .rsplit('.')
-        .next()
-        .unwrap_or("bin");
+    let extension = original_name.rsplit('.').next().unwrap_or("bin");
     let unique_name = format!("{}.{}", Uuid::new_v4(), extension);
 
     let upload_path = PathBuf::from(UPLOAD_DIR);

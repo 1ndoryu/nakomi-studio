@@ -3,7 +3,7 @@
 
 .entregablesPanel {
     margin-top: var(--spacing-sm);
-    border-top: 1px solid var(--bg-item-active);
+    border-top: 1px solid var(--border-default);
     padding-top: var(--spacing-sm);
 }
 

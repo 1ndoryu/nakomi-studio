@@ -140,8 +140,7 @@ pub struct ContaboService {
     cached_token: Arc<RwLock<Option<CachedToken>>>,
 }
 
-const AUTH_URL: &str =
-    "https://auth.contabo.com/auth/realms/contabo/protocol/openid-connect/token";
+const AUTH_URL: &str = "https://auth.contabo.com/auth/realms/contabo/protocol/openid-connect/token";
 pub(crate) const API_BASE: &str = "https://api.contabo.com/v1";
 
 impl ContaboService {
@@ -160,7 +159,8 @@ impl ContaboService {
         {
             let guard = self.cached_token.read().await;
             if let Some(cached) = guard.as_ref() {
-                if cached.expires_at > std::time::Instant::now() + std::time::Duration::from_secs(60)
+                if cached.expires_at
+                    > std::time::Instant::now() + std::time::Duration::from_secs(60)
                 {
                     return Ok(cached.token.clone());
                 }
@@ -196,8 +196,8 @@ impl ContaboService {
             .await
             .map_err(|e| format!("Contabo token parse error: {e}"))?;
 
-        let expires_at = std::time::Instant::now()
-            + std::time::Duration::from_secs(token_resp.expires_in);
+        let expires_at =
+            std::time::Instant::now() + std::time::Duration::from_secs(token_resp.expires_in);
 
         let token = token_resp.access_token.clone();
 
@@ -210,7 +210,10 @@ impl ContaboService {
             });
         }
 
-        info!("Contabo token renovado (expira en {}s)", token_resp.expires_in);
+        info!(
+            "Contabo token renovado (expira en {}s)",
+            token_resp.expires_in
+        );
         Ok(token)
     }
 
@@ -309,7 +312,9 @@ impl ContaboService {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             error!("Contabo create instance error: {status} — {body}");
-            return Err(format!("Contabo API create instance error: {status} — {body}"));
+            return Err(format!(
+                "Contabo API create instance error: {status} — {body}"
+            ));
         }
 
         let data: InstancesResponse = response

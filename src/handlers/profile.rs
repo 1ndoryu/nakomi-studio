@@ -1,6 +1,6 @@
 /* [044A-43] Endpoints de perfil de usuario: obtener perfil y subir avatar.
-   Upload multipart con validación MIME (image), max 2MB, guardado en uploads/avatars/.
-   [074A-23] PATCH /api/profile para actualizar display_name y campos extendidos. */
+Upload multipart con validación MIME (image), max 2MB, guardado en uploads/avatars/.
+[074A-23] PATCH /api/profile para actualizar display_name y campos extendidos. */
 use axum::extract::{Multipart, State};
 use axum::Json;
 use axum::Router;
@@ -8,10 +8,10 @@ use chrono::Utc;
 use validator::Validate;
 
 use crate::errors::AppError;
-use crate::AppState;
 use crate::middleware::AuthUser;
 use crate::models::{UpdateProfileRequest, UserResponse};
 use crate::repositories::UserRepository;
+use crate::AppState;
 
 const MAX_AVATAR_SIZE: usize = 2 * 1024 * 1024;
 const ALLOWED_MIME_PREFIXES: &[&str] = &["image/jpeg", "image/png", "image/webp", "image/gif"];

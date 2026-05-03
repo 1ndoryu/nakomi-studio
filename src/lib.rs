@@ -14,8 +14,11 @@ pub mod services;
 
 use sqlx::PgPool;
 
-use crate::services::{AiChatConfig, ChatHub, ChatTimingService, ContaboService, CoolifyConfig, EmailConfig, NotificationHub};
 use crate::services::docker_stats::DockerStatsCache;
+use crate::services::{
+    AiChatConfig, ChatHub, ChatTimingService, ContaboService, CoolifyConfig, EmailConfig,
+    NotificationHub,
+};
 
 /// Estado compartido de la aplicación — accesible desde handlers y middleware
 #[derive(Clone)]

@@ -13,8 +13,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateProjectRequest, Project, ProjectResponse, ReorderProjectsRequest,
-    UpdateProjectRequest, UserRole,
+    CreateProjectRequest, Project, ProjectResponse, ReorderProjectsRequest, UpdateProjectRequest,
+    UserRole,
 };
 use crate::repositories::{CreateProjectParams, ProjectRepository, UpdateProjectParams};
 use crate::AppState;
@@ -48,7 +48,8 @@ pub async fn list_published(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<ProjectResponse>>, AppError> {
     let projects = ProjectRepository::list_published(&state.pool).await?;
-    let responses: Vec<ProjectResponse> = projects.into_iter().map(Project::into_response).collect();
+    let responses: Vec<ProjectResponse> =
+        projects.into_iter().map(Project::into_response).collect();
     Ok(Json(responses))
 }
 
@@ -89,7 +90,8 @@ pub async fn list_all(
     auth.require_role(&[UserRole::Admin])?;
 
     let projects = ProjectRepository::list_all(&state.pool).await?;
-    let responses: Vec<ProjectResponse> = projects.into_iter().map(Project::into_response).collect();
+    let responses: Vec<ProjectResponse> =
+        projects.into_iter().map(Project::into_response).collect();
     Ok(Json(responses))
 }
 
@@ -118,21 +120,16 @@ pub async fn create(
     let is_featured = body.is_featured.unwrap_or(true);
     let in_carousel = body.in_carousel.unwrap_or(true);
 
-    let gallery =
-        serde_json::to_value(body.gallery.unwrap_or_default())
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-    let categories =
-        serde_json::to_value(body.categories.unwrap_or_default())
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-    let technologies =
-        serde_json::to_value(body.technologies.unwrap_or_default())
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-    let links =
-        serde_json::to_value(body.links.unwrap_or_default())
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-    let skills =
-        serde_json::to_value(body.skills.unwrap_or_default())
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+    let gallery = serde_json::to_value(body.gallery.unwrap_or_default())
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let categories = serde_json::to_value(body.categories.unwrap_or_default())
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let technologies = serde_json::to_value(body.technologies.unwrap_or_default())
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let links = serde_json::to_value(body.links.unwrap_or_default())
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let skills = serde_json::to_value(body.skills.unwrap_or_default())
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let project = ProjectRepository::create(
         &state.pool,

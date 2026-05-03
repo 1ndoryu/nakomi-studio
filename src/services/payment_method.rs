@@ -18,7 +18,8 @@ impl PaymentMethodService {
         stripe_key: &str,
         user_id: Uuid,
     ) -> Result<SetupIntentResponse, AppError> {
-        let customer_id = Self::ensure_stripe_customer(pool, http_client, stripe_key, user_id).await?;
+        let customer_id =
+            Self::ensure_stripe_customer(pool, http_client, stripe_key, user_id).await?;
         let response = http_client
             .post("https://api.stripe.com/v1/setup_intents")
             .basic_auth(stripe_key, None::<&str>)
@@ -30,7 +31,9 @@ impl PaymentMethodService {
             ])
             .send()
             .await
-            .map_err(|error| AppError::Internal(format!("Error comunicando con Stripe: {error}")))?;
+            .map_err(|error| {
+                AppError::Internal(format!("Error comunicando con Stripe: {error}"))
+            })?;
 
         if !response.status().is_success() {
             let body = response.text().await.unwrap_or_default();
@@ -58,8 +61,10 @@ impl PaymentMethodService {
         user_id: Uuid,
         setup_intent_id: &str,
     ) -> Result<PaymentMethodResponse, AppError> {
-        let customer_id = Self::ensure_stripe_customer(pool, http_client, stripe_key, user_id).await?;
-        let setup_intent = Self::retrieve_setup_intent(http_client, stripe_key, setup_intent_id).await?;
+        let customer_id =
+            Self::ensure_stripe_customer(pool, http_client, stripe_key, user_id).await?;
+        let setup_intent =
+            Self::retrieve_setup_intent(http_client, stripe_key, setup_intent_id).await?;
 
         if setup_intent.status != "succeeded" {
             return Err(AppError::BadRequest(
@@ -117,7 +122,12 @@ impl PaymentMethodService {
             .await?
             .ok_or_else(|| AppError::NotFound("Tarjeta no encontrada".into()))?;
 
-        Self::detach_payment_method(http_client, stripe_key, &payment_method.stripe_payment_method_id).await?;
+        Self::detach_payment_method(
+            http_client,
+            stripe_key,
+            &payment_method.stripe_payment_method_id,
+        )
+        .await?;
 
         PaymentMethodRepository::delete_owned(pool, user_id, payment_method_id)
             .await?
@@ -139,7 +149,8 @@ impl PaymentMethodService {
         let user = UserRepository::find_by_id(pool, user_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Usuario no encontrado".into()))?;
-        let customer_id = Self::find_or_create_customer(http_client, stripe_key, &user.email).await?;
+        let customer_id =
+            Self::find_or_create_customer(http_client, stripe_key, &user.email).await?;
 
         UserRepository::set_stripe_customer_id(pool, user_id, &customer_id).await?;
         Ok(customer_id)
@@ -156,13 +167,17 @@ impl PaymentMethodService {
             .query(&[("email", email), ("limit", "1")])
             .send()
             .await
-            .map_err(|error| AppError::Internal(format!("Error buscando customer en Stripe: {error}")))?;
+            .map_err(|error| {
+                AppError::Internal(format!("Error buscando customer en Stripe: {error}"))
+            })?;
 
         if search_response.status().is_success() {
             let payload = search_response
                 .json::<StripeCustomerSearch>()
                 .await
-                .map_err(|error| AppError::Internal(format!("Error parseando customer Stripe: {error}")))?;
+                .map_err(|error| {
+                    AppError::Internal(format!("Error parseando customer Stripe: {error}"))
+                })?;
 
             if let Some(customer) = payload.data.first() {
                 return Ok(customer.id.clone());
@@ -175,7 +190,9 @@ impl PaymentMethodService {
             .form(&[("email", email)])
             .send()
             .await
-            .map_err(|error| AppError::Internal(format!("Error creando customer en Stripe: {error}")))?;
+            .map_err(|error| {
+                AppError::Internal(format!("Error creando customer en Stripe: {error}"))
+            })?;
 
         if !create_response.status().is_success() {
             let body = create_response.text().await.unwrap_or_default();
@@ -189,7 +206,9 @@ impl PaymentMethodService {
         let customer = create_response
             .json::<StripeCustomer>()
             .await
-            .map_err(|error| AppError::Internal(format!("Error parseando customer Stripe: {error}")))?;
+            .map_err(|error| {
+                AppError::Internal(format!("Error parseando customer Stripe: {error}"))
+            })?;
 
         Ok(customer.id)
     }
@@ -200,12 +219,16 @@ impl PaymentMethodService {
         setup_intent_id: &str,
     ) -> Result<StripeSetupIntentExpanded, AppError> {
         let response = http_client
-            .get(format!("https://api.stripe.com/v1/setup_intents/{setup_intent_id}"))
+            .get(format!(
+                "https://api.stripe.com/v1/setup_intents/{setup_intent_id}"
+            ))
             .basic_auth(stripe_key, None::<&str>)
             .query(&[("expand[]", "payment_method")])
             .send()
             .await
-            .map_err(|error| AppError::Internal(format!("Error consultando SetupIntent: {error}")))?;
+            .map_err(|error| {
+                AppError::Internal(format!("Error consultando SetupIntent: {error}"))
+            })?;
 
         if !response.status().is_success() {
             let body = response.text().await.unwrap_or_default();
@@ -219,7 +242,9 @@ impl PaymentMethodService {
         response
             .json::<StripeSetupIntentExpanded>()
             .await
-            .map_err(|error| AppError::Internal(format!("Error parseando SetupIntent expandido: {error}")))
+            .map_err(|error| {
+                AppError::Internal(format!("Error parseando SetupIntent expandido: {error}"))
+            })
     }
 
     async fn detach_payment_method(
@@ -234,7 +259,9 @@ impl PaymentMethodService {
             .basic_auth(stripe_key, None::<&str>)
             .send()
             .await
-            .map_err(|error| AppError::Internal(format!("Error desacoplando tarjeta en Stripe: {error}")))?;
+            .map_err(|error| {
+                AppError::Internal(format!("Error desacoplando tarjeta en Stripe: {error}"))
+            })?;
 
         if response.status().is_success() {
             return Ok(());
@@ -257,16 +284,22 @@ impl PaymentMethodService {
         let parsed: Result<serde_json::Value, _> = serde_json::from_str(body);
         let (error_type, message) = match parsed {
             Ok(json) => (
-                json["error"]["type"].as_str().unwrap_or("unknown").to_string(),
-                json["error"]["message"].as_str().unwrap_or(fallback_message).to_string(),
+                json["error"]["type"]
+                    .as_str()
+                    .unwrap_or("unknown")
+                    .to_string(),
+                json["error"]["message"]
+                    .as_str()
+                    .unwrap_or(fallback_message)
+                    .to_string(),
             ),
             Err(_) => return AppError::BadRequest(fallback_message.into()),
         };
 
         match error_type.as_str() {
-            "authentication_error" => AppError::BadRequest(
-                "Error de configuracion de pagos, contacta soporte".into(),
-            ),
+            "authentication_error" => {
+                AppError::BadRequest("Error de configuracion de pagos, contacta soporte".into())
+            }
             "invalid_request_error" | "card_error" => {
                 AppError::BadRequest(format!("Error de pago: {message}"))
             }

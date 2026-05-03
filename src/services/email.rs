@@ -21,7 +21,7 @@ pub struct EmailConfig {
 
 impl EmailConfig {
     /// Intenta crear config desde env vars. Retorna None si faltan variables.
-  /// Acepta `SMTP_*` y `GLORY_SMTP_*` como nombres de variables (compat local/prod).
+    /// Acepta `SMTP_*` y `GLORY_SMTP_*` como nombres de variables (compat local/prod).
     #[must_use]
     pub fn from_env() -> Option<Self> {
         let host = std::env::var("SMTP_HOST")
@@ -34,14 +34,22 @@ impl EmailConfig {
             .or_else(|_| std::env::var("GLORY_SMTP_PASSWORD"))
             .ok()?;
         let from_email = std::env::var("SMTP_FROM").unwrap_or_else(|_| user.clone());
-        let from_name = std::env::var("SMTP_FROM_NAME").unwrap_or_else(|_| "Nakomi Studio".to_string());
+        let from_name =
+            std::env::var("SMTP_FROM_NAME").unwrap_or_else(|_| "Nakomi Studio".to_string());
         let port = std::env::var("SMTP_PORT")
             .or_else(|_| std::env::var("GLORY_SMTP_PORT"))
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(587);
 
-        Some(Self { host, port, user, pass, from_name, from_email })
+        Some(Self {
+            host,
+            port,
+            user,
+            pass,
+            from_name,
+            from_email,
+        })
     }
 }
 
@@ -147,7 +155,7 @@ fn html_escape(s: &str) -> String {
 }
 
 fn format_usd_cents(amount_cents: i32) -> String {
-  format!("${:.2} USD", f64::from(amount_cents) / 100.0)
+    format!("${:.2} USD", f64::from(amount_cents) / 100.0)
 }
 
 /* [114A-8] Envía email de escalación a todos los admins activos.

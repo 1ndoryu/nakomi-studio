@@ -78,7 +78,9 @@ impl Default for OptimizeParams {
  * Estructura: uploads/.cache/{w}_{q}_{fmt}/{path_original} */
 #[must_use]
 pub fn cache_path(original_path: &str, params: &OptimizeParams) -> PathBuf {
-    let w = params.width.map_or_else(|| "orig".to_string(), |w| w.to_string());
+    let w = params
+        .width
+        .map_or_else(|| "orig".to_string(), |w| w.to_string());
     let q = params.quality.to_string();
     let fmt = match params.format {
         OutputFormat::Original => "orig",
@@ -194,7 +196,9 @@ pub async fn get_optimized_image(
             .map_err(|e| AppError::Internal(format!("Error leyendo cache: {e}")))?;
 
         let content_type = match params.format {
-            OutputFormat::Original => mime_from_extension(cached.extension().and_then(|e| e.to_str())),
+            OutputFormat::Original => {
+                mime_from_extension(cached.extension().and_then(|e| e.to_str()))
+            }
             other => other.content_type(),
         };
 
@@ -207,9 +211,7 @@ pub async fn get_optimized_image(
         .map_err(|_| AppError::NotFound("Imagen no encontrada".into()))?;
 
     /* Detectar MIME del original por extensión */
-    let original_mime = mime_from_extension(
-        original_path.extension().and_then(|e| e.to_str()),
-    );
+    let original_mime = mime_from_extension(original_path.extension().and_then(|e| e.to_str()));
 
     /* Procesar */
     let (processed_bytes, content_type) = process_image(&original_bytes, original_mime, params)?;

@@ -124,10 +124,7 @@ impl ChatTimingService {
     /// opcionalmente un mensaje de advertencia para enviar al visitante.
     #[must_use]
     pub fn check_rate(&self, visitor_id: &str) -> (RateCheckResult, Option<String>) {
-        let mut entry = self
-            .rate_limits
-            .entry(visitor_id.to_string())
-            .or_default();
+        let mut entry = self.rate_limits.entry(visitor_id.to_string()).or_default();
         let state = entry.value_mut();
 
         /* Reset ventana si expiró */
@@ -164,10 +161,7 @@ impl ChatTimingService {
                 state.mute_until = Some(Instant::now() + Duration::from_secs(30));
                 (
                     RateCheckResult::Muted,
-                    Some(
-                        "Has enviado demasiados mensajes. Espera 30 segundos."
-                            .to_string(),
-                    ),
+                    Some("Has enviado demasiados mensajes. Espera 30 segundos.".to_string()),
                 )
             }
             _ => (
@@ -270,12 +264,7 @@ impl ChatTimingService {
         let (tx, rx) = mpsc::channel::<TimingEvent>(64);
         self.sessions.insert(session_id, tx.clone());
 
-        tokio::spawn(session_timing_loop(
-            session_id,
-            visitor_name,
-            rx,
-            deps,
-        ));
+        tokio::spawn(session_timing_loop(session_id, visitor_name, rx, deps));
 
         tx
     }
@@ -439,14 +428,12 @@ async fn generate_ai_response(
     deps: &TimingSessionDeps,
 ) -> u32 {
     /* Verificar que la sesión sigue con IA activa */
-    let session_ok = match crate::repositories::ChatRepository::find_session_by_id(
-        &deps.pool, session_id,
-    )
-    .await
-    {
-        Ok(Some(s)) => s.ai_enabled && s.assigned_staff_id.is_none(),
-        _ => false,
-    };
+    let session_ok =
+        match crate::repositories::ChatRepository::find_session_by_id(&deps.pool, session_id).await
+        {
+            Ok(Some(s)) => s.ai_enabled && s.assigned_staff_id.is_none(),
+            _ => false,
+        };
 
     if !session_ok {
         return irrelevant_count;
@@ -465,7 +452,10 @@ async fn generate_ai_response(
              en lo que pueda ayudarte? Ofrecemos diseño web, desarrollo \
              de aplicaciones, branding y agentes IA."
         };
-        let _ = deps.hub.send_message(session_id, "ai", Some("ai"), msg).await;
+        let _ = deps
+            .hub
+            .send_message(session_id, "ai", Some("ai"), msg)
+            .await;
         return irrelevant_count;
     }
 
@@ -478,9 +468,14 @@ async fn generate_ai_response(
     let ai_result = tokio::time::timeout(
         std::time::Duration::from_secs(90),
         AiChatService::generate_response(
-            &deps.pool, &deps.ai_config, &deps.http_client, deps.stripe_key.as_deref(),
+            &deps.pool,
+            &deps.ai_config,
+            &deps.http_client,
+            deps.stripe_key.as_deref(),
             crate::services::AiSessionContext {
-                session_id, visitor_id: Some(&deps.visitor_id), user_id: deps.user_id,
+                session_id,
+                visitor_id: Some(&deps.visitor_id),
+                user_id: deps.user_id,
                 context: deps.context.as_deref(),
             },
             combined,
@@ -498,7 +493,8 @@ async fn generate_ai_response(
         tracing::error!("AI response timeout (90s) para sesión {session_id}");
         AiResponse {
             text: "Disculpa, estoy tardando más de lo normal. Un miembro del equipo \
-                   te asistirá en breve.".to_string(),
+                   te asistirá en breve."
+                .to_string(),
             needs_escalation: true,
             rich_messages: Vec::new(),
         }
@@ -506,20 +502,33 @@ async fn generate_ai_response(
 
     /* [T-2] Enviar rich messages (service_cards, invoices) antes del texto */
     for rm in &ai_resp.rich_messages {
-        let _ = deps.hub
+        let _ = deps
+            .hub
             .send_rich_message(
-                session_id, "ai", Some("ai"),
-                &rm.content, &rm.message_type, &rm.metadata,
+                session_id,
+                "ai",
+                Some("ai"),
+                &rm.content,
+                &rm.message_type,
+                &rm.metadata,
             )
             .await;
     }
 
-    let _ = deps.hub
+    let _ = deps
+        .hub
         .send_message(session_id, "ai", Some("ai"), &ai_resp.text)
         .await;
 
     if ai_resp.needs_escalation {
-        send_escalation(&deps.pool, &deps.notification_hub, session_id, visitor_name, deps.email_config.as_ref()).await;
+        send_escalation(
+            &deps.pool,
+            &deps.notification_hub,
+            session_id,
+            visitor_name,
+            deps.email_config.as_ref(),
+        )
+        .await;
     }
 
     irrelevant_count
@@ -537,8 +546,8 @@ async fn check_relevance(
         return Ok(true); /* sin API keys, asumir relevante */
     }
 
-    let relevance_model = std::env::var("AI_RELEVANCE_MODEL")
-        .unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
+    let relevance_model =
+        std::env::var("AI_RELEVANCE_MODEL").unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
 
     /* [084A-47] Desactivado por defecto: genera falsos positivos que bloquean
      * mensajes legítimos a mitad de conversación. Reactivable con
@@ -625,7 +634,7 @@ async fn send_escalation(
     /* UPDATE fire-and-forget; resultado descartado con let _ = */
     // sentinel-disable-next-line sqlx-query-sin-macro
     let _ = sqlx::query(
-        "UPDATE chat_sessions SET is_escalated = true, updated_at = NOW() WHERE id = $1"
+        "UPDATE chat_sessions SET is_escalated = true, updated_at = NOW() WHERE id = $1",
     )
     .bind(session_id)
     .execute(pool)
@@ -646,7 +655,10 @@ async fn send_escalation(
                 reference_id: Some(session_id),
             };
             let _ = notification_hub.notify_many(&admin_ids, &base).await;
-            tracing::info!("Escalación enviada a {} admins para sesión {session_id}", admin_ids.len());
+            tracing::info!(
+                "Escalación enviada a {} admins para sesión {session_id}",
+                admin_ids.len()
+            );
         }
     }
 
@@ -680,20 +692,21 @@ async fn generate_context_summary(
     }
 
     /* Obtener historial de la sesión */
-    let messages = match crate::repositories::ChatRepository::list_messages(
-        &pool, session_id, 50, 0,
-    )
-    .await
-    {
-        Ok(msgs) if !msgs.is_empty() => msgs,
-        _ => return,
-    };
+    let messages =
+        match crate::repositories::ChatRepository::list_messages(&pool, session_id, 50, 0).await {
+            Ok(msgs) if !msgs.is_empty() => msgs,
+            _ => return,
+        };
 
     /* Construir transcript compacto */
     let mut transcript = String::new();
     for msg in &messages {
         /* [084A-46] Agente renombrado a Claudia */
-        let role = if msg.sender_type == "ai" { "Claudia" } else { "Cliente" };
+        let role = if msg.sender_type == "ai" {
+            "Claudia"
+        } else {
+            "Cliente"
+        };
         let _ = writeln!(transcript, "{role}: {}", msg.content);
     }
 
@@ -712,14 +725,11 @@ async fn generate_context_summary(
     };
 
     /* Cargar resumen previo y concatenar (max 2000 chars total) */
-    let existing = match crate::repositories::ChatRepository::find_visitor_profile(
-        &pool, &visitor_id,
-    )
-    .await
-    {
-        Ok(Some(p)) => p.context_summary.unwrap_or_default(),
-        _ => String::new(),
-    };
+    let existing =
+        match crate::repositories::ChatRepository::find_visitor_profile(&pool, &visitor_id).await {
+            Ok(Some(p)) => p.context_summary.unwrap_or_default(),
+            _ => String::new(),
+        };
 
     let final_summary = if existing.is_empty() {
         summary
@@ -732,9 +742,12 @@ async fn generate_context_summary(
         }
     };
 
-    if let Err(e) =
-        crate::repositories::ChatRepository::update_context_summary(&pool, &visitor_id, &final_summary)
-            .await
+    if let Err(e) = crate::repositories::ChatRepository::update_context_summary(
+        &pool,
+        &visitor_id,
+        &final_summary,
+    )
+    .await
     {
         tracing::warn!("Error guardando context summary para {visitor_id}: {e}");
     } else {
@@ -744,12 +757,9 @@ async fn generate_context_summary(
 
 /* [T-3] Llama a la API de Groq con modelo ligero para generar resumen de sesión.
  * Retorna None si la API falla o el resumen está vacío. */
-async fn call_summary_api(
-    config: &AiChatConfig,
-    transcript: &str,
-) -> Option<String> {
-    let summary_model = std::env::var("AI_RELEVANCE_MODEL")
-        .unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
+async fn call_summary_api(config: &AiChatConfig, transcript: &str) -> Option<String> {
+    let summary_model =
+        std::env::var("AI_RELEVANCE_MODEL").unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
 
     let body = serde_json::json!({
         "model": summary_model,
@@ -791,7 +801,11 @@ async fn call_summary_api(
                 .as_str()
                 .unwrap_or("")
                 .to_string();
-            if s.is_empty() { None } else { Some(s) }
+            if s.is_empty() {
+                None
+            } else {
+                Some(s)
+            }
         }
         Ok(r) => {
             tracing::warn!("Context summary API error: {}", r.status());
@@ -880,7 +894,10 @@ mod tests {
         /* Mientras está muteado, sigue retornando Muted sin escalar */
         let (result, _) = svc.check_rate("visitor-5");
         /* mute_until está activo → se retorna Muted antes del match de cooldown */
-        assert!(matches!(result, RateCheckResult::Muted | RateCheckResult::Closed));
+        assert!(matches!(
+            result,
+            RateCheckResult::Muted | RateCheckResult::Closed
+        ));
     }
 
     #[test]

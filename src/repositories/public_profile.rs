@@ -6,9 +6,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::models::{
-    GivenReviewRow, PublicProfileRow, RatingDistribution, ReceivedReviewRow,
-};
+use crate::models::{GivenReviewRow, PublicProfileRow, RatingDistribution, ReceivedReviewRow};
 
 pub struct PublicProfileRepository;
 
@@ -162,7 +160,9 @@ impl PublicProfileRepository {
         )
         .fetch_one(pool)
         .await
-        .map_err(|e| AppError::Internal(format!("Error obteniendo distribución de ratings: {e}")))?;
+        .map_err(|e| {
+            AppError::Internal(format!("Error obteniendo distribución de ratings: {e}"))
+        })?;
 
         Ok(RatingDistribution {
             stars_5: row.stars_5.unwrap_or(0),

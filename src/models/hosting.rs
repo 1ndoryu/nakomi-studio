@@ -19,13 +19,14 @@ use validator::Validate;
  * Acepta subdominios, TLDs estándar. No acepta IPs, rutas ni esquemas. */
 static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"^(?i)(?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$"
-    ).expect("regex de dominio válida")
+        r"^(?i)(?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$",
+    )
+    .expect("regex de dominio válida")
 });
 
 /* ============================================================
-   MODELOS DE BD
-   ============================================================ */
+MODELOS DE BD
+============================================================ */
 
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
 pub struct HostingSubscription {
@@ -67,8 +68,8 @@ pub struct HostingEvent {
 }
 
 /* ============================================================
-   REQUESTS
-   ============================================================ */
+REQUESTS
+============================================================ */
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateHostingRequest {
@@ -78,7 +79,10 @@ pub struct CreateHostingRequest {
     pub client_email: String,
     #[validate(length(min = 1, max = 20))]
     pub plan: String,
-    #[validate(length(max = 253), regex(path = "*DOMAIN_REGEX", message = "Dominio inválido"))]
+    #[validate(
+        length(max = 253),
+        regex(path = "*DOMAIN_REGEX", message = "Dominio inválido")
+    )]
     pub domain: Option<String>,
     /* [304A-3] Permite vincular manualmente a un despliegue Coolify existente (admin) */
     #[validate(length(max = 200))]
@@ -98,7 +102,10 @@ pub struct UpdateHostingStatusRequest {
 pub struct SelfSubscribeRequest {
     #[validate(length(min = 1, max = 20))]
     pub plan: String,
-    #[validate(length(max = 253), regex(path = "*DOMAIN_REGEX", message = "Dominio inválido"))]
+    #[validate(
+        length(max = 253),
+        regex(path = "*DOMAIN_REGEX", message = "Dominio inválido")
+    )]
     pub domain: Option<String>,
 }
 
@@ -107,7 +114,10 @@ pub struct SelfSubscribeRequest {
 pub struct UpdateHostingRequest {
     #[validate(length(min = 1, max = 20))]
     pub plan: String,
-    #[validate(length(max = 253), regex(path = "*DOMAIN_REGEX", message = "Dominio inválido"))]
+    #[validate(
+        length(max = 253),
+        regex(path = "*DOMAIN_REGEX", message = "Dominio inválido")
+    )]
     pub domain: Option<String>,
 }
 
@@ -120,8 +130,8 @@ pub struct AssignHostingRequest {
 }
 
 /* ============================================================
-   RESPONSES
-   ============================================================ */
+RESPONSES
+============================================================ */
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct HostingSubscriptionResponse {
@@ -280,8 +290,8 @@ pub struct CoolifyDeploymentResponse {
 }
 
 /* ============================================================
-   TESTS — [094A-10] Validación de modelos hosting
-   ============================================================ */
+TESTS — [094A-10] Validación de modelos hosting
+============================================================ */
 
 #[cfg(test)]
 mod tests {
@@ -473,11 +483,17 @@ mod tests {
         /* Cada label en un dominio puede tener max 63 chars */
         let long_label = "a".repeat(63);
         let domain = format!("{long_label}.com");
-        assert!(DOMAIN_REGEX.is_match(&domain), "63 char label debería ser válido");
+        assert!(
+            DOMAIN_REGEX.is_match(&domain),
+            "63 char label debería ser válido"
+        );
 
         let too_long = "a".repeat(64);
         let domain = format!("{too_long}.com");
-        assert!(!DOMAIN_REGEX.is_match(&domain), "64 char label debería ser inválido");
+        assert!(
+            !DOMAIN_REGEX.is_match(&domain),
+            "64 char label debería ser inválido"
+        );
     }
 
     #[test]

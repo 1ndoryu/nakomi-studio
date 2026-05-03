@@ -24,8 +24,8 @@ pub use super::rest_upload::upload_chat_file;
 pub use super::rest_messages::*;
 
 /* ============================================================
-   REST API ENDPOINTS
-   ============================================================ */
+REST API ENDPOINTS
+============================================================ */
 
 /// Listar sesiones de chat del usuario
 #[utoipa::path(
@@ -75,9 +75,7 @@ pub async fn create_session(
             .get_or_create_order_session(order_id, auth.user_id)
             .await?
     } else {
-        let vid = req
-            .visitor_id
-            .unwrap_or_else(|| auth.user_id.to_string());
+        let vid = req.visitor_id.unwrap_or_else(|| auth.user_id.to_string());
         state
             .chat_hub
             .get_or_create_visitor_session(&vid, req.visitor_name.as_deref(), None, None, None)
@@ -86,7 +84,9 @@ pub async fn create_session(
 
     /* [064A-31] Obtener order_number si la sesión está vinculada a una orden */
     let order_number: Option<i32> = if let Some(oid) = session.order_id {
-        OrderRepository::order_number_by_id(&state.pool, oid).await.unwrap_or(None)
+        OrderRepository::order_number_by_id(&state.pool, oid)
+            .await
+            .unwrap_or(None)
     } else {
         None
     };
@@ -134,7 +134,10 @@ pub async fn close_session(
     auth: AuthUser,
     Path(session_id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    auth.require_role(&[crate::models::UserRole::Admin, crate::models::UserRole::Employee])?;
+    auth.require_role(&[
+        crate::models::UserRole::Admin,
+        crate::models::UserRole::Employee,
+    ])?;
     state.chat_hub.close_session(session_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -147,15 +150,19 @@ pub async fn mark_session_viewed(
     auth: AuthUser,
     Path(session_id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    auth.require_role(&[crate::models::UserRole::Admin, crate::models::UserRole::Employee])?;
-    crate::repositories::ChatRepository::mark_session_viewed(&state.pool, session_id).await
+    auth.require_role(&[
+        crate::models::UserRole::Admin,
+        crate::models::UserRole::Employee,
+    ])?;
+    crate::repositories::ChatRepository::mark_session_viewed(&state.pool, session_id)
+        .await
         .map_err(AppError::Database)?;
     Ok(StatusCode::NO_CONTENT)
 }
 
 /* ============================================================
-   ROUTES (REST — montadas bajo /api)
-   ============================================================ */
+ROUTES (REST — montadas bajo /api)
+============================================================ */
 
 pub fn rest_routes() -> Router<AppState> {
     Router::new()

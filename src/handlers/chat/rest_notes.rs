@@ -29,7 +29,10 @@ pub async fn create_session_note(
     Path(session_id): Path<Uuid>,
     Json(req): Json<CreateSessionNoteRequest>,
 ) -> Result<(StatusCode, Json<ChatSessionNote>), AppError> {
-    auth.require_role(&[crate::models::UserRole::Admin, crate::models::UserRole::Employee])?;
+    auth.require_role(&[
+        crate::models::UserRole::Admin,
+        crate::models::UserRole::Employee,
+    ])?;
     let note = crate::repositories::ChatRepository::create_session_note(
         &state.pool,
         session_id,
@@ -47,7 +50,10 @@ pub async fn update_visitor_name(
     Path(session_id): Path<Uuid>,
     Json(req): Json<UpdateVisitorNameRequest>,
 ) -> Result<StatusCode, AppError> {
-    auth.require_role(&[crate::models::UserRole::Admin, crate::models::UserRole::Employee])?;
+    auth.require_role(&[
+        crate::models::UserRole::Admin,
+        crate::models::UserRole::Employee,
+    ])?;
     crate::repositories::ChatRepository::update_visitor_name(&state.pool, session_id, &req.name)
         .await?;
     Ok(StatusCode::NO_CONTENT)

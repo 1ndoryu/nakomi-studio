@@ -95,7 +95,7 @@
     min-width: 200px;
     padding: var(--spacing-xs);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     background: var(--bg-primary);
     z-index: 3;
 }
@@ -275,7 +275,7 @@
     flex-direction: column;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     background: var(--bg-card-subtle);
 }
@@ -336,7 +336,7 @@
     flex-direction: column;
     gap: var(--spacing-md);
     padding: var(--spacing-lg);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     background: var(--brand-white);
 }
@@ -371,7 +371,7 @@
     flex-direction: column;
     gap: var(--spacing-sm);
     padding-top: var(--spacing-sm);
-    border-top: 1px solid var(--bg-item-active);
+    border-top: 1px solid var(--border-default);
 }
 
 .ordenDescripcionProyectoHeader {
@@ -440,7 +440,7 @@
     flex-direction: column;
     gap: var(--spacing-md);
     padding: var(--spacing-lg);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     background: var(--brand-white);
 }

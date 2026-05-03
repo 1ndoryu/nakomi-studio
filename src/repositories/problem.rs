@@ -56,7 +56,10 @@ impl ProblemRepository {
         Ok(rows)
     }
 
-    pub async fn list_by_order(pool: &PgPool, order_id: Uuid) -> Result<Vec<ProblemWithContext>, AppError> {
+    pub async fn list_by_order(
+        pool: &PgPool,
+        order_id: Uuid,
+    ) -> Result<Vec<ProblemWithContext>, AppError> {
         let rows = sqlx::query_as!(
             ProblemWithContext,
             r#"SELECT op.id, op.order_id, op.reporter_id, op.reporter_role, op.reason,

@@ -105,10 +105,7 @@ impl ReviewRepository {
     }
 
     /* Actualiza el average_rating en employee_profiles basado en reviews */
-    pub async fn update_employee_average(
-        pool: &PgPool,
-        employee_id: Uuid,
-    ) -> Result<(), AppError> {
+    pub async fn update_employee_average(pool: &PgPool, employee_id: Uuid) -> Result<(), AppError> {
         sqlx::query!(
             r#"UPDATE employee_profiles
                SET average_rating = (
@@ -125,9 +122,7 @@ impl ReviewRepository {
         Ok(())
     }
 
-    pub async fn list_all(
-        pool: &PgPool,
-    ) -> Result<Vec<OrderReview>, AppError> {
+    pub async fn list_all(pool: &PgPool) -> Result<Vec<OrderReview>, AppError> {
         let reviews = sqlx::query_as!(
             OrderReview,
             r#"SELECT id, order_id, client_id, employee_id, rating, comment,
@@ -152,7 +147,7 @@ impl ReviewRepository {
         sqlx::query_as::<_, OrderReview>(
             r"SELECT id, order_id, client_id, employee_id, rating, comment,
                       employee_response, employee_responded_at, created_at
-               FROM order_reviews WHERE id = $1"
+               FROM order_reviews WHERE id = $1",
         )
         .bind(review_id)
         .fetch_optional(pool)

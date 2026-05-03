@@ -18,14 +18,14 @@ mod health;
 mod hosting;
 mod hosting_domains;
 mod image_proxy;
-mod profile;
 mod notes;
 mod notifications;
-mod orders;
 mod order_lifecycle;
-mod payments;
+mod orders;
 mod payment_methods;
+mod payments;
 mod problems;
+mod profile;
 mod projects;
 mod public_users;
 mod refunds;
@@ -37,15 +37,15 @@ mod uploads;
 mod vps;
 mod wallet;
 
-use axum::Router;
 use argon2::PasswordHasher;
-use tower_http::cors::{AllowOrigin, Any, CorsLayer};
-use tower_http::compression::CompressionLayer;
-use tower_http::set_header::SetResponseHeaderLayer;
-use tower_http::services::{ServeDir, ServeFile};
-use tower_http::trace::TraceLayer;
 use axum::http::{HeaderName, HeaderValue, Method};
-use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
+use axum::Router;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower_http::compression::CompressionLayer;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::services::{ServeDir, ServeFile};
+use tower_http::set_header::SetResponseHeaderLayer;
+use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -309,7 +309,13 @@ pub struct ApiDoc;
 
 /* [164A-16] Security headers OWASP extraídos para mantener create_router dentro del límite clippy */
 type SecurityHeaderLayer = SetResponseHeaderLayer<HeaderValue>;
-fn security_headers() -> (SecurityHeaderLayer, SecurityHeaderLayer, SecurityHeaderLayer, SecurityHeaderLayer, SecurityHeaderLayer) {
+fn security_headers() -> (
+    SecurityHeaderLayer,
+    SecurityHeaderLayer,
+    SecurityHeaderLayer,
+    SecurityHeaderLayer,
+    SecurityHeaderLayer,
+) {
     let hsts = SetResponseHeaderLayer::if_not_present(
         HeaderName::from_static("strict-transport-security"),
         HeaderValue::from_static("max-age=31536000; includeSubDomains"),
@@ -345,7 +351,9 @@ fn init_coolify_config() -> Option<crate::services::CoolifyConfig> {
     if coolify_config.is_some() {
         tracing::info!("Coolify provisioning configurado");
     } else {
-        tracing::warn!("Coolify NO configurado — provisioning de hosting desactivado (faltan vars COOLIFY_*)");
+        tracing::warn!(
+            "Coolify NO configurado — provisioning de hosting desactivado (faltan vars COOLIFY_*)"
+        );
     }
     coolify_config
 }
@@ -378,12 +386,16 @@ fn init_fixture_manager(
     if std::path::Path::new(&content_dir).exists() {
         tracing::info!("Fixture manager configurado en '{content_dir}'");
         let password_hasher: glory_rs::fixtures::PasswordHasher = Box::new(|plain| {
-            let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
+            let salt = argon2::password_hash::SaltString::generate(
+                &mut argon2::password_hash::rand_core::OsRng,
+            );
             let hash = argon2::Argon2::default()
                 .hash_password(plain.as_bytes(), &salt)
-                .map_err(|e: argon2::password_hash::Error| -> Box<dyn std::error::Error + Send + Sync> {
-                    e.to_string().into()
-                })?
+                .map_err(
+                    |e: argon2::password_hash::Error| -> Box<dyn std::error::Error + Send + Sync> {
+                        e.to_string().into()
+                    },
+                )?
                 .to_string();
             Ok(hash)
         });
@@ -475,12 +487,14 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         .merge(notifications::ws_routes())
         /* [044A-43] Servir archivos estáticos de uploads/ (avatares, etc.)
          * [154A-6] Cache agresivo: uploads no cambian una vez subidos (1 año) */
-        .nest_service("/uploads", tower::ServiceBuilder::new()
-            .layer(SetResponseHeaderLayer::if_not_present(
-                HeaderName::from_static("cache-control"),
-                HeaderValue::from_static("public, max-age=31536000, immutable"),
-            ))
-            .service(ServeDir::new("uploads"))
+        .nest_service(
+            "/uploads",
+            tower::ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    HeaderName::from_static("cache-control"),
+                    HeaderValue::from_static("public, max-age=31536000, immutable"),
+                ))
+                .service(ServeDir::new("uploads")),
         )
         .nest("/api", api_routes())
         .layer(TraceLayer::new_for_http())
@@ -526,8 +540,7 @@ pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Route
         let prerender_state = crate::middleware::prerender::PrerenderState {
             pool: pool_for_prerender,
             static_dir: dir.clone(),
-            app_url: std::env::var("APP_URL")
-                .unwrap_or_else(|_| "http://localhost:5173".into()),
+            app_url: std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost:5173".into()),
         };
 
         router

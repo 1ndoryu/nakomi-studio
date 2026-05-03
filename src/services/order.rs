@@ -7,11 +7,13 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::{
-    CreateOrderRequest, Order, OrderPhaseResponse, OrderResponse,
-    OrderStatus, PaymentMode, PhaseStatus, ServiceDetailResponse, ServicePlanResponse,
-    ServicePlanPhaseResponse, UpdateOrderPhaseDefinitionRequest,
+    CreateOrderRequest, Order, OrderPhaseResponse, OrderResponse, OrderStatus, PaymentMode,
+    PhaseStatus, ServiceDetailResponse, ServicePlanPhaseResponse, ServicePlanResponse,
+    UpdateOrderPhaseDefinitionRequest,
 };
-use crate::repositories::{OrderRepository, ServiceRepository, CreateOrderParams, CreatePhaseParams};
+use crate::repositories::{
+    CreateOrderParams, CreatePhaseParams, OrderRepository, ServiceRepository,
+};
 
 pub struct OrderService;
 
@@ -36,7 +38,10 @@ impl OrderService {
                     features: plan.features,
                     is_highlighted: plan.is_highlighted,
                     is_custom: plan.is_custom,
-                    phases: phases.into_iter().map(ServicePlanPhaseResponse::from).collect(),
+                    phases: phases
+                        .into_iter()
+                        .map(ServicePlanPhaseResponse::from)
+                        .collect(),
                 });
             }
 
@@ -60,10 +65,7 @@ impl OrderService {
     }
 
     /// Detalle completo de un servicio por slug
-    pub async fn get_service(
-        pool: &PgPool,
-        slug: &str,
-    ) -> Result<ServiceDetailResponse, AppError> {
+    pub async fn get_service(pool: &PgPool, slug: &str) -> Result<ServiceDetailResponse, AppError> {
         let svc = ServiceRepository::find_service_by_slug(pool, slug)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Servicio '{slug}' no encontrado")))?;
@@ -82,7 +84,10 @@ impl OrderService {
                 features: plan.features,
                 is_highlighted: plan.is_highlighted,
                 is_custom: plan.is_custom,
-                phases: phases.into_iter().map(ServicePlanPhaseResponse::from).collect(),
+                phases: phases
+                    .into_iter()
+                    .map(ServicePlanPhaseResponse::from)
+                    .collect(),
             });
         }
 
@@ -124,9 +129,7 @@ impl OrderService {
 
         let plan = ServiceRepository::find_plan_by_slug(pool, svc.id, &plan_slug)
             .await?
-            .ok_or_else(|| {
-                AppError::NotFound(format!("Plan '{plan_slug}' no encontrado"))
-            })?;
+            .ok_or_else(|| AppError::NotFound(format!("Plan '{plan_slug}' no encontrado")))?;
 
         let base_price = plan.price_cents;
         let discount = Self::discount_for_mode(payment_mode);
@@ -230,7 +233,8 @@ impl OrderService {
         let (svc_title, svc_slug, plan_name) =
             OrderRepository::get_order_display_info(pool, order.service_id, order.plan_id).await?;
 
-        let employee_name = OrderRepository::get_employee_display_name(pool, order.assigned_employee_id).await?;
+        let employee_name =
+            OrderRepository::get_employee_display_name(pool, order.assigned_employee_id).await?;
         let client_name = OrderRepository::get_client_display_name(pool, order.client_id).await?;
 
         let response = OrderResponse {
@@ -285,8 +289,11 @@ impl OrderService {
                 OrderRepository::get_order_display_info(pool, order.service_id, order.plan_id)
                     .await?;
             let phases = OrderRepository::list_order_phases(pool, order.id).await?;
-            let employee_name = OrderRepository::get_employee_display_name(pool, order.assigned_employee_id).await?;
-            let client_name = OrderRepository::get_client_display_name(pool, order.client_id).await?;
+            let employee_name =
+                OrderRepository::get_employee_display_name(pool, order.assigned_employee_id)
+                    .await?;
+            let client_name =
+                OrderRepository::get_client_display_name(pool, order.client_id).await?;
 
             result.push(OrderResponse {
                 id: order.id,
@@ -307,7 +314,9 @@ impl OrderService {
                 current_phase: order.current_phase,
                 total_phases: {
                     #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-                    { phases.len() as i32 }
+                    {
+                        phases.len() as i32
+                    }
                 },
                 project_description: order.project_description,
                 client_notes: order.client_notes,
@@ -363,12 +372,16 @@ impl OrderService {
             UserRole::Admin => {}
             UserRole::Client => {
                 if order.client_id != user_id {
-                    return Err(AppError::Forbidden("No tienes permiso para cancelar esta orden".into()));
+                    return Err(AppError::Forbidden(
+                        "No tienes permiso para cancelar esta orden".into(),
+                    ));
                 }
             }
             UserRole::Employee => {
                 if order.assigned_employee_id != Some(user_id) {
-                    return Err(AppError::Forbidden("No estÃ¡s asignado a esta orden".into()));
+                    return Err(AppError::Forbidden(
+                        "No estÃ¡s asignado a esta orden".into(),
+                    ));
                 }
                 if reason.is_none_or(|r| r.trim().is_empty()) {
                     return Err(AppError::Validation(
@@ -382,15 +395,15 @@ impl OrderService {
          * pending_payment ya no se usa a nivel de orden â€” solo en fases. */
         let can_cancel = matches!(
             order.status,
-            OrderStatus::PaymentHeld
-                | OrderStatus::AwaitingAssignment
+            OrderStatus::PaymentHeld | OrderStatus::AwaitingAssignment
         ) || (effective_role == UserRole::Employee
             && order.status == OrderStatus::InProgress);
 
         if !can_cancel {
-            return Err(AppError::BadRequest(
-                format!("No se puede cancelar una orden en estado {:?}", order.status),
-            ));
+            return Err(AppError::BadRequest(format!(
+                "No se puede cancelar una orden en estado {:?}",
+                order.status
+            )));
         }
 
         /* Guardar razÃ³n si se proporcionÃ³ */
@@ -437,7 +450,10 @@ impl OrderService {
             ));
         }
 
-        if matches!(order.status, OrderStatus::Completed | OrderStatus::Cancelled) {
+        if matches!(
+            order.status,
+            OrderStatus::Completed | OrderStatus::Cancelled
+        ) {
             return Err(AppError::BadRequest(
                 "La descripciÃ³n no se puede editar en una orden cerrada".into(),
             ));
@@ -514,7 +530,10 @@ impl OrderService {
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Fase {phase_number} no encontrada")))?;
 
-        if !matches!(phase.status, PhaseStatus::Locked | PhaseStatus::PendingPayment) {
+        if !matches!(
+            phase.status,
+            PhaseStatus::Locked | PhaseStatus::PendingPayment
+        ) {
             return Err(AppError::BadRequest(
                 "Solo se pueden definir fases que aÃºn no comenzaron".into(),
             ));
@@ -591,7 +610,9 @@ impl OrderService {
             .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
         if order.assigned_employee_id != Some(employee_id) {
-            return Err(AppError::Forbidden("Solo el empleado asignado puede entregar".into()));
+            return Err(AppError::Forbidden(
+                "Solo el empleado asignado puede entregar".into(),
+            ));
         }
 
         let phase = OrderRepository::find_phase_by_number(pool, order_id, phase_number)
@@ -601,9 +622,10 @@ impl OrderService {
         match phase.status {
             PhaseStatus::InProgress | PhaseStatus::Paid | PhaseStatus::RevisionRequested => {}
             _ => {
-                return Err(AppError::BadRequest(
-                    format!("No se puede entregar una fase en estado {:?}", phase.status),
-                ));
+                return Err(AppError::BadRequest(format!(
+                    "No se puede entregar una fase en estado {:?}",
+                    phase.status
+                )));
             }
         }
 
@@ -626,7 +648,9 @@ impl OrderService {
             .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
         if order.client_id != client_id {
-            return Err(AppError::Forbidden("Solo el cliente puede aprobar fases".into()));
+            return Err(AppError::Forbidden(
+                "Solo el cliente puede aprobar fases".into(),
+            ));
         }
 
         let phase = OrderRepository::find_phase_by_number(pool, order_id, phase_number)
@@ -634,9 +658,10 @@ impl OrderService {
             .ok_or_else(|| AppError::NotFound(format!("Fase {phase_number} no encontrada")))?;
 
         if phase.status != PhaseStatus::Delivered {
-            return Err(AppError::BadRequest(
-                format!("Solo se pueden aprobar fases entregadas (estado actual: {:?})", phase.status),
-            ));
+            return Err(AppError::BadRequest(format!(
+                "Solo se pueden aprobar fases entregadas (estado actual: {:?})",
+                phase.status
+            )));
         }
 
         let approved = OrderRepository::approve_phase(pool, phase.id).await?;
@@ -645,7 +670,9 @@ impl OrderService {
         let all_phases = OrderRepository::list_order_phases(pool, order_id).await?;
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         let total = all_phases.len() as i32;
-        let all_approved = all_phases.iter().all(|p| p.status == PhaseStatus::Approved || p.id == phase.id);
+        let all_approved = all_phases
+            .iter()
+            .all(|p| p.status == PhaseStatus::Approved || p.id == phase.id);
 
         if all_approved {
             OrderRepository::complete_order(pool, order_id).await?;
@@ -655,7 +682,8 @@ impl OrderService {
             if let Some(next_phase) = all_phases.iter().find(|p| p.phase_number == next_number) {
                 if next_phase.status == PhaseStatus::Locked {
                     let unlock_status = Self::initial_phase_status(order.payment_mode);
-                    OrderRepository::update_phase_status(pool, next_phase.id, unlock_status).await?;
+                    OrderRepository::update_phase_status(pool, next_phase.id, unlock_status)
+                        .await?;
                 }
             }
             if next_number <= total {
@@ -680,7 +708,9 @@ impl OrderService {
             .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
         if order.client_id != client_id {
-            return Err(AppError::Forbidden("Solo el cliente puede solicitar revisiÃ³n".into()));
+            return Err(AppError::Forbidden(
+                "Solo el cliente puede solicitar revisiÃ³n".into(),
+            ));
         }
 
         let phase = OrderRepository::find_phase_by_number(pool, order_id, phase_number)
@@ -688,15 +718,17 @@ impl OrderService {
             .ok_or_else(|| AppError::NotFound(format!("Fase {phase_number} no encontrada")))?;
 
         if phase.status != PhaseStatus::Delivered {
-            return Err(AppError::BadRequest(
-                format!("Solo se puede pedir revisiÃ³n en fases entregadas (estado actual: {:?})", phase.status),
-            ));
+            return Err(AppError::BadRequest(format!(
+                "Solo se puede pedir revisiÃ³n en fases entregadas (estado actual: {:?})",
+                phase.status
+            )));
         }
 
         if phase.revisions_used >= phase.max_revisions {
-            return Err(AppError::BadRequest(
-                format!("Se alcanzÃ³ el lÃ­mite de revisiones ({}/{})", phase.revisions_used, phase.max_revisions),
-            ));
+            return Err(AppError::BadRequest(format!(
+                "Se alcanzÃ³ el lÃ­mite de revisiones ({}/{})",
+                phase.revisions_used, phase.max_revisions
+            )));
         }
 
         let revised = OrderRepository::request_revision(pool, phase.id).await?;
@@ -704,8 +736,8 @@ impl OrderService {
     }
 
     /* ============================================================
-       HELPERS PRIVADOS
-       ============================================================ */
+    HELPERS PRIVADOS
+    ============================================================ */
 
     /// Descuento por modo de pago: full=20%, `half_half`=10%, phased=0%
     fn discount_for_mode(mode: PaymentMode) -> i32 {

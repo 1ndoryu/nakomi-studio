@@ -22,8 +22,8 @@ use crate::repositories::{OrderRepository, ReviewRepository};
 use crate::AppState;
 
 /* ============================================================
-   POST /api/orders/:order_id/review — Cliente deja review
-   ============================================================ */
+POST /api/orders/:order_id/review — Cliente deja review
+============================================================ */
 
 #[utoipa::path(
     post,
@@ -62,9 +62,9 @@ pub async fn create_review(
         ));
     }
 
-    let employee_id = order.assigned_employee_id.ok_or_else(|| {
-        AppError::BadRequest("La orden no tiene empleado asignado".into())
-    })?;
+    let employee_id = order
+        .assigned_employee_id
+        .ok_or_else(|| AppError::BadRequest("La orden no tiene empleado asignado".into()))?;
 
     let review = ReviewRepository::create(
         &state.pool,
@@ -80,22 +80,25 @@ pub async fn create_review(
     ReviewRepository::update_employee_average(&state.pool, employee_id).await?;
 
     /* [104A-38] Notificar al empleado que recibió una review */
-    let _ = state.notification_hub.notify(CreateNotification {
-        user_id: employee_id,
-        notification_type: NOTIF_NEW_REVIEW.to_string(),
-        title: format!("Nueva review en orden #{}", order.order_number),
-        body: Some(format!("Rating: {}/5", body.rating)),
-        link: Some(format!("/panel/orders/{order_id}")),
-        reference_type: Some("order".to_string()),
-        reference_id: Some(order_id),
-    }).await;
+    let _ = state
+        .notification_hub
+        .notify(CreateNotification {
+            user_id: employee_id,
+            notification_type: NOTIF_NEW_REVIEW.to_string(),
+            title: format!("Nueva review en orden #{}", order.order_number),
+            body: Some(format!("Rating: {}/5", body.rating)),
+            link: Some(format!("/panel/orders/{order_id}")),
+            reference_type: Some("order".to_string()),
+            reference_id: Some(order_id),
+        })
+        .await;
 
     Ok((StatusCode::CREATED, Json(ReviewResponse::from(review))))
 }
 
 /* ============================================================
-   POST /api/reviews/:review_id/respond — Empleado responde
-   ============================================================ */
+POST /api/reviews/:review_id/respond — Empleado responde
+============================================================ */
 
 #[utoipa::path(
     post,
@@ -123,7 +126,7 @@ pub async fn respond_review(
      * Alternativa: query directa aquí. */
     let review = ReviewRepository::find_by_id(&state.pool, review_id)
         .await?
-    .ok_or_else(|| AppError::NotFound("Review no encontrada".into()))?;
+        .ok_or_else(|| AppError::NotFound("Review no encontrada".into()))?;
 
     /* Solo el empleado de la review puede responder */
     if review.employee_id != auth.user_id {
@@ -133,30 +136,31 @@ pub async fn respond_review(
     }
 
     if review.employee_response.is_some() {
-        return Err(AppError::BadRequest(
-            "Ya respondiste a esta review".into(),
-        ));
+        return Err(AppError::BadRequest("Ya respondiste a esta review".into()));
     }
 
     let updated = ReviewRepository::respond(&state.pool, review_id, &body.response).await?;
 
     /* [104A-38] Notificar al cliente que el empleado respondió su review */
-    let _ = state.notification_hub.notify(CreateNotification {
-        user_id: review.client_id,
-        notification_type: NOTIF_REVIEW_RESPONSE.to_string(),
-        title: "Respuesta a tu review".to_string(),
-        body: Some(body.response.chars().take(100).collect::<String>()),
-        link: Some(format!("/panel/orders/{}", review.order_id)),
-        reference_type: Some("order".to_string()),
-        reference_id: Some(review.order_id),
-    }).await;
+    let _ = state
+        .notification_hub
+        .notify(CreateNotification {
+            user_id: review.client_id,
+            notification_type: NOTIF_REVIEW_RESPONSE.to_string(),
+            title: "Respuesta a tu review".to_string(),
+            body: Some(body.response.chars().take(100).collect::<String>()),
+            link: Some(format!("/panel/orders/{}", review.order_id)),
+            reference_type: Some("order".to_string()),
+            reference_id: Some(review.order_id),
+        })
+        .await;
 
     Ok(Json(ReviewResponse::from(updated)))
 }
 
 /* ============================================================
-   GET /api/orders/:order_id/review — Ver review de una orden
-   ============================================================ */
+GET /api/orders/:order_id/review — Ver review de una orden
+============================================================ */
 
 #[utoipa::path(
     get,
@@ -193,8 +197,8 @@ pub async fn get_order_review(
 }
 
 /* ============================================================
-   GET /api/reviews — Admin: todas, Employee: propias
-   ============================================================ */
+GET /api/reviews — Admin: todas, Employee: propias
+============================================================ */
 
 #[utoipa::path(
     get,
@@ -221,7 +225,10 @@ pub async fn list_reviews(
 pub fn routes() -> Router<AppState> {
     /* [074A-49] Sin /api/ — ya se nestan bajo .nest("/api", api_routes()) */
     Router::new()
-        .route("/orders/:order_id/review", post(create_review).get(get_order_review))
+        .route(
+            "/orders/:order_id/review",
+            post(create_review).get(get_order_review),
+        )
         .route("/reviews/:review_id/respond", post(respond_review))
         .route("/reviews", get(list_reviews))
 }

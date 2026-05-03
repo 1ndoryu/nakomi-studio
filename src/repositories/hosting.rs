@@ -7,7 +7,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::models::{HostingEvent, HostingPlanConfig, HostingSubscription, UpdatePlanConfigRequest};
+use crate::models::{
+    HostingEvent, HostingPlanConfig, HostingSubscription, UpdatePlanConfigRequest,
+};
 
 /* [164A-6] Struct para agrupar datos del servidor tras provisioning.
  * Evita pasar 8 argumentos sueltos a update_server_info (clippy::too_many_arguments). */
@@ -117,11 +119,7 @@ impl HostingRepository {
         Ok(row)
     }
 
-    pub async fn update_status(
-        pool: &PgPool,
-        id: Uuid,
-        status: &str,
-    ) -> Result<(), AppError> {
+    pub async fn update_status(pool: &PgPool, id: Uuid, status: &str) -> Result<(), AppError> {
         sqlx::query!(
             "UPDATE hosting_subscriptions SET status = $1, updated_at = NOW() WHERE id = $2",
             status,
@@ -163,12 +161,9 @@ impl HostingRepository {
 
     /* [074A-65] Eliminar suscripción de hosting */
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
-        sqlx::query!(
-            "DELETE FROM hosting_subscriptions WHERE id = $1",
-            id
-        )
-        .execute(pool)
-        .await?;
+        sqlx::query!("DELETE FROM hosting_subscriptions WHERE id = $1", id)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 
@@ -359,9 +354,7 @@ impl HostingRepository {
     }
 
     /* [114A-3] Listar todas las configuraciones de planes */
-    pub async fn list_plan_configs(
-        pool: &PgPool,
-    ) -> Result<Vec<HostingPlanConfig>, AppError> {
+    pub async fn list_plan_configs(pool: &PgPool) -> Result<Vec<HostingPlanConfig>, AppError> {
         let rows = sqlx::query_as!(
             HostingPlanConfig,
             "SELECT id, plan_name, monthly_price_cents,
@@ -415,7 +408,9 @@ impl HostingRepository {
         .fetch_one(pool)
         .await
         .map_err(|e| match e {
-            sqlx::Error::RowNotFound => AppError::NotFound(format!("Plan '{plan_name}' no encontrado")),
+            sqlx::Error::RowNotFound => {
+                AppError::NotFound(format!("Plan '{plan_name}' no encontrado"))
+            }
             other => AppError::from(other),
         })?;
         Ok(row)

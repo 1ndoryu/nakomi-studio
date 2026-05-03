@@ -3,7 +3,7 @@
 use std::net::SocketAddr;
 
 use argon2::password_hash::rand_core::OsRng;
-use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
+use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use glory_backend::config::AppConfig;
 use glory_backend::handlers;
 use glory_backend::services::AssignmentService;
@@ -16,7 +16,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                tracing_subscriber::EnvFilter::new("glory_backend=debug,glory_rs=debug,tower_http=debug")
+                tracing_subscriber::EnvFilter::new(
+                    "glory_backend=debug,glory_rs=debug,tower_http=debug",
+                )
             }),
         )
         .init();
@@ -39,14 +41,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let salt = SaltString::generate(&mut OsRng);
         let hash = Argon2::default()
             .hash_password(plain.as_bytes(), &salt)
-            .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
-                e.to_string().into()
-            })?
+            .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { e.to_string().into() })?
             .to_string();
         Ok(hash)
     });
-    let fixture_manager = ContentManager::new(pool.clone(), "content")
-        .with_password_hasher(password_hasher);
+    let fixture_manager =
+        ContentManager::new(pool.clone(), "content").with_password_hasher(password_hasher);
 
     /* Limpiar datos de seed legacy no rastreados por fixtures.
      * Solo afecta a órdenes/hosting de los emails de test conocidos.
@@ -97,7 +97,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     /* [074A-41] into_make_service_with_connect_info para que GovernorLayer
      * (PeerIpKeyExtractor) y ConnectInfo<SocketAddr> en ws_visitor funcionen.
      * Sin esto, tower_governor devuelve "Unable To Extract Key!" en todas las rutas /api/ routes. */
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
 
     Ok(())
 }
@@ -119,8 +123,7 @@ async fn cleanup_legacy_seed(pool: &sqlx::PgPool) {
     }
 
     /* Subquery: IDs de órdenes legacy (no fixture-tracked) de test users */
-    let legacy_orders_subquery =
-        "SELECT o.id FROM orders o
+    let legacy_orders_subquery = "SELECT o.id FROM orders o
          JOIN users u ON o.client_id = u.id
          WHERE u.email = ANY($1)
          AND NOT EXISTS (
@@ -138,14 +141,23 @@ async fn cleanup_legacy_seed(pool: &sqlx::PgPool) {
 
     /* Cascade completo: chat → reviews → refunds → delegations → payments → deliverables → phases → orders */
     let cascade_tables = [
-        ("chat_messages", "session_id IN (SELECT id FROM chat_sessions WHERE order_id IN ({q}))"),
-        ("chat_session_notes", "session_id IN (SELECT id FROM chat_sessions WHERE order_id IN ({q}))"),
+        (
+            "chat_messages",
+            "session_id IN (SELECT id FROM chat_sessions WHERE order_id IN ({q}))",
+        ),
+        (
+            "chat_session_notes",
+            "session_id IN (SELECT id FROM chat_sessions WHERE order_id IN ({q}))",
+        ),
         ("chat_sessions", "order_id IN ({q})"),
         ("order_reviews", "order_id IN ({q})"),
         ("order_refunds", "order_id IN ({q})"),
         ("order_delegations", "order_id IN ({q})"),
         ("order_payments", "order_id IN ({q})"),
-        ("phase_deliverables", "phase_id IN (SELECT id FROM order_phases WHERE order_id IN ({q}))"),
+        (
+            "phase_deliverables",
+            "phase_id IN (SELECT id FROM order_phases WHERE order_id IN ({q}))",
+        ),
         ("order_phases", "order_id IN ({q})"),
     ];
 
@@ -165,8 +177,7 @@ async fn cleanup_legacy_seed(pool: &sqlx::PgPool) {
     }
 
     /* Borrar hosting legacy (no fixture-tracked) */
-    let legacy_hosting_subquery =
-        "SELECT hs.id FROM hosting_subscriptions hs
+    let legacy_hosting_subquery = "SELECT hs.id FROM hosting_subscriptions hs
          JOIN users u ON hs.user_id = u.id
          WHERE u.email = ANY($1)
          AND NOT EXISTS (
@@ -207,7 +218,9 @@ async fn session_cleanup_loop(pool: sqlx::PgPool) {
         tokio::time::sleep(CHECK_INTERVAL).await;
         match ChatRepository::close_inactive_sessions(&pool, INACTIVITY_HOURS).await {
             Ok(0) => {}
-            Ok(n) => tracing::info!("[chat-cleanup] {n} sesiones inactivas cerradas (>{INACTIVITY_HOURS}h)"),
+            Ok(n) => tracing::info!(
+                "[chat-cleanup] {n} sesiones inactivas cerradas (>{INACTIVITY_HOURS}h)"
+            ),
             Err(e) => tracing::error!("[chat-cleanup] Error cerrando sesiones inactivas: {e}"),
         }
     }

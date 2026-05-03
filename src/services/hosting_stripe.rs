@@ -48,9 +48,7 @@ fn humanize_plan_name(plan: &str) -> &str {
 impl HostingStripeService {
     /// Crea una Stripe Checkout Session para suscripción de hosting.
     /// Retorna la URL a la que redirigir al cliente.
-    pub async fn create_checkout_session(
-        params: &CheckoutParams<'_>,
-    ) -> Result<String, AppError> {
+    pub async fn create_checkout_session(params: &CheckoutParams<'_>) -> Result<String, AppError> {
         if params.amount_cents <= 0 {
             return Err(AppError::Validation(
                 "El checkout de hosting requiere un precio mensual mayor a 0".into(),
@@ -97,11 +95,15 @@ impl HostingStripeService {
             ),
         ];
 
-        let resp = params.http_client
+        let resp = params
+            .http_client
             .post("https://api.stripe.com/v1/checkout/sessions")
             .basic_auth(params.stripe_key, Option::<&str>::None)
             /* [094A-9] Idempotency key: evita sesiones duplicadas si la request se reintenta */
-            .header("Idempotency-Key", format!("hosting-checkout-{}", params.subscription_id))
+            .header(
+                "Idempotency-Key",
+                format!("hosting-checkout-{}", params.subscription_id),
+            )
             .form(&form)
             .send()
             .await
@@ -127,9 +129,9 @@ impl HostingStripeService {
             params.subscription_id
         );
 
-        session.url.ok_or_else(|| {
-            AppError::Internal("Stripe no retornó URL de checkout".into())
-        })
+        session
+            .url
+            .ok_or_else(|| AppError::Internal("Stripe no retornó URL de checkout".into()))
     }
 
     /// Procesa webhooks de Stripe relacionados a hosting subscriptions.
@@ -171,9 +173,7 @@ impl HostingStripeService {
         let sub_id_str = data["object"]["metadata"]["hosting_subscription_id"]
             .as_str()
             .or_else(|| {
-                data["object"]["subscription_data"]["metadata"]
-                    ["hosting_subscription_id"]
-                    .as_str()
+                data["object"]["subscription_data"]["metadata"]["hosting_subscription_id"].as_str()
             });
 
         let Some(hosting_id) = sub_id_str.and_then(|s| Uuid::parse_str(s).ok()) else {
@@ -223,7 +223,10 @@ impl HostingStripeService {
             let plan_config = match HostingRepository::get_plan_config(pool, &existing.plan).await {
                 Ok(Some(cfg)) => cfg,
                 Ok(None) => {
-                    tracing::warn!("Plan config '{}' no encontrado para hosting {hosting_id}", existing.plan);
+                    tracing::warn!(
+                        "Plan config '{}' no encontrado para hosting {hosting_id}",
+                        existing.plan
+                    );
                     return Ok(true);
                 }
                 Err(e) => {
@@ -231,7 +234,15 @@ impl HostingStripeService {
                     return Ok(true);
                 }
             };
-            match CoolifyService::provision_hosting(http_client, config, &service_name, sftp_port, &plan_config).await {
+            match CoolifyService::provision_hosting(
+                http_client,
+                config,
+                &service_name,
+                sftp_port,
+                &plan_config,
+            )
+            .await
+            {
                 Ok(result) => {
                     tracing::info!(
                         "Hosting {} provisionado en Coolify: uuid={}, domain={}, ip={}",
@@ -306,10 +317,16 @@ impl HostingStripeService {
 
         /* [094A-9] Log de errores en evento, no silenciar */
         if let Err(e) = HostingRepository::add_event(
-            pool, hosting_id, "stripe_checkout_completed",
+            pool,
+            hosting_id,
+            "stripe_checkout_completed",
             Some(serde_json::json!({"stripe_subscription_id": stripe_sub_id})),
-        ).await {
-            tracing::warn!("Error registrando evento stripe_checkout_completed para {hosting_id}: {e}");
+        )
+        .await
+        {
+            tracing::warn!(
+                "Error registrando evento stripe_checkout_completed para {hosting_id}: {e}"
+            );
         }
 
         tracing::info!("Hosting {hosting_id} activado via Stripe checkout (sub: {stripe_sub_id})");
@@ -317,10 +334,7 @@ impl HostingStripeService {
     }
 
     /* Factura pagada — renovación mensual exitosa */
-    async fn on_invoice_paid(
-        pool: &PgPool,
-        data: &serde_json::Value,
-    ) -> Result<bool, AppError> {
+    async fn on_invoice_paid(pool: &PgPool, data: &serde_json::Value) -> Result<bool, AppError> {
         /* [094A-9] Validar campo subscription explícitamente */
         let stripe_sub_id = match data["object"]["subscription"].as_str() {
             Some(id) if !id.is_empty() => id,
@@ -339,13 +353,20 @@ impl HostingStripeService {
 
         /* [094A-9] Log de errores en evento, no silenciar */
         if let Err(e) = HostingRepository::add_event(
-            pool, hosting.id, "invoice_paid",
+            pool,
+            hosting.id,
+            "invoice_paid",
             Some(serde_json::json!({
                 "invoice_id": data["object"]["id"].as_str(),
                 "amount_paid": data["object"]["amount_paid"].as_i64(),
             })),
-        ).await {
-            tracing::warn!("Error registrando evento invoice_paid para {}: {e}", hosting.id);
+        )
+        .await
+        {
+            tracing::warn!(
+                "Error registrando evento invoice_paid para {}: {e}",
+                hosting.id
+            );
         }
 
         tracing::info!("Hosting {} — invoice paid", hosting.id);
@@ -412,10 +433,14 @@ impl HostingStripeService {
         }
 
         /* [094A-9] Log de errores en evento, no silenciar */
-        if let Err(e) = HostingRepository::add_event(
-            pool, hosting.id, "stripe_subscription_cancelled", None,
-        ).await {
-            tracing::warn!("Error registrando evento stripe_subscription_cancelled para {}: {e}", hosting.id);
+        if let Err(e) =
+            HostingRepository::add_event(pool, hosting.id, "stripe_subscription_cancelled", None)
+                .await
+        {
+            tracing::warn!(
+                "Error registrando evento stripe_subscription_cancelled para {}: {e}",
+                hosting.id
+            );
         }
 
         tracing::info!("Hosting {} cancelado via Stripe webhook", hosting.id);
@@ -423,10 +448,7 @@ impl HostingStripeService {
     }
 
     /* Pago fallido — suspender hosting */
-    async fn on_payment_failed(
-        pool: &PgPool,
-        data: &serde_json::Value,
-    ) -> Result<bool, AppError> {
+    async fn on_payment_failed(pool: &PgPool, data: &serde_json::Value) -> Result<bool, AppError> {
         /* [094A-9] Validar campo subscription explícitamente */
         let stripe_sub_id = match data["object"]["subscription"].as_str() {
             Some(id) if !id.is_empty() => id,
@@ -462,10 +484,17 @@ impl HostingStripeService {
 
         /* [094A-9] Log de errores en evento, no silenciar */
         if let Err(e) = HostingRepository::add_event(
-            pool, hosting.id, "payment_failed",
+            pool,
+            hosting.id,
+            "payment_failed",
             Some(serde_json::json!({"invoice_id": data["object"]["id"].as_str()})),
-        ).await {
-            tracing::warn!("Error registrando evento payment_failed para {}: {e}", hosting.id);
+        )
+        .await
+        {
+            tracing::warn!(
+                "Error registrando evento payment_failed para {}: {e}",
+                hosting.id
+            );
         }
 
         tracing::warn!("Hosting {} suspendido por pago fallido", hosting.id);
@@ -474,8 +503,8 @@ impl HostingStripeService {
 }
 
 /* ============================================================
-   TESTS — [094A-10] Validación de lógica Stripe hosting
-   ============================================================ */
+TESTS — [094A-10] Validación de lógica Stripe hosting
+============================================================ */
 
 #[cfg(test)]
 mod tests {

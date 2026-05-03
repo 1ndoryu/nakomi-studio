@@ -76,7 +76,7 @@
 
 .usuariosMenuDivider {
     border: none;
-    border-top: 1px solid var(--bg-item-active);
+    border-top: 1px solid var(--border-default);
     margin: 4px 0;
 }
 

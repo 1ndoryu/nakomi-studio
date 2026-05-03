@@ -10,8 +10,8 @@ use uuid::Uuid;
 use validator::Validate;
 
 /* ============================================================
-   ENUMS
-   ============================================================ */
+ENUMS
+============================================================ */
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
 #[sqlx(type_name = "delegation_status", rename_all = "snake_case")]
@@ -24,8 +24,8 @@ pub enum DelegationStatus {
 }
 
 /* ============================================================
-   MODELOS DE BD
-   ============================================================ */
+MODELOS DE BD
+============================================================ */
 
 #[derive(Debug, Clone, FromRow)]
 pub struct Delegation {
@@ -53,8 +53,8 @@ pub struct EmployeeProfile {
 }
 
 /* ============================================================
-   REQUESTS
-   ============================================================ */
+REQUESTS
+============================================================ */
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateDelegationRequest {
@@ -69,8 +69,8 @@ pub struct RespondDelegationRequest {
 }
 
 /* ============================================================
-   RESPONSES
-   ============================================================ */
+RESPONSES
+============================================================ */
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct DelegationResponse {

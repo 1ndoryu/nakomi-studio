@@ -3,8 +3,8 @@
  * Ejecutar: cargo run --example seed_admin
  * Requiere DATABASE_URL en .env o como variable de entorno. */
 
-use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use argon2::password_hash::rand_core::OsRng;
+use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -12,8 +12,8 @@ use uuid::Uuid;
 async fn main() {
     dotenvy::dotenv().ok();
 
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL debe estar definida en .env");
+    let database_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL debe estar definida en .env");
 
     let pool = PgPool::connect(&database_url)
         .await

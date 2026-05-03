@@ -11,8 +11,8 @@ use validator::Validate;
 use super::UserRole;
 
 /* ============================================================
-   ENUMS — mapean a tipos PostgreSQL
-   ============================================================ */
+ENUMS — mapean a tipos PostgreSQL
+============================================================ */
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
 #[sqlx(type_name = "order_status", rename_all = "snake_case")]
@@ -54,8 +54,8 @@ pub enum PhaseStatus {
 }
 
 /* ============================================================
-   MODELOS DE BD
-   ============================================================ */
+MODELOS DE BD
+============================================================ */
 
 #[derive(Debug, Clone, FromRow)]
 pub struct Order {
@@ -113,8 +113,8 @@ pub struct OrderPhase {
 }
 
 /* ============================================================
-   REQUESTS
-   ============================================================ */
+REQUESTS
+============================================================ */
 
 /// Request para crear una orden (contratar servicio)
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -156,8 +156,8 @@ pub struct ToggleAiIntermediaryRequest {
 }
 
 /* ============================================================
-   RESPONSES
-   ============================================================ */
+RESPONSES
+============================================================ */
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct OrderResponse {

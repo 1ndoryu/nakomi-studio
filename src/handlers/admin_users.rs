@@ -14,8 +14,8 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    AdminCreateUserRequest, AdminUserItem, ChangeRoleRequest, ChangeStatusRequest,
-    PaginatedUsers, UserResponse, UserRole,
+    AdminCreateUserRequest, AdminUserItem, ChangeRoleRequest, ChangeStatusRequest, PaginatedUsers,
+    UserResponse, UserRole,
 };
 use crate::repositories::UserRepository;
 use crate::services::{hash_password, AuditService};
@@ -287,15 +287,10 @@ pub async fn create_user(
     let password_hash = hash_password(&body.password)?;
     let role = body.role.unwrap_or(UserRole::Client);
 
-    let user = UserRepository::create_with_role(
-        &state.pool,
-        &body.email,
-        &password_hash,
-        role,
-        true,
-    )
-    .await
-    .map_err(AppError::Database)?;
+    let user =
+        UserRepository::create_with_role(&state.pool, &body.email, &password_hash, role, true)
+            .await
+            .map_err(AppError::Database)?;
 
     AuditService::log(
         &state.pool,

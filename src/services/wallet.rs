@@ -7,9 +7,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::models::{
-    WalletResponse, WalletTransactionResponse, WalletTransactionsPage,
-};
+use crate::models::{WalletResponse, WalletTransactionResponse, WalletTransactionsPage};
 use crate::repositories::WalletRepository;
 
 pub struct WalletService;

@@ -68,6 +68,7 @@ pub async fn handle_reset(state: &AppState, session_id: uuid::Uuid, visitor_id: 
 /* [T-4] Loop principal de procesamiento de mensajes del visitante.
  * Aplica rate limiting (por visitor_id + IP), persiste mensajes y envía eventos al timing service.
  * Retorna true si el cierre fue explícito (usuario o rate limit), false si el stream terminó. */
+#[allow(clippy::too_many_lines)]
 pub async fn process_visitor_messages(
     receiver: &mut futures::stream::SplitStream<WebSocket>,
     state: &AppState,
@@ -93,7 +94,9 @@ pub async fn process_visitor_messages(
                 }
 
                 /* [084A-42] Truncar mensajes largos para prevenir token drain */
-                let content = if content.len() > crate::services::ChatTimingService::max_message_length() {
+                let content = if content.len()
+                    > crate::services::ChatTimingService::max_message_length()
+                {
                     content[..crate::services::ChatTimingService::max_message_length()].to_string()
                 } else {
                     content
@@ -105,13 +108,19 @@ pub async fn process_visitor_messages(
                     match ip_result {
                         RateCheckResult::Muted => {
                             if let Some(w) = ip_msg {
-                                let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                                let _ = state
+                                    .chat_hub
+                                    .send_message(session_id, "ai", Some("ai"), &w)
+                                    .await;
                             }
                             continue;
                         }
                         RateCheckResult::Closed => {
                             if let Some(w) = ip_msg {
-                                let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                                let _ = state
+                                    .chat_hub
+                                    .send_message(session_id, "ai", Some("ai"), &w)
+                                    .await;
                             }
                             return true;
                         }
@@ -120,31 +129,40 @@ pub async fn process_visitor_messages(
                 }
 
                 /* [T-1] Rate limiting antes de procesar */
-                let (rate_result, rate_msg) =
-                    state.chat_timing.check_rate(visitor_id);
+                let (rate_result, rate_msg) = state.chat_timing.check_rate(visitor_id);
                 match rate_result {
                     RateCheckResult::Muted => {
                         if let Some(w) = rate_msg {
-                            let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                            let _ = state
+                                .chat_hub
+                                .send_message(session_id, "ai", Some("ai"), &w)
+                                .await;
                         }
                         continue;
                     }
                     RateCheckResult::Closed => {
                         if let Some(w) = rate_msg {
-                            let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                            let _ = state
+                                .chat_hub
+                                .send_message(session_id, "ai", Some("ai"), &w)
+                                .await;
                         }
                         /* [T-4] Rate limit forzó cierre — cierre explícito para todas las conexiones */
                         return true;
                     }
                     RateCheckResult::Warning => {
                         if let Some(w) = rate_msg {
-                            let _ = state.chat_hub.send_message(session_id, "ai", Some("ai"), &w).await;
+                            let _ = state
+                                .chat_hub
+                                .send_message(session_id, "ai", Some("ai"), &w)
+                                .await;
                         }
                     }
                     RateCheckResult::Ok => {}
                 }
 
-                let _ = state.chat_hub
+                let _ = state
+                    .chat_hub
                     .send_message(session_id, "client", Some(visitor_id), &content)
                     .await;
                 let _ = timing_tx.send(TimingEvent::Message(content)).await;
@@ -165,12 +183,16 @@ pub async fn process_visitor_messages(
             /* [T-2] Acciones desde botones de mensajes ricos.
              * El frontend envía action_type + payload que se re-inyectan
              * como mensaje de texto para que la IA lo procese en contexto. */
-            WsClientMessage::Action { action_type, payload } => {
+            WsClientMessage::Action {
+                action_type,
+                payload,
+            } => {
                 let action_text = format!(
                     "[Acción: {action_type}] {}",
                     payload.as_str().unwrap_or(&payload.to_string())
                 );
-                let _ = state.chat_hub
+                let _ = state
+                    .chat_hub
                     .send_message(session_id, "client", Some(visitor_id), &action_text)
                     .await;
                 let _ = timing_tx.send(TimingEvent::Message(action_text)).await;

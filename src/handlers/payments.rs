@@ -17,7 +17,9 @@ use crate::models::{
     NOTIF_CHAT_INVOICE_PAID, NOTIF_PAYMENT_RECEIVED,
 };
 use crate::repositories::{OrderRepository, PaymentRepository, UserRepository};
-use crate::services::{AuditService, EmailService, HostingStripeService, PaymentService, VpsStripeService};
+use crate::services::{
+    AuditService, EmailService, HostingStripeService, PaymentService, VpsStripeService,
+};
 use crate::AppState;
 
 /// Iniciar pago de una orden (crea `PaymentIntent` en Stripe)
@@ -124,7 +126,8 @@ pub async fn stripe_webhook(
         .as_str()
         .ok_or_else(|| AppError::BadRequest("Missing event id".into()))?;
 
-    let already_processed: bool = PaymentRepository::is_event_processed(&state.pool, event_id).await;
+    let already_processed: bool =
+        PaymentRepository::is_event_processed(&state.pool, event_id).await;
 
     if already_processed {
         tracing::info!("Webhook duplicado ignorado: {event_id}");
@@ -144,15 +147,20 @@ pub async fn stripe_webhook(
                     OrderRepository::find_order_by_id(&state.pool, payment.order_id).await
                 {
                     let amount_display = format!("${:.2}", f64::from(payment.amount_cents) / 100.0);
-                    let _ = state.notification_hub.notify(CreateNotification {
-                        user_id: order.client_id,
-                        notification_type: NOTIF_PAYMENT_RECEIVED.to_string(),
-                        title: format!("Pago recibido — Orden #{}", order.order_number),
-                        body: Some(format!("Tu pago de {amount_display} fue procesado exitosamente")),
-                        link: Some(format!("/panel/orders/{}", order.id)),
-                        reference_type: Some("order".to_string()),
-                        reference_id: Some(order.id),
-                    }).await;
+                    let _ = state
+                        .notification_hub
+                        .notify(CreateNotification {
+                            user_id: order.client_id,
+                            notification_type: NOTIF_PAYMENT_RECEIVED.to_string(),
+                            title: format!("Pago recibido — Orden #{}", order.order_number),
+                            body: Some(format!(
+                                "Tu pago de {amount_display} fue procesado exitosamente"
+                            )),
+                            link: Some(format!("/panel/orders/{}", order.id)),
+                            reference_type: Some("order".to_string()),
+                            reference_id: Some(order.id),
+                        })
+                        .await;
                 }
             }
         }
@@ -175,8 +183,8 @@ pub async fn stripe_webhook(
             let amount_cents = event["data"]["object"]["amount_paid"].as_i64().unwrap_or(0);
             #[allow(clippy::cast_precision_loss)]
             let amount_usd = amount_cents as f64 / 100.0;
-            let site_url = std::env::var("SITE_URL")
-                .unwrap_or_else(|_| "https://nakomi.studio".to_string());
+            let site_url =
+                std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
 
             /* Notificar admins via notification hub */
             if let Ok(admin_ids) = UserRepository::admin_ids(&state.pool).await {
@@ -248,7 +256,8 @@ pub async fn stripe_webhook(
         state.coolify_config.as_ref(),
         event_type,
         &event["data"],
-    ).await?;
+    )
+    .await?;
 
     VpsStripeService::handle_webhook(
         &state.pool,
@@ -256,7 +265,8 @@ pub async fn stripe_webhook(
         state.email_config.as_ref(),
         event_type,
         &event["data"],
-    ).await?;
+    )
+    .await?;
 
     /* [064A-73] Audit: webhook procesado exitosamente */
     AuditService::log(

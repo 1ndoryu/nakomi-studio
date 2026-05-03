@@ -11,7 +11,7 @@
 
 .retiroAdminTablaWrapper {
     overflow-x: auto;
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
 }
 
@@ -34,7 +34,7 @@
 }
 
 .retiroAdminFila:not(:last-child) .retiroAdminCelda {
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
 }
 
 .retiroAdminCelda {

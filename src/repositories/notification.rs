@@ -65,10 +65,7 @@ impl NotificationRepository {
     }
 
     /// Cuenta notificaciones no leídas de un usuario
-    pub async fn count_unread(
-        pool: &PgPool,
-        user_id: Uuid,
-    ) -> Result<i64, AppError> {
+    pub async fn count_unread(pool: &PgPool, user_id: Uuid) -> Result<i64, AppError> {
         let row = sqlx::query_scalar!(
             r#"SELECT COUNT(*) as "count!" FROM notifications
             WHERE user_id = $1 AND read = false"#,
@@ -82,11 +79,7 @@ impl NotificationRepository {
     }
 
     /// Marca una lista de notificaciones como leídas (solo las del usuario)
-    pub async fn mark_read(
-        pool: &PgPool,
-        user_id: Uuid,
-        ids: &[Uuid],
-    ) -> Result<u64, AppError> {
+    pub async fn mark_read(pool: &PgPool, user_id: Uuid, ids: &[Uuid]) -> Result<u64, AppError> {
         let result = sqlx::query!(
             r#"UPDATE notifications SET read = true
             WHERE user_id = $1 AND id = ANY($2)"#,
@@ -101,10 +94,7 @@ impl NotificationRepository {
     }
 
     /// Marca todas las notificaciones del usuario como leídas
-    pub async fn mark_all_read(
-        pool: &PgPool,
-        user_id: Uuid,
-    ) -> Result<u64, AppError> {
+    pub async fn mark_all_read(pool: &PgPool, user_id: Uuid) -> Result<u64, AppError> {
         let result = sqlx::query!(
             r#"UPDATE notifications SET read = true
             WHERE user_id = $1 AND read = false"#,

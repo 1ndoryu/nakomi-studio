@@ -104,21 +104,25 @@ async fn resolve_seo_meta(path: &str, pool: &PgPool, app_url: &str) -> Option<Se
     match path {
         "/" => Some(SeoMeta {
             title: "Nakomi Studio — Agencia Creativa Digital".into(),
-            description: "Diseño web, desarrollo de software y soluciones digitales para tu negocio.".into(),
+            description:
+                "Diseño web, desarrollo de software y soluciones digitales para tu negocio.".into(),
             og_image: None,
             canonical,
             og_type: "website",
         }),
         "/servicios" => Some(SeoMeta {
             title: "Nuestros Servicios — Nakomi Studio".into(),
-            description: "Servicios de desarrollo web, diseño UI/UX, branding y soluciones digitales.".into(),
+            description:
+                "Servicios de desarrollo web, diseño UI/UX, branding y soluciones digitales.".into(),
             og_image: None,
             canonical,
             og_type: "website",
         }),
         "/proyectos" => Some(SeoMeta {
             title: "Portfolio — Nakomi Studio".into(),
-            description: "Explora nuestros proyectos y casos de éxito en desarrollo web y diseño digital.".into(),
+            description:
+                "Explora nuestros proyectos y casos de éxito en desarrollo web y diseño digital."
+                    .into(),
             og_image: None,
             canonical,
             og_type: "website",
@@ -132,7 +136,8 @@ async fn resolve_seo_meta(path: &str, pool: &PgPool, app_url: &str) -> Option<Se
         }),
         "/soluciones/hosting" => Some(SeoMeta {
             title: "Hosting Administrado — Nakomi Studio".into(),
-            description: "Hosting web administrado con SSL, backups automáticos y soporte técnico.".into(),
+            description: "Hosting web administrado con SSL, backups automáticos y soporte técnico."
+                .into(),
             og_image: None,
             canonical,
             og_type: "website",
@@ -142,11 +147,7 @@ async fn resolve_seo_meta(path: &str, pool: &PgPool, app_url: &str) -> Option<Se
 }
 
 /* Rutas dinámicas: /servicios/:slug y /proyectos/:slug consultan la BD */
-async fn resolve_dynamic_meta(
-    path: &str,
-    pool: &PgPool,
-    canonical: &str,
-) -> Option<SeoMeta> {
+async fn resolve_dynamic_meta(path: &str, pool: &PgPool, canonical: &str) -> Option<SeoMeta> {
     if let Some(slug) = path.strip_prefix("/servicios/") {
         let slug = slug.trim_end_matches('/');
         if slug.is_empty() {

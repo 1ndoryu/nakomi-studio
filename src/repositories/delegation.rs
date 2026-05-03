@@ -12,8 +12,8 @@ pub struct DelegationRepository;
 
 impl DelegationRepository {
     /* ============================================================
-       DELEGACIONES
-       ============================================================ */
+    DELEGACIONES
+    ============================================================ */
 
     pub async fn create_delegation(
         pool: &PgPool,
@@ -38,10 +38,7 @@ impl DelegationRepository {
         .await
     }
 
-    pub async fn find_by_id(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<Option<Delegation>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Delegation>, sqlx::Error> {
         sqlx::query_as!(
             Delegation,
             r#"SELECT id, order_id, from_employee_id, to_employee_id, reason,
@@ -158,8 +155,8 @@ impl DelegationRepository {
     }
 
     /* ============================================================
-       PERFILES DE EMPLEADOS
-       ============================================================ */
+    PERFILES DE EMPLEADOS
+    ============================================================ */
 
     /// Obtiene perfil de empleado (NUMERIC → f64 cast en SQL)
     pub async fn find_employee_profile(
@@ -197,10 +194,7 @@ impl DelegationRepository {
     }
 
     /// Cuenta órdenes activas (`in_progress`, `under_review`) del empleado
-    pub async fn count_active_orders(
-        pool: &PgPool,
-        employee_id: Uuid,
-    ) -> Result<i64, sqlx::Error> {
+    pub async fn count_active_orders(pool: &PgPool, employee_id: Uuid) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar!(
             r#"SELECT COUNT(*) as "count!: i64" FROM orders
              WHERE assigned_employee_id = $1

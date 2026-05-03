@@ -38,7 +38,10 @@ impl WalletRepository {
     }
 
     /* Obtener wallet existente (sin crear) */
-    pub async fn find_by_user(pool: &PgPool, user_id: Uuid) -> Result<Option<UserWallet>, AppError> {
+    pub async fn find_by_user(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<Option<UserWallet>, AppError> {
         let wallet = sqlx::query_as!(
             UserWallet,
             "SELECT id, user_id, balance_cents, currency, created_at, updated_at FROM user_wallets WHERE user_id = $1",
@@ -52,10 +55,7 @@ impl WalletRepository {
     /* [204A-11] Saldo disponible para retiro: solo créditos con más de 7 días.
      * Fórmula: SUM(créditos con created_at <= NOW()-7d) + SUM(débitos).
      * Esto garantiza que las ganancias recientes no se puedan retirar. */
-    pub async fn get_withdrawable_balance(
-        pool: &PgPool,
-        user_id: Uuid,
-    ) -> Result<i32, AppError> {
+    pub async fn get_withdrawable_balance(pool: &PgPool, user_id: Uuid) -> Result<i32, AppError> {
         /* Retorna tupla (i64,) con COALESCE de subqueries — query_as! macro
          * no soporta tuplas anonimas como tipo destino. */
         // sentinel-disable-next-line sqlx-query-as-sin-macro
@@ -250,8 +250,8 @@ impl WalletRepository {
 }
 
 /* ============================================================
-   CANCELLATION REQUESTS
-   ============================================================ */
+CANCELLATION REQUESTS
+============================================================ */
 
 pub struct CancellationRequestRepository;
 
@@ -278,7 +278,10 @@ impl CancellationRequestRepository {
         Ok(row)
     }
 
-    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<CancellationRequest>, AppError> {
+    pub async fn find_by_id(
+        pool: &PgPool,
+        id: Uuid,
+    ) -> Result<Option<CancellationRequest>, AppError> {
         let row = sqlx::query_as!(
             CancellationRequest,
             "SELECT id, order_id, requested_by, reason, status, resolved_by, resolved_at, created_at FROM cancellation_requests WHERE id = $1",
@@ -289,7 +292,10 @@ impl CancellationRequestRepository {
         Ok(row)
     }
 
-    pub async fn find_pending_by_order(pool: &PgPool, order_id: Uuid) -> Result<Option<CancellationRequest>, AppError> {
+    pub async fn find_pending_by_order(
+        pool: &PgPool,
+        order_id: Uuid,
+    ) -> Result<Option<CancellationRequest>, AppError> {
         let row = sqlx::query_as!(
             CancellationRequest,
             "SELECT id, order_id, requested_by, reason, status, resolved_by, resolved_at, created_at FROM cancellation_requests WHERE order_id = $1 AND status = 'pending' ORDER BY created_at DESC LIMIT 1",
@@ -324,7 +330,10 @@ impl CancellationRequestRepository {
         Ok(row)
     }
 
-    pub async fn list_by_order(pool: &PgPool, order_id: Uuid) -> Result<Vec<CancellationRequest>, AppError> {
+    pub async fn list_by_order(
+        pool: &PgPool,
+        order_id: Uuid,
+    ) -> Result<Vec<CancellationRequest>, AppError> {
         let rows = sqlx::query_as!(
             CancellationRequest,
             "SELECT id, order_id, requested_by, reason, status, resolved_by, resolved_at, created_at FROM cancellation_requests WHERE order_id = $1 ORDER BY created_at DESC",
@@ -337,9 +346,9 @@ impl CancellationRequestRepository {
 }
 
 /* ============================================================
-   WITHDRAWAL REQUESTS
-   [184A-1] Solicitudes de retiro de fondos del wallet.
-   ============================================================ */
+WITHDRAWAL REQUESTS
+[184A-1] Solicitudes de retiro de fondos del wallet.
+============================================================ */
 
 use crate::models::WithdrawalRequest;
 
@@ -371,7 +380,10 @@ impl WithdrawalRequestRepository {
         Ok(row)
     }
 
-    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<WithdrawalRequest>, AppError> {
+    pub async fn find_by_id(
+        pool: &PgPool,
+        id: Uuid,
+    ) -> Result<Option<WithdrawalRequest>, AppError> {
         let row = sqlx::query_as!(
             WithdrawalRequest,
             r#"
@@ -447,7 +459,9 @@ impl WithdrawalRequestRepository {
             FROM withdrawal_requests WHERE user_id = $1
             ORDER BY created_at DESC LIMIT $2 OFFSET $3
             "#,
-            user_id, per_page, offset
+            user_id,
+            per_page,
+            offset
         )
         .fetch_all(pool)
         .await?;
@@ -475,7 +489,8 @@ impl WithdrawalRequestRepository {
             FROM withdrawal_requests WHERE status = 'pending'
             ORDER BY created_at ASC LIMIT $1 OFFSET $2
             "#,
-            per_page, offset
+            per_page,
+            offset
         )
         .fetch_all(pool)
         .await?;

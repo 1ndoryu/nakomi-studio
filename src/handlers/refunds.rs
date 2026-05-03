@@ -15,16 +15,16 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     CreateNotification, OrderStatus, PaymentStatus, RefundResponse, RefundStatus,
-    RequestRefundBody, ReviewAction, ReviewRefundBody, UserRole,
-    NOTIF_REFUND_REQUESTED, NOTIF_REFUND_RESOLVED,
+    RequestRefundBody, ReviewAction, ReviewRefundBody, UserRole, NOTIF_REFUND_REQUESTED,
+    NOTIF_REFUND_RESOLVED,
 };
 use crate::repositories::{OrderRepository, PaymentRepository, RefundRepository, UserRepository};
 use crate::services::PaymentService;
 use crate::AppState;
 
 /* ============================================================
-   POST /api/orders/:order_id/refund — Cliente solicita reembolso
-   ============================================================ */
+POST /api/orders/:order_id/refund — Cliente solicita reembolso
+============================================================ */
 
 #[utoipa::path(
     post,
@@ -50,15 +50,11 @@ pub async fn request_refund(
 
     /* Solo el cliente dueño de la orden puede solicitar reembolso */
     if order.client_id != auth.user_id {
-        return Err(AppError::Forbidden(
-            "No tienes acceso a esta orden".into(),
-        ));
+        return Err(AppError::Forbidden("No tienes acceso a esta orden".into()));
     }
 
     /* Validar que no exista ya una solicitud activa */
-    if let Some(existing) =
-        RefundRepository::find_active_for_order(&state.pool, order_id).await?
-    {
+    if let Some(existing) = RefundRepository::find_active_for_order(&state.pool, order_id).await? {
         return Err(AppError::BadRequest(format!(
             "Ya existe una solicitud de reembolso activa (status: {:?})",
             existing.status
@@ -70,9 +66,7 @@ pub async fn request_refund(
     let refundable_payment = payments
         .iter()
         .find(|p| p.status == PaymentStatus::Held || p.status == PaymentStatus::Released)
-        .ok_or_else(|| {
-            AppError::BadRequest("No hay pagos reembolsables para esta orden".into())
-        })?;
+        .ok_or_else(|| AppError::BadRequest("No hay pagos reembolsables para esta orden".into()))?;
 
     let refund = RefundRepository::create(
         &state.pool,
@@ -85,7 +79,9 @@ pub async fn request_refund(
     .await?;
 
     /* [104A-38] Notificar a admins sobre solicitud de reembolso */
-    let admins = UserRepository::admin_ids(&state.pool).await.unwrap_or_default();
+    let admins = UserRepository::admin_ids(&state.pool)
+        .await
+        .unwrap_or_default();
     let base = CreateNotification {
         user_id: Uuid::nil(),
         notification_type: NOTIF_REFUND_REQUESTED.to_string(),
@@ -101,8 +97,8 @@ pub async fn request_refund(
 }
 
 /* ============================================================
-   PATCH /api/refunds/:refund_id — Admin aprueba o rechaza
-   ============================================================ */
+PATCH /api/refunds/:refund_id — Admin aprueba o rechaza
+============================================================ */
 
 #[utoipa::path(
     patch,
@@ -147,8 +143,7 @@ pub async fn review_refund(
             .await?;
 
             /* Buscar el pago asociado para ejecutar el refund en Stripe */
-            let payments =
-                PaymentRepository::list_for_order(&state.pool, refund.order_id).await?;
+            let payments = PaymentRepository::list_for_order(&state.pool, refund.order_id).await?;
             let payment = payments
                 .iter()
                 .find(|p| p.id == refund.payment_id)
@@ -164,30 +159,18 @@ pub async fn review_refund(
                     format!("simulated_refund_{refund_id}")
                 }
                 Some(key) => {
-                    PaymentService::refund_payment(
-                        &state.http_client,
-                        key,
-                        payment,
-                    )
-                    .await?
+                    PaymentService::refund_payment(&state.http_client, key, payment).await?
                 }
             };
 
             /* Marcar pago como refunded */
-            PaymentRepository::update_status(
-                &state.pool,
-                payment.id,
-                PaymentStatus::Refunded,
-            )
-            .await?;
+            PaymentRepository::update_status(&state.pool, payment.id, PaymentStatus::Refunded)
+                .await?;
 
             /* Marcar reembolso como completado */
-            let completed = RefundRepository::mark_completed(
-                &state.pool,
-                approved.id,
-                &stripe_refund_id,
-            )
-            .await?;
+            let completed =
+                RefundRepository::mark_completed(&state.pool, approved.id, &stripe_refund_id)
+                    .await?;
 
             /* Cancelar la orden */
             OrderRepository::update_order_status(
@@ -198,15 +181,18 @@ pub async fn review_refund(
             .await?;
 
             /* [104A-38] Notificar al cliente que su reembolso fue aprobado */
-            let _ = state.notification_hub.notify(CreateNotification {
-                user_id: refund.requested_by,
-                notification_type: NOTIF_REFUND_RESOLVED.to_string(),
-                title: "Reembolso aprobado".to_string(),
-                body: Some("Tu solicitud de reembolso ha sido procesada".to_string()),
-                link: Some(format!("/panel?seccion=ordenes&id={}", refund.order_id)),
-                reference_type: Some("refund".to_string()),
-                reference_id: Some(refund.id),
-            }).await;
+            let _ = state
+                .notification_hub
+                .notify(CreateNotification {
+                    user_id: refund.requested_by,
+                    notification_type: NOTIF_REFUND_RESOLVED.to_string(),
+                    title: "Reembolso aprobado".to_string(),
+                    body: Some("Tu solicitud de reembolso ha sido procesada".to_string()),
+                    link: Some(format!("/panel?seccion=ordenes&id={}", refund.order_id)),
+                    reference_type: Some("refund".to_string()),
+                    reference_id: Some(refund.id),
+                })
+                .await;
 
             Ok(Json(RefundResponse::from(completed)))
         }
@@ -220,15 +206,21 @@ pub async fn review_refund(
             .await?;
 
             /* [104A-38] Notificar al cliente que su reembolso fue rechazado */
-            let _ = state.notification_hub.notify(CreateNotification {
-                user_id: refund.requested_by,
-                notification_type: NOTIF_REFUND_RESOLVED.to_string(),
-                title: "Reembolso rechazado".to_string(),
-                body: body.admin_response.as_deref().map(|r| r.chars().take(100).collect()),
-                link: Some(format!("/panel?seccion=ordenes&id={}", refund.order_id)),
-                reference_type: Some("refund".to_string()),
-                reference_id: Some(refund.id),
-            }).await;
+            let _ = state
+                .notification_hub
+                .notify(CreateNotification {
+                    user_id: refund.requested_by,
+                    notification_type: NOTIF_REFUND_RESOLVED.to_string(),
+                    title: "Reembolso rechazado".to_string(),
+                    body: body
+                        .admin_response
+                        .as_deref()
+                        .map(|r| r.chars().take(100).collect()),
+                    link: Some(format!("/panel?seccion=ordenes&id={}", refund.order_id)),
+                    reference_type: Some("refund".to_string()),
+                    reference_id: Some(refund.id),
+                })
+                .await;
 
             Ok(Json(RefundResponse::from(rejected)))
         }
@@ -236,8 +228,8 @@ pub async fn review_refund(
 }
 
 /* ============================================================
-   GET /api/refunds — Admin: listar pendientes
-   ============================================================ */
+GET /api/refunds — Admin: listar pendientes
+============================================================ */
 
 #[utoipa::path(
     get,
@@ -262,8 +254,8 @@ pub async fn list_refunds(
 }
 
 /* ============================================================
-   GET /api/orders/:order_id/refund — Ver reembolso de una orden
-   ============================================================ */
+GET /api/orders/:order_id/refund — Ver reembolso de una orden
+============================================================ */
 
 #[utoipa::path(
     get,
@@ -286,28 +278,27 @@ pub async fn get_order_refund(
 
     /* Solo el dueño o admin puede ver el reembolso */
     if order.client_id != auth.user_id && auth.role != UserRole::Admin {
-        return Err(AppError::Forbidden(
-            "No tienes acceso a esta orden".into(),
-        ));
+        return Err(AppError::Forbidden("No tienes acceso a esta orden".into()));
     }
 
     let refund = RefundRepository::find_for_order(&state.pool, order_id)
         .await?
-        .ok_or_else(|| {
-            AppError::NotFound("No hay reembolso para esta orden".into())
-        })?;
+        .ok_or_else(|| AppError::NotFound("No hay reembolso para esta orden".into()))?;
 
     Ok(Json(RefundResponse::from(refund)))
 }
 
 /* ============================================================
-   RUTAS
-   ============================================================ */
+RUTAS
+============================================================ */
 
 pub fn routes() -> Router<AppState> {
     /* [074A-49] Rutas sin /api/ porque ya se nestan bajo .nest("/api", api_routes()) */
     Router::new()
-        .route("/orders/:order_id/refund", post(request_refund).get(get_order_refund))
+        .route(
+            "/orders/:order_id/refund",
+            post(request_refund).get(get_order_refund),
+        )
         .route("/refunds", get(list_refunds))
         .route("/refunds/:refund_id", patch(review_refund))
 }

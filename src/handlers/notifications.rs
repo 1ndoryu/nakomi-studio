@@ -3,7 +3,10 @@
  * WS: /ws/notifications?token=JWT — push en tiempo real al usuario. */
 
 use axum::{
-    extract::{Query, State, WebSocketUpgrade, ws::{Message, WebSocket}},
+    extract::{
+        ws::{Message, WebSocket},
+        Query, State, WebSocketUpgrade,
+    },
     response::IntoResponse,
     routing::{get, patch},
     Json, Router,
@@ -14,9 +17,7 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
-use crate::models::{
-    MarkReadBody, NotificationResponse, UnreadCountResponse,
-};
+use crate::models::{MarkReadBody, NotificationResponse, UnreadCountResponse};
 use crate::repositories::NotificationRepository;
 use crate::services::AuthService;
 use crate::AppState;
@@ -57,13 +58,8 @@ pub async fn list_notifications(
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0).max(0);
 
-    let notifications = NotificationRepository::list_for_user(
-        &state.pool,
-        auth.user_id,
-        limit,
-        offset,
-    )
-    .await?;
+    let notifications =
+        NotificationRepository::list_for_user(&state.pool, auth.user_id, limit, offset).await?;
 
     let response: Vec<NotificationResponse> = notifications
         .into_iter()
@@ -113,7 +109,9 @@ pub async fn mark_read(
         .collect();
 
     if ids.is_empty() {
-        return Err(AppError::BadRequest("No se proporcionaron IDs válidos".into()));
+        return Err(AppError::BadRequest(
+            "No se proporcionaron IDs válidos".into(),
+        ));
     }
 
     let affected = NotificationRepository::mark_read(&state.pool, auth.user_id, &ids).await?;
@@ -172,11 +170,7 @@ async fn handle_notification_ws(socket: WebSocket, state: AppState, user_id: Uui
     if let Ok(count) = NotificationRepository::count_unread(&state.pool, user_id).await {
         let init_msg = crate::models::WsNotification::UnreadCount { count };
         if let Ok(json) = serde_json::to_string(&init_msg) {
-            let _ = futures::SinkExt::send(
-                &mut ws_sender,
-                Message::Text(json),
-            )
-            .await;
+            let _ = futures::SinkExt::send(&mut ws_sender, Message::Text(json)).await;
         }
     }
 
@@ -184,12 +178,9 @@ async fn handle_notification_ws(socket: WebSocket, state: AppState, user_id: Uui
     let send_task = tokio::spawn(async move {
         while let Ok(notif) = rx.recv().await {
             if let Ok(json) = serde_json::to_string(&notif) {
-                if futures::SinkExt::send(
-                    &mut ws_sender,
-                    Message::Text(json),
-                )
-                .await
-                .is_err()
+                if futures::SinkExt::send(&mut ws_sender, Message::Text(json))
+                    .await
+                    .is_err()
                 {
                     break;
                 }
@@ -219,6 +210,5 @@ pub fn routes() -> Router<AppState> {
 }
 
 pub fn ws_routes() -> Router<AppState> {
-    Router::new()
-        .route("/ws/notifications", get(ws_notifications))
+    Router::new().route("/ws/notifications", get(ws_notifications))
 }

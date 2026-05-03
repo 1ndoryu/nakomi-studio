@@ -20,8 +20,8 @@ use crate::errors::AppError;
 use crate::models::HostingPlanConfig;
 
 /* ============================================================
-   CONFIGURACIÓN
-   ============================================================ */
+CONFIGURACIÓN
+============================================================ */
 
 /// Configuración de Coolify cargada desde variables de entorno
 #[derive(Debug, Clone)]
@@ -47,12 +47,19 @@ impl CoolifyConfig {
         let project_uuid = std::env::var("COOLIFY_PROJECT_UUID").ok()?;
         let server_ip = std::env::var("COOLIFY_SERVER_IP").ok()?;
 
-        if base_url.is_empty() || api_token.is_empty() || server_uuid.is_empty() || project_uuid.is_empty() || server_ip.is_empty() {
+        if base_url.is_empty()
+            || api_token.is_empty()
+            || server_uuid.is_empty()
+            || project_uuid.is_empty()
+            || server_ip.is_empty()
+        {
             return None;
         }
 
         /* [114A-15+] SSH key opcional para docker stats / monitoreo */
-        let ssh_key_path = std::env::var("COOLIFY_SSH_KEY_PATH").ok().filter(|s| !s.is_empty());
+        let ssh_key_path = std::env::var("COOLIFY_SSH_KEY_PATH")
+            .ok()
+            .filter(|s| !s.is_empty());
 
         Some(Self {
             base_url,
@@ -75,11 +82,18 @@ impl CoolifyConfig {
         let project_uuid = std::env::var(format!("{prefix}PROJECT_UUID")).ok()?;
         let server_ip = std::env::var(format!("{prefix}SERVER_IP")).ok()?;
 
-        if base_url.is_empty() || api_token.is_empty() || server_uuid.is_empty() || project_uuid.is_empty() || server_ip.is_empty() {
+        if base_url.is_empty()
+            || api_token.is_empty()
+            || server_uuid.is_empty()
+            || project_uuid.is_empty()
+            || server_ip.is_empty()
+        {
             return None;
         }
 
-        let ssh_key_path = std::env::var(format!("{prefix}SSH_KEY_PATH")).ok().filter(|s| !s.is_empty());
+        let ssh_key_path = std::env::var(format!("{prefix}SSH_KEY_PATH"))
+            .ok()
+            .filter(|s| !s.is_empty());
 
         Some(Self {
             base_url,
@@ -93,8 +107,8 @@ impl CoolifyConfig {
 }
 
 /* ============================================================
-   TIPOS DE API
-   ============================================================ */
+TIPOS DE API
+============================================================ */
 
 /// Body de la llamada POST /api/v1/services (`docker_compose_raw` en base64)
 #[derive(Debug, Serialize)]
@@ -147,8 +161,8 @@ pub struct CoolifyServiceSummary {
 }
 
 /* ============================================================
-   SERVICIO
-   ============================================================ */
+SERVICIO
+============================================================ */
 
 pub struct CoolifyService;
 
@@ -166,7 +180,9 @@ fn read_nested_string(value: &Value, path: &[&str]) -> Option<String> {
 }
 
 fn read_first_string(value: &Value, paths: &[&[&str]]) -> Option<String> {
-    paths.iter().find_map(|path| read_nested_string(value, path))
+    paths
+        .iter()
+        .find_map(|path| read_nested_string(value, path))
 }
 
 fn extract_service_fqdn(value: &Value) -> Option<String> {
@@ -218,7 +234,11 @@ fn parse_service_summary(value: &Value) -> Option<CoolifyServiceSummary> {
         fqdn: extract_service_fqdn(value),
         server_uuid: read_first_string(
             value,
-            &[&["server_uuid"], &["server", "uuid"], &["server", "server_uuid"]],
+            &[
+                &["server_uuid"],
+                &["server", "uuid"],
+                &["server", "server_uuid"],
+            ],
         ),
         server_name: read_first_string(value, &[&["server_name"], &["server", "name"]]),
         project_uuid: read_first_string(value, &[&["project_uuid"], &["project", "uuid"]]),
@@ -247,7 +267,12 @@ fn service_matches_target(service: &CoolifyServiceSummary, config: &CoolifyConfi
  * no-new-privileges, pids_limit, WP file editing deshabilitado.
  * [174A-17] Plan ecommerce incluye sidecar de backup automático (3 daily + 2 weekly).
  * [114A-3] Límites de CPU/RAM dinámicos desde HostingPlanConfig (admin-configurable). */
-fn build_hosting_compose(sftp_user: &str, sftp_password: &str, sftp_port: i32, config: &HostingPlanConfig) -> String {
+fn build_hosting_compose(
+    sftp_user: &str,
+    sftp_password: &str,
+    sftp_port: i32,
+    config: &HostingPlanConfig,
+) -> String {
     let wp_cpu = millicores_to_cpu(config.wp_cpu_millicores);
     let wp_mem = format!("{}M", config.wp_memory_mb);
     let db_cpu = millicores_to_cpu(config.db_cpu_millicores);
@@ -257,8 +282,16 @@ fn build_hosting_compose(sftp_user: &str, sftp_password: &str, sftp_port: i32, c
 
     let wp_db = build_compose_wp_db(&wp_cpu, &wp_mem, &db_cpu, &db_mem);
     let ssh = build_compose_ssh(sftp_user, sftp_password, sftp_port, &ssh_cpu, &ssh_mem);
-    let backup = if config.plan_name == "ecommerce" { build_compose_backup() } else { String::new() };
-    let backup_vol = if config.plan_name == "ecommerce" { "  backup-data:\n" } else { "" };
+    let backup = if config.plan_name == "ecommerce" {
+        build_compose_backup()
+    } else {
+        String::new()
+    };
+    let backup_vol = if config.plan_name == "ecommerce" {
+        "  backup-data:\n"
+    } else {
+        ""
+    };
     format!("services:\n{wp_db}{ssh}{backup}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n{backup_vol}")
 }
 
@@ -279,7 +312,13 @@ fn build_compose_wp_db(wp_cpu: &str, wp_mem: &str, db_cpu: &str, db_mem: &str) -
  * - sshd hardening: AllowTcpForwarding=no, X11Forwarding=no, PermitTunnel=no, GatewayPorts=no
  *   aplicados idempotentemente vía custom-cont-init.d script.
  * - Límites de CPU/RAM dinámicos desde plan config. */
-fn build_compose_ssh(sftp_user: &str, sftp_password: &str, sftp_port: i32, ssh_cpu: &str, ssh_mem: &str) -> String {
+fn build_compose_ssh(
+    sftp_user: &str,
+    sftp_password: &str,
+    sftp_port: i32,
+    ssh_cpu: &str,
+    ssh_mem: &str,
+) -> String {
     format!("\
   ssh:\n\
     build:\n\
@@ -358,7 +397,9 @@ impl CoolifyService {
             .bearer_auth(&config.api_token)
             .send()
             .await
-            .map_err(|e| AppError::Internal(format!("Coolify list services request failed: {e}")))?;
+            .map_err(|e| {
+                AppError::Internal(format!("Coolify list services request failed: {e}"))
+            })?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -433,7 +474,8 @@ impl CoolifyService {
             .map(char::from)
             .collect();
 
-        let compose_yaml = build_hosting_compose(&sftp_user, &sftp_password, sftp_port, plan_config);
+        let compose_yaml =
+            build_hosting_compose(&sftp_user, &sftp_password, sftp_port, plan_config);
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose_yaml);
 
         /* Paso 1: Crear el servicio */
@@ -452,12 +494,19 @@ impl CoolifyService {
             .json(&create_body)
             .send()
             .await
-            .map_err(|e| AppError::Internal(format!("Coolify create service request failed: {e}")))?;
+            .map_err(|e| {
+                AppError::Internal(format!("Coolify create service request failed: {e}"))
+            })?;
 
         if !create_resp.status().is_success() {
             let status = create_resp.status();
             let body = create_resp.text().await.unwrap_or_default();
-            tracing::error!("[Coolify] Error creando servicio '{}': {} — {}", service_name, status, body);
+            tracing::error!(
+                "[Coolify] Error creando servicio '{}': {} — {}",
+                service_name,
+                status,
+                body
+            );
             return Err(AppError::Internal(format!(
                 "Coolify create service failed: {status}"
             )));
@@ -469,11 +518,10 @@ impl CoolifyService {
             .map_err(|e| AppError::Internal(format!("Coolify create service parse error: {e}")))?;
 
         /* Extraer dominio asignado */
-        let domain = created
-            .domains
-            .into_iter()
-            .next()
-            .unwrap_or_else(|| format!("http://{}.{}.sslip.io", service_name, config.server_ip));
+        let domain =
+            created.domains.into_iter().next().unwrap_or_else(|| {
+                format!("http://{}.{}.sslip.io", service_name, config.server_ip)
+            });
 
         tracing::info!(
             "[Coolify] Servicio '{}' creado: uuid={}, domain={}",
@@ -489,10 +537,15 @@ impl CoolifyService {
             .bearer_auth(&config.api_token)
             .send()
             .await
-            .map_err(|e| AppError::Internal(format!("Coolify start service request failed: {e}")))?;
+            .map_err(|e| {
+                AppError::Internal(format!("Coolify start service request failed: {e}"))
+            })?;
 
         if start_resp.status().is_success() {
-            tracing::info!("[Coolify] Servicio '{}' iniciado correctamente.", service_name);
+            tracing::info!(
+                "[Coolify] Servicio '{}' iniciado correctamente.",
+                service_name
+            );
         } else {
             let status = start_resp.status();
             let body = start_resp.text().await.unwrap_or_default();
@@ -541,10 +594,18 @@ impl CoolifyService {
                 tracing::info!("[Coolify] Servicio {} detenido.", service_uuid);
             }
             Ok(r) => {
-                tracing::warn!("[Coolify] No se pudo detener servicio {}: {}", service_uuid, r.status());
+                tracing::warn!(
+                    "[Coolify] No se pudo detener servicio {}: {}",
+                    service_uuid,
+                    r.status()
+                );
             }
             Err(e) => {
-                tracing::warn!("[Coolify] Error de red al detener servicio {}: {}", service_uuid, e);
+                tracing::warn!(
+                    "[Coolify] Error de red al detener servicio {}: {}",
+                    service_uuid,
+                    e
+                );
             }
         }
 
@@ -561,14 +622,25 @@ impl CoolifyService {
             .bearer_auth(&config.api_token)
             .send()
             .await
-            .map_err(|e| AppError::Internal(format!("Coolify delete service request failed: {e}")))?;
+            .map_err(|e| {
+                AppError::Internal(format!("Coolify delete service request failed: {e}"))
+            })?;
 
         if del_resp.status().is_success() {
-            tracing::info!("[Coolify] Servicio {} eliminado (delete_volumes={}).", service_uuid, delete_volumes);
+            tracing::info!(
+                "[Coolify] Servicio {} eliminado (delete_volumes={}).",
+                service_uuid,
+                delete_volumes
+            );
         } else {
             let status = del_resp.status();
             let body = del_resp.text().await.unwrap_or_default();
-            tracing::error!("[Coolify] Error eliminando servicio {}: {} — {}", service_uuid, status, body);
+            tracing::error!(
+                "[Coolify] Error eliminando servicio {}: {} — {}",
+                service_uuid,
+                status,
+                body
+            );
             return Err(AppError::Internal(format!(
                 "Coolify delete service failed: {status}"
             )));
@@ -622,7 +694,12 @@ impl CoolifyService {
 
         /* Restart: stop + start para aplicar nuevo compose */
         let stop_url = format!("{}/api/v1/services/{}/stop", config.base_url, service_uuid);
-        if let Err(e) = http_client.post(&stop_url).bearer_auth(&config.api_token).send().await {
+        if let Err(e) = http_client
+            .post(&stop_url)
+            .bearer_auth(&config.api_token)
+            .send()
+            .await
+        {
             tracing::warn!("[Coolify] Error deteniendo servicio {service_uuid}: {e}");
         }
         let start_url = format!("{}/api/v1/services/{}/start", config.base_url, service_uuid);
@@ -634,10 +711,15 @@ impl CoolifyService {
             .map_err(|e| AppError::Internal(format!("Coolify restart failed: {e}")))?;
 
         if start_resp.status().is_success() {
-            tracing::info!("[Coolify] Servicio {} reiniciado con credenciales actualizadas.", service_uuid);
+            tracing::info!(
+                "[Coolify] Servicio {} reiniciado con credenciales actualizadas.",
+                service_uuid
+            );
         } else {
             let status = start_resp.status();
-            tracing::warn!("[Coolify] Compose actualizado pero restart falló para {service_uuid}: {status}");
+            tracing::warn!(
+                "[Coolify] Compose actualizado pero restart falló para {service_uuid}: {status}"
+            );
         }
 
         Ok(())
@@ -660,7 +742,9 @@ impl CoolifyService {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            return Err(AppError::Internal(format!("Coolify stop failed: {status} — {body}")));
+            return Err(AppError::Internal(format!(
+                "Coolify stop failed: {status} — {body}"
+            )));
         }
         tracing::info!("[Coolify] Servicio {service_uuid} detenido.");
         Ok(())
@@ -681,7 +765,9 @@ impl CoolifyService {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            return Err(AppError::Internal(format!("Coolify start failed: {status} — {body}")));
+            return Err(AppError::Internal(format!(
+                "Coolify start failed: {status} — {body}"
+            )));
         }
         tracing::info!("[Coolify] Servicio {service_uuid} iniciado.");
         Ok(())
@@ -692,7 +778,10 @@ impl CoolifyService {
         config: &CoolifyConfig,
         service_uuid: &str,
     ) -> Result<(), AppError> {
-        let url = format!("{}/api/v1/services/{}/restart", config.base_url, service_uuid);
+        let url = format!(
+            "{}/api/v1/services/{}/restart",
+            config.base_url, service_uuid
+        );
         let resp = http_client
             .post(&url)
             .bearer_auth(&config.api_token)
@@ -760,15 +849,15 @@ impl CoolifyService {
 }
 
 /* ============================================================
-   TESTS — [114A-14] Tests completos del servicio de hosting
-   ============================================================ */
+TESTS — [114A-14] Tests completos del servicio de hosting
+============================================================ */
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use uuid::Uuid;
     use chrono::Utc;
     use serde_json::json;
+    use uuid::Uuid;
 
     fn test_plan_config(plan_name: &str) -> HostingPlanConfig {
         HostingPlanConfig {
@@ -930,8 +1019,14 @@ mod tests {
         let config = test_plan_config("basico");
         let compose = build_hosting_compose("testuser", "testpass", 10001, &config);
 
-        assert!(compose.contains("wordpress:"), "Debe contener servicio WordPress");
-        assert!(compose.contains("mariadb:"), "Debe contener servicio MariaDB");
+        assert!(
+            compose.contains("wordpress:"),
+            "Debe contener servicio WordPress"
+        );
+        assert!(
+            compose.contains("mariadb:"),
+            "Debe contener servicio MariaDB"
+        );
         assert!(compose.contains("ssh:"), "Debe contener servicio SSH");
     }
 
@@ -943,7 +1038,10 @@ mod tests {
         assert!(compose.contains("frontend_net:"));
         assert!(compose.contains("backend_net:"));
         assert!(compose.contains("ssh_net:"));
-        assert!(compose.contains("internal: true"), "backend_net debe ser internal");
+        assert!(
+            compose.contains("internal: true"),
+            "backend_net debe ser internal"
+        );
     }
 
     #[test]
@@ -964,7 +1062,10 @@ mod tests {
 
         assert!(compose.contains("USER_NAME=myuser"));
         assert!(compose.contains("USER_PASSWORD=s3cur3P@ss"));
-        assert!(compose.contains("12345:2222"), "Puerto SSH debe mapearse correctamente");
+        assert!(
+            compose.contains("12345:2222"),
+            "Puerto SSH debe mapearse correctamente"
+        );
     }
 
     #[test]
@@ -984,11 +1085,17 @@ mod tests {
 
         /* cap_drop: ALL en todos los contenedores */
         let cap_drop_count = compose.matches("cap_drop:").count();
-        assert!(cap_drop_count >= 3, "wp, mariadb y ssh deben tener cap_drop: {cap_drop_count}");
+        assert!(
+            cap_drop_count >= 3,
+            "wp, mariadb y ssh deben tener cap_drop: {cap_drop_count}"
+        );
 
         /* no-new-privileges */
         let nnp_count = compose.matches("no-new-privileges:true").count();
-        assert!(nnp_count >= 3, "wp, mariadb y ssh deben tener no-new-privileges: {nnp_count}");
+        assert!(
+            nnp_count >= 3,
+            "wp, mariadb y ssh deben tener no-new-privileges: {nnp_count}"
+        );
 
         /* pids_limit */
         assert!(compose.contains("pids_limit: 200"), "WordPress pids_limit");
@@ -1055,8 +1162,14 @@ mod tests {
         let config = test_plan_config("ecommerce");
         let compose = build_hosting_compose("user", "pass", 10001, &config);
 
-        assert!(compose.contains("backup:"), "Ecommerce debe incluir sidecar backup");
-        assert!(compose.contains("backup-data:"), "Ecommerce debe incluir volumen backup");
+        assert!(
+            compose.contains("backup:"),
+            "Ecommerce debe incluir sidecar backup"
+        );
+        assert!(
+            compose.contains("backup-data:"),
+            "Ecommerce debe incluir volumen backup"
+        );
         assert!(compose.contains("mysqldump"), "Backup debe usar mysqldump");
     }
 
@@ -1065,8 +1178,14 @@ mod tests {
         let config = test_plan_config("basico");
         let compose = build_hosting_compose("user", "pass", 10001, &config);
 
-        assert!(!compose.contains("backup:"), "Basico no debe incluir sidecar backup");
-        assert!(!compose.contains("backup-data:"), "Basico no debe incluir volumen backup");
+        assert!(
+            !compose.contains("backup:"),
+            "Basico no debe incluir sidecar backup"
+        );
+        assert!(
+            !compose.contains("backup-data:"),
+            "Basico no debe incluir volumen backup"
+        );
     }
 
     #[test]
@@ -1074,7 +1193,10 @@ mod tests {
         let config = test_plan_config("pro");
         let compose = build_hosting_compose("user", "pass", 10001, &config);
 
-        assert!(!compose.contains("backup:"), "Pro no debe incluir sidecar backup");
+        assert!(
+            !compose.contains("backup:"),
+            "Pro no debe incluir sidecar backup"
+        );
     }
 
     #[test]
@@ -1083,9 +1205,15 @@ mod tests {
         let compose = build_hosting_compose("user", "pass", 10001, &config);
 
         /* 3 días de backups diarios */
-        assert!(compose.contains("-mtime +3 -delete"), "Retención diaria: 3 días");
+        assert!(
+            compose.contains("-mtime +3 -delete"),
+            "Retención diaria: 3 días"
+        );
         /* 14 días (2 semanas) de backups semanales */
-        assert!(compose.contains("-mtime +14 -delete"), "Retención semanal: 14 días");
+        assert!(
+            compose.contains("-mtime +14 -delete"),
+            "Retención semanal: 14 días"
+        );
     }
 
     #[test]
@@ -1117,7 +1245,10 @@ mod tests {
         let mariadb_start = compose.find("  mariadb:\n").expect("mariadb service");
         let mariadb_section = &compose[mariadb_start..];
         assert!(mariadb_section.contains("backend_net"));
-        assert!(!mariadb_section.contains("frontend_net"), "MariaDB no debe estar en frontend_net");
+        assert!(
+            !mariadb_section.contains("frontend_net"),
+            "MariaDB no debe estar en frontend_net"
+        );
     }
 
     #[test]
@@ -1127,7 +1258,10 @@ mod tests {
         assert!(compose.contains("ssh_net"));
         assert!(compose.contains("backend_net"));
         /* SSH no debe estar en frontend_net */
-        assert!(!compose.contains("frontend_net"), "SSH no debe estar en frontend_net");
+        assert!(
+            !compose.contains("frontend_net"),
+            "SSH no debe estar en frontend_net"
+        );
     }
 
     /* --- CoolifyConfig::from_env --- */

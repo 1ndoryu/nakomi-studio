@@ -8,9 +8,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{
-    Order, OrderPhase, OrderStatus, PaymentMode, PhaseStatus,
-};
+use crate::models::{Order, OrderPhase, OrderStatus, PaymentMode, PhaseStatus};
 
 /* Structs de parámetros para evitar too_many_arguments (clippy) */
 
@@ -41,8 +39,8 @@ pub struct OrderRepository;
 
 impl OrderRepository {
     /* ============================================================
-       ÓRDENES
-       ============================================================ */
+    ÓRDENES
+    ============================================================ */
 
     pub async fn create_order(
         pool: &PgPool,
@@ -221,8 +219,8 @@ impl OrderRepository {
     }
 
     /* ============================================================
-       FASES DE ORDEN
-       ============================================================ */
+    FASES DE ORDEN
+    ============================================================ */
 
     pub async fn create_order_phase(
         pool: &PgPool,
@@ -307,10 +305,7 @@ impl OrderRepository {
     }
 
     /* [044A-38 Fase 2] Marca fase como entregada */
-    pub async fn deliver_phase(
-        pool: &PgPool,
-        phase_id: Uuid,
-    ) -> Result<OrderPhase, sqlx::Error> {
+    pub async fn deliver_phase(pool: &PgPool, phase_id: Uuid) -> Result<OrderPhase, sqlx::Error> {
         sqlx::query_as!(
             OrderPhase,
             r#"UPDATE order_phases SET status = 'delivered', delivered_at = NOW(), updated_at = NOW()
@@ -326,10 +321,7 @@ impl OrderRepository {
     }
 
     /* [044A-38 Fase 2] Marca fase como aprobada */
-    pub async fn approve_phase(
-        pool: &PgPool,
-        phase_id: Uuid,
-    ) -> Result<OrderPhase, sqlx::Error> {
+    pub async fn approve_phase(pool: &PgPool, phase_id: Uuid) -> Result<OrderPhase, sqlx::Error> {
         sqlx::query_as!(
             OrderPhase,
             r#"UPDATE order_phases SET status = 'approved', approved_at = NOW(), updated_at = NOW()
@@ -365,10 +357,7 @@ impl OrderRepository {
     }
 
     /* [044A-38 Fase 2] Cancela una orden: marca cancelled + timestamp */
-    pub async fn cancel_order(
-        pool: &PgPool,
-        order_id: Uuid,
-    ) -> Result<Order, sqlx::Error> {
+    pub async fn cancel_order(pool: &PgPool, order_id: Uuid) -> Result<Order, sqlx::Error> {
         sqlx::query_as!(
             Order,
             r#"UPDATE orders SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW()
@@ -438,10 +427,7 @@ impl OrderRepository {
     }
 
     /* [044A-38 Fase 2] Marca orden como completada */
-    pub async fn complete_order(
-        pool: &PgPool,
-        order_id: Uuid,
-    ) -> Result<Order, sqlx::Error> {
+    pub async fn complete_order(pool: &PgPool, order_id: Uuid) -> Result<Order, sqlx::Error> {
         sqlx::query_as!(
             Order,
             r#"UPDATE orders SET status = 'completed', completed_at = NOW(), updated_at = NOW()
@@ -476,12 +462,10 @@ impl OrderRepository {
             (row.title, row.slug)
         };
 
-        let plan_name: String = sqlx::query_scalar!(
-            r#"SELECT name FROM service_plans WHERE id = $1"#,
-            plan_id,
-        )
-        .fetch_one(pool)
-        .await?;
+        let plan_name: String =
+            sqlx::query_scalar!(r#"SELECT name FROM service_plans WHERE id = $1"#, plan_id,)
+                .fetch_one(pool)
+                .await?;
 
         Ok((service_title, service_slug, plan_name))
     }
@@ -496,13 +480,12 @@ impl OrderRepository {
         let Some(eid) = employee_id else {
             return Ok(None);
         };
-        let name: Option<String> = sqlx::query_scalar(
-            "SELECT display_name FROM users WHERE id = $1",
-        )
-        .bind(eid)
-        .fetch_optional(pool)
-        .await?
-        .flatten();
+        let name: Option<String> =
+            sqlx::query_scalar("SELECT display_name FROM users WHERE id = $1")
+                .bind(eid)
+                .fetch_optional(pool)
+                .await?
+                .flatten();
         Ok(name)
     }
 
@@ -511,19 +494,18 @@ impl OrderRepository {
         pool: &PgPool,
         client_id: Uuid,
     ) -> Result<Option<String>, sqlx::Error> {
-        let name: Option<String> = sqlx::query_scalar(
-            "SELECT display_name FROM users WHERE id = $1",
-        )
-        .bind(client_id)
-        .fetch_optional(pool)
-        .await?
-        .flatten();
+        let name: Option<String> =
+            sqlx::query_scalar("SELECT display_name FROM users WHERE id = $1")
+                .bind(client_id)
+                .fetch_optional(pool)
+                .await?
+                .flatten();
         Ok(name)
     }
 
     /* ============================================================
-       [044A-38 Fase 4] ASIGNACIÓN Y AUTO-ASIGNACIÓN
-       ============================================================ */
+    [044A-38 Fase 4] ASIGNACIÓN Y AUTO-ASIGNACIÓN
+    ============================================================ */
 
     /// Transiciona orden a `awaiting_assignment` y establece deadline de 48h para que empleados la tomen
     pub async fn set_awaiting_assignment(
@@ -553,10 +535,7 @@ impl OrderRepository {
      * Difiere de set_awaiting_assignment: también unasigna al empleado y
      * no establece deadline de auto-asignación (queda null para no urgir).
      * runtime query (sin macro) para no requerir sqlx prepare. */
-    pub async fn reopen_after_rejection(
-        pool: &PgPool,
-        order_id: Uuid,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn reopen_after_rejection(pool: &PgPool, order_id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query(
             "UPDATE orders \
              SET status = 'awaiting_assignment', \
@@ -670,35 +649,38 @@ impl OrderRepository {
 
     /* [124A-SENT-R1] order_id de una fase — usado en deliverables para verificar acceso.
      * runtime query (sin macro). */
-    pub async fn phase_order_id(pool: &PgPool, phase_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
-        sqlx::query_scalar::<_, Uuid>(
-            "SELECT order_id FROM order_phases WHERE id = $1"
-        )
-        .bind(phase_id)
-        .fetch_optional(pool)
-        .await
+    pub async fn phase_order_id(
+        pool: &PgPool,
+        phase_id: Uuid,
+    ) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar::<_, Uuid>("SELECT order_id FROM order_phases WHERE id = $1")
+            .bind(phase_id)
+            .fetch_optional(pool)
+            .await
     }
 
     /* [124A-SENT-R1] order_number de una orden — usado en chat/rest.rs.
      * runtime query (sin macro). */
-    pub async fn order_number_by_id(pool: &PgPool, order_id: Uuid) -> Result<Option<i32>, sqlx::Error> {
-        sqlx::query_scalar::<_, i32>(
-            "SELECT order_number FROM orders WHERE id = $1"
-        )
-        .bind(order_id)
-        .fetch_optional(pool)
-        .await
+    pub async fn order_number_by_id(
+        pool: &PgPool,
+        order_id: Uuid,
+    ) -> Result<Option<i32>, sqlx::Error> {
+        sqlx::query_scalar::<_, i32>("SELECT order_number FROM orders WHERE id = $1")
+            .bind(order_id)
+            .fetch_optional(pool)
+            .await
     }
 
     /* [124A-SENT-R1] client_id de una orden — usado en chat/rest_messages.rs.
      * runtime query (sin macro). */
-    pub async fn client_id_by_id(pool: &PgPool, order_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
-        sqlx::query_scalar::<_, Uuid>(
-            "SELECT client_id FROM orders WHERE id = $1"
-        )
-        .bind(order_id)
-        .fetch_optional(pool)
-        .await
+    pub async fn client_id_by_id(
+        pool: &PgPool,
+        order_id: Uuid,
+    ) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar::<_, Uuid>("SELECT client_id FROM orders WHERE id = $1")
+            .bind(order_id)
+            .fetch_optional(pool)
+            .await
     }
 
     /* [124A-SENT-R1] Participantes de una orden (client_id + assigned_employee_id).
@@ -714,12 +696,11 @@ impl OrderRepository {
             assigned_employee_id: Option<Uuid>,
         }
         let row = sqlx::query_as::<_, Row>(
-            "SELECT client_id, assigned_employee_id FROM orders WHERE id = $1"
+            "SELECT client_id, assigned_employee_id FROM orders WHERE id = $1",
         )
         .bind(order_id)
         .fetch_optional(pool)
         .await?;
         Ok(row.map(|r| (r.client_id, r.assigned_employee_id)))
     }
-
 }

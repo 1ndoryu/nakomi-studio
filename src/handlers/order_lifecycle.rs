@@ -14,17 +14,18 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateNotification, OrderResponse, OrderStatus, SwitchRoleRequest,
-    ToggleAiIntermediaryRequest, UserRole,
-    NOTIF_ORDER_CANCELLED, NOTIF_ORDER_COMPLETED, NOTIF_REVISION_REQUESTED,
+    CreateNotification, OrderResponse, OrderStatus, SwitchRoleRequest, ToggleAiIntermediaryRequest,
+    UserRole, NOTIF_ORDER_CANCELLED, NOTIF_ORDER_COMPLETED, NOTIF_REVISION_REQUESTED,
 };
-use crate::repositories::{ActivityLogRepository, OrderRepository, UserRepository, WalletRepository};
+use crate::repositories::{
+    ActivityLogRepository, OrderRepository, UserRepository, WalletRepository,
+};
 use crate::services::{AuthService, OrderService, PaymentService};
 use crate::AppState;
 
 /* ============================================================
-   CAMBIO DE ROL (admin)
-   ============================================================ */
+CAMBIO DE ROL (admin)
+============================================================ */
 
 /// Cambiar de vista impersonando un usuario real con el rol objetivo.
 /// [084A-1] Si target es client/employee, busca un usuario real con ese rol y genera
@@ -47,7 +48,9 @@ pub async fn switch_role(
     auth: AuthUser,
     Json(req): Json<SwitchRoleRequest>,
 ) -> Result<Json<crate::models::AuthResponse>, AppError> {
-    /* Determinar el admin original: puede ser el caller directo o el impersonator */
+    /* [035A-21] Un JWT impersonado puede sobrevivir a reseeds locales y quedar
+     * apuntando a un admin que ya no existe. Antes eso devolvía 500 al volver
+     * a admin; ahora se trata como sesión inválida y el frontend puede limpiarla. */
     let admin_id = if auth.role == UserRole::Admin && auth.impersonator.is_none() {
         auth.user_id
     } else if let Some(imp) = auth.impersonator {
@@ -58,18 +61,30 @@ pub async fn switch_role(
         ));
     };
 
+    let original_admin = UserRepository::find_by_id(&state.pool, admin_id)
+        .await?
+        .filter(|user| user.role == UserRole::Admin)
+        .ok_or_else(|| {
+            AppError::Forbidden(
+                "La sesión de impersonación ya no es válida. Inicia sesión de nuevo.".into(),
+            )
+        })?;
+
     match req.role {
         UserRole::Admin => {
             /* Restaurar sesión del admin original */
-            let admin = UserRepository::find_by_id(&state.pool, admin_id)
-                .await?
-                .ok_or_else(|| AppError::Internal("Admin original no encontrado".into()))?;
-            let effective = admin.effective_role();
-            let token = AuthService::generate_token(admin.id, admin.role, effective, None, &state.jwt_secret)?;
+            let effective = original_admin.effective_role();
+            let token = AuthService::generate_token(
+                original_admin.id,
+                original_admin.role,
+                effective,
+                None,
+                &state.jwt_secret,
+            )?;
             Ok(Json(crate::models::AuthResponse {
                 token,
-                user_id: admin.id,
-                role: admin.role,
+                user_id: original_admin.id,
+                role: original_admin.role,
                 effective_role: effective,
                 impersonating: false,
                 needs_password: false,
@@ -79,11 +94,15 @@ pub async fn switch_role(
             /* Impersonar un usuario real con el rol objetivo */
             let target = UserRepository::find_first_by_role(&state.pool, target_role)
                 .await?
-                .ok_or_else(|| AppError::NotFound(
-                    format!("No hay usuario activo con rol {target_role}")
-                ))?;
+                .ok_or_else(|| {
+                    AppError::NotFound(format!("No hay usuario activo con rol {target_role}"))
+                })?;
             let token = AuthService::generate_token(
-                target.id, target.role, target.role, Some(admin_id), &state.jwt_secret,
+                target.id,
+                target.role,
+                target.role,
+                Some(original_admin.id),
+                &state.jwt_secret,
             )?;
             Ok(Json(crate::models::AuthResponse {
                 token,
@@ -98,8 +117,8 @@ pub async fn switch_role(
 }
 
 /* ============================================================
-   [044A-38 Fase 2] CANCELAR, ENTREGAR, APROBAR, REVISIÓN
-   ============================================================ */
+[044A-38 Fase 2] CANCELAR, ENTREGAR, APROBAR, REVISIÓN
+============================================================ */
 
 /// Cancelar una orden (cliente dueño, empleado asignado con razón, o admin)
 #[utoipa::path(
@@ -124,8 +143,13 @@ pub async fn cancel_order_handler(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let reason = body.and_then(|b| b.0.reason);
     let order = OrderService::cancel_order(
-        &state.pool, order_id, auth.user_id, auth.effective_role, reason.as_deref(),
-    ).await?;
+        &state.pool,
+        order_id,
+        auth.user_id,
+        auth.effective_role,
+        reason.as_deref(),
+    )
+    .await?;
 
     /* [104A-38] Notificar a las partes afectadas por la cancelación */
     let mut recipients = Vec::new();
@@ -150,9 +174,14 @@ pub async fn cancel_order_handler(
 
     /* [154A-15d] Registrar cancelación en activity_log */
     let _ = ActivityLogRepository::log(
-        &state.pool, auth.user_id, "order_cancelled", "order", order_id,
+        &state.pool,
+        auth.user_id,
+        "order_cancelled",
+        "order",
+        order_id,
         Some(serde_json::json!({"reason": reason})),
-    ).await;
+    )
+    .await;
 
     Ok(Json(serde_json::json!({ "status": order.status })))
 }
@@ -183,21 +212,33 @@ pub async fn approve_phase(
     Path((order_id, phase_number)): Path<(Uuid, i32)>,
 ) -> Result<Json<crate::models::OrderPhaseResponse>, AppError> {
     auth.require_role(&[UserRole::Client, UserRole::Admin])?;
-    let phase = OrderService::approve_phase(&state.pool, order_id, phase_number, auth.user_id).await?;
+    let phase =
+        OrderService::approve_phase(&state.pool, order_id, phase_number, auth.user_id).await?;
 
     /* [154A-15d] Registrar aprobación de fase en activity_log */
     let _ = ActivityLogRepository::log(
-        &state.pool, auth.user_id, "phase_approved", "order", order_id,
+        &state.pool,
+        auth.user_id,
+        "phase_approved",
+        "order",
+        order_id,
         Some(serde_json::json!({"phase_number": phase_number})),
-    ).await;
+    )
+    .await;
 
     /* [044A-38 Fase 3] Si la orden se completó, capturar los pagos retenidos en Stripe */
     if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
         if order.status == OrderStatus::Completed {
             /* [154A-15d] Registrar orden completada */
             let _ = ActivityLogRepository::log(
-                &state.pool, auth.user_id, "order_completed", "order", order_id, None,
-            ).await;
+                &state.pool,
+                auth.user_id,
+                "order_completed",
+                "order",
+                order_id,
+                None,
+            )
+            .await;
 
             /* [104A-38] Notificar cliente y empleado sobre orden completada */
             let mut recipients = vec![order.client_id];
@@ -232,9 +273,7 @@ pub async fn approve_phase(
              * Solo aplica si hay empleado asignado y precio final > 0. */
             if let Some(emp_id) = order.assigned_employee_id {
                 if order.final_price_cents > 0 {
-                    credit_employee_and_commission(
-                        &state, &order, emp_id, order_id,
-                    ).await;
+                    credit_employee_and_commission(&state, &order, emp_id, order_id).await;
                 }
             }
         }
@@ -266,26 +305,38 @@ pub async fn request_revision(
     Path((order_id, phase_number)): Path<(Uuid, i32)>,
 ) -> Result<Json<crate::models::OrderPhaseResponse>, AppError> {
     auth.require_role(&[UserRole::Client, UserRole::Admin])?;
-    let phase = OrderService::request_revision(&state.pool, order_id, phase_number, auth.user_id).await?;
+    let phase =
+        OrderService::request_revision(&state.pool, order_id, phase_number, auth.user_id).await?;
 
     /* [154A-15d] Registrar revisión solicitada en activity_log */
     let _ = ActivityLogRepository::log(
-        &state.pool, auth.user_id, "revision_requested", "order", order_id,
+        &state.pool,
+        auth.user_id,
+        "revision_requested",
+        "order",
+        order_id,
         Some(serde_json::json!({"phase_number": phase_number})),
-    ).await;
+    )
+    .await;
 
     /* [104A-38] Notificar al empleado asignado sobre la revisión solicitada */
     if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
         if let Some(emp) = order.assigned_employee_id {
-            let _ = state.notification_hub.notify(CreateNotification {
-                user_id: emp,
-                notification_type: NOTIF_REVISION_REQUESTED.to_string(),
-                title: format!("Revisión solicitada — Orden #{}, Fase {}", order.order_number, phase_number),
-                body: Some("El cliente solicitó cambios en la entrega".to_string()),
-                link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
-                reference_type: Some("order".to_string()),
-                reference_id: Some(order.id),
-            }).await;
+            let _ = state
+                .notification_hub
+                .notify(CreateNotification {
+                    user_id: emp,
+                    notification_type: NOTIF_REVISION_REQUESTED.to_string(),
+                    title: format!(
+                        "Revisión solicitada — Orden #{}, Fase {}",
+                        order.order_number, phase_number
+                    ),
+                    body: Some("El cliente solicitó cambios en la entrega".to_string()),
+                    link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                    reference_type: Some("order".to_string()),
+                    reference_id: Some(order.id),
+                })
+                .await;
         }
     }
 
@@ -295,9 +346,18 @@ pub async fn request_revision(
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/orders/:order_id/cancel", post(cancel_order_handler))
-        .route("/orders/:order_id/phases/:phase_number/approve", put(approve_phase))
-        .route("/orders/:order_id/phases/:phase_number/revision", put(request_revision))
-        .route("/orders/:order_id/ai-intermediary", put(toggle_ai_intermediary))
+        .route(
+            "/orders/:order_id/phases/:phase_number/approve",
+            put(approve_phase),
+        )
+        .route(
+            "/orders/:order_id/phases/:phase_number/revision",
+            put(request_revision),
+        )
+        .route(
+            "/orders/:order_id/ai-intermediary",
+            put(toggle_ai_intermediary),
+        )
         .route("/orders/:order_id/activity", get(get_order_activity))
         .route("/auth/switch-role", post(switch_role))
 }
@@ -330,8 +390,7 @@ pub async fn toggle_ai_intermediary(
             .await?;
     let phases = OrderRepository::list_order_phases(&state.pool, order.id).await?;
     let employee_name =
-        OrderRepository::get_employee_display_name(&state.pool, order.assigned_employee_id)
-            .await?;
+        OrderRepository::get_employee_display_name(&state.pool, order.assigned_employee_id).await?;
 
     #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
     let total_phases = phases.len() as i32;
@@ -364,8 +423,8 @@ pub async fn toggle_ai_intermediary(
 }
 
 /* ============================================================
-   [154A-15d] GET /api/orders/:order_id/activity — timeline de actividad
-   ============================================================ */
+[154A-15d] GET /api/orders/:order_id/activity — timeline de actividad
+============================================================ */
 
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct ActivityEntry {
@@ -439,10 +498,16 @@ async fn credit_employee_and_commission(
 
     /* Pagar al empleado */
     if let Err(e) = WalletRepository::credit(
-        &state.pool, employee_id, employee_cents,
-        "order_payment", Some("order"), Some(order_id),
+        &state.pool,
+        employee_id,
+        employee_cents,
+        "order_payment",
+        Some("order"),
+        Some(order_id),
         Some(&format!("Pago por orden #{} (90%)", order.order_number)),
-    ).await {
+    )
+    .await
+    {
         tracing::error!("Error acreditando wallet empleado {employee_id}: {e}");
     }
 
@@ -452,10 +517,16 @@ async fn credit_employee_and_commission(
     match admin_id {
         Ok(Some(nakomi_id)) => {
             if let Err(e) = WalletRepository::credit(
-                &state.pool, nakomi_id, commission_cents,
-                "commission", Some("order"), Some(order_id),
+                &state.pool,
+                nakomi_id,
+                commission_cents,
+                "commission",
+                Some("order"),
+                Some(order_id),
                 Some(&format!("Comisión 10% orden #{}", order.order_number)),
-            ).await {
+            )
+            .await
+            {
                 tracing::error!("Error acreditando comisión a Nakomi: {e}");
             }
         }

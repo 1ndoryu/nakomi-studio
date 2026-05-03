@@ -64,10 +64,7 @@ impl VpsRepository {
         .map_err(AppError::from)
     }
 
-    pub async fn find_by_id(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<Option<VpsSubscription>, AppError> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<VpsSubscription>, AppError> {
         sqlx::query_as::<_, VpsSubscription>(
             r"SELECT id, user_id, client_name, client_email, tier_name, requested_hostname,
                       status, stripe_subscription_id, monthly_price_cents, contabo_instance_id,
@@ -107,19 +104,13 @@ impl VpsRepository {
         .map_err(AppError::from)
     }
 
-    pub async fn update_status(
-        pool: &PgPool,
-        id: Uuid,
-        status: &str,
-    ) -> Result<(), AppError> {
-        sqlx::query(
-            "UPDATE vps_subscriptions SET status = $1, updated_at = NOW() WHERE id = $2",
-        )
-        .bind(status)
-        .bind(id)
-        .execute(pool)
-        .await
-        .map_err(AppError::from)?;
+    pub async fn update_status(pool: &PgPool, id: Uuid, status: &str) -> Result<(), AppError> {
+        sqlx::query("UPDATE vps_subscriptions SET status = $1, updated_at = NOW() WHERE id = $2")
+            .bind(status)
+            .bind(id)
+            .execute(pool)
+            .await
+            .map_err(AppError::from)?;
         Ok(())
     }
 
@@ -226,11 +217,7 @@ impl VpsRepository {
         .map_err(AppError::from)
     }
 
-    pub async fn mark_approved(
-        pool: &PgPool,
-        id: Uuid,
-        admin_id: Uuid,
-    ) -> Result<(), AppError> {
+    pub async fn mark_approved(pool: &PgPool, id: Uuid, admin_id: Uuid) -> Result<(), AppError> {
         sqlx::query(
             r"UPDATE vps_subscriptions
                SET status = 'provisioning', approved_by = $1, approved_at = NOW(), updated_at = NOW()

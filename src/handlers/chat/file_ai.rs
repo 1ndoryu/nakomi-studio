@@ -159,7 +159,9 @@ pub fn process_pdf_extract(data: &[u8]) -> Option<String> {
             let trimmed = text.trim();
             if trimmed.is_empty() {
                 tracing::info!("PDF: sin texto extraíble (probablemente escaneado)");
-                return Some("(PDF sin texto extraíble — puede ser un documento escaneado)".to_string());
+                return Some(
+                    "(PDF sin texto extraíble — puede ser un documento escaneado)".to_string(),
+                );
             }
             /* Limitar a 3000 palabras */
             let words: Vec<&str> = trimmed.split_whitespace().collect();

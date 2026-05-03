@@ -20,7 +20,7 @@
     gap: var(--spacing-xs);
     padding: 0 var(--spacing-lg);
     padding-top: var(--spacing-md);
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
     flex-shrink: 0;
 }
 

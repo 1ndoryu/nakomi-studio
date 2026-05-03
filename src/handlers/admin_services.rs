@@ -1,4 +1,4 @@
-﻿/* [074A-8] Handler CRUD de servicios para panel admin.
+/* [074A-8] Handler CRUD de servicios para panel admin.
  * Endpoints: listar todos (incluyendo inactivos), crear, actualizar, archivar.
  * Solo accesible por admins. Los planes se incluyen en la respuesta de listado. */
 
@@ -61,7 +61,10 @@ async fn list_all(
                 features: plan.features,
                 is_highlighted: plan.is_highlighted,
                 is_custom: plan.is_custom,
-                phases: phases.into_iter().map(ServicePlanPhaseResponse::from).collect(),
+                phases: phases
+                    .into_iter()
+                    .map(ServicePlanPhaseResponse::from)
+                    .collect(),
             });
         }
 
@@ -106,7 +109,8 @@ async fn create(
     Json(body): Json<CreateServiceRequest>,
 ) -> Result<(axum::http::StatusCode, Json<AdminServiceResponse>), AppError> {
     auth.require_role(&[UserRole::Admin])?;
-    body.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+    body.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let svc = ServiceRepository::create_service(&state.pool, &body).await?;
 
@@ -175,7 +179,10 @@ async fn update(
             features: plan.features,
             is_highlighted: plan.is_highlighted,
             is_custom: plan.is_custom,
-            phases: phases.into_iter().map(ServicePlanPhaseResponse::from).collect(),
+            phases: phases
+                .into_iter()
+                .map(ServicePlanPhaseResponse::from)
+                .collect(),
         });
     }
 
@@ -246,15 +253,17 @@ async fn save_plans(
     Json(body): Json<SaveServicePlansRequest>,
 ) -> Result<Json<Vec<ServicePlanResponse>>, AppError> {
     auth.require_role(&[UserRole::Admin])?;
-    body.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+    body.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     /* [035A-10] El checkout público siempre ofrece pago por fases para servicios.
      * Si el CMS guarda un plan sin fases, la orden queda sin estructura de trabajo.
      * Se corta en el boundary admin para que el catálogo siga siendo fuente de verdad. */
     if let Some(plan) = body.plans.iter().find(|plan| plan.phases.is_empty()) {
-        return Err(AppError::Validation(
-            format!("El plan '{}' debe tener al menos una fase configurada", plan.name),
-        ));
+        return Err(AppError::Validation(format!(
+            "El plan '{}' debe tener al menos una fase configurada",
+            plan.name
+        )));
     }
 
     ServiceRepository::find_service_by_id(&state.pool, id)
@@ -276,7 +285,10 @@ async fn save_plans(
             features: plan.features,
             is_highlighted: plan.is_highlighted,
             is_custom: plan.is_custom,
-            phases: phases.into_iter().map(ServicePlanPhaseResponse::from).collect(),
+            phases: phases
+                .into_iter()
+                .map(ServicePlanPhaseResponse::from)
+                .collect(),
         });
     }
 

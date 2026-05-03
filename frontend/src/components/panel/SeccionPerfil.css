@@ -110,7 +110,7 @@
     color: var(--brand-black);
     margin: 0;
     padding-top: var(--spacing-sm);
-    border-top: 1px solid var(--bg-item-active);
+    border-top: 1px solid var(--border-default);
 }
 
 /* Acciones */

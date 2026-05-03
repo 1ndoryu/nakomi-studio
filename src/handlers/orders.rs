@@ -11,17 +11,16 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateNotification, CreateOrderRequest, OrderResponse,
-    UpdateOrderPhaseDefinitionRequest, UpdateOrderProjectDescriptionRequest,
-    UserRole, NOTIF_NEW_ORDER, NOTIF_ORDER_ASSIGNED,
+    CreateNotification, CreateOrderRequest, OrderResponse, UpdateOrderPhaseDefinitionRequest,
+    UpdateOrderProjectDescriptionRequest, UserRole, NOTIF_NEW_ORDER, NOTIF_ORDER_ASSIGNED,
 };
 use crate::repositories::{ActivityLogRepository, UserRepository};
 use crate::services::OrderService;
 use crate::AppState;
 
 /* ============================================================
-   ÓRDENES
-   ============================================================ */
+ÓRDENES
+============================================================ */
 
 /// Crear una nueva orden (solo clientes o admin operando como cliente)
 #[utoipa::path(
@@ -65,18 +64,26 @@ pub async fn create_order(
 
     /* [154A-15d] Registrar en activity_log */
     let _ = ActivityLogRepository::log(
-        &state.pool, auth.user_id, "order_created", "order", order.id,
+        &state.pool,
+        auth.user_id,
+        "order_created",
+        "order",
+        order.id,
         Some(serde_json::json!({
             "service": order.service_title,
             "plan": order.plan_name,
             "payment_mode": format!("{:?}", order.payment_mode),
         })),
-    ).await;
+    )
+    .await;
 
     /* [154A-15c] Crear chat session + mensaje de bienvenida automático */
     {
         let chat_hub = &state.chat_hub;
-        match chat_hub.get_or_create_order_session(order.id, auth.user_id).await {
+        match chat_hub
+            .get_or_create_order_session(order.id, auth.user_id)
+            .await
+        {
             Ok(session) => {
                 let greeting = format!(
                     "¡Felicidades! Tu pedido #{} ha sido recibido. \
@@ -99,25 +106,25 @@ pub async fn create_order(
             .ok()
             .flatten();
 
-        let client_name: Option<String> = UserRepository::get_display_name(&state.pool, auth.user_id)
-            .await
-            .ok()
-            .flatten();
+        let client_name: Option<String> =
+            UserRepository::get_display_name(&state.pool, auth.user_id)
+                .await
+                .ok()
+                .flatten();
 
         if let Some(email) = client_email {
             let cfg = email_cfg.clone();
             let name = client_name.unwrap_or_else(|| "Cliente".to_string());
             let svc = order.service_title.clone();
             let plan = order.plan_name.clone();
-            let price = crate::services::format_price_cents(
-                order.final_price_cents,
-                &order.currency,
-            );
+            let price =
+                crate::services::format_price_cents(order.final_price_cents, &order.currency);
             let order_num = order.order_number;
             tokio::spawn(async move {
                 crate::services::EmailService::send_order_confirmation(
                     &cfg, &email, &name, order_num, &svc, &plan, &price,
-                ).await;
+                )
+                .await;
             });
         }
     }
@@ -294,23 +301,33 @@ pub async fn assign_order(
     let order = OrderService::assign_order(&state.pool, order_id, employee_id).await?;
 
     /* [104A-38] Notificar al empleado asignado */
-    let _ = state.notification_hub.notify(CreateNotification {
-        user_id: employee_id,
-        notification_type: NOTIF_ORDER_ASSIGNED.to_string(),
-        title: format!("Te asignaron la orden #{}", order.order_number),
-        body: None,
-        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
-        reference_type: Some("order".to_string()),
-        reference_id: Some(order.id),
-    }).await;
+    let _ = state
+        .notification_hub
+        .notify(CreateNotification {
+            user_id: employee_id,
+            notification_type: NOTIF_ORDER_ASSIGNED.to_string(),
+            title: format!("Te asignaron la orden #{}", order.order_number),
+            body: None,
+            link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+            reference_type: Some("order".to_string()),
+            reference_id: Some(order.id),
+        })
+        .await;
 
     /* [154A-15d] Registrar asignación en activity_log */
     let _ = ActivityLogRepository::log(
-        &state.pool, auth.user_id, "employee_assigned", "order", order_id,
+        &state.pool,
+        auth.user_id,
+        "employee_assigned",
+        "order",
+        order_id,
         Some(serde_json::json!({"employee_id": employee_id.to_string()})),
-    ).await;
+    )
+    .await;
 
-    Ok(Json(serde_json::json!({ "status": order.status, "assigned_employee_id": order.assigned_employee_id })))
+    Ok(Json(
+        serde_json::json!({ "status": order.status, "assigned_employee_id": order.assigned_employee_id }),
+    ))
 }
 
 pub fn routes() -> Router<AppState> {
@@ -321,10 +338,7 @@ pub fn routes() -> Router<AppState> {
             "/orders/:order_id/project-description",
             patch(update_order_project_description_handler),
         )
-        .route(
-            "/orders/:order_id/assign/:employee_id",
-            put(assign_order),
-        )
+        .route("/orders/:order_id/assign/:employee_id", put(assign_order))
         .route(
             "/orders/:order_id/phases/:phase_number",
             patch(update_order_phase_definition_handler),

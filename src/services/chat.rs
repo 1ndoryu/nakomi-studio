@@ -4,8 +4,8 @@
  * DashMap para sesiones activas en memoria. Cada sesión tiene múltiples suscriptores
  * (visitante/cliente + staff). Los mensajes se persisten en BD y se broadcastean. */
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use dashmap::DashMap;
 use sqlx::PgPool;
@@ -13,9 +13,7 @@ use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::models::{
-    ChatMessage, ChatSession, ChatSessionResponse, WsServerMessage,
-};
+use crate::models::{ChatMessage, ChatSession, ChatSessionResponse, WsServerMessage};
 use crate::repositories::ChatRepository;
 
 /* Canal de broadcast por sesión: cada conexión WS suscribe un receiver */
@@ -104,8 +102,8 @@ impl ChatHub {
     }
 
     /* ============================================================
-       OPERACIONES DE CHAT
-       ============================================================ */
+    OPERACIONES DE CHAT
+    ============================================================ */
 
     /// Crear o recuperar sesión para un visitante anónimo
     #[allow(clippy::similar_names)] /* visitor_ip vs visitor_id — nombres semánticos claros */
@@ -137,14 +135,9 @@ impl ChatHub {
             }
             return Ok(existing);
         }
-        let session = ChatRepository::create_session(
-            &self.pool,
-            Some(visitor_id),
-            visitor_name,
-            None,
-            None,
-        )
-        .await?;
+        let session =
+            ChatRepository::create_session(&self.pool, Some(visitor_id), visitor_name, None, None)
+                .await?;
 
         /* [064A-72] Guardar IP y user-agent en la nueva sesión */
         /* [124A-PAIS] También guardar country */
@@ -176,28 +169,20 @@ impl ChatHub {
         order_id: Uuid,
         user_id: Uuid,
     ) -> Result<ChatSession, AppError> {
-        if let Some(existing) =
-            ChatRepository::find_session_by_order(&self.pool, order_id).await?
-        {
+        if let Some(existing) = ChatRepository::find_session_by_order(&self.pool, order_id).await? {
             return Ok(existing);
         }
-        let session = ChatRepository::create_session(
-            &self.pool,
-            None,
-            None,
-            Some(user_id),
-            Some(order_id),
-        )
-        .await?;
+        let session =
+            ChatRepository::create_session(&self.pool, None, None, Some(user_id), Some(order_id))
+                .await?;
 
         /* Auto-asignar empleado de la orden como staff del chat */
-        let employee_id: Option<Uuid> = sqlx::query_scalar(
-            "SELECT assigned_employee_id FROM orders WHERE id = $1",
-        )
-        .bind(order_id)
-        .fetch_optional(&self.pool)
-        .await
-        .unwrap_or(None);
+        let employee_id: Option<Uuid> =
+            sqlx::query_scalar("SELECT assigned_employee_id FROM orders WHERE id = $1")
+                .bind(order_id)
+                .fetch_optional(&self.pool)
+                .await
+                .unwrap_or(None);
 
         if let Some(eid) = employee_id {
             let _ = ChatRepository::assign_staff(&self.pool, session.id, eid).await;
@@ -229,14 +214,9 @@ impl ChatHub {
         sender_id: Option<&str>,
         content: &str,
     ) -> Result<ChatMessage, AppError> {
-        let msg = ChatRepository::save_message(
-            &self.pool,
-            session_id,
-            sender_type,
-            sender_id,
-            content,
-        )
-        .await?;
+        let msg =
+            ChatRepository::save_message(&self.pool, session_id, sender_type, sender_id, content)
+                .await?;
 
         let ws_msg = WsServerMessage::Message {
             id: msg.id,
@@ -326,7 +306,11 @@ impl ChatHub {
         enabled: bool,
     ) -> Result<ChatSession, AppError> {
         let session = ChatRepository::toggle_ai(&self.pool, session_id, enabled).await?;
-        let status = if enabled { "ai_handling" } else { "staff_handling" };
+        let status = if enabled {
+            "ai_handling"
+        } else {
+            "staff_handling"
+        };
         self.broadcast(
             session_id,
             WsServerMessage::Status {
@@ -356,9 +340,7 @@ impl ChatHub {
     }
 
     /// Listar todas las sesiones activas (staff/admin)
-    pub async fn list_all_active_sessions(
-        &self,
-    ) -> Result<Vec<ChatSessionResponse>, AppError> {
+    pub async fn list_all_active_sessions(&self) -> Result<Vec<ChatSessionResponse>, AppError> {
         let sessions = ChatRepository::list_active_sessions(&self.pool).await?;
         self.enrich_sessions(sessions).await
     }
@@ -420,11 +402,14 @@ impl ChatHub {
             .map(|s| {
                 let last = last_msgs.iter().find(|m| m.session_id == s.id);
                 let order_num = s.order_id.and_then(|oid| {
-                    order_numbers.iter().find(|(id, _)| *id == oid).map(|(_, n)| *n)
+                    order_numbers
+                        .iter()
+                        .find(|(id, _)| *id == oid)
+                        .map(|(_, n)| *n)
                 });
-                let parts = s.order_id.and_then(|oid| {
-                    participants.iter().find(|p| p.order_id == oid)
-                });
+                let parts = s
+                    .order_id
+                    .and_then(|oid| participants.iter().find(|p| p.order_id == oid));
                 ChatSessionResponse {
                     id: s.id,
                     order_id: s.order_id,
@@ -460,7 +445,11 @@ impl ChatHub {
     /* [104A-40] Broadcast de estado del visitante al canal de sesión + canal global de staff.
      * online=true cuando el visitor abre la conexión WS; online=false al desconectar.
      * Staff usa esto para mostrar online/offline y confirmar que el visitante lee los mensajes. */
-    pub fn notify_visitor_online(&self, session_id: Uuid, last_connected_at: chrono::DateTime<chrono::Utc>) {
+    pub fn notify_visitor_online(
+        &self,
+        session_id: Uuid,
+        last_connected_at: chrono::DateTime<chrono::Utc>,
+    ) {
         let msg = WsServerMessage::VisitorStatus {
             session_id,
             online: true,
@@ -470,7 +459,11 @@ impl ChatHub {
         let _ = self.staff_channel.send(msg);
     }
 
-    pub fn notify_visitor_offline(&self, session_id: Uuid, last_connected_at: Option<chrono::DateTime<chrono::Utc>>) {
+    pub fn notify_visitor_offline(
+        &self,
+        session_id: Uuid,
+        last_connected_at: Option<chrono::DateTime<chrono::Utc>>,
+    ) {
         let msg = WsServerMessage::VisitorStatus {
             session_id,
             online: false,

@@ -9,8 +9,8 @@ use uuid::Uuid;
 use validator::Validate;
 
 /* ============================================================
-   MODELOS DE BD — Servicios
-   ============================================================ */
+MODELOS DE BD — Servicios
+============================================================ */
 
 #[derive(Debug, Clone, FromRow)]
 pub struct ServiceRecord {
@@ -62,8 +62,8 @@ pub struct ServicePlanPhase {
 }
 
 /* ============================================================
-   RESPONSES — Servicios
-   ============================================================ */
+RESPONSES — Servicios
+============================================================ */
 
 /// Detalle completo de un servicio con sus planes
 /* [074A-21] Ampliado con image_url y base_price_cents para que el frontend público

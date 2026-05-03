@@ -9,8 +9,8 @@
  * porque el pago único se hace al crear la orden. Solo phased y half_half pueden
  * tener pending_payment como estado inicial. */
 
-use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use argon2::password_hash::rand_core::OsRng;
+use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -19,8 +19,8 @@ use uuid::Uuid;
 async fn main() {
     dotenvy::dotenv().ok();
 
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL debe estar definida en .env");
+    let database_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL debe estar definida en .env");
 
     let pool = PgPool::connect(&database_url)
         .await
@@ -39,13 +39,11 @@ async fn main() {
 
     /* chat_sessions tiene FK a orders sin CASCADE. chat_messages tiene CASCADE desde sessions.
      * orders.chat_session_id también referencia chat_sessions, así que lo anulamos primero. */
-    sqlx::query(
-        "UPDATE orders SET chat_session_id = NULL WHERE client_id = $1"
-    )
-    .bind(client_id)
-    .execute(&pool)
-    .await
-    .expect("Error al anular chat_session_id en orders");
+    sqlx::query("UPDATE orders SET chat_session_id = NULL WHERE client_id = $1")
+        .bind(client_id)
+        .execute(&pool)
+        .await
+        .expect("Error al anular chat_session_id en orders");
 
     sqlx::query(&format!(
         "DELETE FROM chat_sessions WHERE order_id IN ({order_ids_subquery})"
@@ -56,10 +54,13 @@ async fn main() {
     .expect("Error al limpiar chat_sessions");
 
     /* Tablas con FK a orders sin CASCADE */
-    for table in &["order_reviews", "order_payments", "order_refunds", "order_delegations"] {
-        let sql = format!(
-            "DELETE FROM {table} WHERE order_id IN ({order_ids_subquery})"
-        );
+    for table in &[
+        "order_reviews",
+        "order_payments",
+        "order_refunds",
+        "order_delegations",
+    ] {
+        let sql = format!("DELETE FROM {table} WHERE order_id IN ({order_ids_subquery})");
         sqlx::query(&sql)
             .bind(client_id)
             .execute(&pool)
@@ -109,12 +110,22 @@ async fn main() {
      */
 
     /* Orden 1: Diseño Web Básico — full, in_progress (ya pagado, empleado asignado) */
-    if let Some(plan) = plans.iter().find(|p| p.service_title == "Diseño de Sitios Web" && p.slug == "basico") {
+    if let Some(plan) = plans
+        .iter()
+        .find(|p| p.service_title == "Diseño de Sitios Web" && p.slug == "basico")
+    {
         let order_id = create_order(
-            &pool, client_id, plan.service_id, plan.id,
-            "full", plan.price_cents, 20, "in_progress",
+            &pool,
+            client_id,
+            plan.service_id,
+            plan.id,
+            "full",
+            plan.price_cents,
+            20,
+            "in_progress",
             Some(employee_id),
-        ).await;
+        )
+        .await;
         create_phases_from_template(&pool, order_id, plan.id, "full", "in_progress").await;
         println!("Orden 1 creada: Diseño Web Básico (full, in_progress)");
     } else {
@@ -122,12 +133,22 @@ async fn main() {
     }
 
     /* Orden 2: Desarrollo Apps Avanzado — phased, in_progress (fase 1 pagada y en ejecución) */
-    if let Some(plan) = plans.iter().find(|p| p.service_title == "Desarrollo de Aplicaciones" && p.slug == "avanzado") {
+    if let Some(plan) = plans
+        .iter()
+        .find(|p| p.service_title == "Desarrollo de Aplicaciones" && p.slug == "avanzado")
+    {
         let order_id = create_order(
-            &pool, client_id, plan.service_id, plan.id,
-            "phased", plan.price_cents, 0, "in_progress",
+            &pool,
+            client_id,
+            plan.service_id,
+            plan.id,
+            "phased",
+            plan.price_cents,
+            0,
+            "in_progress",
             Some(employee_id),
-        ).await;
+        )
+        .await;
         create_phases_from_template(&pool, order_id, plan.id, "phased", "in_progress").await;
         println!("Orden 2 creada: Desarrollo Apps Avanzado (phased, in_progress)");
     } else {
@@ -135,12 +156,22 @@ async fn main() {
     }
 
     /* Orden 3: Agentes IA Básico — full, completed */
-    if let Some(plan) = plans.iter().find(|p| p.service_title == "Agentes de IA" && p.slug == "basico") {
+    if let Some(plan) = plans
+        .iter()
+        .find(|p| p.service_title == "Agentes de IA" && p.slug == "basico")
+    {
         let order_id = create_order(
-            &pool, client_id, plan.service_id, plan.id,
-            "full", plan.price_cents, 20, "completed",
+            &pool,
+            client_id,
+            plan.service_id,
+            plan.id,
+            "full",
+            plan.price_cents,
+            20,
+            "completed",
             Some(employee_id),
-        ).await;
+        )
+        .await;
         create_phases_from_template(&pool, order_id, plan.id, "full", "completed").await;
         println!("Orden 3 creada: Agentes IA Básico (full, completed)");
     } else {
@@ -148,25 +179,46 @@ async fn main() {
     }
 
     /* Orden 4: Branding Avanzado — half_half, awaiting_assignment (primer pago hecho) */
-    if let Some(plan) = plans.iter().find(|p| p.service_title == "Identidad de Marca" && p.slug == "avanzado") {
+    if let Some(plan) = plans
+        .iter()
+        .find(|p| p.service_title == "Identidad de Marca" && p.slug == "avanzado")
+    {
         let order_id = create_order(
-            &pool, client_id, plan.service_id, plan.id,
-            "half_half", plan.price_cents, 10, "awaiting_assignment",
+            &pool,
+            client_id,
+            plan.service_id,
+            plan.id,
+            "half_half",
+            plan.price_cents,
+            10,
+            "awaiting_assignment",
             None,
-        ).await;
-        create_phases_from_template(&pool, order_id, plan.id, "half_half", "awaiting_assignment").await;
+        )
+        .await;
+        create_phases_from_template(&pool, order_id, plan.id, "half_half", "awaiting_assignment")
+            .await;
         println!("Orden 4 creada: Branding Avanzado (half_half, awaiting_assignment)");
     } else {
         eprintln!("WARN: No se encontró plan Identidad de Marca / avanzado");
     }
 
     /* Orden 5: SEO Básico — phased, pending_payment (recién creada, sin pagar) */
-    if let Some(plan) = plans.iter().find(|p| p.service_title == "SEO" && p.slug == "basico") {
+    if let Some(plan) = plans
+        .iter()
+        .find(|p| p.service_title == "SEO" && p.slug == "basico")
+    {
         let order_id = create_order(
-            &pool, client_id, plan.service_id, plan.id,
-            "phased", plan.price_cents, 0, "pending_payment",
+            &pool,
+            client_id,
+            plan.service_id,
+            plan.id,
+            "phased",
+            plan.price_cents,
+            0,
+            "pending_payment",
             None,
-        ).await;
+        )
+        .await;
         create_phases_from_template(&pool, order_id, plan.id, "phased", "pending_payment").await;
         println!("Orden 5 creada: SEO Básico (phased, pending_payment)");
     } else {
@@ -174,12 +226,22 @@ async fn main() {
     }
 
     /* Orden 6: E-commerce Avanzado — full, under_review (empleado entregó, cliente revisa) */
-    if let Some(plan) = plans.iter().find(|p| p.service_title == "E-commerce" && p.slug == "avanzado") {
+    if let Some(plan) = plans
+        .iter()
+        .find(|p| p.service_title == "E-commerce" && p.slug == "avanzado")
+    {
         let order_id = create_order(
-            &pool, client_id, plan.service_id, plan.id,
-            "full", plan.price_cents, 20, "under_review",
+            &pool,
+            client_id,
+            plan.service_id,
+            plan.id,
+            "full",
+            plan.price_cents,
+            20,
+            "under_review",
             Some(employee_id),
-        ).await;
+        )
+        .await;
         create_phases_from_template(&pool, order_id, plan.id, "full", "under_review").await;
         println!("Orden 6 creada: E-commerce Avanzado (full, under_review)");
     } else {
@@ -193,12 +255,11 @@ async fn main() {
 
     /* [074A-11] Seed: 4 blog posts de prueba para CMS blog.
      * Usa el admin existente como autor. Limpia posts previos para idempotencia. */
-    let admin_id = sqlx::query_scalar::<_, Uuid>(
-        "SELECT id FROM users WHERE email = 'admin@admin.com'"
-    )
-    .fetch_optional(&pool)
-    .await
-    .expect("Error al buscar admin");
+    let admin_id =
+        sqlx::query_scalar::<_, Uuid>("SELECT id FROM users WHERE email = 'admin@admin.com'")
+            .fetch_optional(&pool)
+            .await
+            .expect("Error al buscar admin");
 
     if let Some(author_id) = admin_id {
         sqlx::query("DELETE FROM blog_posts WHERE author_id = $1")
@@ -332,7 +393,7 @@ async fn create_order(
             $1, $2, $3,
             $4::payment_mode, $5, $6, $7,
             $8::order_status, $9, $10, $11, $12
-         ) RETURNING id"
+         ) RETURNING id",
     )
     .bind(client_id)
     .bind(service_id)
@@ -384,7 +445,7 @@ async fn create_phases_from_template(
             "INSERT INTO order_phases (
                 order_id, phase_number, title, description, price_cents,
                 status, max_revisions, estimated_days
-             ) VALUES ($1, $2, $3, $4, $5, $6::phase_status, $7, $8)"
+             ) VALUES ($1, $2, $3, $4, $5, $6::phase_status, $7, $8)",
         )
         .bind(order_id)
         .bind(t.phase_number)
@@ -403,32 +464,59 @@ async fn create_phases_from_template(
 /* [064A-21] Determina el estado de cada fase según el modo de pago y estado de la orden.
  * Regla principal: payment_mode=full → TODAS las fases están pagadas (nunca pending_payment). */
 #[allow(clippy::too_many_lines)]
-fn determine_phase_status(payment_mode: &str, order_status: &str, phase_idx: usize, total_phases: usize) -> &'static str {
+fn determine_phase_status(
+    payment_mode: &str,
+    order_status: &str,
+    phase_idx: usize,
+    total_phases: usize,
+) -> &'static str {
     match (payment_mode, order_status) {
         /* Todos los modos: completed → approved */
         (_, "completed") => "approved",
 
         /* Full: todo pagado de entrada */
         ("full", "under_review") => {
-            if phase_idx < total_phases - 1 { "approved" } else { "delivered" }
+            if phase_idx < total_phases - 1 {
+                "approved"
+            } else {
+                "delivered"
+            }
         }
         ("full" | "half_half", "in_progress") => {
-            if phase_idx == 0 { "in_progress" } else { "paid" }
+            if phase_idx == 0 {
+                "in_progress"
+            } else {
+                "paid"
+            }
         }
         ("full", _) => "paid",
 
         /* Half-half: primeras fases pagadas, últimas pending */
         ("half_half", "awaiting_assignment") => {
             let half = total_phases / 2;
-            if phase_idx < half.max(1) { "paid" } else { "pending_payment" }
+            if phase_idx < half.max(1) {
+                "paid"
+            } else {
+                "pending_payment"
+            }
         }
 
         /* Phased: solo la fase actual está activa, el resto locked o pending */
         ("phased", "in_progress") => {
-            if phase_idx == 0 { "in_progress" } else if phase_idx == 1 { "pending_payment" } else { "locked" }
+            if phase_idx == 0 {
+                "in_progress"
+            } else if phase_idx == 1 {
+                "pending_payment"
+            } else {
+                "locked"
+            }
         }
         ("phased", "pending_payment") => {
-            if phase_idx == 0 { "pending_payment" } else { "locked" }
+            if phase_idx == 0 {
+                "pending_payment"
+            } else {
+                "locked"
+            }
         }
 
         _ => "locked",

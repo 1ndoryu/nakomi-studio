@@ -85,6 +85,8 @@ pub async fn toggle_rotation(
 }
 
 pub fn configuracion_routes() -> Router<AppState> {
-    Router::new()
-        .route("/admin/configuracion/rotacion", get(get_rotation_status).patch(toggle_rotation))
+    Router::new().route(
+        "/admin/configuracion/rotacion",
+        get(get_rotation_status).patch(toggle_rotation),
+    )
 }

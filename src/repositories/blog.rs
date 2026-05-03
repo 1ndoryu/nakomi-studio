@@ -48,11 +48,10 @@ impl BlogRepository {
     ) -> Result<(Vec<BlogPost>, i64), sqlx::Error> {
         let offset = (page - 1) * per_page;
 
-        let total: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM blog_posts WHERE status = 'published'"
-        )
-        .fetch_one(pool)
-        .await?;
+        let total: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM blog_posts WHERE status = 'published'")
+                .fetch_one(pool)
+                .await?;
 
         let posts = sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
@@ -61,7 +60,7 @@ impl BlogRepository {
              FROM blog_posts
              WHERE status = 'published'
              ORDER BY published_at DESC NULLS LAST
-             LIMIT $1 OFFSET $2"
+             LIMIT $1 OFFSET $2",
         )
         .bind(per_page)
         .bind(offset)
@@ -81,7 +80,7 @@ impl BlogRepository {
                     status, tags, meta_title, meta_description, published_at,
                     sort_order, is_featured, created_at, updated_at
              FROM blog_posts
-             WHERE slug = $1 AND status = 'published'"
+             WHERE slug = $1 AND status = 'published'",
         )
         .bind(slug)
         .fetch_optional(pool)
@@ -95,23 +94,20 @@ impl BlogRepository {
                     status, tags, meta_title, meta_description, published_at,
                     sort_order, is_featured, created_at, updated_at
              FROM blog_posts
-             ORDER BY sort_order, created_at DESC"
+             ORDER BY sort_order, created_at DESC",
         )
         .fetch_all(pool)
         .await
     }
 
     /// Buscar post por ID (admin)
-    pub async fn find_by_id(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<Option<BlogPost>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<BlogPost>, sqlx::Error> {
         sqlx::query_as::<_, BlogPost>(
             "SELECT id, author_id, title, slug, excerpt, content, featured_image,
                     status, tags, meta_title, meta_description, published_at,
                     sort_order, is_featured, created_at, updated_at
              FROM blog_posts
-             WHERE id = $1"
+             WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -136,7 +132,7 @@ impl BlogRepository {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              RETURNING id, author_id, title, slug, excerpt, content, featured_image,
                        status, tags, meta_title, meta_description, published_at,
-                       sort_order, is_featured, created_at, updated_at"
+                       sort_order, is_featured, created_at, updated_at",
         )
         .bind(params.author_id)
         .bind(params.title)
@@ -182,7 +178,7 @@ impl BlogRepository {
              WHERE id = $1
              RETURNING id, author_id, title, slug, excerpt, content, featured_image,
                        status, tags, meta_title, meta_description, published_at,
-                       sort_order, is_featured, created_at, updated_at"
+                       sort_order, is_featured, created_at, updated_at",
         )
         .bind(id)
         .bind(params.title)
@@ -201,12 +197,10 @@ impl BlogRepository {
 
     /// Archivar un blog post (soft delete: status = 'archived')
     pub async fn archive(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE blog_posts SET status = 'archived', updated_at = NOW() WHERE id = $1"
-        )
-        .bind(id)
-        .execute(pool)
-        .await?;
+        sqlx::query("UPDATE blog_posts SET status = 'archived', updated_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 
@@ -220,10 +214,7 @@ impl BlogRepository {
     }
 
     /* [124A-CMS10] Batch reorder — mismo patrón que ProjectRepository::reorder */
-    pub async fn reorder(
-        pool: &PgPool,
-        items: &[(Uuid, i32)],
-    ) -> Result<(), sqlx::Error> {
+    pub async fn reorder(pool: &PgPool, items: &[(Uuid, i32)]) -> Result<(), sqlx::Error> {
         if items.is_empty() {
             return Ok(());
         }
@@ -235,7 +226,7 @@ impl BlogRepository {
                 sort_order = v.new_order,
                 updated_at = NOW()
              FROM (SELECT UNNEST($1::uuid[]) AS id, UNNEST($2::int[]) AS new_order) AS v
-             WHERE p.id = v.id"
+             WHERE p.id = v.id",
         )
         .bind(&ids)
         .bind(&orders)
@@ -245,13 +236,15 @@ impl BlogRepository {
     }
 
     /// Obtener nombre del autor por user ID (usa `display_name` o email como fallback)
-    pub async fn get_author_name(pool: &PgPool, author_id: Uuid) -> Result<Option<String>, sqlx::Error> {
-        let row: Option<(Option<String>, String)> = sqlx::query_as(
-            "SELECT display_name, email FROM users WHERE id = $1"
-        )
-        .bind(author_id)
-        .fetch_optional(pool)
-        .await?;
+    pub async fn get_author_name(
+        pool: &PgPool,
+        author_id: Uuid,
+    ) -> Result<Option<String>, sqlx::Error> {
+        let row: Option<(Option<String>, String)> =
+            sqlx::query_as("SELECT display_name, email FROM users WHERE id = $1")
+                .bind(author_id)
+                .fetch_optional(pool)
+                .await?;
         Ok(row.map(|r| r.0.unwrap_or(r.1)))
     }
 }

@@ -79,9 +79,7 @@ impl RefundRepository {
     }
 
     /// Listar todos los reembolsos pendientes (admin)
-    pub async fn list_pending(
-        pool: &PgPool,
-    ) -> Result<Vec<OrderRefund>, sqlx::Error> {
+    pub async fn list_pending(pool: &PgPool) -> Result<Vec<OrderRefund>, sqlx::Error> {
         sqlx::query_as!(
             OrderRefund,
             r#"SELECT id, order_id, payment_id, requested_by, reviewed_by,

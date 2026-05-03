@@ -39,7 +39,12 @@ pub fn tool_definitions() -> Value {
     if let Some(arr) = tools.as_array_mut() {
         arr.extend(visitor_tool_defs().as_array().cloned().unwrap_or_default());
         /* [T-9] Tools para clientes registrados */
-        arr.extend(registered_client_tool_defs().as_array().cloned().unwrap_or_default());
+        arr.extend(
+            registered_client_tool_defs()
+                .as_array()
+                .cloned()
+                .unwrap_or_default(),
+        );
     }
     tools
 }
@@ -132,7 +137,9 @@ pub async fn execute_tool(
     arguments: &Value,
 ) -> ToolExecResult {
     match tool_name {
-        "create_invoice" => exec_create_invoice(http_client, stripe_key, session_id, arguments).await,
+        "create_invoice" => {
+            exec_create_invoice(http_client, stripe_key, session_id, arguments).await
+        }
         "request_human_assistance" => exec_request_human(arguments),
         "capture_email" => exec_capture_email(pool, visitor_id, session_id, arguments).await,
         "save_client_info" => exec_save_client_info(pool, visitor_id, session_id, arguments).await,
@@ -173,7 +180,9 @@ async fn exec_create_invoice(
         .as_i64()
         .or_else(|| args["amount_cents"].as_f64().map(|f| f as i64))
         .unwrap_or(0);
-    let description = args["description"].as_str().unwrap_or("Servicio Nakomi Studio");
+    let description = args["description"]
+        .as_str()
+        .unwrap_or("Servicio Nakomi Studio");
     let client_email = args["client_email"].as_str().unwrap_or("");
 
     if amount_cents <= 0 || client_email.is_empty() {
@@ -192,13 +201,16 @@ async fn exec_create_invoice(
                     "amount_cents={amount_cents}, client_email={}",
                     if client_email.is_empty() { "(vacío)" } else { "(presente)" }
                 )
-            }).to_string(),
+            })
+            .to_string(),
             rich_message: None,
         };
     }
 
     /* Paso 1: crear/buscar customer por email */
-    let customer_id = match find_or_create_stripe_customer(http_client, stripe_key, client_email).await {
+    let customer_id = match find_or_create_stripe_customer(http_client, stripe_key, client_email)
+        .await
+    {
         Ok(id) => id,
         Err(e) => {
             tracing::error!("Stripe create customer error: {e}");
@@ -276,8 +288,8 @@ fn exec_request_human(args: &Value) -> ToolExecResult {
 }
 
 /* ============================================================
-   STRIPE HELPERS (invoice flow)
-   ============================================================ */
+STRIPE HELPERS (invoice flow)
+============================================================ */
 
 #[derive(Debug, serde::Deserialize)]
 struct StripeCustomerSearch {
@@ -430,8 +442,8 @@ async fn create_stripe_invoice(
 }
 
 /* ============================================================
-   VISITOR PROFILE TOOLS (T-3 — Memoria y contexto)
-   ============================================================ */
+VISITOR PROFILE TOOLS (T-3 — Memoria y contexto)
+============================================================ */
 
 /* [124A-CHAT2] Helper: actualiza visitor_name en chat_sessions para que el panel
  * muestre el nombre real del visitante capturado por la IA.
@@ -441,13 +453,11 @@ async fn update_session_visitor_name(
     session_id: uuid::Uuid,
     name: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "UPDATE chat_sessions SET visitor_name = $2, updated_at = NOW() WHERE id = $1",
-    )
-    .bind(session_id)
-    .bind(name)
-    .execute(pool)
-    .await?;
+    sqlx::query("UPDATE chat_sessions SET visitor_name = $2, updated_at = NOW() WHERE id = $1")
+        .bind(session_id)
+        .bind(name)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -632,7 +642,8 @@ async fn exec_create_support_ticket(
 
     if description.is_empty() {
         return ToolExecResult {
-            tool_result_json: json!({"error": "Se necesita una descripción del problema"}).to_string(),
+            tool_result_json: json!({"error": "Se necesita una descripción del problema"})
+                .to_string(),
             rich_message: None,
         };
     }
@@ -687,7 +698,10 @@ mod tests {
     #[test]
     fn tool_definitions_returns_valid_json_array() {
         let defs = tool_definitions();
-        assert!(defs.is_array(), "tool_definitions debe retornar un JSON array");
+        assert!(
+            defs.is_array(),
+            "tool_definitions debe retornar un JSON array"
+        );
     }
 
     #[test]
@@ -697,7 +711,12 @@ mod tests {
         /* 2 service (create_invoice, request_human_assistance)
          * + 2 visitor (capture_email, save_client_info)
          * + 1 registered (create_support_ticket) = 5 */
-        assert_eq!(arr.len(), 5, "Se esperan 5 tools, encontradas {}", arr.len());
+        assert_eq!(
+            arr.len(),
+            5,
+            "Se esperan 5 tools, encontradas {}",
+            arr.len()
+        );
     }
 
     #[test]
@@ -708,10 +727,22 @@ mod tests {
             assert_eq!(tool["type"], "function", "type debe ser 'function'");
             let func = &tool["function"];
             assert!(func["name"].is_string(), "function.name debe ser string");
-            assert!(func["description"].is_string(), "function.description debe ser string");
-            assert!(func["parameters"].is_object(), "function.parameters debe ser object");
-            assert!(!func["name"].as_str().unwrap().is_empty(), "function.name no debe estar vacío");
-            assert!(!func["description"].as_str().unwrap().is_empty(), "function.description no vacía");
+            assert!(
+                func["description"].is_string(),
+                "function.description debe ser string"
+            );
+            assert!(
+                func["parameters"].is_object(),
+                "function.parameters debe ser object"
+            );
+            assert!(
+                !func["name"].as_str().unwrap().is_empty(),
+                "function.name no debe estar vacío"
+            );
+            assert!(
+                !func["description"].as_str().unwrap().is_empty(),
+                "function.description no vacía"
+            );
         }
     }
 

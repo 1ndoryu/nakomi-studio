@@ -66,6 +66,9 @@ pub async fn get_messages(
     security(("bearer_auth" = [])),
     tag = "chat"
 )]
+/* [035A-21] Handler orquestador legacy: valida rate-limit, permisos, persistencia y broadcast.
+ * Se permite sobrepasar el umbral mientras el flujo REST de chat siga consolidado en un solo endpoint. */
+#[allow(clippy::too_many_lines)]
 pub async fn send_message(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -113,7 +116,9 @@ pub async fn send_message(
                 /* [154A-15e] Auto-desactivar IA cuando el empleado asignado responde */
                 if is_assigned {
                     let _ = crate::repositories::OrderRepository::toggle_ai_intermediary(
-                        &state.pool, order_id, false,
+                        &state.pool,
+                        order_id,
+                        false,
                     )
                     .await;
                 }
@@ -123,7 +128,12 @@ pub async fn send_message(
 
     let msg = state
         .chat_hub
-        .send_message(session_id, sender_type, Some(&auth.user_id.to_string()), &req.content)
+        .send_message(
+            session_id,
+            sender_type,
+            Some(&auth.user_id.to_string()),
+            &req.content,
+        )
         .await?;
 
     /* [104A-38] Notificar al otro participante del chat (solo sesiones de orden).
@@ -134,7 +144,10 @@ pub async fn send_message(
         let recipient_id = if sender_type == "client" {
             session.assigned_staff_id
         } else if let Some(oid) = session.order_id {
-            OrderRepository::client_id_by_id(&state.pool, oid).await.ok().flatten()
+            OrderRepository::client_id_by_id(&state.pool, oid)
+                .await
+                .ok()
+                .flatten()
         } else {
             None
         };
@@ -144,15 +157,18 @@ pub async fn send_message(
                 || format!("/panel?seccion=mensajes&chat={session_id}"),
                 |order_id| format!("/panel?order={order_id}"),
             );
-            let _ = state.notification_hub.notify(CreateNotification {
-                user_id: rid,
-                notification_type: NOTIF_NEW_MESSAGE.to_string(),
-                title: "Nuevo mensaje en el chat".to_string(),
-                body: Some(preview),
-                link: Some(panel_link),
-                reference_type: Some("chat_session".to_string()),
-                reference_id: Some(session_id),
-            }).await;
+            let _ = state
+                .notification_hub
+                .notify(CreateNotification {
+                    user_id: rid,
+                    notification_type: NOTIF_NEW_MESSAGE.to_string(),
+                    title: "Nuevo mensaje en el chat".to_string(),
+                    body: Some(preview),
+                    link: Some(panel_link),
+                    reference_type: Some("chat_session".to_string()),
+                    reference_id: Some(session_id),
+                })
+                .await;
         }
     }
 
@@ -164,7 +180,11 @@ pub async fn send_message(
             /* [T-10] IA intermediaria: si sesión de orden con intermediary habilitado */
             if let Some(order_id) = s.order_id {
                 spawn_intermediary_if_enabled(
-                    &state, session_id, order_id, auth.user_id, &req.content,
+                    &state,
+                    session_id,
+                    order_id,
+                    auth.user_id,
+                    &req.content,
                 );
             } else if s.ai_enabled {
                 handle_ai_and_escalation(&state, session_id, &s, &req.content).await;
@@ -204,10 +224,15 @@ async fn handle_ai_and_escalation(
 
     /* [T-2] Enviar rich messages antes del texto */
     for rm in &ai_resp.rich_messages {
-        let _ = state.chat_hub
+        let _ = state
+            .chat_hub
             .send_rich_message(
-                session_id, "ai", Some("ai"),
-                &rm.content, &rm.message_type, &rm.metadata,
+                session_id,
+                "ai",
+                Some("ai"),
+                &rm.content,
+                &rm.message_type,
+                &rm.metadata,
             )
             .await;
     }
@@ -235,7 +260,10 @@ async fn notify_escalation(state: &AppState, session_id: Uuid, visitor: &str) {
                 user_id: uuid::Uuid::nil(),
                 notification_type: crate::models::NOTIF_ESCALATION_NEEDED.to_string(),
                 title: format!("Escalación: {visitor} necesita ayuda"),
-                body: Some("La IA detectó que se requiere intervención humana en la sesión de chat.".to_string()),
+                body: Some(
+                    "La IA detectó que se requiere intervención humana en la sesión de chat."
+                        .to_string(),
+                ),
                 link: Some(format!("/admin/chat?session={session_id}")),
                 reference_type: Some("chat_session".to_string()),
                 reference_id: Some(session_id),
@@ -273,18 +301,23 @@ fn spawn_intermediary_if_enabled(
     let content = content.to_string();
     tokio::spawn(async move {
         /* Verificar si la orden tiene intermediary habilitado */
-        let order = match crate::repositories::OrderRepository::find_order_by_id(&pool, order_id)
-            .await
-        {
-            Ok(Some(o)) if o.ai_intermediary_enabled.unwrap_or(false) => o,
-            _ => return,
-        };
+        let order =
+            match crate::repositories::OrderRepository::find_order_by_id(&pool, order_id).await {
+                Ok(Some(o)) if o.ai_intermediary_enabled.unwrap_or(false) => o,
+                _ => return,
+            };
 
         /* Generar respuesta con prompt de intermediario */
         let ai_resp = match tokio::time::timeout(
             std::time::Duration::from_secs(10),
             AiChatService::generate_intermediary_response(
-                &pool, &ai_config, &http_client, session_id, &order, user_id, &content,
+                &pool,
+                &ai_config,
+                &http_client,
+                session_id,
+                &order,
+                user_id,
+                &content,
             ),
         )
         .await
@@ -330,7 +363,11 @@ fn spawn_intermediary_if_enabled(
         {
             if msgs.len() > 5 {
                 AiChatService::maybe_update_order_summary(
-                    &pool, &ai_config, &http_client, order_id, &msgs,
+                    &pool,
+                    &ai_config,
+                    &http_client,
+                    order_id,
+                    &msgs,
                 )
                 .await;
             }

@@ -15,7 +15,7 @@ impl ServiceRepository {
      * Equivalente a la query directa que vivía en seo.rs. */
     pub async fn public_slugs(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
         let rows = sqlx::query_scalar::<_, String>(
-            "SELECT slug FROM services WHERE slug IS NOT NULL AND slug != ''"
+            "SELECT slug FROM services WHERE slug IS NOT NULL AND slug != ''",
         )
         .fetch_all(pool)
         .await?;
@@ -23,8 +23,8 @@ impl ServiceRepository {
     }
 
     /* ============================================================
-       SERVICIOS (catálogo — solo lectura)
-       ============================================================ */
+    SERVICIOS (catálogo — solo lectura)
+    ============================================================ */
 
     pub async fn list_services(pool: &PgPool) -> Result<Vec<ServiceRecord>, sqlx::Error> {
         sqlx::query_as!(
@@ -160,8 +160,8 @@ impl ServiceRepository {
     }
 
     /* ============================================================
-       SERVICIOS — Admin CRUD (074A-8)
-       ============================================================ */
+    SERVICIOS — Admin CRUD (074A-8)
+    ============================================================ */
 
     /// Lista TODOS los servicios (incluyendo inactivos/draft) para el panel admin
     pub async fn list_all_services(pool: &PgPool) -> Result<Vec<ServiceRecord>, sqlx::Error> {
@@ -290,10 +290,7 @@ impl ServiceRepository {
     }
 
     /* [124A-CMS10] Batch reorder de servicios — mismo patrón que ProjectRepository::reorder */
-    pub async fn reorder_services(
-        pool: &PgPool,
-        items: &[(Uuid, i32)],
-    ) -> Result<(), sqlx::Error> {
+    pub async fn reorder_services(pool: &PgPool, items: &[(Uuid, i32)]) -> Result<(), sqlx::Error> {
         if items.is_empty() {
             return Ok(());
         }
@@ -304,7 +301,7 @@ impl ServiceRepository {
             "UPDATE services AS s SET
                 sort_order = v.new_order
              FROM (SELECT UNNEST($1::uuid[]) AS id, UNNEST($2::int[]) AS new_order) AS v
-             WHERE s.id = v.id"
+             WHERE s.id = v.id",
         )
         .bind(&ids)
         .bind(&orders)
@@ -315,12 +312,11 @@ impl ServiceRepository {
 
     /// Verifica si existen órdenes que referencien un servicio
     pub async fn service_has_orders(pool: &PgPool, service_id: Uuid) -> Result<bool, sqlx::Error> {
-        let row: (bool,) = sqlx::query_as(
-            "SELECT EXISTS(SELECT 1 FROM orders WHERE service_id = $1)"
-        )
-        .bind(service_id)
-        .fetch_one(pool)
-        .await?;
+        let row: (bool,) =
+            sqlx::query_as("SELECT EXISTS(SELECT 1 FROM orders WHERE service_id = $1)")
+                .bind(service_id)
+                .fetch_one(pool)
+                .await?;
         Ok(row.0)
     }
 }

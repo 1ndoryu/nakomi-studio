@@ -18,8 +18,8 @@ use crate::AppState;
 use super::StaffWsParams;
 
 /* ============================================================
-   WEBSOCKET: STAFF (autenticado con JWT)
-   ============================================================ */
+WEBSOCKET: STAFF (autenticado con JWT)
+============================================================ */
 
 async fn ws_staff(
     ws: WebSocketUpgrade,
@@ -27,10 +27,8 @@ async fn ws_staff(
     Query(params): Query<StaffWsParams>,
 ) -> impl IntoResponse {
     /* Verificar JWT desde query param (WS no soporta headers custom) */
-    let Ok(claims) = crate::services::AuthService::verify_token(
-        &params.token,
-        &state.jwt_secret,
-    ) else {
+    let Ok(claims) = crate::services::AuthService::verify_token(&params.token, &state.jwt_secret)
+    else {
         return (StatusCode::UNAUTHORIZED, "Token inválido").into_response();
     };
 
@@ -110,9 +108,14 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
                 subscriptions.push(handle);
             }
             WsClientMessage::Message { content } => {
-                tracing::debug!("Staff message (sin session_id en WsClientMessage::Message): {content}");
+                tracing::debug!(
+                    "Staff message (sin session_id en WsClientMessage::Message): {content}"
+                );
             }
-            WsClientMessage::Typing { content, session_id } => {
+            WsClientMessage::Typing {
+                content,
+                session_id,
+            } => {
                 /* [104A-40] Broadcast typing del staff al visitante de la sesión indicada.
                  * session_id es obligatorio para staff (puede estar en varias sesiones).
                  * Gotcha: WsClientMessage::Typing no lo tenía antes → fix aquí. */
@@ -145,8 +148,8 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
 }
 
 /* ============================================================
-   ROUTES (Staff WS — montadas junto a ws_visitor en root)
-   ============================================================ */
+ROUTES (Staff WS — montadas junto a ws_visitor en root)
+============================================================ */
 
 pub fn ws_staff_routes() -> Router<AppState> {
     Router::new().route("/ws/chat/staff", get(ws_staff))

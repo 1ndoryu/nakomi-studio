@@ -3,8 +3,8 @@
  * rest.rs subdividido en rest_messages, rest_notes, rest_upload.
  * Interfaz pública: ws_routes() + rest_routes() sin cambios. */
 
-mod rest;
 mod file_ai;
+mod rest;
 pub(crate) mod rest_messages;
 pub(crate) mod rest_notes;
 pub(crate) mod rest_upload;
@@ -14,8 +14,8 @@ mod ws_visitor_helpers;
 
 pub use rest::*;
 
-use axum::Router;
 use crate::AppState;
+use axum::Router;
 
 /* ws_routes combina visitor + staff WebSocket routes (montadas en root) */
 pub fn ws_routes() -> Router<AppState> {
@@ -29,8 +29,8 @@ use crate::models::{ChatMessage, ChatMessageResponse};
 use crate::repositories::UserRepository;
 
 /* ============================================================
-   TIPOS COMPARTIDOS ENTRE SUBMÓDULOS
-   ============================================================ */
+TIPOS COMPARTIDOS ENTRE SUBMÓDULOS
+============================================================ */
 
 #[derive(Deserialize)]
 pub struct VisitorWsParams {

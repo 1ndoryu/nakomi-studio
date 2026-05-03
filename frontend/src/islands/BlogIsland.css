@@ -61,7 +61,7 @@
     display: flex;
     gap: var(--spacing-sm);
     flex-wrap: wrap;
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
     padding-bottom: var(--spacing-md);
 }
 

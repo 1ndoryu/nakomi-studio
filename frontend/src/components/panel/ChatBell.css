@@ -57,7 +57,7 @@
     width: 340px;
     max-height: 420px;
     background: var(--brand-white);
-    border: 1px solid var(--bg-item-active);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     z-index: 100;
     display: flex;
@@ -70,7 +70,7 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--spacing-sm) var(--spacing-md);
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
 }
 
 .chatBell__title {
@@ -96,7 +96,7 @@
     gap: var(--spacing-xs);
     padding: var(--spacing-sm) var(--spacing-md);
     border: none;
-    border-bottom: 1px solid var(--bg-item-active);
+    border-bottom: 1px solid var(--border-default);
     background: none;
     cursor: pointer;
     width: 100%;

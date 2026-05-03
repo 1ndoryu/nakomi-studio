@@ -14,15 +14,15 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateNotification, ProblemAction, ProblemResponse, ProblemStatus,
-    ReportProblemRequest, ResolveProblemRequest, UserRole,
+    CreateNotification, ProblemAction, ProblemResponse, ProblemStatus, ReportProblemRequest,
+    ResolveProblemRequest, UserRole,
 };
 use crate::repositories::{OrderRepository, ProblemRepository, UserRepository};
 use crate::AppState;
 
 /* ============================================================
-   REPORTAR PROBLEMA
-   ============================================================ */
+REPORTAR PROBLEMA
+============================================================ */
 
 /// Reportar un problema en una orden (cliente o empleado vinculado)
 #[utoipa::path(
@@ -55,7 +55,9 @@ pub async fn report_problem(
     let role_str = match auth.effective_role {
         UserRole::Client => {
             if order.client_id != auth.user_id {
-                return Err(AppError::Forbidden("No eres el cliente de esta orden".into()));
+                return Err(AppError::Forbidden(
+                    "No eres el cliente de esta orden".into(),
+                ));
             }
             "client"
         }
@@ -68,17 +70,14 @@ pub async fn report_problem(
         UserRole::Admin => "admin",
     };
 
-    let problem = ProblemRepository::create(
-        &state.pool,
-        order_id,
-        auth.user_id,
-        role_str,
-        &req.reason,
-    )
-    .await?;
+    let problem =
+        ProblemRepository::create(&state.pool, order_id, auth.user_id, role_str, &req.reason)
+            .await?;
 
     /* Notificar a todos los admins */
-    let admins = UserRepository::admin_ids(&state.pool).await.unwrap_or_default();
+    let admins = UserRepository::admin_ids(&state.pool)
+        .await
+        .unwrap_or_default();
 
     let base_notif = CreateNotification {
         user_id: Uuid::nil(),
@@ -89,7 +88,10 @@ pub async fn report_problem(
         reference_type: Some("order_problem".to_string()),
         reference_id: Some(problem.id),
     };
-    let _ = state.notification_hub.notify_many(&admins, &base_notif).await;
+    let _ = state
+        .notification_hub
+        .notify_many(&admins, &base_notif)
+        .await;
 
     let reporter_name = UserRepository::display_name_or_email(&state.pool, auth.user_id)
         .await
@@ -114,8 +116,8 @@ pub async fn report_problem(
 }
 
 /* ============================================================
-   LISTAR PROBLEMAS (admin)
-   ============================================================ */
+LISTAR PROBLEMAS (admin)
+============================================================ */
 
 /// Lista todos los problemas reportados (solo admin)
 #[utoipa::path(
@@ -205,8 +207,8 @@ pub async fn list_order_problems(
 }
 
 /* ============================================================
-   RESOLVER PROBLEMA (admin)
-   ============================================================ */
+RESOLVER PROBLEMA (admin)
+============================================================ */
 
 /// Admin resuelve o descarta un problema
 #[utoipa::path(
@@ -270,7 +272,10 @@ pub async fn resolve_problem(
         notification_type: "problem_resolved".to_string(),
         title: format!("Tu problema de la orden #{order_number} fue {action_label}"),
         body: req.response.clone(),
-        link: Some(format!("/panel?seccion=proyectos&orden={}", existing.order_id)),
+        link: Some(format!(
+            "/panel?seccion=proyectos&orden={}",
+            existing.order_id
+        )),
         reference_type: Some("order_problem".to_string()),
         reference_id: Some(problem_id),
     };
@@ -299,13 +304,16 @@ pub async fn resolve_problem(
 }
 
 /* ============================================================
-   RUTAS
-   ============================================================ */
+RUTAS
+============================================================ */
 
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/orders/:order_id/report-problem", post(report_problem))
         .route("/orders/:order_id/problems", get(list_order_problems))
         .route("/admin/problems", get(list_problems))
-        .route("/admin/problems/:problem_id/resolve", patch(resolve_problem))
+        .route(
+            "/admin/problems/:problem_id/resolve",
+            patch(resolve_problem),
+        )
 }

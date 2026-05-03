@@ -36,7 +36,10 @@ pub fn admin_routes() -> Router<AppState> {
     Router::new()
         .route("/admin/blog", get(list_all).post(create))
         .route("/admin/blog/reorder", axum::routing::put(reorder))
-        .route("/admin/blog/:id", axum::routing::put(update).delete(archive))
+        .route(
+            "/admin/blog/:id",
+            axum::routing::put(update).delete(archive),
+        )
         .route("/admin/blog/:id/destroy", axum::routing::post(destroy))
 }
 
@@ -141,7 +144,8 @@ pub async fn create(
     Json(body): Json<CreateBlogPostRequest>,
 ) -> Result<(axum::http::StatusCode, Json<BlogPostResponse>), AppError> {
     auth.require_role(&[UserRole::Admin])?;
-    body.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+    body.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let status = body.status.as_deref().unwrap_or("draft");
     let tags = serde_json::to_value(body.tags.unwrap_or_default())
@@ -174,7 +178,10 @@ pub async fn create(
     })?;
 
     let name = BlogRepository::get_author_name(&state.pool, post.author_id).await?;
-    Ok((axum::http::StatusCode::CREATED, Json(post.into_response(name))))
+    Ok((
+        axum::http::StatusCode::CREATED,
+        Json(post.into_response(name)),
+    ))
 }
 
 /// Actualizar blog post (admin, parcial)
@@ -202,9 +209,10 @@ pub async fn update(
         .await?
         .ok_or(AppError::NotFound("Blog post not found".into()))?;
 
-    let tags = body.tags.as_ref().map(|t| {
-        serde_json::to_value(t).unwrap_or_default()
-    });
+    let tags = body
+        .tags
+        .as_ref()
+        .map(|t| serde_json::to_value(t).unwrap_or_default());
 
     let post = BlogRepository::update(
         &state.pool,

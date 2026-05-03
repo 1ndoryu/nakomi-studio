@@ -81,6 +81,5 @@ pub async fn get_dashboard(
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route("/admin/dashboard", get(get_dashboard))
+    Router::new().route("/admin/dashboard", get(get_dashboard))
 }

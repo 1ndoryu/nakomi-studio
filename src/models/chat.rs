@@ -9,8 +9,8 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 /* ============================================================
-   MODELOS DE BD
-   ============================================================ */
+MODELOS DE BD
+============================================================ */
 
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
 pub struct ChatSession {
@@ -114,8 +114,8 @@ pub struct ChatMessageResponse {
 }
 
 /* ============================================================
-   REQUESTS / RESPONSES
-   ============================================================ */
+REQUESTS / RESPONSES
+============================================================ */
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateChatSessionRequest {
@@ -181,8 +181,8 @@ pub struct UpdateVisitorNameRequest {
 }
 
 /* ============================================================
-   MENSAJES WEBSOCKET (protocolo JSON)
-   ============================================================ */
+MENSAJES WEBSOCKET (protocolo JSON)
+============================================================ */
 
 /// Mensaje entrante del cliente WebSocket
 #[derive(Debug, Deserialize)]
@@ -193,7 +193,10 @@ pub enum WsClientMessage {
     #[serde(rename = "typing")]
     /* [104A-40] session_id opcional: staff lo envía para indicar en qué sesión escribe.
      * Visitor no lo necesita (siempre en su propia sesión). */
-    Typing { content: String, session_id: Option<Uuid> },
+    Typing {
+        content: String,
+        session_id: Option<Uuid>,
+    },
     #[serde(rename = "join")]
     Join { session_id: Uuid },
     #[serde(rename = "close")]
@@ -233,22 +236,13 @@ pub enum WsServerMessage {
         content: String,
     },
     #[serde(rename = "status")]
-    Status {
-        session_id: Uuid,
-        value: String,
-    },
+    Status { session_id: Uuid, value: String },
     #[serde(rename = "session_new")]
-    SessionNew {
-        session: ChatSession,
-    },
+    SessionNew { session: ChatSession },
     #[serde(rename = "session_closed")]
-    SessionClosed {
-        session_id: Uuid,
-    },
+    SessionClosed { session_id: Uuid },
     #[serde(rename = "error")]
-    Error {
-        message: String,
-    },
+    Error { message: String },
     /* [084A-40] Comando /reset: el backend ordena al cliente limpiar estado local */
     #[serde(rename = "reset")]
     Reset,

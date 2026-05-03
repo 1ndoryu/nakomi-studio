@@ -2,12 +2,12 @@
  * Endpoints públicos: listar publicados.
  * Endpoints admin: listar todos, crear, actualizar, archivar. */
 
+use axum::http::StatusCode;
 use axum::{
     extract::{Path, State},
     routing::get,
     Json, Router,
 };
-use axum::http::StatusCode;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -20,8 +20,7 @@ use crate::repositories::{CreateTeamMemberParams, TeamMemberRepository, UpdateTe
 use crate::AppState;
 
 pub fn public_routes() -> Router<AppState> {
-    Router::new()
-        .route("/team", get(list_published))
+    Router::new().route("/team", get(list_published))
 }
 
 pub fn admin_routes() -> Router<AppState> {
@@ -46,7 +45,8 @@ pub async fn list_published(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<TeamMemberResponse>>, AppError> {
     let members = TeamMemberRepository::list_published(&state.pool).await?;
-    let responses: Vec<TeamMemberResponse> = members.into_iter().map(TeamMember::into_response).collect();
+    let responses: Vec<TeamMemberResponse> =
+        members.into_iter().map(TeamMember::into_response).collect();
     Ok(Json(responses))
 }
 
@@ -64,7 +64,8 @@ pub async fn list_all(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<TeamMemberResponse>>, AppError> {
     let members = TeamMemberRepository::list_all(&state.pool).await?;
-    let responses: Vec<TeamMemberResponse> = members.into_iter().map(TeamMember::into_response).collect();
+    let responses: Vec<TeamMemberResponse> =
+        members.into_iter().map(TeamMember::into_response).collect();
     Ok(Json(responses))
 }
 
@@ -86,7 +87,9 @@ pub async fn create(
     Json(body): Json<CreateTeamMemberRequest>,
 ) -> Result<(StatusCode, Json<TeamMemberResponse>), AppError> {
     if user.role != UserRole::Admin {
-        return Err(AppError::Forbidden("Solo admin puede crear miembros".into()));
+        return Err(AppError::Forbidden(
+            "Solo admin puede crear miembros".into(),
+        ));
     }
     body.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
@@ -128,7 +131,9 @@ pub async fn update(
     Json(body): Json<UpdateTeamMemberRequest>,
 ) -> Result<Json<TeamMemberResponse>, AppError> {
     if user.role != UserRole::Admin {
-        return Err(AppError::Forbidden("Solo admin puede editar miembros".into()));
+        return Err(AppError::Forbidden(
+            "Solo admin puede editar miembros".into(),
+        ));
     }
 
     let params = UpdateTeamMemberParams {
@@ -169,14 +174,18 @@ pub async fn archive(
     State(state): State<AppState>,
 ) -> Result<StatusCode, AppError> {
     if user.role != UserRole::Admin {
-        return Err(AppError::Forbidden("Solo admin puede archivar miembros".into()));
+        return Err(AppError::Forbidden(
+            "Solo admin puede archivar miembros".into(),
+        ));
     }
 
     let archived = TeamMemberRepository::archive(&state.pool, id).await?;
     if archived {
         Ok(StatusCode::NO_CONTENT)
     } else {
-        Err(AppError::NotFound("Team member not found or already archived".into()))
+        Err(AppError::NotFound(
+            "Team member not found or already archived".into(),
+        ))
     }
 }
 
@@ -197,7 +206,9 @@ pub async fn destroy(
     State(state): State<AppState>,
 ) -> Result<StatusCode, AppError> {
     if user.role != UserRole::Admin {
-        return Err(AppError::Forbidden("Solo admin puede eliminar miembros".into()));
+        return Err(AppError::Forbidden(
+            "Solo admin puede eliminar miembros".into(),
+        ));
     }
 
     let deleted = TeamMemberRepository::hard_delete(&state.pool, id).await?;

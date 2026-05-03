@@ -62,7 +62,8 @@ impl AssignmentService {
             OrderRepository::get_order_display_info(pool, assigned.service_id, assigned.plan_id)
                 .await?;
         let phases = OrderRepository::list_order_phases(pool, order_id).await?;
-        let employee_name = OrderRepository::get_employee_display_name(pool, assigned.assigned_employee_id).await?;
+        let employee_name =
+            OrderRepository::get_employee_display_name(pool, assigned.assigned_employee_id).await?;
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
         let total_phases = phases.len() as i32;
@@ -95,12 +96,18 @@ impl AssignmentService {
     }
 
     /* [154A-15b] Admin ve todas las órdenes sin asignar; empleados solo las marcadas open_to_employees */
-    pub async fn list_unassigned(pool: &PgPool, is_admin: bool) -> Result<Vec<OrderResponse>, AppError> {
+    pub async fn list_unassigned(
+        pool: &PgPool,
+        is_admin: bool,
+    ) -> Result<Vec<OrderResponse>, AppError> {
         let all_orders = OrderRepository::list_unassigned_orders(pool).await?;
         let orders: Vec<_> = if is_admin {
             all_orders
         } else {
-            all_orders.into_iter().filter(|o| o.open_to_employees.unwrap_or(false)).collect()
+            all_orders
+                .into_iter()
+                .filter(|o| o.open_to_employees.unwrap_or(false))
+                .collect()
         };
         let mut result = Vec::with_capacity(orders.len());
 
@@ -222,9 +229,7 @@ impl AssignmentService {
             .ok_or_else(|| AppError::NotFound("Delegación no encontrada".into()))?;
 
         if deleg.status != DelegationStatus::Requested {
-            return Err(AppError::BadRequest(
-                "La delegación ya fue resuelta".into(),
-            ));
+            return Err(AppError::BadRequest("La delegación ya fue resuelta".into()));
         }
 
         if deleg.from_employee_id == employee_id {
@@ -251,18 +256,14 @@ impl AssignmentService {
             let accepted =
                 DelegationRepository::accept_delegation(pool, delegation_id, employee_id)
                     .await
-                    .map_err(|e| {
-                        AppError::Internal(format!("Error aceptando delegación: {e}"))
-                    })?;
+                    .map_err(|e| AppError::Internal(format!("Error aceptando delegación: {e}")))?;
 
             /* Si es delegación completa (no help_request), reasignar la orden */
             if accepted.delegation_type == "delegate" {
                 OrderRepository::assign_order(pool, deleg.order_id, employee_id).await?;
                 DelegationRepository::complete_delegation(pool, delegation_id)
                     .await
-                    .map_err(|e| {
-                        AppError::Internal(format!("Error completando delegación: {e}"))
-                    })?
+                    .map_err(|e| AppError::Internal(format!("Error completando delegación: {e}")))?
             } else {
                 accepted
             }
@@ -412,10 +413,7 @@ impl AssignmentService {
                     }
                 }
                 Err(e) => {
-                    tracing::warn!(
-                        "Overdue: error marcando orden #{}: {e}",
-                        order.order_number
-                    );
+                    tracing::warn!("Overdue: error marcando orden #{}: {e}", order.order_number);
                 }
             }
         }

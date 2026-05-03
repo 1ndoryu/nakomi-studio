@@ -35,12 +35,16 @@ pub struct OrderProblem {
 }
 
 /* ============================================================
-   REQUESTS
-   ============================================================ */
+REQUESTS
+============================================================ */
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct ReportProblemRequest {
-    #[validate(length(min = 10, max = 2000, message = "La razón debe tener entre 10 y 2000 caracteres"))]
+    #[validate(length(
+        min = 10,
+        max = 2000,
+        message = "La razón debe tener entre 10 y 2000 caracteres"
+    ))]
     pub reason: String,
 }
 
@@ -59,8 +63,8 @@ pub enum ProblemAction {
 }
 
 /* ============================================================
-   REQUESTS — cancel con razón
-   ============================================================ */
+REQUESTS — cancel con razón
+============================================================ */
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CancelOrderRequest {
@@ -69,8 +73,8 @@ pub struct CancelOrderRequest {
 }
 
 /* ============================================================
-   RESPONSES
-   ============================================================ */
+RESPONSES
+============================================================ */
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ProblemResponse {

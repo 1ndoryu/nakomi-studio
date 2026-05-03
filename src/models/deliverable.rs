@@ -9,8 +9,8 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 /* ============================================================
-   ENTREGABLE
-   ============================================================ */
+ENTREGABLE
+============================================================ */
 
 #[derive(Debug, Serialize, FromRow, ToSchema)]
 pub struct PhaseDeliverable {
@@ -27,8 +27,8 @@ pub struct PhaseDeliverable {
 }
 
 /* ============================================================
-   REQUESTS / RESPONSES
-   ============================================================ */
+REQUESTS / RESPONSES
+============================================================ */
 
 /// Request para entregar fase con notas (archivos van por multipart separado)
 #[derive(Debug, Deserialize, ToSchema)]

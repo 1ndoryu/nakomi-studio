@@ -26,7 +26,9 @@ impl AuthUser {
         if allowed.contains(&self.effective_role) {
             Ok(())
         } else {
-            Err(AppError::Forbidden("No tienes permisos para esta acción".into()))
+            Err(AppError::Forbidden(
+                "No tienes permisos para esta acción".into(),
+            ))
         }
     }
 }

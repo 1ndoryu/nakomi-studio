@@ -47,8 +47,8 @@ pub struct CancellationRequest {
 }
 
 /* ============================================================
-   RESPONSES
-   ============================================================ */
+RESPONSES
+============================================================ */
 
 /* [184A-1] Withdrawal request: solicitud de retiro de fondos */
 #[derive(Debug, Clone, FromRow)]
@@ -164,8 +164,8 @@ pub struct CancellationRequestResponse {
 }
 
 /* ============================================================
-   REQUESTS
-   ============================================================ */
+REQUESTS
+============================================================ */
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateCancellationRequest {
@@ -178,8 +178,8 @@ pub struct RespondCancellationRequest {
 }
 
 /* ============================================================
-   CONVERSIONS
-   ============================================================ */
+CONVERSIONS
+============================================================ */
 
 impl WalletResponse {
     /* [204A-11] Constructor que incluye withdrawable_cents */
