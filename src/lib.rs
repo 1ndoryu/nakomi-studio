@@ -33,7 +33,7 @@ pub struct AppState {
     pub contabo_service: Option<ContaboService>,
     /// [104A-42] Config de Coolify para provisioning automático de hostings (VPS2)
     pub coolify_config: Option<CoolifyConfig>,
-    /// [VPS1-support] Config de Coolify para la VPS principal (COOLIFY_VPS1_*)
+    /// [VPS1-support] Config de Coolify para la VPS principal (`COOLIFY_VPS1_*`)
     pub coolify_config_vps1: Option<CoolifyConfig>,
     /// [154A-15c] Config de SMTP para emails transaccionales
     pub email_config: Option<EmailConfig>,

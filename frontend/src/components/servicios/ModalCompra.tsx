@@ -1,6 +1,7 @@
 /* [044A-40] Modal de compra de servicio.
- * Flujo: muestra resumen del plan → si no logueado pide email → crea cuenta → orden → pago.
+ * Flujo: muestra resumen minimo del plan → si no logueado pide email → crea cuenta → orden → pago.
  * [064A-3] Simplificado: solo pide email. Si ya existe, pide password.
+ * [035A-4] El brief del proyecto sale del modal inicial; el checkout no pide discovery previo.
  * Se abre al hacer click en CTA de un plan (SeccionPlanesServicio).
  * Usa componente <Modal> base y hook useModalCompra para la lógica. */
 import React from 'react';
@@ -83,32 +84,14 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
 
     return (
         <Modal abierto={abierto} onCerrar={onCerrar} className="modalCompraContenido">
-            {/* [064A-46] Resumen: precio solo en botón, no en texto. */}
+            {/* [035A-4] Resumen minimo: sin wrapper extra ni brief previo a la compra. */}
             {(paso === 'resumen' || paso === 'auth') && (
-                <div className="modalCompraResumen">
-                    <p className="modalTexto">{plan.descripcion}</p>
-                </div>
+                <p className="modalTexto">{plan.descripcion}</p>
             )}
 
             {/* Paso resumen: selector de modo de pago + botón continuar */}
             {paso === 'resumen' && (
                 <div className="modalCompraPaso">
-                    {!isHosting && !isVps && (
-                        <label className="modalCompraBrief">
-                            <span className="modalCompraBriefLabel">
-                                Describe tu proyecto
-                            </span>
-                            <Textarea
-                                className="modalCompraBriefInput"
-                                value={projectDescription}
-                                onChange={e => setProjectDescription(e.target.value)}
-                                placeholder="Cuéntanos el objetivo, lo que necesitas y cualquier contexto importante para que el pedido nazca con información útil."
-                                rows={4}
-                                required
-                            />
-                        </label>
-                    )}
-
                     {/* [104A-16] Hosting: el flujo publico usa la suscripcion real.
                      * Pedimos dominio opcional y dejamos claro que el cobro es mensual recurrente. */}
                     {isHosting ? (

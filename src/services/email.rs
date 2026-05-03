@@ -21,7 +21,7 @@ pub struct EmailConfig {
 
 impl EmailConfig {
     /// Intenta crear config desde env vars. Retorna None si faltan variables.
-    /// Acepta SMTP_* y GLORY_SMTP_* como nombres de variables (compat local/prod).
+  /// Acepta `SMTP_*` y `GLORY_SMTP_*` como nombres de variables (compat local/prod).
     #[must_use]
     pub fn from_env() -> Option<Self> {
         let host = std::env::var("SMTP_HOST")

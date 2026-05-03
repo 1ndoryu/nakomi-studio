@@ -2,16 +2,7 @@
  * El overlay y contenedor base vienen de Modal.css (componente ui/Modal).
  * [054A-22] Eliminado font-serif innecesario.
  * [054A-23] Resumen usa gap/column en vez de margins.
- * [035A-6] El copy usa .modalTexto compartido; aqui solo queda layout. */
-
-/* [054A-23] Layout columna con gap uniforme */
-.modalCompraResumen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--spacing-sm);
-    text-align: center;
-}
+ * [035A-4][035A-6] El copy usa .modalTexto compartido y el resumen local sobra. */
 
 /* [084A-8] .modalCompraTitulo reemplazado por .modalTitulo (Modal.css) */
 

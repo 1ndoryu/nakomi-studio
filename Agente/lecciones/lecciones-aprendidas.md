@@ -128,6 +128,10 @@
 - Si un modal necesita copy neutral, usar `.modalTexto` en `Modal.css` antes de inventar `.algoModalTexto` o `.algoModalDescripcion`. Las clases locales solo deben conservar layout o estado.
 - En analyzers CSS por bloques, `sentinel-disable-next-line` debe anclarse a la linea real del selector y no al inicio de un comentario previo; si no, la supresion parece rota aunque el helper este bien.
 
+## Checkout publico — cortar roles invalidos antes del request
+- Si el backend solo permite crear ordenes como `client` o `admin`, el modal publico no debe decidir solo por `logueado`. En local es frecuente quedar con sesion `employee` por pruebas del panel y eso reproduce `403` evitables.
+- Para validar ese caso sin tocar backend, basta simular `auth_user` en `localStorage`, recargar la SPA y comprobar que el guard del frontend muestra el mensaje en vez de entrar al estado de procesamiento.
+
 ## Upstreams opcionales - no esconderlos tras 500 internos
 - Si una integración externa opcional falla (Contabo, por ejemplo), no devolver `Internal` genérico desde el handler. Clasificar y exponer un `message` accionable evita perseguir fantasmas de backend cuando el bloqueo real es `invalid_grant`, parseo o indisponibilidad del proveedor.
 - Cuando una credencial legacy es ambigua (`PASSWORD_CONTABO`), documentar y soportar una variable explícita (`CONTABO_API_PASSWORD`) reduce drift entre proyectos y evita repetir el mismo diagnóstico en cada repo.

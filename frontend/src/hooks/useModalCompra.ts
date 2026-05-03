@@ -40,6 +40,7 @@ function normalizeVpsTier(planId: string): string {
 export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraParams) {
     const logueado = useAuthStore(s => s.logueado);
     const login = useAuthStore(s => s.login);
+    const user = useAuthStore(s => s.user);
 
     const [paso, setPaso] = useState<PasoModal>('resumen');
     const [email, setEmail] = useState('');
@@ -115,7 +116,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
                 service_slug: servicioSlug,
                 plan_slug: plan.id,
                 payment_mode: paymentMode,
-                project_description: projectDescription.trim() || undefined,
+                project_description: isVps ? projectDescription.trim() || undefined : undefined,
                 client_notes: undefined,
             });
 
@@ -168,8 +169,16 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
 
     /* Paso 1: usuario confirma que quiere continuar */
     const handleContinuar = () => {
-        if (!isHosting && projectDescription.trim().length < 10) {
-            setErrorMsg('Describe tu proyecto con un poco más de detalle para crear la orden.');
+        /* [035A-5] El backend de ordenes permite comprar solo como client/admin.
+         * En local es comun quedar logueado como employee por pruebas del panel;
+         * sin este guard el modal intenta crear la orden y recibe 403. */
+        if (logueado && user?.effectiveRole === 'employee') {
+            setErrorMsg('La compra publica solo se puede iniciar con una sesion de cliente. Si estas probando con un empleado, cambia a cliente o usa una cuenta cliente.');
+            return;
+        }
+
+        if (isVps && projectDescription.trim().length < 10) {
+            setErrorMsg('Describe el uso previsto del VPS para continuar con la solicitud.');
             return;
         }
 
