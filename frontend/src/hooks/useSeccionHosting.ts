@@ -5,11 +5,13 @@
 
 import {useState, useMemo, useEffect, useCallback} from 'react';
 import {useQuery} from '@tanstack/react-query';
+import {useLocation} from 'react-router-dom';
 import {apiListHostingSubscriptions, apiListVpsSubscriptions} from '../api/hosting';
 import {toast} from '../stores/toastStore';
 import {useAuthStore} from '../stores/authStore';
 import {useHostingMutations} from './useHostingMutations';
 import {useVpsMutations} from './useVpsMutations';
+import {getPanelHostingIdFromUrl, syncPanelHostingInUrl} from '../utils/panelUrlState';
 
 const ACTIVE_STATUSES = new Set(['pending', 'provisioning', 'active']);
 
@@ -17,7 +19,8 @@ export function useSeccionHosting() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     /* [304A-1] 'deployments' y 'servidores' eliminados — movidos a SeccionInfraestructura */
     const [tabActiva, setTabActiva] = useState<'activos' | 'inactivos' | 'vps'>('activos');
-    const [selectedHostingId, setSelectedHostingId] = useState<string | null>(null);
+    const [selectedHostingId, setSelectedHostingId] = useState<string | null>(() => getPanelHostingIdFromUrl());
+    const location = useLocation();
 
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
     const isAdmin = effectiveRole === 'admin';
@@ -50,6 +53,23 @@ export function useSeccionHosting() {
             window.history.replaceState({}, '', url.pathname + url.search);
         }
     }, []);
+
+    useEffect(() => {
+        const hostingId = getPanelHostingIdFromUrl();
+        if (hostingId !== selectedHostingId) {
+            setSelectedHostingId(hostingId);
+        }
+    }, [location.search, selectedHostingId]);
+
+    useEffect(() => {
+        const currentSection = new URLSearchParams(location.search).get('seccion');
+        if (currentSection && currentSection !== 'hosting') {
+            return;
+        }
+        const incomingHostingId = getPanelHostingIdFromUrl();
+        if (!selectedHostingId && incomingHostingId) return;
+        syncPanelHostingInUrl(selectedHostingId);
+    }, [selectedHostingId, location.search]);
 
     const hostingKey = ['hosting-subscriptions', effectiveRole] as const;
     const vpsKey = ['vps-subscriptions', effectiveRole] as const;

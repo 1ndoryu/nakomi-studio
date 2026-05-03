@@ -122,6 +122,7 @@ function App() {
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
                     <Route path="/usuario/:username" element={<Suspense fallback={null}><UsuarioPublicoIsland /></Suspense>} />
                     <Route path="/panel" element={<Suspense fallback={null}><PanelIsland /></Suspense>} />
+                    <Route path="/panel/chat" element={<Suspense fallback={null}><PanelIsland /></Suspense>} />
                     {/* [044A-28] Página 404 real en vez de redirigir silenciosamente al home */}
                     <Route path="*" element={<NotFoundIsland />} />
                 </Routes>

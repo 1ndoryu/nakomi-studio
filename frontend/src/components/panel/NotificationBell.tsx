@@ -2,11 +2,14 @@
  * Badge de no leídas, dropdown con lista, marcar leídas, navegar a link. */
 
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 
 import { NOTIF_TYPES, type NotificationType } from '../../api/notifications';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useNotificationWs } from '../../hooks/useNotificationWs';
+import { buildPanelNotificationTarget } from '../../utils/panelUrlState';
+import { Button } from '../ui/Button';
 import { MenuContextual } from '../ui/ContextMenu';
 import './NotificationBell.css';
 
@@ -21,6 +24,7 @@ export default function NotificationBell() {
   useNotificationWs();
 
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   /* [084A-27] Al abrir el dropdown, marcar todas como leídas automáticamente */
   const toggleDropdown = useCallback(() => {
@@ -36,6 +40,12 @@ export default function NotificationBell() {
   const closeDropdown = useCallback(() => {
     setOpen(false);
   }, []);
+
+  const handleNotificationClick = useCallback((target: string | null) => {
+    if (!target) return;
+    setOpen(false);
+    navigate(target);
+  }, [navigate]);
 
   /* Formatear fecha relativa simple */
   const formatTime = (iso: string): string => {
@@ -79,10 +89,15 @@ export default function NotificationBell() {
         ) : (
           notifications.map((n) => {
             const typeInfo = NOTIF_TYPES[n.notification_type as NotificationType];
+            const target = buildPanelNotificationTarget(n);
             return (
-              <div
+              <Button
                 key={n.id}
+                type="button"
+                variante="texto"
                 className={`notificationBell__item ${!n.read ? 'notificationBell__item--unread' : ''}`}
+                onClick={() => handleNotificationClick(target)}
+                disabled={!target}
               >
                 <div className="notificationBell__itemContent">
                   <span className="notificationBell__itemTitle">
@@ -96,7 +111,7 @@ export default function NotificationBell() {
                   </span>
                 </div>
 
-              </div>
+              </Button>
             );
           })
         )}

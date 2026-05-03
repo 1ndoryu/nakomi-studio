@@ -141,6 +141,10 @@
 - Si el sistema persiste nuevos tipos semánticos de mensaje (`ai_intermediary`, por ejemplo), el esquema de `chat_messages.sender_type` debe crecer junto con el código. Dejarlo en `VARCHAR(10)` hace que la IA genere bien pero no pueda guardar la respuesta.
 - En rutas de chat con `tokio::spawn`, ignorar el resultado de `send_message().await` convierte un fallo de persistencia en un "la IA no responde" imposible de diagnosticar desde la UI. Al menos hay que registrar el error explícitamente.
 
+## Panel interno — storage solo no alcanza para deep links
+- Si una vista interna del panel debe sobrevivir recargas, compartirse por URL o abrirse desde una notificación, `localStorage`/`sessionStorage` y custom events no bastan. La URL debe ser una fuente observable de verdad y los hooks dueños del detalle deben hidratarse desde `location.search`.
+- Al sincronizar estado profundo (`order`, `hostingId`, `chat`) a la URL, no borrar el query param en el primer render si ese mismo param todavía está intentando hidratar el estado. El orden correcto es: leer URL, seleccionar recurso, luego persistir el estado ya resuelto.
+
 ## Upstreams opcionales - no esconderlos tras 500 internos
 - Si una integración externa opcional falla (Contabo, por ejemplo), no devolver `Internal` genérico desde el handler. Clasificar y exponer un `message` accionable evita perseguir fantasmas de backend cuando el bloqueo real es `invalid_grant`, parseo o indisponibilidad del proveedor.
 - Cuando una credencial legacy es ambigua (`PASSWORD_CONTABO`), documentar y soportar una variable explícita (`CONTABO_API_PASSWORD`) reduce drift entre proyectos y evita repetir el mismo diagnóstico en cada repo.

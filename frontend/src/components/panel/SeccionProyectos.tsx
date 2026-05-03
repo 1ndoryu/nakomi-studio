@@ -24,6 +24,7 @@ import {
     formatPrice,
     type OrderResponse,
 } from '../../api/orders';
+import {getServiceImage} from '../../utils/serviceImages';
 import './SeccionProyectos.css';
 
 /* Mapa status → clase CSS (evita inline style) */
@@ -51,7 +52,7 @@ export const SeccionProyectos: React.FC = () => {
         empleadoMenuAbierto,
         setEmpleadoMenuAbierto,
         ordenes, cargando, detalle, cargandoDetalle,
-        ordenSeleccionada, error, seleccionarOrden, recargar,
+        ordenSeleccionada, error, handleSelectOrder, recargar,
         cancelando, actualizandoDescripcion, actualizandoFase,
         activas, historial, empleadosUnicos, listaActual,
         handleVolver, handleCancelar, handleAprobar, handleRevision,
@@ -181,7 +182,7 @@ export const SeccionProyectos: React.FC = () => {
                         <OrdenCard
                             key={orden.id}
                             orden={orden}
-                            onClick={() => seleccionarOrden(orden.id)}
+                            onClick={() => handleSelectOrder(orden.id)}
                             mostrarEmpleado={isAdmin}
                             tieneNoLeidos={ordenesConNoLeidos.has(orden.id)}
                         />
@@ -219,23 +220,13 @@ function EstadoVacioProyectos({variante}: {variante: EstadoVacioProyectosVariant
     );
 }
 
-/* [054A-6] Mapa slug → imagen estática del servicio.
- * Los servicios sin imagen en /public/assets/Servicios/ usan un fallback genérico. */
-const SERVICE_IMAGE: Record<string, string> = {
-    'diseno-web': '/assets/Servicios/diseno web.jpg',
-    'desarrollo-apps': '/assets/Servicios/diseno de aplicaciones.jpg',
-    'agentes-ia': '/assets/Servicios/agente ia.jpg',
-    'branding': '/assets/Servicios/Identidad de marca.jpg',
-    'ecommerce': '/assets/Servicios/ecommerce.jpg',
-};
-
 /* Sub-componente: card de orden en la lista */
 /* [054A-6] Rediseño: quita numeración, plan_name, barra de progreso.
  * Agrega imagen del servicio resuelta por slug.
  * [084A-1] Vista admin muestra empleado responsable en footer.
  * [074A-59] Admin/empleado ven client_name en footer. */
 function OrdenCard({orden, onClick, mostrarEmpleado, tieneNoLeidos}: {orden: OrderResponse; onClick: () => void; mostrarEmpleado?: boolean; tieneNoLeidos?: boolean}) {
-    const imgSrc = SERVICE_IMAGE[orden.service_slug] || '/assets/Servicios/diseno web.jpg';
+    const imgSrc = getServiceImage(orden.service_slug);
 
     return (
         <Button className="ordenCard" onClick={onClick} type="button" variante="texto">

@@ -1,8 +1,5 @@
 /* [044A-38 Fase 3] Estilos del historial de pagos.
- * [074A-61] Rediseño: lista compacta clickeable + modal de detalles.
- * [084A-21] Rediseño como tabla profesional con headers, totales y responsive.
- * [094A-15] El detalle ya no depende de pagosDatos; el espaciado vive en los bloques reales.
- * [084A-44] Selector de órdenes rediseñado como tabla profesional. */
+ * [035A-18] Editado para alinear estrictamente con el sistema de diseño minimalista. */
 
 .pagosContenedor {
     display: flex;
@@ -10,262 +7,277 @@
     gap: var(--spacing-lg);
 }
 
-/* [084A-44] Tabla de órdenes (reemplaza pagosOrdenesLista) */
-.pagosOrdenesWrapper {
-    overflow-x: auto;
-    border: 1px solid var(--bg-item-active);
-    border-radius: var(--radius-md);
-}
-
-.pagosOrdenesTabla {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-}
-
-.pagosOrdenesHead {
-    text-align: left;
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--text-xs);
-    
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid var(--bg-item-active);
-    background: var(--bg-accent);
-    white-space: nowrap;
-}
-
-.pagosOrdenesHeadDerecha {
-    text-align: right;
-}
-
-.pagosOrdenesFila {
-    cursor: pointer;
-    transition: background var(--transicion-rapida);
-}
-
-.pagosOrdenesFila:hover {
-    background: var(--bg-accent);
-}
-
-.pagosOrdenesFila--activa {
-    background: var(--bg-item-active);
-}
-
-.pagosOrdenesFila:not(:last-child) .pagosOrdenesCelda {
-    border-bottom: 1px solid var(--bg-item-active);
-}
-
-.pagosOrdenesCelda {
-    padding: var(--spacing-sm) var(--spacing-md);
-    vertical-align: middle;
-}
-
-.pagosOrdenesNumero {
-    font-weight: 400;
-    white-space: nowrap;
-    min-width: 50px;
-}
-
-.pagosOrdenesTitulo {
-    max-width: 250px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.pagosOrdenesCeldaDerecha {
-    text-align: right;
-    
-    white-space: nowrap;
-}
-
-.pagosBloque {
-    margin-top: var(--spacing-md);
-}
-
-/* [084A-21] Tabla profesional de pagos */
-.pagosTablaWrapper {
-    overflow-x: auto;
-    border: 1px solid var(--bg-item-active);
-    border-radius: var(--radius-md);
-}
-
-.pagosTabla {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-}
-
-.pagosTablaHead {
-    text-align: left;
-    padding: var(--spacing-sm) var(--spacing-md);
-    font-size: var(--text-xs);
-    
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid var(--bg-item-active);
-    background: var(--bg-accent);
-    white-space: nowrap;
-}
-
-.pagosTablaHeadDerecha {
-    text-align: right;
-}
-
-.pagosTablaFila {
-    cursor: pointer;
-    transition: background var(--transicion-rapida);
-}
-
-.pagosTablaFila:hover {
-    background: var(--bg-accent);
-}
-
-.pagosTablaFila:not(:last-child) .pagosTablaCelda {
-    border-bottom: 1px solid var(--bg-item-active);
-}
-
-.pagosTablaCelda {
-    padding: var(--spacing-sm) var(--spacing-md);
-    vertical-align: middle;
-}
-
-.pagosTablaCeldaDescripcion {
-    color: var(--text-tertiary);
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.pagosTablaCeldaModo {
-    color: var(--text-tertiary);
-    font-size: var(--text-xs);
-}
-
-.pagosTablaCeldaDerecha {
-    text-align: right;
-    white-space: nowrap;
-}
-
-.pagosTablaCeldaMonto {
-    
-}
-
-/* Status badge — pill con color de fondo */
-.pagoEstadoBadge {
-    display: inline-block;
-    padding: 2px var(--spacing-xs);
-    border-radius: var(--radius-full);
-    font-size: var(--text-xs);
-    
-    white-space: nowrap;
-}
-
-.pagoEstado--pendiente {
-    color: var(--color-warning);
-    background: var(--color-warning-bg);
-}
-
-.pagoEstado--retenido {
-    color: var(--color-info);
-    background: var(--color-info-bg);
-}
-
-.pagoEstado--liberado {
-    color: var(--color-success);
-    background: var(--color-success-bg);
-}
-
-.pagoEstado--reembolsado {
-    color: var(--primary-500);
-    background: var(--color-purple-bg);
-}
-
-.pagoEstado--fallido {
-    color: var(--color-error);
-    background: var(--color-error-bg);
-}
-
-/* [084A-21] Resumen de totales */
-.pagosTotales {
-    display: flex;
-    gap: var(--spacing-lg);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-accent);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--bg-item-active);
-}
-
-.pagosTotalItem {
+.pagosListaCompacta {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--spacing-md);
 }
 
-.pagosTotalLabel {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.pagoResumenCard {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-md);
+    padding: 0;
+    border: 1px solid var(--bg-item-active);
+    border-radius: var(--radius-lg);
+    background: var(--brand-white);
+    overflow: hidden;
+    text-align: left;
+    width: 100%;
+    transition: all var(--transicion-rapida);
+    font-family: var(--font-primary);
 }
 
-.pagosTotalValor {
-    font-size: var(--text-sm);
-    font-weight: 700;
+.pagoResumenCard:hover {
+    border-color: var(--border-hover);
 }
 
-.pagosTotalPagado {
-    color: var(--color-success);
+.pagoResumenCardImagenWrapper {
+    position: relative;
+    flex-shrink: 0;
 }
 
-.pagosTotalPendiente {
-    color: var(--color-warning);
+.pagoResumenCardImagen {
+    width: 92px;
+    height: 92px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    display: block;
 }
 
-.pagosTotalReembolsado {
-    color: var(--primary-500);
-}
-
-/* Grid de detalles en el modal */
-.pagoDetalleGrid {
+.pagoResumenCardBody {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 0;
+    min-width: 0;
+    flex: 1;
 }
 
-.pagoDetalleFila {
+.pagoResumenCardHeader {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: baseline;
-    padding: var(--spacing-xs) 0;
-    border-bottom: 1px solid var(--bg-item-hover);
+    gap: var(--spacing-md);
 }
 
-.pagoDetalleFila:last-child {
-    border-bottom: none;
+.pagoResumenCardTitulo {
+    font-size: var(--text-base);
+    color: var(--brand-black);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.pagoDetalleLabel {
+.pagoResumenCardBadge {
+    font-size: var(--text-xs);
+    padding: 6px 10px;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+    flex-shrink: 0;
+    background-color: var(--brand-black);
+    color: var(--brand-white);
+}
+
+.pagoResumenCardFooter {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid var(--bg-item-hover);
+}
+
+.pagoResumenCardPrecio {
+    color: var(--brand-black);
+    font-family: var(--font-primary);
+}
+
+.pagoResumenCardFecha {
+    margin-left: auto;
+}
+
+.pagosFacturaModal {
+    max-width: 600px;
+}
+
+.pagosFactura {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.pagosFacturaHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: calc(var(--spacing-md) * -1); /* Compensate gap */
+}
+
+.pagosFacturaServicio {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    min-width: 0;
+}
+
+.pagosFacturaImagen {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    display: block;
+}
+
+.pagosFacturaServicioInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pagosFacturaTotalesBloque {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pagosFacturaTotalEyebrow {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
 }
 
-.pagoDetalleValor {
-    font-size: var(--text-sm);
+.pagosFacturaTotalValor {
+    font-size: var(--text-xl);
     font-weight: 500;
     color: var(--brand-black);
 }
 
-.pagoDetalleMontoGrande {
-    font-size: var(--text-lg);
-    font-weight: 700;
+.pagosFacturaMetaList {
+    display: flex;
+    gap: var(--spacing-xl);
+    flex-wrap: wrap;
 }
+
+.pagosFacturaMetaGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pagosFacturaMetaLabel {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pagosFacturaMetaValue {
+    font-size: var(--text-sm);
+    color: var(--brand-black);
+}
+
+.pagosFacturaLineas {
+    display: flex;
+    flex-direction: column;
+}
+
+.pagosFacturaLinea {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.pagosFacturaLinea:last-child {
+    border-bottom: none;
+}
+
+.pagosFacturaLineaInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pagosFacturaLineaConcepto {
+    font-size: var(--text-sm);
+    color: var(--brand-black);
+}
+
+.pagosFacturaLineaFecha {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+.pagosFacturaLineaMonto {
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--brand-black);
+}
+
+.pagosFacturaResumenTotales {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-light);
+}
+
+.pagosFacturaResumenItem {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: right;
+}
+
+.pagosFacturaResumenItem .pagosFacturaMetaLabel {
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--text-tertiary);
+}
+
+.pagosFacturaResumenItem .pagosFacturaMetaValue {
+    font-size: var(--text-base);
+    font-weight: 500;
+}
+
+.pagosFacturaResumenPagado {
+    color: var(--success-color);
+}
+
+.pagosFacturaResumenPendiente {
+    color: var(--warning-color);
+}
+
+.pagosFacturaResumenReembolsado {
+    color: var(--prompt-text, var(--text-tertiary));
+}
+
+/* Status badge — pill con color de fondo mínimo */
+.pagoEstadoBadge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+}
+
+.pagoEstado--pendiente { background: var(--color-warning-bg); color: var(--color-warning-text); }
+.pagoEstado--retenido { background: var(--color-info-bg); color: var(--color-info-text); }
+.pagoEstado--liberado { background: var(--color-success-bg); color: var(--color-success-text); }
+.pagoEstado--reembolsado { background: var(--color-purple-bg); color: var(--color-purple-text); }
+.pagoEstado--fallido { background: var(--color-error-bg); color: var(--color-error-text); }
 
 /* Empty / error / spinner states */
 .pagosVacio {
@@ -278,7 +290,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-md);
     color: var(--text-tertiary);
     padding: var(--spacing-xl) 0;
 }
@@ -286,6 +298,7 @@
 .pagosVacioTexto {
     color: var(--text-tertiary);
     text-align: center;
+    font-size: var(--text-sm);
 }
 
 .pagosError {
@@ -304,100 +317,25 @@
     animation: spin 1s linear infinite;
 }
 
-/* Botón reembolso en el modal de detalle */
-.pagoAccionReembolso {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: var(--spacing-sm);
-    align-self: flex-start;
-}
-
-/* Modal contenido genérico (reembolso + detalle) */
-.pagoModalContenido {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-}
-
-.pagoModalDescripcion {
-    font-size: var(--text-sm);
-    color: var(--text-tertiary);
-    margin: 0;
-}
-
-.pagoModalTextarea {
-    width: 100%;
-    font-size: var(--text-sm);
-    padding: var(--spacing-sm);
-    border: 1px solid var(--bg-item-active);
-    border-radius: var(--radius-md);
-    resize: vertical;
-    box-sizing: border-box;
-}
-
-/* [084A-44] Responsive: tablas scrollable en mobile, totales apilados */
 @media (max-width: 767px) {
-    .pagosOrdenesWrapper {
-        margin: 0 calc(-1 * var(--spacing-md));
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-    }
-
-    .pagosOrdenesTitulo {
-        max-width: 120px;
-    }
-
-    .pagosTablaWrapper {
-        margin: 0 calc(-1 * var(--spacing-md));
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-    }
-
-    .pagosTablaCeldaDescripcion {
-        max-width: 120px;
-    }
-
-    .pagosTablaCeldaModo {
-        display: none;
-    }
-
-    .pagosTotales {
-        flex-direction: column;
+    .pagoResumenCard {
         gap: var(--spacing-sm);
     }
-
-    .pagosTotalItem {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
+    .pagoResumenCardImagen {
+        width: 88px;
+        height: 88px;
     }
-}
-
-.pagoAccionEnviarReembolso {
-    background: var(--color-purple-text);
-    color: var(--brand-white);
-    border: none;
-    border-radius: var(--radius-md);
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--text-sm);
-    
-    cursor: pointer;
-}
-
-.pagoAccionEnviarReembolso:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.pagoAccionCancelarReembolso {
-    background: transparent;
-    color: var(--brand-black);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--text-sm);
-    cursor: pointer;
+    .pagosFacturaHeader {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .pagosFacturaTotalesBloque {
+        align-items: flex-start;
+        text-align: left;
+    }
+    .pagosFacturaResumenTotales {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: var(--spacing-sm);
+    }
 }

@@ -212,7 +212,9 @@ pub async fn update_order_project_description_handler(
     Path(order_id): Path<Uuid>,
     Json(req): Json<UpdateOrderProjectDescriptionRequest>,
 ) -> Result<Json<OrderResponse>, AppError> {
-    auth.require_role(&[UserRole::Client, UserRole::Admin])?;
+    /* [035A-15] La descripción operativa del proyecto deja de ser editable por el cliente.
+     * Solo staff del panel puede mutarla desde el detalle de la orden. */
+    auth.require_role(&[UserRole::Employee, UserRole::Admin])?;
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 

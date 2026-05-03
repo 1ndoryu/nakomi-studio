@@ -140,12 +140,16 @@ pub async fn send_message(
         };
         if let Some(rid) = recipient_id {
             let preview: String = req.content.chars().take(80).collect();
+            let panel_link = session.order_id.map_or_else(
+                || format!("/panel?seccion=mensajes&chat={session_id}"),
+                |order_id| format!("/panel?order={order_id}"),
+            );
             let _ = state.notification_hub.notify(CreateNotification {
                 user_id: rid,
                 notification_type: NOTIF_NEW_MESSAGE.to_string(),
                 title: "Nuevo mensaje en el chat".to_string(),
                 body: Some(preview),
-                link: Some(format!("/panel/chat?session={session_id}")),
+                link: Some(panel_link),
                 reference_type: Some("chat_session".to_string()),
                 reference_id: Some(session_id),
             }).await;

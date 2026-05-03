@@ -1,7 +1,10 @@
-import {useCallback, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useLocation} from 'react-router-dom';
 import {useAuthStore} from '../stores/authStore';
 import {useOrdenes} from './useOrdenes';
 import type {OrderResponse, OrderStatus} from '../api/orders';
+import {seccionInicialPorRol} from '../data/panel';
+import {getPanelOrderIdFromUrl, syncPanelOrderInUrl} from '../utils/panelUrlState';
 
 const STATUS_PRIORITY: Record<string, number> = {
     in_progress: 0,
@@ -23,6 +26,7 @@ function sortByStatusPriority(a: OrderResponse, b: OrderResponse): number {
 export function useSeccionProyectos() {
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) || 'client';
     const isAdmin = effectiveRole === 'admin';
+    const location = useLocation();
     const [tabActiva, setTabActiva] = useState<'activas' | 'historial'>('activas');
     const [busqueda, setBusqueda] = useState('');
     const [filtroEmpleado, setFiltroEmpleado] = useState<string>('');
@@ -35,7 +39,33 @@ export function useSeccionProyectos() {
         cancelando, actualizandoDescripcion, actualizandoFase,
     } = useOrdenes();
 
+    useEffect(() => {
+        const orderId = getPanelOrderIdFromUrl();
+        if (orderId) {
+            if (ordenSeleccionada !== orderId) {
+                seleccionarOrden(orderId);
+            }
+            return;
+        }
+        if (ordenSeleccionada) {
+            seleccionarOrden(null);
+        }
+    }, [location.search, ordenSeleccionada, seleccionarOrden]);
+
+    useEffect(() => {
+        const currentSection = new URLSearchParams(location.search).get('seccion');
+        if (currentSection && !['proyectos', 'asignados', 'todos-ordenes', 'ordenes'].includes(currentSection)) {
+            return;
+        }
+        const incomingOrderId = getPanelOrderIdFromUrl();
+        if (!ordenSeleccionada && incomingOrderId) return;
+        syncPanelOrderInUrl(ordenSeleccionada, seccionInicialPorRol(effectiveRole));
+    }, [ordenSeleccionada, effectiveRole, location.search]);
+
     const handleVolver = useCallback(() => seleccionarOrden(null), [seleccionarOrden]);
+    const handleSelectOrder = useCallback((orderId: string) => {
+        seleccionarOrden(orderId);
+    }, [seleccionarOrden]);
     const handleCancelar = useCallback(async (orderId: string, reason?: string) => {
         await cancelarOrden({orderId, reason});
     }, [cancelarOrden]);
@@ -111,6 +141,7 @@ export function useSeccionProyectos() {
         cargandoDetalle,
         ordenSeleccionada,
         error,
+        handleSelectOrder,
         seleccionarOrden,
         recargar,
         cancelando,

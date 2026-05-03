@@ -1,11 +1,9 @@
 /* [044A-38 Fase 3] Sección de historial de pagos en el panel.
- * [074A-61] Rediseño: lista compacta de pagos + modal de detalles al click.
- * [084A-21] Rediseño como tabla profesional con columnas alineadas, totales y diseño limpio.
- * [094A-15] Se eliminó el wrapper pagosDatos para dejar el detalle plano y consistente.
- * Botón "Solicitar reembolso" movido al modal de detalle. */
+ * [035A-18] Rehecha como lista compacta de cards con imagen del servicio y modal 
+ * tipo factura para concentrar los detalles, 100% alineado al sistema visual. */
 
-import { useState, useMemo } from 'react';
-import { Loader2, CreditCard, AlertCircle, RotateCcw, Package } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Loader2, AlertCircle, RotateCcw, Package, CreditCard } from 'lucide-react';
 import { useOrdenes } from '../../hooks/useOrdenes';
 import { usePagos } from '../../hooks/usePagos';
 import { useRefundModal } from '../../hooks/useRefundModal';
@@ -14,12 +12,78 @@ import {
     PAYMENT_STATUS_CLASS,
     type PaymentResponse,
 } from '../../api/payments';
-import { PAYMENT_MODE_LABELS, formatPrice } from '../../api/orders';
+import { PAYMENT_MODE_LABELS, formatPrice, type OrderResponse } from '../../api/orders';
 import { useAuthStore } from '../../stores/authStore';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import OptimizedImage from '../ui/OptimizedImage';
+import { getServiceImage } from '../../utils/serviceImages';
 import './SeccionPagos.css';
+
+function PagoResumenCard({ order, onOpen }: { order: OrderResponse; onOpen: () => void }) {
+    return (
+        <Button 
+            type="button" 
+            className="pagoResumenCard" 
+            onClick={onOpen}
+            variante="texto"
+            aria-label={`Ver pagos de la orden #${order.order_number}`}
+        >
+            <div className="pagoResumenCardImagenWrapper">
+                <OptimizedImage
+                    className="pagoResumenCardImagen"
+                    src={getServiceImage(order.service_slug)}
+                    alt={order.service_title}
+                    loading="lazy"
+                />
+            </div>
+            <div className="pagoResumenCardBody">
+                <div className="pagoResumenCardHeader">
+                    <h3 className="pagoResumenCardTitulo">{order.service_title}</h3>
+                    <span className="pagoResumenCardBadge" style={{ backgroundColor: 'var(--bg-item-active)', color: 'var(--brand-black)' }}>
+                        Orden #{order.order_number}
+                    </span>
+                </div>
+                <div className="pagoResumenCardFooter">
+                    <span className="pagoResumenCardPrecio">{formatPrice(order.final_price_cents, order.currency)}</span>
+                    <span className="pagoResumenCardModo">{PAYMENT_MODE_LABELS[order.payment_mode]}</span>
+                    <span className="pagoResumenCardFecha">
+                        {new Date(order.created_at).toLocaleDateString('es-ES', {
+                            day: 'numeric', month: 'short'
+                        })}
+                    </span>
+                </div>
+            </div>
+        </Button>
+    );
+}
+
+function FacturaLinea({ payment }: { payment: PaymentResponse }) {
+    return (
+        <div className="pagosFacturaLinea">
+            <div className="pagosFacturaLineaInfo">
+                <span className="pagosFacturaLineaConcepto">
+                    {payment.description || (payment.phase_number ? `Fase ${payment.phase_number}` : 'Pago')}
+                </span>
+                <span className="pagosFacturaLineaFecha">
+                    {new Date(payment.created_at).toLocaleDateString('es-ES', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    })}
+                </span>
+            </div>
+            <div className="pagosFacturaLineaEstado">
+                <span className={`pagoEstadoBadge ${PAYMENT_STATUS_CLASS[payment.status]}`}>
+                    {PAYMENT_STATUS_LABELS[payment.status]}
+                </span>
+            </div>
+            <strong className="pagosFacturaLineaMonto">
+                {formatPrice(payment.amount_cents, payment.currency)}
+            </strong>
+        </div>
+    );
+}
 
 export function SeccionPagos() {
     const { ordenes, cargando, error } = useOrdenes();
@@ -30,10 +94,19 @@ export function SeccionPagos() {
         setRefundRazon, abrirModal, cerrarModal, enviarSolicitud,
     } = useRefundModal();
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) || 'client';
+    
+    const ordenActiva = useMemo(
+        () => ordenes.find(orden => orden.id === ordenSeleccionada) ?? null,
+        [ordenes, ordenSeleccionada],
+    );
 
-    const [pagoDetalle, setPagoDetalle] = useState<PaymentResponse | null>(null);
+    const ordenesOrdenadas = useMemo(
+        () => [...ordenes].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        ),
+        [ordenes],
+    );
 
-    /* [084A-21] Totales calculados para el resumen */
     const totales = useMemo(() => {
         if (!pagos.length) return null;
         const pagado = pagos
@@ -48,6 +121,9 @@ export function SeccionPagos() {
         const currency = pagos[0]?.currency || 'USD';
         return { pagado, reembolsado, pendiente, currency };
     }, [pagos]);
+
+    const puedeSolicitarReembolso = effectiveRole === 'client' && 
+        pagos.some(p => p.status === 'held' || p.status === 'released');
 
     if (cargando) {
         return (
@@ -68,191 +144,152 @@ export function SeccionPagos() {
 
     return (
         <div className="pagosContenedor">
-            {/* [084A-44] Selector de orden como tabla profesional */}
-            <div className="pagosOrdenesWrapper">
-                {ordenes.length === 0 ? (
-                    <div className="pagosVacioDetalle">
-                        <Package size={32} />
-                        <p>No tienes órdenes con historial de pago</p>
-                    </div>
-                ) : (
-                    <table className="pagosOrdenesTabla">
-                        <thead>
-                            <tr>
-                                <th className="pagosOrdenesHead">Orden</th>
-                                <th className="pagosOrdenesHead">Servicio</th>
-                                <th className="pagosOrdenesHead pagosOrdenesHeadDerecha">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ordenes.map((o) => (
-                                <tr
-                                    key={o.id}
-                                    className={`pagosOrdenesFila ${ordenSeleccionada === o.id ? 'pagosOrdenesFila--activa' : ''}`}
-                                    onClick={() => setOrdenSeleccionada(o.id)}
-                                >
-                                    <td className="pagosOrdenesCelda pagosOrdenesNumero">#{o.order_number}</td>
-                                    <td className="pagosOrdenesCelda pagosOrdenesTitulo">{o.service_title}</td>
-                                    <td className="pagosOrdenesCelda pagosOrdenesCeldaDerecha">{formatPrice(o.final_price_cents, o.currency)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-
-            {/* [084A-21] Tabla profesional de pagos */}
-            {ordenSeleccionada && (
-                <>
-                    {cargandoPagos && <Loader2 className="pagosSpinner pagosBloque" size={24} />}
-                    {errorPagos && (
-                        <p className="pagosError pagosBloque"><AlertCircle size={16} /> {errorPagos}</p>
-                    )}
-                    {!cargandoPagos && pagos.length === 0 && (
-                        <div className="pagosVacioDetalle pagosBloque">
-                            <CreditCard size={32} />
-                            <p>No hay pagos registrados para esta orden</p>
-                        </div>
-                    )}
-                    {!cargandoPagos && pagos.length > 0 && (
-                        <>
-                            <div className="pagosTablaWrapper pagosBloque">
-                                <table className="pagosTabla">
-                                    <thead>
-                                        <tr>
-                                            <th className="pagosTablaHead">Estado</th>
-                                            <th className="pagosTablaHead">Descripción</th>
-                                            <th className="pagosTablaHead">Modo</th>
-                                            <th className="pagosTablaHead pagosTablaHeadDerecha">Fecha</th>
-                                            <th className="pagosTablaHead pagosTablaHeadDerecha">Monto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pagos.map((p) => (
-                                            <tr
-                                                key={p.id}
-                                                className="pagosTablaFila"
-                                                onClick={() => setPagoDetalle(p)}
-                                            >
-                                                <td className="pagosTablaCelda">
-                                                    <span className={`pagoEstadoBadge ${PAYMENT_STATUS_CLASS[p.status]}`}>
-                                                        {PAYMENT_STATUS_LABELS[p.status]}
-                                                    </span>
-                                                </td>
-                                                <td className="pagosTablaCelda pagosTablaCeldaDescripcion">
-                                                    {p.description || (p.phase_number ? `Fase ${p.phase_number}` : 'Pago')}
-                                                </td>
-                                                <td className="pagosTablaCelda pagosTablaCeldaModo">
-                                                    {PAYMENT_MODE_LABELS[p.payment_mode]}
-                                                </td>
-                                                <td className="pagosTablaCelda pagosTablaCeldaDerecha">
-                                                    {new Date(p.created_at).toLocaleDateString('es-ES', {
-                                                        day: 'numeric', month: 'short', year: '2-digit',
-                                                    })}
-                                                </td>
-                                                <td className="pagosTablaCelda pagosTablaCeldaDerecha pagosTablaCeldaMonto">
-                                                    {formatPrice(p.amount_cents, p.currency)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* [084A-21] Resumen de totales */}
-                            {totales && (
-                                <div className="pagosTotales pagosBloque">
-                                    {totales.pagado > 0 && (
-                                        <div className="pagosTotalItem">
-                                            <span className="pagosTotalLabel">Pagado</span>
-                                            <span className="pagosTotalValor pagosTotalPagado">
-                                                {formatPrice(totales.pagado, totales.currency)}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {totales.pendiente > 0 && (
-                                        <div className="pagosTotalItem">
-                                            <span className="pagosTotalLabel">Pendiente</span>
-                                            <span className="pagosTotalValor pagosTotalPendiente">
-                                                {formatPrice(totales.pendiente, totales.currency)}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {totales.reembolsado > 0 && (
-                                        <div className="pagosTotalItem">
-                                            <span className="pagosTotalLabel">Reembolsado</span>
-                                            <span className="pagosTotalValor pagosTotalReembolsado">
-                                                {formatPrice(totales.reembolsado, totales.currency)}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    )}
-                </>
+            {ordenesOrdenadas.length === 0 ? (
+                <div className="pagosVacioDetalle">
+                    <Package size={32} />
+                    <p className="pagosVacioTexto">No tienes órdenes con historial de pago</p>
+                </div>
+            ) : (
+                <div className="pagosListaCompacta">
+                    {ordenesOrdenadas.map(orden => (
+                        <PagoResumenCard
+                            key={orden.id}
+                            order={orden}
+                            onOpen={() => setOrdenSeleccionada(orden.id)}
+                        />
+                    ))}
+                </div>
             )}
 
-            {/* Modal de detalle de pago */}
-            <Modal abierto={!!pagoDetalle} onCerrar={() => setPagoDetalle(null)}>
-                {pagoDetalle && (
-                    <div className="pagoModalContenido">
-                        <div className="pagoDetalleGrid">
-                            <div className="pagoDetalleFila">
-                                <span className="pagoDetalleLabel">Estado</span>
-                                <span className={`pagoDetalleValor ${PAYMENT_STATUS_CLASS[pagoDetalle.status]}`}>
-                                    {PAYMENT_STATUS_LABELS[pagoDetalle.status]}
-                                </span>
-                            </div>
-                            <div className="pagoDetalleFila">
-                                <span className="pagoDetalleLabel">Monto</span>
-                                <span className="pagoDetalleValor pagoDetalleMontoGrande">
-                                    {formatPrice(pagoDetalle.amount_cents, pagoDetalle.currency)}
-                                </span>
-                            </div>
-                            <div className="pagoDetalleFila">
-                                <span className="pagoDetalleLabel">Modo de pago</span>
-                                <span className="pagoDetalleValor">
-                                    {PAYMENT_MODE_LABELS[pagoDetalle.payment_mode]}
-                                </span>
-                            </div>
-                            {pagoDetalle.phase_number != null && (
-                                <div className="pagoDetalleFila">
-                                    <span className="pagoDetalleLabel">Fase</span>
-                                    <span className="pagoDetalleValor">Fase {pagoDetalle.phase_number}</span>
+            <Modal
+                abierto={!!ordenActiva}
+                onCerrar={() => setOrdenSeleccionada(null)}
+                className="pagosFacturaModal"
+            >
+                {ordenActiva && (
+                    <div className="pagosFactura">
+                        {/* Header Minimalista */}
+                        <div className="pagosFacturaHeader">
+                            <div className="pagosFacturaServicio">
+                                <OptimizedImage
+                                    className="pagosFacturaImagen"
+                                    src={getServiceImage(ordenActiva.service_slug)}
+                                    alt={ordenActiva.service_title}
+                                    loading="lazy"
+                                />
+                                <div className="pagosFacturaServicioInfo">
+                                    <h3 className="modalTitulo">{ordenActiva.service_title}</h3>
+                                    <p className="modalTexto">
+                                        Orden #{ordenActiva.order_number}
+                                    </p>
                                 </div>
-                            )}
-                            {pagoDetalle.description && (
-                                <div className="pagoDetalleFila">
-                                    <span className="pagoDetalleLabel">Descripción</span>
-                                    <span className="pagoDetalleValor">{pagoDetalle.description}</span>
-                                </div>
-                            )}
-                            <div className="pagoDetalleFila">
-                                <span className="pagoDetalleLabel">Fecha</span>
-                                <span className="pagoDetalleValor">
-                                    {new Date(pagoDetalle.created_at).toLocaleDateString('es-ES', {
-                                        day: 'numeric', month: 'long', year: 'numeric',
-                                        hour: '2-digit', minute: '2-digit',
+                            </div>
+                            <div className="pagosFacturaTotalesBloque">
+                                <span className="pagosFacturaTotalEyebrow">Total Contratado</span>
+                                <strong className="pagosFacturaTotalValor">
+                                    {formatPrice(ordenActiva.final_price_cents, ordenActiva.currency)}
+                                </strong>
+                            </div>
+                        </div>
+
+                        {/* Metadatos en linea */}
+                        <div className="pagosFacturaMetaList">
+                            <div className="pagosFacturaMetaGroup">
+                                <span className="pagosFacturaMetaLabel">Moneda</span>
+                                <span className="pagosFacturaMetaValue">{ordenActiva.currency}</span>
+                            </div>
+                            <div className="pagosFacturaMetaGroup">
+                                <span className="pagosFacturaMetaLabel">Modalidad</span>
+                                <span className="pagosFacturaMetaValue">{PAYMENT_MODE_LABELS[ordenActiva.payment_mode]}</span>
+                            </div>
+                            <div className="pagosFacturaMetaGroup">
+                                <span className="pagosFacturaMetaLabel">Fecha Contratación</span>
+                                <span className="pagosFacturaMetaValue">
+                                    {new Date(ordenActiva.created_at).toLocaleDateString('es-ES', {
+                                        day: 'numeric', month: 'long', year: 'numeric'
                                     })}
                                 </span>
                             </div>
                         </div>
-                        {effectiveRole === 'client' &&
-                            (pagoDetalle.status === 'held' || pagoDetalle.status === 'released') && (
-                            <Button
-                                variante="outline"
-                                tamano="pequeno"
-                                className="pagoAccionReembolso"
-                                type="button"
-                                onClick={() => {
-                                    setPagoDetalle(null);
-                                    abrirModal(ordenSeleccionada!);
-                                }}
-                            >
-                                <RotateCcw size={14} />
-                                Solicitar reembolso
-                            </Button>
+
+                        {/* Lineas de Transacciones */}
+                        <div className="pagosFacturaLineasBloque">
+                            <h4 className="modalTitulo" style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--spacing-sm)' }}>
+                                Movimientos de pago
+                            </h4>
+                            
+                            {cargandoPagos && (
+                                <div className="pagosVacioDetalle">
+                                    <Loader2 className="pagosSpinner" size={24} />
+                                    <p className="pagosVacioTexto">Cargando...</p>
+                                </div>
+                            )}
+
+                            {errorPagos && (
+                                <p className="pagosError"><AlertCircle size={16} /> {errorPagos}</p>
+                            )}
+
+                            {!cargandoPagos && !errorPagos && pagos.length === 0 && (
+                                <div className="pagosVacioDetalle">
+                                    <CreditCard size={32} />
+                                    <p className="pagosVacioTexto">No hay movimientos registrados.</p>
+                                </div>
+                            )}
+
+                            {!cargandoPagos && pagos.length > 0 && (
+                                <>
+                                    <div className="pagosFacturaLineas">
+                                        {pagos.map(pago => (
+                                            <FacturaLinea key={pago.id} payment={pago} />
+                                        ))}
+                                    </div>
+
+                                    {totales && (
+                                        <div className="pagosFacturaResumenTotales">
+                                            {totales.pagado > 0 && (
+                                                <div className="pagosFacturaResumenItem">
+                                                    <span className="pagosFacturaMetaLabel">Pagado</span>
+                                                    <span className="pagosFacturaMetaValue pagosFacturaResumenPagado">
+                                                        {formatPrice(totales.pagado, totales.currency)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {totales.pendiente > 0 && (
+                                                <div className="pagosFacturaResumenItem">
+                                                    <span className="pagosFacturaMetaLabel">Pendiente</span>
+                                                    <span className="pagosFacturaMetaValue pagosFacturaResumenPendiente">
+                                                        {formatPrice(totales.pendiente, totales.currency)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {totales.reembolsado > 0 && (
+                                                <div className="pagosFacturaResumenItem">
+                                                    <span className="pagosFacturaMetaLabel">Reembolsado</span>
+                                                    <span className="pagosFacturaMetaValue pagosFacturaResumenReembolsado">
+                                                        {formatPrice(totales.reembolsado, totales.currency)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        {puedeSolicitarReembolso && (
+                            <div className="modalAcciones" style={{ paddingTop: 'var(--spacing-md)' }}>
+                                <Button
+                                    variante="outline"
+                                    tamano="pequeno"
+                                    onClick={() => {
+                                        setOrdenSeleccionada(null);
+                                        abrirModal(ordenActiva.id);
+                                    }}
+                                >
+                                    <RotateCcw size={14} style={{ marginRight: '6px' }} />
+                                    Solicitar Reembolso
+                                </Button>
+                            </div>
                         )}
                     </div>
                 )}
@@ -261,7 +298,8 @@ export function SeccionPagos() {
             {/* Modal de solicitud de reembolso */}
             <Modal abierto={!!refundOrderId} onCerrar={cerrarModal}>
                 <div className="pagoModalContenido">
-                    <p className="pagoModalDescripcion">
+                    <h3 className="modalTitulo">Solicitar Reembolso</h3>
+                    <p className="modalTexto" style={{ marginBottom: 'var(--spacing-sm)' }}>
                         Describe el motivo de tu solicitud de reembolso. Un administrador la revisará.
                     </p>
                     <Textarea
@@ -271,25 +309,19 @@ export function SeccionPagos() {
                         onChange={(e) => setRefundRazon(e.target.value)}
                         rows={4}
                     />
-                    <div className="modalAcciones">
-                        <Button
-                            className="pagoAccionEnviarReembolso"
-                            tamano="pequeno"
-                            type="button"
-                            onClick={() => void enviarSolicitud()}
-                            disabled={refundEnCurso || !refundRazon.trim()}
-                        >
-                            {refundEnCurso ? 'Enviando…' : 'Enviar solicitud'}
-                        </Button>
+                    <div className="modalAcciones" style={{ marginTop: 'var(--spacing-md)' }}>
                         <Button
                             variante="outline"
-                            tamano="pequeno"
-                            className="pagoAccionCancelarReembolso"
-                            type="button"
                             onClick={cerrarModal}
                             disabled={refundEnCurso}
                         >
                             Cancelar
+                        </Button>
+                        <Button
+                            onClick={() => void enviarSolicitud()}
+                            disabled={refundEnCurso || !refundRazon.trim()}
+                        >
+                            {refundEnCurso ? 'Enviando...' : 'Enviar solicitud'}
                         </Button>
                     </div>
                 </div>

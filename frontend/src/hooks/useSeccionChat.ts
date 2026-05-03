@@ -4,15 +4,18 @@
 
 import {useCallback, useEffect, useRef, useState, type KeyboardEvent} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
+import {useLocation} from 'react-router-dom';
 
 import {apiCloseSession, apiMarkSessionViewed, apiUploadChatFile} from '../api/chat';
 import {useChat} from './useChat';
 import {useChatWs} from './useChatWs';
 import {toast} from '../stores/toastStore';
 import {playNotificationSound} from '../utils/notificationSound';
+import {getPanelChatIdFromUrl, syncPanelChatInUrl} from '../utils/panelUrlState';
 
 export function useSeccionChat() {
     const queryClient = useQueryClient();
+    const location = useLocation();
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [input, setInput] = useState('');
     const [closing, setClosing] = useState(false);
@@ -92,6 +95,7 @@ export function useSeccionChat() {
             await apiCloseSession(activeSessionId);
             toast.success('Conversación cerrada');
             setActiveSessionId(null);
+            syncPanelChatInUrl(null);
         } catch {
             toast.error('Error al cerrar conversación');
         } finally {
@@ -102,6 +106,7 @@ export function useSeccionChat() {
     const selectSession = useCallback((sessionId: string) => {
         setActiveSessionId(sessionId);
         setMessageLimit(100);
+        syncPanelChatInUrl(sessionId);
         /* [104A-39] Marcar como vista para limpiar el badge del ChatBell.
          * [104A-41] Invalidar cache ['chat-sessions'] inmediatamente para que ChatBell
          * refleje el nuevo last_viewed_at sin esperar el polling de 15s. */
@@ -114,17 +119,22 @@ export function useSeccionChat() {
      * apiMarkSessionViewed + invalidateQueries). Antes usaba setActiveSessionId directo
      * y la sesión nunca se marcaba como leída → badge nunca bajaba. */
     useEffect(() => {
-        const target = sessionStorage.getItem('PANEL_CHAT_TARGET');
+        const target = sessionStorage.getItem('PANEL_CHAT_TARGET') ?? getPanelChatIdFromUrl();
         if (target && sessions.length > 0) {
             sessionStorage.removeItem('PANEL_CHAT_TARGET');
             const exists = sessions.some(s => s.id === target);
-            if (exists) selectSession(target);
+            if (exists && activeSessionId !== target) selectSession(target);
+            return;
         }
-    }, [sessions, selectSession]);
+        if (!target && activeSessionId) {
+            setActiveSessionId(null);
+        }
+    }, [location.search, sessions, selectSession, activeSessionId]);
 
     const clearActiveSession = useCallback(() => {
         setActiveSessionId(null);
         setMessageLimit(100);
+        syncPanelChatInUrl(null);
     }, []);
 
     /* [074A-43] Cargar más mensajes antiguos */

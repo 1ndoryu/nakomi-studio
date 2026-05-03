@@ -5,7 +5,7 @@
  * sentinel-disable-file componente-sin-hook limite-lineas: PanelIsland es orquestador de layout — su lógica
  * (redirect + tab-switch) es minimal y específica del routing, no reutilizable en hook. */
 import React, {useState, useEffect} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import {HeaderPanel} from '../components/panel/HeaderPanel';
 import {SeccionPerfil} from '../components/panel/SeccionPerfil';
 import {SeccionMetodosPago} from '../components/panel/SeccionMetodosPago';
@@ -33,6 +33,7 @@ import {PANEL_TAB_KEY, obtenerTabsPorRol, seccionInicialPorRol, type SeccionPane
 import {useAuthStore} from '../stores/authStore';
 import {SEOHead} from '../components/seo/SEOHead';
 import type {UserRole} from '../api/auth';
+import {resolvePanelSectionFromUrl, syncPanelSectionInUrl} from '../utils/panelUrlState';
 import '../styles/variables.css';
 import './PanelIsland.css';
 
@@ -40,12 +41,18 @@ export const PanelIsland: React.FC = () => {
     const logueado = useAuthStore(s => s.logueado);
     const effectiveRole: UserRole = useAuthStore(s => s.user?.effectiveRole) || 'client';
     const navigate = useNavigate();
+    const location = useLocation();
 
     const tabs = obtenerTabsPorRol(effectiveRole);
 
     /* [084A-9] Restaurar tab desde localStorage para persistir entre recargas y cierres de pestaña.
      * [154A-12b] Cambiado de sessionStorage a localStorage — el usuario reportó que se perdía al recargar. */
     const [seccionActiva, setSeccionActiva] = useState<SeccionPanel>(() => {
+        const desdeUrl = resolvePanelSectionFromUrl(
+            effectiveRole,
+            obtenerTabsPorRol(effectiveRole).map(tab => tab.id),
+        );
+        if (desdeUrl) return desdeUrl;
         const stored = localStorage.getItem(PANEL_TAB_KEY) as SeccionPanel | null;
         const tabsRol = obtenerTabsPorRol(effectiveRole);
         if (stored && tabsRol.some(t => t.id === stored)) return stored;
@@ -63,6 +70,16 @@ export const PanelIsland: React.FC = () => {
      * válido para el nuevo rol. Antes reseteaba incondicionalmente y destruía la persistencia
      * en cada recarga — el bug reportado de "tabs siempre regresan a la primera". [164A-1] */
     useEffect(() => {
+        const desdeUrl = resolvePanelSectionFromUrl(
+            effectiveRole,
+            obtenerTabsPorRol(effectiveRole).map(tab => tab.id),
+        );
+        if (desdeUrl) {
+            localStorage.setItem(PANEL_TAB_KEY, desdeUrl);
+            setSeccionActiva(desdeUrl);
+            return;
+        }
+
         const stored = localStorage.getItem(PANEL_TAB_KEY) as SeccionPanel | null;
         const tabsRol = obtenerTabsPorRol(effectiveRole);
         if (stored && tabsRol.some(t => t.id === stored)) {
@@ -72,12 +89,13 @@ export const PanelIsland: React.FC = () => {
         const inicial = seccionInicialPorRol(effectiveRole);
         localStorage.setItem(PANEL_TAB_KEY, inicial);
         setSeccionActiva(inicial);
-    }, [effectiveRole]);
+    }, [effectiveRole, location.search]);
 
     /* [084A-9] Persistir tab activa en localStorage para sobrevivir recargas y cierres.
      * [154A-12b] Cambiado de sessionStorage a localStorage. */
     useEffect(() => {
         localStorage.setItem(PANEL_TAB_KEY, seccionActiva);
+        syncPanelSectionInUrl(seccionActiva);
     }, [seccionActiva]);
 
     /* [064A-5] Escuchar custom event desde HeaderPanel para cambiar tab */

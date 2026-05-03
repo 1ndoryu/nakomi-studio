@@ -130,7 +130,11 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     const needsPayment = order.status === 'payment_held';
     /* [064A-60] Tanto phased como half_half usan pagos por fase individuales */
     const isPerPhasePayment = order.payment_mode === 'phased' || order.payment_mode === 'half_half';
-    const canEditDescription = isClient && order.status !== 'completed' && order.status !== 'cancelled';
+    /* [035A-15] project_description pasa a ser campo operativo del staff.
+     * El cliente mantiene visibilidad, pero solo admin o empleado asignado deben editarlo. */
+    const canEditDescription = (isEmployee || isAdmin)
+        && order.status !== 'completed'
+        && order.status !== 'cancelled';
     const canDefinePhases = order.payment_mode === 'phased' && (isEmployee || effectiveRole === 'admin');
 
     /* [T2-assignment] Modal de asignación admin */

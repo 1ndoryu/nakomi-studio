@@ -422,9 +422,18 @@ impl OrderService {
             .await?
             .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
 
-        if effective_role != UserRole::Admin && order.client_id != user_id {
+        /* [035A-15] project_description es editable por admin o por el empleado asignado.
+         * El cliente conserva lectura, pero no puede reescribir el briefing operativo. */
+        let can_edit = match effective_role {
+            UserRole::Admin => true,
+            UserRole::Employee => order.assigned_employee_id == Some(user_id),
+            UserRole::Client => false,
+        };
+
+        if !can_edit {
             return Err(AppError::Forbidden(
-                "Solo el cliente dueÃ±o puede actualizar la descripciÃ³n del proyecto".into(),
+                "Solo el empleado asignado o un admin puede actualizar la descripción del proyecto"
+                    .into(),
             ));
         }
 
