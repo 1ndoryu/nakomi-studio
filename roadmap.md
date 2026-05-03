@@ -36,6 +36,5 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 ## Tareas pendientes
 
 - Completar el barrido de bordes neutrales: `--border-default` ya es `#dcdcdc`, pero todavia quedan componentes usando `border: 1px solid var(--bg-item-active)` como borde generico cuando no representan un estado activo/seleccionado.
-- Necesito datos de prueba para ver como se ve el historial de movimientos y solicitudes de retiro en la wallet (actualmente muestra "Sin movimientos aun" y "No has solicitado retiros aun").
 - `POST /api/auth/switch-role` retorna 500 al hacer clic en el boton de cambio de rol en el panel. En validacion directa por API el ciclo `admin -> employee -> client -> admin` responde OK; pendiente reproducirlo desde la sesion/UI real del panel para aislar si el fallo es de frontend, token persistido o estado local.
 

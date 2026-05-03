@@ -118,6 +118,9 @@
 
 ## Commit-por-tarea — no acumular cambios
 - Si el protocolo dice "un commit por tarea", cumplirlo inmediatamente después de validar, no al "final de la sesión" ni "cuando haya tiempo". Acumular 3+ tareas sin commit significa que un solo error en git rompe todo el trabajo.
+
+## Wallet demo local — seed antes que frontend
+- Si `cliente@test.com` o `empleado@test.com` muestran wallet vacía pero `src/services/seed.rs` ya define movimientos y retiros, el problema suele ser de entorno local sin reseed reciente, no de UI. Reejecutar `POST /api/admin/seed` y verificar `/api/wallet`, `/api/wallet/transactions` y `/api/wallet/withdrawals` antes de modificar componentes.
 - El push es parte del cierre de la tarea. Si no se hizo push, la tarea no está cerrada.
 - Refuerzo agregado al protocolo (104A-19): prohibición explícita de acumular 2+ tareas sin commit+push.
 
