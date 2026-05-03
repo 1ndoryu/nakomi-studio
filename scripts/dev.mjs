@@ -32,7 +32,6 @@ if (!existsSync(frontendDir)) {
 }
 
 const isWin = isWindowsPlatform();
-const spawnOpts = isWin ? { shell: true } : {};
 const children = [];
 
 function isWindowsPlatform() {
@@ -53,10 +52,36 @@ function commandName(cmd) {
     if (cmd === 'git') {
         return 'git.exe';
     }
+    if (cmd === 'powershell') {
+        return 'powershell.exe';
+    }
     if (cmd === 'psql') {
         return 'psql.exe';
     }
     return cmd;
+}
+
+function quoteWindowsArg(arg) {
+    if (!/[\s"]/u.test(arg)) {
+        return arg;
+    }
+
+    return `"${arg
+        .replace(/(\\*)"/g, '$1$1\\"')
+        .replace(/(\\+)$/g, '$1$1')}"`;
+}
+
+function resolveSpawnInvocation(cmd, args) {
+    const executable = commandName(cmd);
+    if (isWin && /\.(cmd|bat)$/i.test(executable)) {
+        const shellCommand = [executable, ...args].map((value) => quoteWindowsArg(value)).join(' ');
+        return {
+            executable: process.env.ComSpec || 'cmd.exe',
+            args: ['/d', '/s', '/c', shellCommand],
+        };
+    }
+
+    return { executable, args };
 }
 
 function runGit(args) {
@@ -228,7 +253,7 @@ function resolveRustcWrapper() {
     return command.status === 0 ? 'sccache' : null;
 }
 
-function spawnCargoTargetWatcher(env) {
+function spawnCargoTargetWatcher(env, activeTargetDir) {
     if (!isWin) {
         return;
     }
@@ -250,6 +275,8 @@ function spawnCargoTargetWatcher(env) {
             watcherScript,
             '-TargetDirs',
             cargoTargetBase,
+            '-ExcludeDirs',
+            activeTargetDir,
             '-MaxTotalMB',
             cargoTargetMaxMb,
             '-IntervalSeconds',
@@ -324,9 +351,9 @@ function ensureDatabaseExists(databaseUrl, dbName) {
 }
 
 function spawnProc(label, cmd, args, options) {
-    const proc = spawn(cmd, args, {
+    const invocation = resolveSpawnInvocation(cmd, args);
+    const proc = spawn(invocation.executable, invocation.args, {
         stdio: 'inherit',
-        ...spawnOpts,
         ...options,
     });
     proc.on('error', (err) => console.error(`[${label}] Error: ${err.message}`));
@@ -404,6 +431,6 @@ if (rustcWrapper) {
 }
 console.log(`[glory-dev] Iniciando backend (cargo run --bin ${binName}) y frontend (vite)...\n`);
 
-spawnCargoTargetWatcher(childEnv);
 spawnProc('backend', 'cargo', ['run', '--bin', binName], { cwd, env: childEnv });
 spawnProc('frontend', 'npm', ['run', 'dev'], { cwd: frontendDir, env: childEnv });
+spawnCargoTargetWatcher(childEnv, cargoTargetDir);

@@ -1,10 +1,53 @@
 param(
     [string[]]$TargetDirs = @('C:\tmp\glory-target'),
+    [string[]]$ExcludeDirs = @(),
     [int]$MaxTotalMB = 4096,
     [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Normalize-Path {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    try {
+        return [System.IO.Path]::GetFullPath($Path).TrimEnd('\\')
+    } catch {
+        return $Path.TrimEnd('\\')
+    }
+}
+
+function Test-IsExcludedPath {
+    param(
+        [string]$Path,
+        [string[]]$ExcludedPrefixes
+    )
+
+    $normalizedPath = Normalize-Path -Path $Path
+    if (-not $normalizedPath) {
+        return $false
+    }
+
+    foreach ($excluded in $ExcludedPrefixes) {
+        if (-not $excluded) {
+            continue
+        }
+
+        if ($normalizedPath.Equals($excluded, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+
+        if ($normalizedPath.StartsWith("$excluded\\", [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+
+    return $false
+}
 
 function Get-DirectorySizeMB {
     param([string]$Path)
@@ -23,12 +66,15 @@ function Get-DirectorySizeMB {
 function Remove-MatchingDirectories {
     param(
         [string]$Path,
-        [string[]]$Names
+        [string[]]$Names,
+        [string[]]$ExcludedPrefixes
     )
 
     foreach ($name in $Names) {
         Get-ChildItem -LiteralPath $Path -Recurse -Force -Directory -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -eq $name } |
+            Where-Object {
+                $_.Name -eq $name -and -not (Test-IsExcludedPath -Path $_.FullName -ExcludedPrefixes $ExcludedPrefixes)
+            } |
             Sort-Object FullName -Descending |
             ForEach-Object {
                 Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
@@ -36,9 +82,11 @@ function Remove-MatchingDirectories {
     }
 }
 
-function Test-RustcActive {
-    return [bool](Get-Process -Name 'rustc' -ErrorAction SilentlyContinue)
+function Test-RustBuildActive {
+    return [bool](Get-Process -Name 'cargo', 'rustc' -ErrorAction SilentlyContinue)
 }
+
+$normalizedExcludeDirs = @($ExcludeDirs | ForEach-Object { Normalize-Path -Path $_ } | Where-Object { $_ })
 
 foreach ($targetDir in $TargetDirs) {
     if (-not (Test-Path $targetDir)) {
@@ -51,13 +99,13 @@ foreach ($targetDir in $TargetDirs) {
         continue
     }
 
-    if ((Test-RustcActive) -and (-not $Force)) {
-        Write-Host "[cargo-clean] rustc activo; se pospone limpieza de $targetDir ($initialSize MB)"
+    if ((Test-RustBuildActive) -and (-not $Force)) {
+        Write-Host "[cargo-clean] build Rust activo; se pospone limpieza de $targetDir ($initialSize MB)"
         continue
     }
 
     Write-Host "[cargo-clean] limpiando $targetDir ($initialSize MB / $MaxTotalMB MB)"
-    Remove-MatchingDirectories -Path $targetDir -Names @('incremental')
+    Remove-MatchingDirectories -Path $targetDir -Names @('incremental') -ExcludedPrefixes $normalizedExcludeDirs
 
     $afterIncremental = Get-DirectorySizeMB -Path $targetDir
     if ($afterIncremental -le $MaxTotalMB) {
@@ -65,7 +113,7 @@ foreach ($targetDir in $TargetDirs) {
         continue
     }
 
-    Remove-MatchingDirectories -Path $targetDir -Names @('.fingerprint', 'build')
+    Remove-MatchingDirectories -Path $targetDir -Names @('.fingerprint', 'build') -ExcludedPrefixes $normalizedExcludeDirs
 
     $afterMetadata = Get-DirectorySizeMB -Path $targetDir
     if ($afterMetadata -le $MaxTotalMB) {
@@ -73,7 +121,7 @@ foreach ($targetDir in $TargetDirs) {
         continue
     }
 
-    Remove-MatchingDirectories -Path $targetDir -Names @('deps')
+    Remove-MatchingDirectories -Path $targetDir -Names @('deps') -ExcludedPrefixes $normalizedExcludeDirs
     $finalSize = Get-DirectorySizeMB -Path $targetDir
     Write-Host "[cargo-clean] $targetDir reducido a $finalSize MB"
 }
