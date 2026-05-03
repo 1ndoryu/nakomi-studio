@@ -356,8 +356,9 @@ function detectBinName() {
 const envValues = parseEnvFile(envPath);
 const branch = detectBranch();
 /* Subdirectorio por proyecto+rama: aísla artefactos entre proyectos Y entre ramas.
- * Formato: {pkg_name}_{branch_slug}  →  C:\tmp\glory-target\glory_backend_glory_rust_nakomi */
-const cargoTargetDir = process.env.CARGO_TARGET_DIR || resolve(cargoTargetBase, `${detectPackageName()}_${slugifyBranchName(branch)}`);
+ * Usamos GLORY_CARGO_TARGET_DIR como override explícito (no CARGO_TARGET_DIR, que está
+ * fijado en .cargo/config.toml a nivel global y cortocircuitaría la lógica aquí). */
+const cargoTargetDir = process.env.GLORY_CARGO_TARGET_DIR || resolve(cargoTargetBase, `${detectPackageName()}_${slugifyBranchName(branch)}`);
 const dbName = databaseNameForBranch(branch);
 if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
     console.error(`[glory-dev] Nombre de BD inseguro: ${dbName}`);
