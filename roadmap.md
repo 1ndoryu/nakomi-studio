@@ -17,6 +17,16 @@ Rama: glory-rust-nakomi
 
 # Nakomi Studio — Roadmap
 
+## Notas de infraestructura
+
+- **nakomi.studio**: VPS1 (66.94.100.241), Coolify service `do8k4w8swccwwogoc0os0ck0`
+- **VPS2 Coolify**: Configurado en settings.json
+- **[164A-19] Panel admin de infraestructura**: `Despliegues VPS2` ahora lista servicios reales desde Coolify y `Contabo VPS` queda separado para mostrar solo la capa proveedor.
+- **[164A-20] Carrusel del inicio**: las imágenes del showcase ahora salen por `/api/img/...?...w=1200&q=80` con ancho fijo de optimización, sin escalar a buckets mayores por DPR.
+- **Deploy**: Siempre via coolify-manager-rs, nunca desde Coolify UI (ver doc de persistencia volúmenes)
+- **Volúmenes**: Documentado en `Agente/documentacion/hosting/coolify-volumenes-persistencia-2026-04-12.md`
+- **[164A-18] Fix aplicado**: Dockerfile.rust actualizado con `gosu` entrypoint para corregir permisos de volúmenes montados (`root:root` → `appuser`). Fix inmediato aplicado en producción via chown directo. Detalle en `Agente/completados/tareas-2026-04-16.md`.
+
 ## Contexto
 
 Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se integra en frontend/src/. El backend Rust sirve API + SPA.
@@ -27,5 +37,5 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 - Completar el barrido de bordes neutrales: `--border-default` ya es `#dcdcdc`, pero todavia quedan componentes usando `border: 1px solid var(--bg-item-active)` como borde generico cuando no representan un estado activo/seleccionado.
 - Necesito datos de prueba para ver como se ve el historial de movimientos y solicitudes de retiro en la wallet (actualmente muestra "Sin movimientos aun" y "No has solicitado retiros aun").
-- Revisar los planes activos en `Agente/planes/` — algunos pueden estar completados pero no movidos a `Agente/planes/completados/`. Evaluar estado real de cada uno.
-- `POST /api/auth/switch-role` retorna 500 al hacer clic en el boton de cambio de rol en el panel. Necesita debug con servidor corriendo para ver el log del error (probablemente error de BD o usuario no encontrado con ese rol en local).
+- `POST /api/auth/switch-role` retorna 500 al hacer clic en el boton de cambio de rol en el panel. En validacion directa por API el ciclo `admin -> employee -> client -> admin` responde OK; pendiente reproducirlo desde la sesion/UI real del panel para aislar si el fallo es de frontend, token persistido o estado local.
+
