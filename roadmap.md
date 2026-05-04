@@ -32,6 +32,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
-- 035A-32: El botón de "Solicitar retiro" se ve mal, debería estar dentro de `walletSaldoTarjeta`.
-- 035A-33: Datos de prueba en "Historial de movimientos" y "Solicitudes de retiro" — actualmente aparecen vacíos ("Sin movimientos aún", "No has solicitado retiros aún") y el usuario los necesita para verificar el flujo.
 - 035A-34: API privada para el agente en producción — poder modificar contenido del CMS (imágenes, textos, planes, fases) remotamente. Requiere planificación previa.

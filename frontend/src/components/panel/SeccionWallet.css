@@ -20,6 +20,12 @@
     box-sizing: border-box;
 }
 
+/* [035A-32] Botón retiro alineado a la derecha dentro de la tarjeta */
+.walletSaldoBotonRetiro {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
 .walletSaldoIcono {
     display: flex;
     align-items: center;
@@ -208,22 +214,9 @@
         max-width: 140px;
     }
 
-    .walletSaldoFila {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
     .retiroForm {
         padding: var(--spacing-md);
     }
-}
-
-/* [T1-withdrawal] Fila saldo + botón retiro */
-.walletSaldoFila {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-md);
 }
 
 /* Formulario de retiro */

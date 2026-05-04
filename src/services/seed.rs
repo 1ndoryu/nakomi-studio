@@ -420,6 +420,23 @@ impl SeedService {
             .execute(pool)
             .await?;
 
+        /* [035A-33] Limpia también wallet del admin para permitir re-seed limpio.
+         * El admin no está en TEST_EMAILS (no se borra su cuenta), pero sí sus datos de prueba. */
+        if let Some(admin_id) = Self::find_user(pool, "admin@admin.com").await? {
+            sqlx::query("DELETE FROM withdrawal_requests WHERE user_id = $1")
+                .bind(admin_id)
+                .execute(pool)
+                .await?;
+            sqlx::query("DELETE FROM wallet_transactions WHERE user_id = $1")
+                .bind(admin_id)
+                .execute(pool)
+                .await?;
+            sqlx::query("DELETE FROM user_wallets WHERE user_id = $1")
+                .bind(admin_id)
+                .execute(pool)
+                .await?;
+        }
+
         Ok(())
     }
 
@@ -721,6 +738,28 @@ impl SeedService {
         )
         .await?;
         withdrawal_count += 1;
+
+        /* [035A-33] Wallet admin: datos de prueba para que el admin vea la sección con contenido.
+         * No borramos el admin en delete_test_data, solo sus datos wallet en delete_supplemental_data. */
+        if let Some(admin_id) = Self::find_user(pool, "admin@admin.com").await? {
+            let admin_wallet_id = upsert_seed_wallet(pool, admin_id, 25000).await?;
+            let admin_txs: &[(i32, &str, &str)] = &[
+                (30000, "commission", "Comisión plataforma — Mayo 2026"),
+                (-5000, "withdrawal", "Retiro procesado vía PayPal"),
+            ];
+            insert_wallet_history(pool, admin_wallet_id, admin_id, admin_txs).await?;
+            insert_seed_withdrawal_request(
+                pool,
+                admin_id,
+                10000,
+                "pending",
+                "bank",
+                "ES89 3704 0044 0532 0130 00",
+                Some("Retiro mensual de comisiones"),
+            )
+            .await?;
+            withdrawal_count += 1;
+        }
 
         Ok((12000, withdrawal_count))
     }

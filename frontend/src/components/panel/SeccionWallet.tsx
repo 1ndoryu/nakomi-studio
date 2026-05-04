@@ -115,22 +115,21 @@ export function SeccionWallet() {
     return (
         <div className="walletContenedor">
             {/* Tarjeta de saldo + botón retiro */}
-            <div className="walletSaldoFila">
-                <div className="walletSaldoTarjeta">
-                    <div className="walletSaldoIcono">
-                        <Wallet size={24} />
-                    </div>
-                    <div className="walletSaldoInfo">
-                        <span className="walletSaldoLabel">Saldo disponible</span>
-                        <span className="walletSaldoValor">
-                            {formatBalance(saldoCents, wallet?.currency)}
-                        </span>
-                    </div>
+            <div className="walletSaldoTarjeta">
+                <div className="walletSaldoIcono">
+                    <Wallet size={24} />
+                </div>
+                <div className="walletSaldoInfo">
+                    <span className="walletSaldoLabel">Saldo disponible</span>
+                    <span className="walletSaldoValor">
+                        {formatBalance(saldoCents, wallet?.currency)}
+                    </span>
                 </div>
                 {saldoCents > 0 && (
                     <Button
                         variante="secundario"
                         tamano="pequeno"
+                        className="walletSaldoBotonRetiro"
                         onClick={() => setMostrarFormRetiro(v => !v)}
                     >
                         <Banknote size={16} />
