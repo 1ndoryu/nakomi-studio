@@ -15,6 +15,7 @@ Se endurecio el update de servicios del CMS para que no dependa de errores SQL g
 - `SubTabServicios` hace un preflight de slugs contra la lista ya cargada y corta el guardado si detecta que el slug ya pertenece a otro servicio.
 - `SubTabServicios` ahora valida también los planes antes del submit: slug y nombre obligatorios, slug único dentro del servicio, al menos una fase por plan y título obligatorio en cada fase.
 - El `PUT /api/admin/services/:id/plans` ya no falla en silencio en consola: si el backend responde `422`, el editor extrae `response.data.message` y lo muestra en toast.
+- `SubTabServicios` compara el snapshot original de planes con el payload actual y solo llama a `/plans` cuando realmente hubo cambios en la tab de planes.
 
 ## Efecto esperado
 
@@ -24,6 +25,7 @@ Se endurecio el update de servicios del CMS para que no dependa de errores SQL g
 - Si el conflicto es visible desde el listado ya cargado, el usuario recibe feedback inmediato sin esperar al roundtrip del API.
 - Si el conflicto solo existe en servidor, el panel sigue mostrando el mensaje real devuelto por el backend.
 - El editor evita guardados parciales cuando el problema real está en `plans`: corta antes del `PUT` principal si detecta payload inválido en la tab de planes.
+- Editar imagen, metadatos o campos generales ya no dispara un `PUT /plans` redundante que pueda ensuciar el flujo con un `422` ajeno.
 
 ## Alcance
 

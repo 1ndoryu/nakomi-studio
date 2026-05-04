@@ -185,3 +185,7 @@
 ## CMS de servicios - guardar servicio y planes en dos pasos exige preflight
 - Si el editor primero guarda el servicio y despues hace `PUT /plans`, cualquier validacion tardia de planes produce sensacion de guardado parcial. Antes del primer request hay que validar los invariantes minimos del segundo paso con el mismo contrato del backend.
 - En este slice, los invariantes minimos que no deben salir del cliente son: slug y nombre obligatorios por plan, slug unico dentro del servicio, al menos una fase por plan y titulo obligatorio por fase.
+
+## CMS de servicios - no mezclar guardado de metadatos con persistencia de planes
+- Si el usuario solo edita imagen, SEO o datos generales, el editor no debe volver a persistir `service_plans`. Un segundo request redundante puede fallar por deuda historica de planes y dejar la falsa impresion de que el campo principal “no guarda”.
+- Cuando una pantalla guarda recursos relacionados en dos endpoints, hay que detectar qué slice cambió realmente y disparar solo ese endpoint. La comparación contra el snapshot cargado evita roundtrips innecesarios y reduce errores cruzados.
