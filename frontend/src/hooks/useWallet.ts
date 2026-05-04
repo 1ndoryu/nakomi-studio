@@ -42,7 +42,7 @@ export function useWalletTransactions(page = 1, perPage = 20) {
     });
 
     return {
-        transacciones: data?.items ?? [],
+        transacciones: data?.transactions ?? data?.items ?? [],
         total: data?.total ?? 0,
         page: data?.page ?? 1,
         perPage: data?.per_page ?? perPage,
@@ -61,7 +61,7 @@ export function useWithdrawals(page = 1, perPage = 10) {
     });
 
     return {
-        solicitudes: data?.items ?? [],
+        solicitudes: data?.requests ?? data?.items ?? [],
         total: data?.total ?? 0,
         page: data?.page ?? 1,
         perPage: data?.per_page ?? perPage,
@@ -94,7 +94,7 @@ export function useAdminWithdrawals(page = 1, perPage = 20) {
     });
 
     return {
-        solicitudes: data?.items ?? [],
+        solicitudes: data?.requests ?? data?.items ?? [],
         total: data?.total ?? 0,
         page: data?.page ?? 1,
         perPage: data?.per_page ?? perPage,

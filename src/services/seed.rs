@@ -319,8 +319,16 @@ impl SeedService {
     /* [084A-25] Recrea datos suplementarios de prueba (no gestionados por fixtures).
      * Usuarios, órdenes, hosting, proyectos y equipo los gestiona content/ vía glory-rs.
      * Aquí solo creamos notificaciones, reviews, chat, activity y hosting_events. */
-    pub async fn recreate_test_data(pool: &PgPool) -> Result<String, sqlx::Error> {
+    pub async fn recreate_test_data(
+        pool: &PgPool,
+        seed_requester_id: Uuid,
+    ) -> Result<String, sqlx::Error> {
         Self::delete_supplemental_data(pool).await?;
+
+        /* [045A-1] La wallet del panel consulta SIEMPRE al user_id autenticado.
+         * Sembrar solo cliente@test.com / empleado@test.com deja la vista admin en $0.00.
+         * Por eso también limpiamos y recreamos movimientos/retiros para quien ejecuta el seed. */
+        Self::delete_wallet_seed_for_user(pool, seed_requester_id).await?;
 
         let client_id = Self::find_user(pool, "cliente@test.com").await?;
         let employee_id = Self::find_user(pool, "empleado@test.com").await?;
@@ -339,13 +347,14 @@ impl SeedService {
         let activity_count = Self::create_seed_activity(pool, client_id, employee_id).await?;
         let events_count = Self::create_seed_hosting_events(pool, client_id).await?;
         let (wallet_balance, withdrawal_count) =
-            Self::create_seed_wallet(pool, client_id, employee_id).await?;
+            Self::create_seed_wallet(pool, client_id, employee_id, seed_requester_id).await?;
 
         Ok(format!(
             "Seed completado: {notif_count} notificaciones + {review_count} reviews + \
              {chat_count} mensajes chat + {activity_count} activity log + \
              {events_count} hosting events + wallet ${:.2} + {withdrawal_count} retiros. \
-             Credenciales: cliente@test.com/cliente, empleado@test.com/empleado",
+             Incluye wallet demo para la sesión actual. Credenciales: cliente@test.com/cliente, \
+             empleado@test.com/empleado",
             f64::from(wallet_balance) / 100.0
         ))
     }
@@ -420,22 +429,24 @@ impl SeedService {
             .execute(pool)
             .await?;
 
-        /* [035A-33] Limpia también wallet del admin para permitir re-seed limpio.
-         * El admin no está en TEST_EMAILS (no se borra su cuenta), pero sí sus datos de prueba. */
-        if let Some(admin_id) = Self::find_user(pool, "admin@admin.com").await? {
-            sqlx::query("DELETE FROM withdrawal_requests WHERE user_id = $1")
-                .bind(admin_id)
-                .execute(pool)
-                .await?;
-            sqlx::query("DELETE FROM wallet_transactions WHERE user_id = $1")
-                .bind(admin_id)
-                .execute(pool)
-                .await?;
-            sqlx::query("DELETE FROM user_wallets WHERE user_id = $1")
-                .bind(admin_id)
-                .execute(pool)
-                .await?;
-        }
+        Ok(())
+    }
+
+    /* [045A-1] Limpieza puntual de wallet para la cuenta que ejecuta el seed.
+     * No tocamos sus notificaciones ni otras tablas ajenas al problema del panel wallet. */
+    async fn delete_wallet_seed_for_user(pool: &PgPool, user_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM withdrawal_requests WHERE user_id = $1")
+            .bind(user_id)
+            .execute(pool)
+            .await?;
+        sqlx::query("DELETE FROM wallet_transactions WHERE user_id = $1")
+            .bind(user_id)
+            .execute(pool)
+            .await?;
+        sqlx::query("DELETE FROM user_wallets WHERE user_id = $1")
+            .bind(user_id)
+            .execute(pool)
+            .await?;
 
         Ok(())
     }
@@ -656,6 +667,7 @@ impl SeedService {
         pool: &PgPool,
         client_id: Uuid,
         employee_id: Uuid,
+        seed_requester_id: Uuid,
     ) -> Result<(i32, u32), sqlx::Error> {
         /* Wallet cliente: $120.00 (pagos devueltos / créditos demo) */
         let client_wallet_id = upsert_seed_wallet(pool, client_id, 12000).await?;
@@ -739,18 +751,20 @@ impl SeedService {
         .await?;
         withdrawal_count += 1;
 
-        /* [035A-33] Wallet admin: datos de prueba para que el admin vea la sección con contenido.
-         * No borramos el admin en delete_test_data, solo sus datos wallet en delete_supplemental_data. */
-        if let Some(admin_id) = Self::find_user(pool, "admin@admin.com").await? {
-            let admin_wallet_id = upsert_seed_wallet(pool, admin_id, 25000).await?;
-            let admin_txs: &[(i32, &str, &str)] = &[
+        /* [045A-1] También sembramos la cuenta que ejecuta el seed, salvo que ya sea uno
+         * de los usuarios demo anteriores, para que el panel wallet muestre datos reales
+         * sin obligar a iniciar sesión con `cliente@test.com`. */
+        if seed_requester_id != client_id && seed_requester_id != employee_id {
+            let requester_wallet_id = upsert_seed_wallet(pool, seed_requester_id, 25000).await?;
+            let requester_txs: &[(i32, &str, &str)] = &[
                 (30000, "commission", "Comisión plataforma — Mayo 2026"),
                 (-5000, "withdrawal", "Retiro procesado vía PayPal"),
             ];
-            insert_wallet_history(pool, admin_wallet_id, admin_id, admin_txs).await?;
+            insert_wallet_history(pool, requester_wallet_id, seed_requester_id, requester_txs)
+                .await?;
             insert_seed_withdrawal_request(
                 pool,
-                admin_id,
+                seed_requester_id,
                 10000,
                 "pending",
                 "bank",

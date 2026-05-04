@@ -37,7 +37,7 @@ pub async fn recreate_seed(
         }
     }
 
-    let message = SeedService::recreate_test_data(&state.pool)
+    let message = SeedService::recreate_test_data(&state.pool, auth.user_id)
         .await
         .map_err(|e| AppError::Internal(format!("Error en seed: {e}")))?;
 

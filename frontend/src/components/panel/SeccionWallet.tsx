@@ -14,6 +14,10 @@ import './SeccionWallet.css';
 
 /* Mapa de tipos de transacción a etiquetas legibles */
 const TIPO_LABELS: Record<string, string> = {
+    credit: 'Crédito',
+    debit: 'Débito',
+    refund: 'Reembolso',
+    commission: 'Comisión',
     refund_credit: 'Reembolso',
     payment: 'Pago',
     withdrawal: 'Retiro',

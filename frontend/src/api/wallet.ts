@@ -27,7 +27,8 @@ export interface WalletTransactionResponse {
 }
 
 export interface WalletTransactionsPage {
-    items: WalletTransactionResponse[];
+    transactions?: WalletTransactionResponse[];
+    items?: WalletTransactionResponse[];
     total: number;
     page: number;
     per_page: number;
@@ -89,7 +90,8 @@ export interface WithdrawalRequestResponse {
 }
 
 export interface WithdrawalRequestsPage {
-    items: WithdrawalRequestResponse[];
+    requests?: WithdrawalRequestResponse[];
+    items?: WithdrawalRequestResponse[];
     total: number;
     page: number;
     per_page: number;
