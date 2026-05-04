@@ -16,8 +16,34 @@ use crate::models::{
     AdminServiceResponse, CreateServiceRequest, ReorderRequest, SaveServicePlansRequest,
     ServicePlanPhaseResponse, ServicePlanResponse, UpdateServiceRequest, UserRole,
 };
-use crate::repositories::ServiceRepository;
+use crate::repositories::{ServiceRepository, UpdateServiceParams};
 use crate::AppState;
+
+/* [045A-2] Los writes de services reportan conflictos/validaciones comunes como 4xx.
+ * El CMS deja de ver un 500 genérico ante slugs duplicados o campos truncados. */
+fn map_service_write_error(error: sqlx::Error, slug: Option<&str>) -> AppError {
+    if let sqlx::Error::Database(ref db_err) = error {
+        match db_err.code().as_deref() {
+            Some("23505") if db_err.constraint() == Some("services_slug_key") => {
+                let slug = slug.unwrap_or("slug");
+                return AppError::Conflict(format!("El slug '{slug}' ya existe"));
+            }
+            Some("22001") => {
+                return AppError::Validation(
+                    "Uno de los campos del servicio excede la longitud permitida".into(),
+                );
+            }
+            Some("23514") => {
+                return AppError::Validation(
+                    "Los datos del servicio no cumplen las restricciones esperadas".into(),
+                );
+            }
+            _ => {}
+        }
+    }
+
+    AppError::from(error)
+}
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -112,7 +138,9 @@ async fn create(
     body.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
-    let svc = ServiceRepository::create_service(&state.pool, &body).await?;
+    let svc = ServiceRepository::create_service(&state.pool, &body)
+        .await
+        .map_err(|error| map_service_write_error(error, Some(body.slug.as_str())))?;
 
     let response = AdminServiceResponse {
         id: svc.id,
@@ -156,13 +184,34 @@ async fn update(
     Json(body): Json<UpdateServiceRequest>,
 ) -> Result<Json<AdminServiceResponse>, AppError> {
     auth.require_role(&[UserRole::Admin])?;
+    body.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     /* Verificar que el servicio existe */
     ServiceRepository::find_service_by_id(&state.pool, id)
         .await?
         .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
 
-    let svc = ServiceRepository::update_service(&state.pool, id, &body).await?;
+    let params = UpdateServiceParams {
+        title: body.title.as_deref(),
+        slug: body.slug.as_deref(),
+        description: body.description.as_deref(),
+        base_price_cents: body.base_price_cents,
+        currency: body.currency.as_deref(),
+        is_active: body.is_active,
+        image_url: body.image_url.as_deref(),
+        gallery: body.gallery.as_ref(),
+        skills: body.skills.as_ref(),
+        content: body.content.as_deref(),
+        meta_title: body.meta_title.as_deref(),
+        meta_description: body.meta_description.as_deref(),
+        status: body.status.as_deref(),
+        sort_order: body.sort_order,
+    };
+
+    let svc = ServiceRepository::update_service(&state.pool, id, &params)
+        .await
+        .map_err(|error| map_service_write_error(error, body.slug.as_deref()))?;
 
     /* Incluir planes actualizados en la respuesta */
     let plans = ServiceRepository::list_plans_for_service(&state.pool, svc.id).await?;

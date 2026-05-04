@@ -12,6 +12,25 @@ use crate::models::{SavePhaseItem, SavePlanItem, ServicePlan, ServicePlanPhase, 
 
 pub struct ServiceRepository;
 
+/* [045A-1] Services update adopta el mismo patrón paramétrico que projects.
+ * Reduce la fragilidad del query macro en partial updates y centraliza binds tipados. */
+pub struct UpdateServiceParams<'a> {
+    pub title: Option<&'a str>,
+    pub slug: Option<&'a str>,
+    pub description: Option<&'a str>,
+    pub base_price_cents: Option<i32>,
+    pub currency: Option<&'a str>,
+    pub is_active: Option<bool>,
+    pub image_url: Option<&'a str>,
+    pub gallery: Option<&'a serde_json::Value>,
+    pub skills: Option<&'a serde_json::Value>,
+    pub content: Option<&'a str>,
+    pub meta_title: Option<&'a str>,
+    pub meta_description: Option<&'a str>,
+    pub status: Option<&'a str>,
+    pub sort_order: Option<i32>,
+}
+
 async fn fetch_existing_service_plans(
     tx: &mut Transaction<'_, Postgres>,
     service_id: Uuid,
@@ -348,11 +367,10 @@ impl ServiceRepository {
     pub async fn update_service(
         pool: &PgPool,
         id: Uuid,
-        params: &crate::models::UpdateServiceRequest,
+        params: &UpdateServiceParams<'_>,
     ) -> Result<ServiceRecord, sqlx::Error> {
-        sqlx::query_as!(
-            ServiceRecord,
-            r#"UPDATE services SET
+        sqlx::query_as::<_, ServiceRecord>(
+            r"UPDATE services SET
              title = COALESCE($2, title),
              slug = COALESCE($3, slug),
              description = COALESCE($4, description),
@@ -370,23 +388,23 @@ impl ServiceRepository {
              updated_at = NOW()
              WHERE id = $1
              RETURNING id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,
-             image_url, gallery, skills, content, meta_title, meta_description, status, updated_at"#,
-            id,
-            params.title,
-            params.slug,
-            params.description,
-            params.base_price_cents,
-            params.currency,
-            params.is_active,
-            params.image_url,
-            params.gallery.clone(),
-            params.skills.clone(),
-            params.content,
-            params.meta_title,
-            params.meta_description,
-            params.status,
-            params.sort_order,
+               image_url, gallery, skills, content, meta_title, meta_description, status, updated_at",
         )
+        .bind(id)
+        .bind(params.title)
+        .bind(params.slug)
+        .bind(params.description)
+        .bind(params.base_price_cents)
+        .bind(params.currency)
+        .bind(params.is_active)
+        .bind(params.image_url)
+        .bind(params.gallery)
+        .bind(params.skills)
+        .bind(params.content)
+        .bind(params.meta_title)
+        .bind(params.meta_description)
+        .bind(params.status)
+        .bind(params.sort_order)
         .fetch_one(pool)
         .await
     }

@@ -9,8 +9,7 @@ import {useTranslation} from 'react-i18next';
 import {spaClick} from '../navegacionSPA';
 import '../styles/variables.css';
 import './ProyectosIsland.css';
-import {LayoutPagina} from '../components/layout/LayoutPagina';
-import {SEOHead} from '../components/seo/SEOHead';
+import {CatalogPageShell} from '../components/layout/CatalogPageShell';
 import {mapAdminProjectsToProyectos} from '../data/showcase';
 import {CATEGORIAS_PROYECTOS} from '../data/navegacion';
 import {BarraFiltros} from '../components/servicios/BarraFiltros';
@@ -82,43 +81,30 @@ export const ProyectosIsland = ({titulo}: ProyectosIslandProps): JSX.Element => 
     }, [busqueda, categoriaActiva, proyectos]);
 
     return (
-        <LayoutPagina className="proyectosMain" id="paginaProyectos">
-            <SEOHead
-                title="Proyectos"
-                description="Portfolio de proyectos de desarrollo web y diseño digital de Nakomi Studio."
-                path="/proyectos"
+        <CatalogPageShell
+            id="paginaProyectos"
+            seoTitle="Proyectos"
+            seoDescription="Portfolio de proyectos de desarrollo web y diseño digital de Nakomi Studio."
+            path="/proyectos"
+            title={titulo || t('projects_page.title')}
+            description={t('projects_page.description')}
+        >
+            <BarraFiltros
+                categorias={CATEGORIAS_PROYECTOS}
+                categoriaActiva={categoriaActiva}
+                busqueda={busqueda}
+                onCategoriaChange={setCategoriaActiva}
+                onBusquedaChange={setBusqueda}
             />
-            <section className="proyectosHero">
-                <div className="heroContenido">
-                    <div>
-                        <h1 className="heroTitulo">{titulo || t('projects_page.title')}</h1>
-                    </div>
-                    <div className="heroDescripcion">
-                        <p>{t('projects_page.description')}</p>
-                    </div>
-                </div>
-            </section>
-
-            <section className="proyectosContenido">
-                <div className="proyectosContenedor">
-                    <BarraFiltros
-                        categorias={CATEGORIAS_PROYECTOS}
-                        categoriaActiva={categoriaActiva}
-                        busqueda={busqueda}
-                        onCategoriaChange={setCategoriaActiva}
-                        onBusquedaChange={setBusqueda}
-                    />
-                    <div className="proyectosGrid">
-                        {proyectosFiltrados.map((proyecto, i) => (
-                            <TarjetaProyecto key={proyecto.id} proyecto={proyecto} indice={i} />
-                        ))}
-                    </div>
-                    {proyectosFiltrados.length === 0 && (
-                        <p className="proyectosSinResultados">{t('projects_page.empty')}</p>
-                    )}
-                </div>
-            </section>
-        </LayoutPagina>
+            <div className="proyectosGrid">
+                {proyectosFiltrados.map((proyecto, i) => (
+                    <TarjetaProyecto key={proyecto.id} proyecto={proyecto} indice={i} />
+                ))}
+            </div>
+            {proyectosFiltrados.length === 0 && (
+                <p className="proyectosSinResultados">{t('projects_page.empty')}</p>
+            )}
+        </CatalogPageShell>
     );
 };
 

@@ -130,20 +130,29 @@ pub struct CreateServiceRequest {
 }
 
 /* [074A-8] Request para actualizar servicio (todos opcionales) */
-#[derive(Debug, Deserialize, ToSchema)]
+/* [045A-1] El update del CMS valida límites básicos antes de tocar BD para evitar
+ * 500 por truncados o payloads inconsistentes. */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateServiceRequest {
+    #[validate(length(min = 1, max = 200))]
     pub title: Option<String>,
+    #[validate(length(min = 1, max = 100))]
     pub slug: Option<String>,
     pub description: Option<String>,
+    #[validate(range(min = 0))]
     pub base_price_cents: Option<i32>,
+    #[validate(length(min = 3, max = 3))]
     pub currency: Option<String>,
     pub is_active: Option<bool>,
+    #[validate(length(max = 500))]
     pub image_url: Option<String>,
     pub gallery: Option<serde_json::Value>,
     pub skills: Option<serde_json::Value>,
     pub content: Option<String>,
+    #[validate(length(max = 255))]
     pub meta_title: Option<String>,
     pub meta_description: Option<String>,
+    #[validate(length(min = 1, max = 20))]
     pub status: Option<String>,
     pub sort_order: Option<i32>,
 }

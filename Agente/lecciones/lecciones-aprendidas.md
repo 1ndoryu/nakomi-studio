@@ -169,3 +169,11 @@
 ## Auditorías vagas - convertirlas en backlog ejecutable
 - Si el roadmap trae una tarea tipo “hay que revisar” o “presiento que falta mucho”, cerrarla solo con lectura no alcanza. Hay que salir de la auditoría con un documento, un plan activo y subtareas concretas reinsertadas en el roadmap.
 - En hosting, el valor real de la revisión estuvo en separar claramente: provisioning, ciclo de cobro/suspensión, datos reales del servidor y dominios. Sin ese corte, todo queda escondido en una sola tarea imposible de cerrar.
+
+## CMS de servicios - update no puede delegar el contrato a SQLx
+- Si el panel edita `services`, el handler de update debe llamar `validate()` igual que create y mapear conflictos/constraints frecuentes a `409/422`. Dejar que `sqlx::Error` suba crudo convierte errores previsibles del CMS en `500` opacos.
+- Cuando el slice ya tiene una version mas robusta en otro dominio cercano, conviene copiar el patron completo. En este caso, `UpdateServiceParams<'_>` + `query_as::<_, ServiceRecord>(...).bind(...)` dejo services alineado con projects y evito pelear con una macro mas fragil para updates parciales.
+
+## Catalogos publicos - la shell compartida va antes que dos CSS parecidas
+- Si servicios y proyectos tienen la misma pagina a nivel de hero, contenedor y espaciado, ese layout debe vivir en un componente compartido. Mantener dos islands con wrappers casi iguales solo garantiza drift visual y correcciones duplicadas.
+- Antes de “arreglar el padding” de una clase legacy, buscar todos sus consumidores. `serviciosContenedor` y `proyectosContenedor` ya se usaban fuera del catalogo publico, asi que la solucion segura fue crear clases nuevas `catalogPage*` y mover el layout comun a una shell dedicada.

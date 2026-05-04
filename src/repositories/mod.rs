@@ -40,7 +40,7 @@ pub use project::{CreateProjectParams, ProjectRepository, UpdateProjectParams};
 pub use public_profile::PublicProfileRepository;
 pub use refund::RefundRepository;
 pub use review::ReviewRepository;
-pub use service::ServiceRepository;
+pub use service::{ServiceRepository, UpdateServiceParams};
 pub use team_member::{CreateTeamMemberParams, TeamMemberRepository, UpdateTeamMemberParams};
 pub use user::{UserRepository, UserWithTotal};
 pub use vps::{CreateVpsSubscriptionParams, ProvisionedVpsInfo, VpsRepository};

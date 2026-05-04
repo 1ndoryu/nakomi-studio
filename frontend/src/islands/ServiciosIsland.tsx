@@ -5,9 +5,7 @@
  */
 import '../styles/variables.css';
 import {useTranslation} from 'react-i18next';
-import './ServiciosIsland.css';
-import {LayoutPagina} from '../components/layout/LayoutPagina';
-import {SEOHead} from '../components/seo/SEOHead';
+import {CatalogPageShell} from '../components/layout/CatalogPageShell';
 import {BarraFiltros} from '../components/servicios/BarraFiltros';
 import {GridServicios} from '../components/servicios/GridServicios';
 import {useServicios} from '../hooks/useServicios';
@@ -22,31 +20,17 @@ export const ServiciosIsland = ({titulo}: ServiciosIslandProps): JSX.Element => 
     const {categoriaActiva, setCategoriaActiva, busqueda, setBusqueda, serviciosFiltrados} = useServicios();
 
     return (
-        <LayoutPagina className="serviciosMain" id="paginaServicios">
-            <SEOHead
-                title="Servicios"
-                description="Descubre nuestros servicios de desarrollo web, diseño UI/UX y soluciones digitales a medida."
-                path="/servicios"
-            />
-            <section className="serviciosHero">
-                <div className="heroContenido">
-                    <div>
-                        <h1 className="heroTitulo">{titulo || t('services_page.title')}</h1>
-                    </div>
-
-                    <div className="heroDescripcion">
-                        <p>{t('services_page.description')}</p>
-                    </div>
-                </div>
-            </section>
-
-            <section className="serviciosContenido">
-                <div className="serviciosContenedor">
-                    <BarraFiltros categorias={CATEGORIAS_SERVICIOS} categoriaActiva={categoriaActiva} busqueda={busqueda} onCategoriaChange={setCategoriaActiva} onBusquedaChange={setBusqueda} />
-                    <GridServicios servicios={serviciosFiltrados} />
-                </div>
-            </section>
-        </LayoutPagina>
+        <CatalogPageShell
+            id="paginaServicios"
+            seoTitle="Servicios"
+            seoDescription="Descubre nuestros servicios de desarrollo web, diseño UI/UX y soluciones digitales a medida."
+            path="/servicios"
+            title={titulo || t('services_page.title')}
+            description={t('services_page.description')}
+        >
+            <BarraFiltros categorias={CATEGORIAS_SERVICIOS} categoriaActiva={categoriaActiva} busqueda={busqueda} onCategoriaChange={setCategoriaActiva} onBusquedaChange={setBusqueda} />
+            <GridServicios servicios={serviciosFiltrados} />
+        </CatalogPageShell>
     );
 };
 
