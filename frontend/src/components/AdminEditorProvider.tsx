@@ -29,6 +29,11 @@ import {
     type SavePlanBody,
 } from '../api/admin-services';
 import {
+    didServicePlansChange,
+    extractServiceApiMessage,
+    validateServicePlans,
+} from '../utils/servicePlanEditorUtils';
+import {
     apiListAdminBlog,
     apiUpdateBlogPost,
     apiArchiveBlogPost,
@@ -138,18 +143,30 @@ export function AdminEditorProvider() {
         if (!itemId) return;
         setGuardando(true);
         try {
+            const shouldSavePlans = didServicePlansChange(currentService, planes);
+
+            if (shouldSavePlans) {
+                const plansError = validateServicePlans(planes);
+                if (plansError) {
+                    toast.error(plansError);
+                    return;
+                }
+            }
+
             await apiUpdateService(itemId, body as UpdateServiceBody);
-            if (planes.length > 0) await apiSaveServicePlans(itemId, planes);
+            if (shouldSavePlans) {
+                await apiSaveServicePlans(itemId, planes);
+            }
             queryClient.invalidateQueries({ queryKey: ['admin-services'] });
             queryClient.invalidateQueries({ queryKey: ['public'] });
             toast.success('Servicio actualizado');
             close();
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Error al guardar');
+            toast.error(extractServiceApiMessage(err, 'Error al guardar'));
         } finally {
             setGuardando(false);
         }
-    }, [itemId, close, queryClient]);
+    }, [itemId, currentService, close, queryClient]);
 
     const handleGuardarBlog = useCallback(async (
         body: CreateBlogPostBody | UpdateBlogPostBody,

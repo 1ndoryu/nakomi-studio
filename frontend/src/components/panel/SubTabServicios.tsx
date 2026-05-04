@@ -3,158 +3,21 @@
  * sentinel-disable-file componente-sin-hook: Los callbacks son wiring trivial que
  * delega a useContenidoServicios. La lógica real vive en el hook. */
 import React, {useState, useCallback} from 'react';
-import {isAxiosError} from 'axios';
 import {ListaServicios} from './ListaServicios';
 import {EditorServicio} from './EditorServicio';
 import {useContenidoServicios} from '../../hooks/useContenidoServicios';
-import type {AdminService, AdminServicePlan, CreateServiceBody, UpdateServiceBody, SavePlanBody} from '../../api/admin-services';
+import type {AdminService, CreateServiceBody, UpdateServiceBody, SavePlanBody} from '../../api/admin-services';
 import {apiSaveServicePlans} from '../../api/admin-services';
 import {toast} from '../../stores/toastStore';
+import {
+    didServicePlansChange,
+    extractServiceApiMessage,
+    normalizeServiceSlug,
+    validateServicePlans,
+} from '../../utils/servicePlanEditorUtils';
 
 /* [045A-4] Preflight local de slug para no esperar al roundtrip del 409.
  * El backend sigue siendo la fuente de verdad; esto solo adelanta el feedback cuando el listado ya contiene el conflicto. */
-function normalizarSlug(slug: string | undefined): string {
-    return (slug ?? '').trim().toLowerCase();
-}
-
-function extraerMensajeApi(err: unknown, fallback: string): string {
-    if (isAxiosError(err) && err.response?.data) {
-        const data = err.response.data as Record<string, unknown>;
-        if (typeof data.message === 'string' && data.message.trim().length > 0) {
-            return data.message;
-        }
-    }
-
-    return err instanceof Error ? err.message : fallback;
-}
-
-function describirPlan(plan: SavePlanBody, index: number): string {
-    return plan.name.trim() || plan.slug.trim() || `plan ${index + 1}`;
-}
-
-function normalizarFeatures(features: unknown): string[] {
-    if (!Array.isArray(features)) {
-        return [];
-    }
-
-    return features.map(feature => {
-        if (typeof feature === 'object' && feature !== null && 'texto' in feature) {
-            return String((feature as Record<string, unknown>).texto);
-        }
-
-        return String(feature);
-    });
-}
-
-function serializarPlanesGuardados(planes: SavePlanBody[]): string {
-    return JSON.stringify(
-        planes.map((plan, index) => ({
-            id: plan.id ?? null,
-            slug: plan.slug,
-            name: plan.name,
-            price_cents: plan.price_cents,
-            description: plan.description ?? null,
-            features: [...plan.features],
-            is_highlighted: plan.is_highlighted,
-            is_custom: plan.is_custom,
-            sort_order: plan.sort_order ?? index,
-            phases: plan.phases.map(phase => ({
-                phase_number: phase.phase_number,
-                title: phase.title,
-                description: phase.description ?? null,
-                percentage_of_total: phase.percentage_of_total,
-                estimated_days: phase.estimated_days,
-                max_revisions: phase.max_revisions,
-            })),
-        })),
-    );
-}
-
-function convertirPlanesAdminASaveBody(planes: AdminServicePlan[]): SavePlanBody[] {
-    return planes.map((plan, index) => ({
-        id: plan.id,
-        slug: plan.slug,
-        name: plan.name,
-        price_cents: plan.price_cents,
-        description: plan.description ?? null,
-        features: normalizarFeatures(plan.features),
-        is_highlighted: plan.is_highlighted,
-        is_custom: plan.is_custom,
-        sort_order: index,
-        phases: plan.phases.map(phase => ({
-            phase_number: phase.phase_number,
-            title: phase.title,
-            description: phase.description ?? null,
-            percentage_of_total: phase.percentage_of_total,
-            estimated_days: phase.estimated_days,
-            max_revisions: phase.max_revisions,
-        })),
-    }));
-}
-
-/* [045A-6] Editar metadatos del servicio no debe regrabar planes si no cambiaron.
- * El guardado de planes se ejecuta solo cuando el payload difiere del snapshot cargado. */
-function planesCambiaron(servicio: AdminService | null, planesActuales: SavePlanBody[]): boolean {
-    if (!servicio) {
-        return planesActuales.length > 0;
-    }
-
-    const originales = convertirPlanesAdminASaveBody(servicio.plans);
-    return serializarPlanesGuardados(originales) !== serializarPlanesGuardados(planesActuales);
-}
-
-/* [045A-5] El guardado de planes no puede quedar como segundo paso ciego.
- * Si el payload ya es inválido en el CMS, se corta antes del PUT principal para evitar guardados parciales. */
-function validarPlanes(planes: SavePlanBody[]): string | null {
-    const slugs = new Map<string, string>();
-
-    for (const [planIndex, plan] of planes.entries()) {
-        const nombrePlan = describirPlan(plan, planIndex);
-        const slug = plan.slug.trim();
-        const name = plan.name.trim();
-
-        if (!slug) {
-            return `El ${nombrePlan} debe tener un slug`;
-        }
-
-        if (slug.length > 50) {
-            return `El slug del ${nombrePlan} no puede exceder 50 caracteres`;
-        }
-
-        const slugNormalizado = normalizarSlug(slug);
-        const slugDuplicado = slugs.get(slugNormalizado);
-        if (slugDuplicado) {
-            return `Los planes "${slugDuplicado}" y "${nombrePlan}" no pueden compartir el mismo slug`;
-        }
-        slugs.set(slugNormalizado, nombrePlan);
-
-        if (!name) {
-            return `El ${nombrePlan} debe tener un nombre`;
-        }
-
-        if (name.length > 100) {
-            return `El nombre del ${nombrePlan} no puede exceder 100 caracteres`;
-        }
-
-        if (plan.phases.length === 0) {
-            return `El ${nombrePlan} debe tener al menos una fase configurada`;
-        }
-
-        for (const fase of plan.phases) {
-            const titulo = fase.title.trim();
-            if (!titulo) {
-                return `La fase ${fase.phase_number} del ${nombrePlan} debe tener un título`;
-            }
-
-            if (titulo.length > 200) {
-                return `El título de la fase ${fase.phase_number} del ${nombrePlan} no puede exceder 200 caracteres`;
-            }
-        }
-    }
-
-    return null;
-}
-
 export const SubTabServicios: React.FC = () => {
     const {servicios, cargando, error, guardando, crear, actualizar, archivar, eliminar: eliminarServicio, reordenar, recargar} = useContenidoServicios();
     const [editorAbierto, setEditorAbierto] = useState(false);
@@ -172,18 +35,18 @@ export const SubTabServicios: React.FC = () => {
 
     /* [154A-2] Refetch después de guardar planes para que features se reflejen en estado */
     const handleGuardar = useCallback(async (body: CreateServiceBody | UpdateServiceBody, planes: SavePlanBody[]) => {
-        const requiereGuardarPlanes = planesCambiaron(servicioEditando, planes);
+        const requiereGuardarPlanes = didServicePlansChange(servicioEditando, planes);
 
         if (requiereGuardarPlanes) {
-            const errorPlanes = validarPlanes(planes);
+            const errorPlanes = validateServicePlans(planes);
             if (errorPlanes) {
                 toast.error(errorPlanes);
                 return;
             }
         }
 
-        const slug = normalizarSlug(body.slug);
-        const conflicto = servicios.find(servicio => normalizarSlug(servicio.slug) === slug && servicio.id !== servicioEditando?.id);
+        const slug = normalizeServiceSlug(body.slug);
+        const conflicto = servicios.find(servicio => normalizeServiceSlug(servicio.slug) === slug && servicio.id !== servicioEditando?.id);
 
         if (slug && conflicto) {
             toast.error(`El slug "${body.slug}" ya existe en "${conflicto.title}"`);
@@ -197,7 +60,7 @@ export const SubTabServicios: React.FC = () => {
                     try {
                         await apiSaveServicePlans(servicioEditando.id, planes);
                     } catch (err: unknown) {
-                        toast.error(extraerMensajeApi(err, 'Error al guardar planes del servicio'));
+                        toast.error(extractServiceApiMessage(err, 'Error al guardar planes del servicio'));
                         return;
                     }
                 }
@@ -212,7 +75,7 @@ export const SubTabServicios: React.FC = () => {
                         await apiSaveServicePlans(result.id, planes);
                     } catch (err: unknown) {
                         setServicioEditando(result);
-                        toast.error(extraerMensajeApi(err, 'Error al guardar planes del servicio'));
+                        toast.error(extractServiceApiMessage(err, 'Error al guardar planes del servicio'));
                         return;
                     }
                 }

@@ -189,3 +189,7 @@
 ## CMS de servicios - no mezclar guardado de metadatos con persistencia de planes
 - Si el usuario solo edita imagen, SEO o datos generales, el editor no debe volver a persistir `service_plans`. Un segundo request redundante puede fallar por deuda historica de planes y dejar la falsa impresion de que el campo principal “no guarda”.
 - Cuando una pantalla guarda recursos relacionados en dos endpoints, hay que detectar qué slice cambió realmente y disparar solo ese endpoint. La comparación contra el snapshot cargado evita roundtrips innecesarios y reduce errores cruzados.
+
+## Editor inline vs panel - un fix no existe si el control path real sigue duplicado
+- Cuando una misma UI reutiliza el mismo modal pero lo monta desde dos owners distintos, no basta con corregir uno. Si el stack apunta a otro provider, hay que seguir ese call site exacto antes de dar el bug por cerrado.
+- Si dos flows necesitan decidir lo mismo sobre persistencia (`guardar planes o no`), extraer un helper compartido es más seguro que copiar la condición. En este caso, el drift entre `SubTabServicios` y `AdminEditorProvider` mantuvo vivo el 422 aunque el panel ya estaba corregido.

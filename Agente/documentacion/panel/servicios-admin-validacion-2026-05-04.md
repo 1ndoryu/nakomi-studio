@@ -16,6 +16,7 @@ Se endurecio el update de servicios del CMS para que no dependa de errores SQL g
 - `SubTabServicios` ahora valida también los planes antes del submit: slug y nombre obligatorios, slug único dentro del servicio, al menos una fase por plan y título obligatorio en cada fase.
 - El `PUT /api/admin/services/:id/plans` ya no falla en silencio en consola: si el backend responde `422`, el editor extrae `response.data.message` y lo muestra en toast.
 - `SubTabServicios` compara el snapshot original de planes con el payload actual y solo llama a `/plans` cuando realmente hubo cambios en la tab de planes.
+- `AdminEditorProvider` usa ahora exactamente la misma decisión y validación que `SubTabServicios`, porque el editor inline de `/servicios` seguía ejecutando un flow duplicado que siempre regrababa planes.
 
 ## Efecto esperado
 
@@ -26,6 +27,7 @@ Se endurecio el update de servicios del CMS para que no dependa de errores SQL g
 - Si el conflicto solo existe en servidor, el panel sigue mostrando el mensaje real devuelto por el backend.
 - El editor evita guardados parciales cuando el problema real está en `plans`: corta antes del `PUT` principal si detecta payload inválido en la tab de planes.
 - Editar imagen, metadatos o campos generales ya no dispara un `PUT /plans` redundante que pueda ensuciar el flujo con un `422` ajeno.
+- El overlay admin de páginas públicas y el CMS panel dejan de divergir en el criterio de persistencia: ambos comparten helper para detectar cambios reales en planes y para mostrar el mensaje útil del backend.
 
 ## Alcance
 
