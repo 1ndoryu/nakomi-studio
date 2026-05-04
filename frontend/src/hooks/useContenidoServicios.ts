@@ -1,6 +1,7 @@
 /* [074A-9] Hook para gestión de servicios en panel CMS.
  * Encapsula: listado, creación, actualización, archivado. */
 import {useState, useCallback, useEffect} from 'react';
+import {isAxiosError} from 'axios';
 import {
     AdminService,
     CreateServiceBody,
@@ -12,6 +13,20 @@ import {
     apiDestroyService,
     apiReorderServices,
 } from '../api/admin-services';
+import {toast} from '../stores/toastStore';
+
+/* [045A-4] El CMS de servicios debe exponer el mensaje real del backend.
+ * Si el API devuelve un 409/422 con `message`, no lo degradamos a "Request failed...". */
+function extraerMensajeServicios(err: unknown, fallback: string): string {
+    if (isAxiosError(err) && err.response?.data) {
+        const data = err.response.data as Record<string, unknown>;
+        if (typeof data.message === 'string' && data.message.trim().length > 0) {
+            return data.message;
+        }
+    }
+
+    return err instanceof Error ? err.message : fallback;
+}
 
 export function useContenidoServicios() {
     const [servicios, setServicios] = useState<AdminService[]>([]);
@@ -26,7 +41,7 @@ export function useContenidoServicios() {
             const data = await apiListAdminServices();
             setServicios(data);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Error al cargar servicios';
+            const msg = extraerMensajeServicios(err, 'Error al cargar servicios');
             setError(msg);
         } finally {
             setCargando(false);
@@ -45,8 +60,9 @@ export function useContenidoServicios() {
             setServicios(prev => [...prev, nuevo]);
             return nuevo;
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Error al crear servicio';
+            const msg = extraerMensajeServicios(err, 'Error al crear servicio');
             setError(msg);
+            toast.error(msg);
             return null;
         } finally {
             setGuardando(false);
@@ -61,8 +77,9 @@ export function useContenidoServicios() {
             setServicios(prev => prev.map(s => s.id === id ? actualizado : s));
             return actualizado;
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Error al actualizar servicio';
+            const msg = extraerMensajeServicios(err, 'Error al actualizar servicio');
             setError(msg);
+            toast.error(msg);
             return null;
         } finally {
             setGuardando(false);
@@ -77,8 +94,9 @@ export function useContenidoServicios() {
             setServicios(prev => prev.map(s => s.id === id ? {...s, is_active: false, status: 'archived'} : s));
             return true;
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Error al archivar servicio';
+            const msg = extraerMensajeServicios(err, 'Error al archivar servicio');
             setError(msg);
+            toast.error(msg);
             return false;
         } finally {
             setGuardando(false);
@@ -94,8 +112,9 @@ export function useContenidoServicios() {
             setServicios(prev => prev.filter(s => s.id !== id));
             return true;
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Error al eliminar servicio';
+            const msg = extraerMensajeServicios(err, 'Error al eliminar servicio');
             setError(msg);
+            toast.error(msg);
             return false;
         } finally {
             setGuardando(false);
@@ -115,8 +134,9 @@ export function useContenidoServicios() {
             return true;
         } catch (err: unknown) {
             setServicios(prev);
-            const msg = err instanceof Error ? err.message : 'Error al reordenar servicios';
+            const msg = extraerMensajeServicios(err, 'Error al reordenar servicios');
             setError(msg);
+            toast.error(msg);
             return false;
         }
     }, [servicios]);

@@ -177,3 +177,11 @@
 ## Catalogos publicos - la shell compartida va antes que dos CSS parecidas
 - Si servicios y proyectos tienen la misma pagina a nivel de hero, contenedor y espaciado, ese layout debe vivir en un componente compartido. Mantener dos islands con wrappers casi iguales solo garantiza drift visual y correcciones duplicadas.
 - Antes de “arreglar el padding” de una clase legacy, buscar todos sus consumidores. `serviciosContenedor` y `proyectosContenedor` ya se usaban fuera del catalogo publico, asi que la solucion segura fue crear clases nuevas `catalogPage*` y mover el layout comun a una shell dedicada.
+
+## CMS de servicios - un 409 util no sirve si el frontend lo esconde
+- Si el backend devuelve `ErrorResponse { message }`, los hooks del panel no deben quedarse con `err.message` de Axios. Hay que extraer `response.data.message`; si no, una mejora real del contrato HTTP termina viendose como otro error generico de red.
+- Cuando el formulario ya tiene en memoria el conjunto completo de slugs, conviene hacer preflight local antes del submit. El servidor sigue siendo la verdad final, pero el usuario recibe feedback inmediato y se evita un roundtrip inutil para conflictos obvios.
+
+## CMS de servicios - guardar servicio y planes en dos pasos exige preflight
+- Si el editor primero guarda el servicio y despues hace `PUT /plans`, cualquier validacion tardia de planes produce sensacion de guardado parcial. Antes del primer request hay que validar los invariantes minimos del segundo paso con el mismo contrato del backend.
+- En este slice, los invariantes minimos que no deben salir del cliente son: slug y nombre obligatorios por plan, slug unico dentro del servicio, al menos una fase por plan y titulo obligatorio por fase.
