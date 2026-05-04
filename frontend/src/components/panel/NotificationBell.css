@@ -100,6 +100,9 @@
   padding: var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid var(--border-default);
   transition: background 0.15s;
+  /* [035A-31] Ancho completo para evitar scroll horizontal */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .notificationBell__item:last-child {
@@ -138,6 +141,10 @@
   font-size: var(--text-sm);
   font-weight: 500;
   line-height: 1.3;
+  /* [035A-31] Truncar texto largo que provoca scroll horizontal */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notificationBell__itemBody {

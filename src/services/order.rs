@@ -530,12 +530,13 @@ impl OrderService {
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Fase {phase_number} no encontrada")))?;
 
+        /* [035A-30] También se permite editar fases in_progress (p.ej. ajustar precio/días) */
         if !matches!(
             phase.status,
-            PhaseStatus::Locked | PhaseStatus::PendingPayment
+            PhaseStatus::Locked | PhaseStatus::PendingPayment | PhaseStatus::InProgress
         ) {
             return Err(AppError::BadRequest(
-                "Solo se pueden definir fases que aÃºn no comenzaron".into(),
+                "Solo se pueden editar fases que no han sido entregadas o aprobadas".into(),
             ));
         }
 
@@ -595,7 +596,90 @@ impl OrderService {
 
         Ok(crate::models::OrderPhaseResponse::from(updated))
     }
+    /* [035A-30] Agrega una nueva fase bloqueada al final de la orden (solo phased).
+     * Validaciones: orden existe, payment_mode = Phased, usuario autorizado.
+     * Gotcha: el empleado debe estar asignado; admin siempre puede. */
+    pub async fn add_phase(
+        pool: &PgPool,
+        order_id: Uuid,
+        user_id: Uuid,
+        effective_role: crate::models::UserRole,
+    ) -> Result<crate::models::OrderPhaseResponse, AppError> {
+        use crate::models::UserRole;
 
+        let order = OrderRepository::find_order_by_id(pool, order_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
+
+        if order.payment_mode != PaymentMode::Phased {
+            return Err(AppError::BadRequest(
+                "Solo las órdenes por fases admiten gestión manual de fases".into(),
+            ));
+        }
+
+        if effective_role != UserRole::Admin
+            && order.assigned_employee_id != Some(user_id)
+        {
+            return Err(AppError::Forbidden(
+                "Solo el empleado asignado o un administrador puede gestionar las fases".into(),
+            ));
+        }
+
+        let max_num = OrderRepository::max_phase_number(pool, order_id).await?;
+        let new_num = max_num + 1;
+        let phase = OrderRepository::add_order_phase(pool, order_id, new_num).await?;
+        Ok(crate::models::OrderPhaseResponse::from(phase))
+    }
+
+    /* [035A-30] Elimina una fase bloqueada de la orden (solo phased).
+     * Solo se pueden eliminar fases en estado 'locked'.
+     * Gotcha: el empleado debe estar asignado; admin siempre puede. */
+    pub async fn delete_phase(
+        pool: &PgPool,
+        order_id: Uuid,
+        phase_number: i32,
+        user_id: Uuid,
+        effective_role: crate::models::UserRole,
+    ) -> Result<(), AppError> {
+        use crate::models::UserRole;
+
+        let order = OrderRepository::find_order_by_id(pool, order_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
+
+        if order.payment_mode != PaymentMode::Phased {
+            return Err(AppError::BadRequest(
+                "Solo las órdenes por fases admiten gestión manual de fases".into(),
+            ));
+        }
+
+        if effective_role != UserRole::Admin
+            && order.assigned_employee_id != Some(user_id)
+        {
+            return Err(AppError::Forbidden(
+                "Solo el empleado asignado o un administrador puede gestionar las fases".into(),
+            ));
+        }
+
+        let phase = OrderRepository::find_phase_by_number(pool, order_id, phase_number)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Fase {phase_number} no encontrada")))?;
+
+        if phase.status != PhaseStatus::Locked {
+            return Err(AppError::BadRequest(
+                "Solo se pueden eliminar fases que aún no comenzaron (estado bloqueado)".into(),
+            ));
+        }
+
+        let rows = OrderRepository::delete_order_phase(pool, order_id, phase_number).await?;
+        if rows == 0 {
+            return Err(AppError::NotFound(format!(
+                "Fase {phase_number} no encontrada o no se puede eliminar"
+            )));
+        }
+
+        Ok(())
+    }
     /* [044A-38 Fase 2] Empleado entrega una fase.
      * MÃ¡quina de estados: InProgress | Paid | RevisionRequested â†’ Delivered.
      * Solo el empleado asignado puede entregar. */

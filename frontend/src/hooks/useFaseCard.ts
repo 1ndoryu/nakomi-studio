@@ -38,7 +38,8 @@ export function useFaseCard({phase, orderId, canDefinePhase, onActualizarFase}: 
         setEditando(false);
     }, [phase]);
 
-    const canEditDefinition = canDefinePhase && (phase.status === 'locked' || phase.status === 'pending_payment');
+    /* [035A-30] InProgress también es editable: el empleado puede ajustar título/precio/días mientras trabaja. */
+    const canEditDefinition = canDefinePhase && (phase.status === 'locked' || phase.status === 'pending_payment' || phase.status === 'in_progress');
 
     const cancelarEdicion = useCallback(() => {
         setDraft(buildDraft(phase));

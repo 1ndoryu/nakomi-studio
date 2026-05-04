@@ -647,6 +647,61 @@ impl OrderRepository {
         Ok(())
     }
 
+    /* [035A-30] Número de fase máximo para la orden — para agregar la siguiente fase. */
+    pub async fn max_phase_number(
+        pool: &PgPool,
+        order_id: Uuid,
+    ) -> Result<i32, sqlx::Error> {
+        let result: Option<i32> = sqlx::query_scalar!(
+            "SELECT MAX(phase_number) FROM order_phases WHERE order_id = $1",
+            order_id,
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(result.unwrap_or(0))
+    }
+
+    /* [035A-30] Agrega una nueva fase bloqueada al final de la orden. */
+    pub async fn add_order_phase(
+        pool: &PgPool,
+        order_id: Uuid,
+        phase_number: i32,
+    ) -> Result<OrderPhase, sqlx::Error> {
+        let title = format!("Fase {phase_number}");
+        sqlx::query_as!(
+            OrderPhase,
+            r#"INSERT INTO order_phases (order_id, phase_number, title, description,
+             price_cents, status, max_revisions, estimated_days)
+             VALUES ($1, $2, $3, NULL, 0, 'locked', 2, 7)
+             RETURNING id, order_id, phase_number, title, description, price_cents,
+               status as "status: PhaseStatus",
+               max_revisions, revisions_used, estimated_days,
+               started_at, delivered_at, approved_at, deadline, created_at, updated_at"#,
+            order_id,
+            phase_number,
+            title.as_str(),
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    /* [035A-30] Elimina una fase bloqueada. Retorna filas afectadas (0 si no era locked). */
+    pub async fn delete_order_phase(
+        pool: &PgPool,
+        order_id: Uuid,
+        phase_number: i32,
+    ) -> Result<u64, sqlx::Error> {
+        let rows = sqlx::query!(
+            "DELETE FROM order_phases WHERE order_id = $1 AND phase_number = $2 AND status = 'locked'",
+            order_id,
+            phase_number,
+        )
+        .execute(pool)
+        .await?
+        .rows_affected();
+        Ok(rows)
+    }
+
     /* [124A-SENT-R1] order_id de una fase — usado en deliverables para verificar acceso.
      * runtime query (sin macro). */
     pub async fn phase_order_id(

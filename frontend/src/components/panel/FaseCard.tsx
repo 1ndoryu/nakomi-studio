@@ -1,7 +1,7 @@
 /* [064A-30] FaseCard: card de una fase con entregas, revisiones y acciones.
  * Employee ve botón de extensión de tiempo si la fase está en progreso.
  * Cliente puede aprobar o pedir revisión en fases entregadas. */
-import {Check, RotateCcw, CreditCard} from 'lucide-react';
+import {Check, RotateCcw, CreditCard, Trash2} from 'lucide-react';
 import {
     PHASE_STATUS_LABELS,
     formatPrice,
@@ -40,6 +40,8 @@ interface FaseCardProps {
         },
     ) => Promise<void>;
     onPagarFase: (phaseNumber: number, amountCents: number) => void;
+    /* [035A-30] Eliminar fase (solo cuando status=locked, opcional si el padre lo soporta) */
+    onEliminarFase?: (phaseNumber: number) => Promise<void>;
 }
 
 export function FaseCard({
@@ -55,6 +57,7 @@ export function FaseCard({
     onRevision,
     onActualizarFase,
     onPagarFase,
+    onEliminarFase,
 }: FaseCardProps) {
     const {editando, setEditando, draft, setDraft, canEditDefinition, cancelarEdicion, guardarDefinicion} = useFaseCard({
         phase,
@@ -87,6 +90,19 @@ export function FaseCard({
                         <span className={`faseBadge faseBadge--${phase.status.replace('_', '-')}`}>
                             {PHASE_STATUS_LABELS[phase.status]}
                         </span>
+                        {/* [035A-30] Eliminar fase (solo locked y si el padre provee callback) */}
+                        {canDefinePhase && phase.status === 'locked' && onEliminarFase && !editando && (
+                            <Button
+                                type="button"
+                                variante="texto"
+                                tamano="pequeno"
+                                onClick={() => onEliminarFase(phase.phase_number)}
+                                title="Eliminar fase"
+                            >
+                                <Trash2 size={14} />
+                            </Button>
+                        )}
+                        {/* [035A-30] Modificar: siempre "Modificar" porque las fases ya tienen definición inicial */}
                         {canEditDefinition && !editando && (
                             <Button
                                 type="button"
@@ -94,7 +110,7 @@ export function FaseCard({
                                 tamano="pequeno"
                                 onClick={() => setEditando(true)}
                             >
-                                Definir
+                                {phase.status === 'in_progress' ? 'Modificar' : 'Definir'}
                             </Button>
                         )}
                     </div>

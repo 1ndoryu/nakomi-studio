@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM order_phases WHERE order_id = $1 AND phase_number = $2 AND status = 'locked'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c3c526970b2bfbcc114c1c534aaa9ee56a106fe25978bb3a2af41f0533b1175d"
+}

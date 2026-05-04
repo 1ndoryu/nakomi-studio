@@ -6,10 +6,12 @@
  * sentinel-disable-file limite-lineas: Componente orquestador de detalle de orden;
  * lógica principal ya extraída a useOrdenDetalle + sub-componentes. */
 import React, {useState, useCallback} from 'react';
-import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft, UserCheck} from 'lucide-react';
+import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft, UserCheck, Plus} from 'lucide-react';
 import {
     ORDER_STATUS_LABELS,
     apiToggleAiIntermediary,
+    apiAddOrderPhase,
+    apiDeleteOrderPhase,
     type OrderResponse,
     type OrderPhaseResponse,
     type OrderStatus,
@@ -84,6 +86,34 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
         confirmarCancelacion, enviarReporte, reportando, reportError, reportExito,
         cerrarReportar, abrirCheckout, cerrarCheckout,
     } = useOrdenDetalle(order, onCancelar);
+
+    /* [035A-30] Gestión manual de fases (solo phased, solo employee/admin) */
+    const [agregandoFase, setAgregandoFase] = useState(false);
+    const [eliminandoFase, setEliminadoFase] = useState<number | null>(null);
+
+    const handleAgregarFase = useCallback(async () => {
+        setAgregandoFase(true);
+        try {
+            await apiAddOrderPhase(order.id);
+            onPagoExitoso();
+        } catch {
+            /* toast de error ya manejado por axios interceptor */
+        } finally {
+            setAgregandoFase(false);
+        }
+    }, [order.id, onPagoExitoso]);
+
+    const handleEliminarFase = useCallback(async (phaseNumber: number) => {
+        setEliminadoFase(phaseNumber);
+        try {
+            await apiDeleteOrderPhase(order.id, phaseNumber);
+            onPagoExitoso();
+        } catch {
+            /* toast de error ya manejado por axios interceptor */
+        } finally {
+            setEliminadoFase(null);
+        }
+    }, [order.id, onPagoExitoso]);
 
     /* [164A-9] Solicitud de cancelación: empleados crean, clientes aceptan/rechazan */
     const {
@@ -330,14 +360,29 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                                 isEmployee={isEmployee}
                                 isPhased={isPerPhasePayment}
                                 canDefinePhase={canDefinePhases}
-                                isUpdatingDefinition={actualizandoFase}
+                                isUpdatingDefinition={actualizandoFase || eliminandoFase === phase.phase_number}
                                 onAprobar={onAprobar}
                                 onRevision={onRevision}
                                 onActualizarFase={onActualizarFase}
                                 onPagarFase={(pn, amount) => abrirCheckout(amount, pn)}
+                                onEliminarFase={canDefinePhases ? handleEliminarFase : undefined}
                             />
                         ))}
                     </div>
+                    {/* [035A-30] Agregar fase (solo phased, solo employee/admin) */}
+                    {canDefinePhases && (
+                        <Button
+                            type="button"
+                            variante="outline"
+                            tamano="pequeno"
+                            onClick={handleAgregarFase}
+                            disabled={agregandoFase}
+                            className="ordenAgregarFaseBtn"
+                        >
+                            <Plus size={14} />
+                            {agregandoFase ? 'Agregando...' : 'Agregar fase'}
+                        </Button>
+                    )}
                 </div>
             )}
 

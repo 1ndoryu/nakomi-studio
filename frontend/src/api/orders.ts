@@ -207,6 +207,17 @@ export async function apiToggleAiIntermediary(
     return data;
 }
 
+/* [035A-30] Agrega una nueva fase bloqueada al final de la orden phased. */
+export async function apiAddOrderPhase(orderId: string): Promise<OrderPhaseResponse> {
+    const {data} = await instance.post<OrderPhaseResponse>(`/api/orders/${orderId}/phases`);
+    return data;
+}
+
+/* [035A-30] Elimina una fase bloqueada de la orden phased. */
+export async function apiDeleteOrderPhase(orderId: string, phaseNumber: number): Promise<void> {
+    await instance.delete(`/api/orders/${orderId}/phases/${phaseNumber}`);
+}
+
 /*    HELPERS — labels y colores para UI */
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {

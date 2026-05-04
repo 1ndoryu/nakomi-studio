@@ -62,7 +62,12 @@ export function useSeccionProyectos() {
         syncPanelOrderInUrl(ordenSeleccionada, seccionInicialPorRol(effectiveRole));
     }, [ordenSeleccionada, effectiveRole, location.search]);
 
-    const handleVolver = useCallback(() => seleccionarOrden(null), [seleccionarOrden]);
+    /* [035A-29] Volver: primero limpia la URL (para que el primer useEffect no re-seleccione),
+     * luego limpia el estado. Sin esto, el effect re-lee ?order=xxx y reabre la orden. */
+    const handleVolver = useCallback(() => {
+        syncPanelOrderInUrl(null, seccionInicialPorRol(effectiveRole));
+        seleccionarOrden(null);
+    }, [seleccionarOrden, effectiveRole]);
     const handleSelectOrder = useCallback((orderId: string) => {
         seleccionarOrden(orderId);
     }, [seleccionarOrden]);

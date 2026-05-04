@@ -1,0 +1,130 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO order_phases (order_id, phase_number, title, description,\n             price_cents, status, max_revisions, estimated_days)\n             VALUES ($1, $2, $3, NULL, 0, 'locked', 2, 7)\n             RETURNING id, order_id, phase_number, title, description, price_cents,\n               status as \"status: PhaseStatus\",\n               max_revisions, revisions_used, estimated_days,\n               started_at, delivered_at, approved_at, deadline, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "order_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "phase_number",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "price_cents",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "status: PhaseStatus",
+        "type_info": {
+          "Custom": {
+            "name": "phase_status",
+            "kind": {
+              "Enum": [
+                "locked",
+                "pending_payment",
+                "paid",
+                "in_progress",
+                "delivered",
+                "revision_requested",
+                "approved",
+                "skipped"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "max_revisions",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "revisions_used",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "estimated_days",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "started_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "delivered_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "approved_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "deadline",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "445fe4c004db08b8c279812f5f51b96bf62e45bd4d747e9082962deeb5f97af4"
+}

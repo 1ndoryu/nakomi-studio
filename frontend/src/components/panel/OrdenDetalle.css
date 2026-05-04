@@ -453,6 +453,15 @@
     margin: 0;
 }
 
+/* [035A-30] Botón agregar fase — alineado debajo de la lista de fases */
+.ordenAgregarFaseBtn {
+    align-self: flex-start;
+    margin-top: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
 /*    RESPONSIVE */
 
 @media (max-width: 768px) {

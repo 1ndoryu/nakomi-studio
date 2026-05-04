@@ -98,6 +98,40 @@ export const TabPlanes: React.FC<TabPlanesProps> = ({planes, onChange}) => {
         actualizarPlan(planKey, {phases});
     }, [planes, actualizarPlan]);
 
+    /* [035A-30] Auto-balance: cuando % de una fase cambia, ajusta el resto
+     * proporcionalmente para que el total siempre sea 100.
+     * Gotcha: rounding errors se corrigen en la última fase "otra". */
+    const actualizarPorcentajeFase = useCallback((planKey: string, phaseNum: number, newPct: number) => {
+        const plan = planes.find(p => p.key === planKey);
+        if (!plan) return;
+        if (plan.phases.length <= 1) {
+            actualizarFase(planKey, phaseNum, {percentageOfTotal: newPct});
+            return;
+        }
+        const others = plan.phases.filter(ph => ph.phaseNumber !== phaseNum);
+        const remaining = Math.max(0, 100 - newPct);
+        const othersSum = others.reduce((s, ph) => s + ph.percentageOfTotal, 0);
+        let updatedPhases = plan.phases.map(ph => {
+            if (ph.phaseNumber === phaseNum) return {...ph, percentageOfTotal: newPct};
+            const scaled = othersSum > 0
+                ? Math.round((ph.percentageOfTotal / othersSum) * remaining)
+                : Math.round(remaining / others.length);
+            return {...ph, percentageOfTotal: scaled};
+        });
+        /* Corrige diferencia de redondeo en la última fase distinta */
+        const total = updatedPhases.reduce((s, ph) => s + ph.percentageOfTotal, 0);
+        const gap = 100 - total;
+        if (gap !== 0) {
+            const lastOtherNum = others[others.length - 1].phaseNumber;
+            updatedPhases = updatedPhases.map(ph =>
+                ph.phaseNumber === lastOtherNum
+                    ? {...ph, percentageOfTotal: Math.max(0, ph.percentageOfTotal + gap)}
+                    : ph
+            );
+        }
+        actualizarPlan(planKey, {phases: updatedPhases});
+    }, [planes, actualizarPlan, actualizarFase]);
+
     const agregarFase = useCallback((planKey: string) => {
         const plan = planes.find(p => p.key === planKey);
         if (!plan) return;
@@ -268,7 +302,7 @@ export const TabPlanes: React.FC<TabPlanesProps> = ({planes, onChange}) => {
                                                     <Input
                                                         type="number"
                                                         value={fase.percentageOfTotal}
-                                                        onChange={e => actualizarFase(plan.key, fase.phaseNumber, {percentageOfTotal: Number(e.target.value)})}
+                                                        onChange={e => actualizarPorcentajeFase(plan.key, fase.phaseNumber, Number(e.target.value))}
                                                         min={0}
                                                         max={100}
                                                     />
