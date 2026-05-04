@@ -12,6 +12,12 @@
     font-size: var(--text-sm);
 }
 
+@media (max-width: 768px) {
+    .headerPanel {
+        padding: var(--spacing-md) var(--spacing-md);
+    }
+}
+
 .headerPanelContenedor {
     display: flex;
     justify-content: space-between;

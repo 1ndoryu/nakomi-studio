@@ -180,9 +180,6 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .reembolsosContenedor {
-        padding: var(--spacing-md);
-    }
 
     .reembolsoCardHeader {
         flex-direction: column;
