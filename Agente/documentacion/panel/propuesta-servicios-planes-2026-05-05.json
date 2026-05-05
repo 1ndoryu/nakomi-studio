@@ -52,9 +52,9 @@
       "image_url": null,
       "gallery": [],
       "skills": [
-        {"titulo": "UX y estructura", "descripcion": "Arquitectura de contenido y jerarquia clara para conversion."},
-        {"titulo": "Responsive", "descripcion": "Diseno adaptado a mobile, tablet y desktop."},
-        {"titulo": "Performance", "descripcion": "Optimizacion base para carga rapida y buena experiencia."}
+        {"titulo": "UX y estructura", "descripcion": "Definimos una arquitectura de contenido clara, jerarquias visuales faciles de recorrer y recorridos pensados para que el usuario entienda rapido la oferta y llegue a la accion correcta sin friccion innecesaria."},
+        {"titulo": "Responsive", "descripcion": "Diseñamos cada pantalla para que se adapte con coherencia a mobile, tablet y desktop, cuidando proporciones, lectura, espaciados y prioridad visual para que la experiencia siga sintiendose solida en cualquier dispositivo."},
+        {"titulo": "Performance", "descripcion": "Optimizamos estructura, recursos e implementacion base para que el sitio cargue rapido, se sienta liviano al navegar y tenga una base tecnica sana que no castigue conversion ni mantenimiento posterior."}
       ],
       "content": "Servicio orientado a marcas que necesitan una presencia web clara, profesional y lista para crecer.",
       "meta_title": "Diseño de Sitios Web | Nakomi Studio",
@@ -137,9 +137,9 @@
       "image_url": null,
       "gallery": [],
       "skills": [
-        {"titulo": "Arquitectura", "descripcion": "Estructura preparada para evolucion y mantenimiento."},
-        {"titulo": "Integraciones", "descripcion": "Conexion con APIs, paneles y servicios externos."},
-        {"titulo": "Escalabilidad", "descripcion": "Base tecnica pensada para crecer sin rehacer el proyecto."}
+        {"titulo": "Arquitectura", "descripcion": "Planteamos la aplicacion con una estructura tecnica ordenada, separacion clara de responsabilidades y decisiones que faciliten evolucionar el producto sin que cada cambio termine rompiendo otras areas."},
+        {"titulo": "Integraciones", "descripcion": "Conectamos la app con APIs, paneles, automatizaciones y servicios externos de forma controlada, pensando tanto en el flujo actual como en futuras extensiones operativas o comerciales."},
+        {"titulo": "Escalabilidad", "descripcion": "La base tecnica se prepara para crecer en modulos, usuarios y complejidad sin obligar a rehacer el producto desde cero, evitando atajos que despues frenan rendimiento o mantenimiento."}
       ],
       "content": "Servicio enfocado en productos digitales a medida, desde MVPs hasta aplicaciones mas completas con panel y automatizaciones.",
       "meta_title": "Desarrollo de Aplicaciones | Nakomi Studio",
@@ -222,9 +222,9 @@
       "image_url": null,
       "gallery": [],
       "skills": [
-        {"titulo": "Automatizacion", "descripcion": "Agentes orientados a reducir tareas repetitivas y tiempos de respuesta."},
-        {"titulo": "Integracion", "descripcion": "Conexion con canales, formularios, CRM o bases de conocimiento."},
-        {"titulo": "Analitica", "descripcion": "Medicion de conversaciones, uso y oportunidades de mejora."}
+        {"titulo": "Automatizacion", "descripcion": "Diseñamos agentes y flujos para absorber tareas repetitivas, acelerar respuestas y liberar tiempo operativo sin perder control sobre reglas, criterios de derivacion ni calidad de salida."},
+        {"titulo": "Integracion", "descripcion": "Integramos los agentes con canales, formularios, CRM, bases de conocimiento y procesos internos para que la IA no viva aislada, sino conectada al trabajo real del negocio."},
+        {"titulo": "Analitica", "descripcion": "Medimos uso, conversaciones, desvíos y resultados para detectar oportunidades de ajuste, mejorar prompts y convertir el sistema en una herramienta cada vez mas util y precisa."}
       ],
       "content": "Servicio orientado a integrar asistentes y automatizaciones con IA en procesos internos, atencion comercial o soporte.",
       "meta_title": "Agentes de IA | Nakomi Studio",
@@ -307,9 +307,9 @@
       "image_url": null,
       "gallery": [],
       "skills": [
-        {"titulo": "Direccion visual", "descripcion": "Definicion del lenguaje visual y tono de marca."},
-        {"titulo": "Sistema grafico", "descripcion": "Logo, color, tipografia y recursos base coherentes."},
-        {"titulo": "Aplicaciones", "descripcion": "Bajada a piezas utiles para web, redes y presentaciones."}
+        {"titulo": "Direccion visual", "descripcion": "Definimos un lenguaje visual con criterio, tono y referencias claras para que la marca se vea consistente, reconocible y alineada con el tipo de negocio que quiere construir."},
+        {"titulo": "Sistema grafico", "descripcion": "Construimos un sistema base con logo, color, tipografia y recursos visuales que funcione como conjunto, no como piezas sueltas, y pueda sostenerse en distintos formatos y usos."},
+        {"titulo": "Aplicaciones", "descripcion": "Bajamos la identidad a piezas concretas para web, redes, presentaciones y materiales comerciales, de modo que la marca pueda usarse de inmediato con coherencia real."}
       ],
       "content": "Servicio orientado a construir o reordenar la identidad visual de la marca para que sea coherente, reconocible y aplicable.",
       "meta_title": "Identidad de Marca | Nakomi Studio",
@@ -392,9 +392,9 @@
       "image_url": null,
       "gallery": [],
       "skills": [
-        {"titulo": "Catalogo y checkout", "descripcion": "Arquitectura de tienda, flujo de compra y medios de pago orientados a conversion."},
-        {"titulo": "Operacion comercial", "descripcion": "Gestion de productos, inventario, promociones y paneles para operar sin friccion."},
-        {"titulo": "Conversion y analytics", "descripcion": "Medicion del funnel, eventos clave y optimizacion de checkout para vender mejor."}
+        {"titulo": "Catalogo y checkout", "descripcion": "Diseñamos la tienda, el catalogo y el flujo de compra para que el usuario encuentre rapido lo que busca, entienda la oferta y complete el checkout con la menor friccion posible."},
+        {"titulo": "Operacion comercial", "descripcion": "Organizamos productos, inventario, promociones y paneles internos para que la operacion diaria sea manejable, clara y preparada para sostener ventas sin caos operativo."},
+        {"titulo": "Conversion y analytics", "descripcion": "Medimos el embudo, los eventos clave y el comportamiento de compra para detectar fugas, optimizar el checkout y tomar decisiones comerciales con datos utiles, no intuicion sola."}
       ],
       "content": "Servicio orientado a marcas que necesitan vender online con una tienda clara, administrable y preparada para crecer en productos, pedidos y conversion.",
       "meta_title": "E-commerce | Nakomi Studio",
@@ -471,15 +471,15 @@
       "description": "Estrategias de captacion, contenido y campanas para generar demanda con medicion clara.",
       "base_price": 150,
       "currency": "USD",
-      "is_active": true,
+      "is_active": false,
       "sort_order": 6,
-      "status": "published",
+      "status": "archived",
       "image_url": null,
       "gallery": [],
       "skills": [
-        {"titulo": "Paid media", "descripcion": "Campanas en Meta y Google con segmentacion, presupuesto y objetivos comerciales claros."},
-        {"titulo": "Contenido", "descripcion": "Calendario, piezas y mensajes pensados para sostener presencia y mover prospectos."},
-        {"titulo": "Automatizacion", "descripcion": "Email marketing, remarketing y medicion para convertir trafico en oportunidades reales."}
+        {"titulo": "Paid media", "descripcion": "Planificamos y operamos campañas en Meta y Google con segmentacion, presupuesto y objetivos comerciales claros, buscando que cada peso invertido tenga una lectura concreta en demanda y conversion."},
+        {"titulo": "Contenido", "descripcion": "Construimos calendarios, piezas y mensajes que sostienen presencia, explican mejor la propuesta y acompañan al prospecto desde el primer contacto hasta una decision de compra mas informada."},
+        {"titulo": "Automatizacion", "descripcion": "Conectamos email marketing, remarketing y medicion para nutrir leads, reactivar oportunidades y transformar trafico disperso en un sistema comercial mas consistente y repetible."}
       ],
       "content": "Servicio orientado a marcas que ya tienen una oferta clara y necesitan generar demanda, nutrir leads y sostener crecimiento con campanas y contenido medibles.",
       "meta_title": "Marketing Digital | Nakomi Studio",

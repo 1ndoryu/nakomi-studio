@@ -110,20 +110,21 @@
     border-bottom-color: currentColor;
 }
 
-/* [044A-15] Imagen Simple — oculta temporalmente en seccionServicios.
- * TO-DO: Agregar imágenes reales de servicios y mostrar de nuevo. */
 .serviceCard.simple .simpleImageWrapper {
-    display: none;
+    /* display: none; */
+    max-width: 60px;
+    aspect-ratio: 1 / 1;
+    background-size: cover;
+    border-radius: var(--radius-lg);
 }
 
-/* TO-DO [044A-15]: Restaurar cuando se agreguen imágenes de servicios
-@media (min-width: 768px) {
-    .serviceCard.simple .simpleImageWrapper {
-        display: block;
-        width: 180px;
-        height: 100px;
-    }
-} */
+.serviceCard.simple .simpleImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .3s ease;
+    border-radius: var(--radius-md);
+}
 
 .serviceCard.simple .simpleImage {
     width: 100%;
