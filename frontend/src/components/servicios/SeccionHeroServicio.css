@@ -27,9 +27,7 @@
 /* [204A-7] Armonizado con SeccionHeroProyecto: mismo text-5xl, letter-spacing y line-height */
 .heroServicioTitulo {
     font-family: var(--font-primary);
-    font-size: var(--text-5xl);
     font-weight: 500;
-    line-height: 0.95;
     color: var(--brand-black);
     letter-spacing: -0.03em;
     margin: 0;
@@ -72,10 +70,6 @@
         grid-template-columns: 1fr;
         padding-top: 10vh;
         gap: var(--spacing-lg);
-    }
-
-    .heroServicioTitulo {
-        font-size: var(--text-3xl);
     }
 
     .heroServicioDescripcion {
