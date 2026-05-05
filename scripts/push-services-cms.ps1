@@ -3,6 +3,9 @@
 propuesta JSON, sin usar fixtures ni escrituras directas a BD.
 Gotcha: Nakomi tiene slugs web duplicados (`diseno-de-sitios-web` activo y `diseno-web`
 inactivo), por eso el sync debe preferir el servicio activo antes de caer a aliases legacy.
+[055A-4] No fusionar `ecommerce` y `marketing-digital` para acomodar fallbacks del frontend:
+el catalogo real manda y los slugs nuevos deben resolverse como strings completos, no como
+caracteres indexados por PowerShell.
 Pendiente: las imagenes se cargan aparte; si la propuesta no trae media, el script preserva
 la existente y omite campos vacios para no pisar el CMS.
 #>
@@ -122,7 +125,16 @@ function Resolve-ServiceSlug {
         'ecommerce' = @('ecommerce', 'e-commerce')
     }
 
-    $candidates = if ($aliases.ContainsKey($ProposalSlug)) { $aliases[$ProposalSlug] } else { @($ProposalSlug) }
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    if ($aliases.ContainsKey($ProposalSlug)) {
+        foreach ($candidate in @($aliases[$ProposalSlug])) {
+            $null = $candidates.Add([string]$candidate)
+        }
+    }
+    else {
+        $null = $candidates.Add([string]$ProposalSlug)
+    }
+
     foreach ($candidate in $candidates) {
         $match = $ExistingServices |
             Where-Object {

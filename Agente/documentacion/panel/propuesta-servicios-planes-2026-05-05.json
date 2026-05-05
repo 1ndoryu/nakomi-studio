@@ -11,7 +11,7 @@
       "frontend/src/data/planes/index.ts",
       "frontend/src/data/planes/planes.ts"
     ],
-    "proposal_note": "Para el quinto servicio propongo mantener el slug 'ecommerce' por compatibilidad con el fallback actual, aunque el titulo visible sea 'E-commerce y Marketing Digital'."
+    "proposal_note": "E-commerce y marketing digital deben mantenerse como servicios separados. Si el fallback publico no refleja ese catalogo, se corrige el fallback, no el CMS."
   },
   "generic_phase_template": [
     {
@@ -382,8 +382,8 @@
     },
     {
       "slug": "ecommerce",
-      "title": "E-commerce y Marketing Digital",
-      "description": "Tiendas online y campañas digitales orientadas a conversion.",
+      "title": "E-commerce",
+      "description": "Tiendas online con catalogo, checkout optimizado y operacion lista para vender.",
       "base_price": 200,
       "currency": "USD",
       "is_active": true,
@@ -392,25 +392,25 @@
       "image_url": null,
       "gallery": [],
       "skills": [
-        {"titulo": "Commerce", "descripcion": "Estructura de tienda, pagos, catalogo y flujo de compra."},
-        {"titulo": "Campanas", "descripcion": "Activacion de anuncios, captacion y remarketing base."},
-        {"titulo": "Conversion", "descripcion": "Medicion y optimizacion de embudos, oferta y checkout."}
+        {"titulo": "Catalogo y checkout", "descripcion": "Arquitectura de tienda, flujo de compra y medios de pago orientados a conversion."},
+        {"titulo": "Operacion comercial", "descripcion": "Gestion de productos, inventario, promociones y paneles para operar sin friccion."},
+        {"titulo": "Conversion y analytics", "descripcion": "Medicion del funnel, eventos clave y optimizacion de checkout para vender mejor."}
       ],
-      "content": "Servicio combinado para marcas que necesitan vender online y acompanar ese canal con activacion comercial y medicion.",
-      "meta_title": "E-commerce y Marketing Digital | Nakomi Studio",
-      "meta_description": "Tiendas online y activacion digital con foco en conversion, ventas y crecimiento sostenido.",
+      "content": "Servicio orientado a marcas que necesitan vender online con una tienda clara, administrable y preparada para crecer en productos, pedidos y conversion.",
+      "meta_title": "E-commerce | Nakomi Studio",
+      "meta_description": "Tiendas online con catalogo, checkout optimizado, pagos integrados y una operacion comercial preparada para crecer.",
       "plans": [
         {
           "slug": "ecommerce-basico",
           "name": "Basico",
           "price": 200,
-          "description": "Tienda esencial para empezar a vender con una base comercial ordenada.",
+          "description": "Tienda online funcional con lo esencial para empezar a vender.",
           "features": [
-            "Catalogo inicial",
-            "Pasarela de pago",
-            "Checkout funcional",
-            "Pixel y analitica basica",
-            "Campana de lanzamiento simple"
+            "Hasta 50 productos",
+            "Pasarela de pago integrada",
+            "Carrito y checkout funcional",
+            "Diseno responsive",
+            "Configuracion operativa inicial"
           ],
           "is_highlighted": false,
           "is_custom": false,
@@ -424,14 +424,14 @@
         {
           "slug": "ecommerce-profesional",
           "name": "Profesional",
-          "price": 300,
-          "description": "Tienda con operacion comercial mas robusta y activacion digital continua.",
+          "price": 350,
+          "description": "Tienda con inventario, promociones y una operacion comercial mas robusta.",
           "features": [
-            "Catalogo e inventario ampliado",
+            "Hasta 200 productos",
+            "Multi-pasarela de pago",
+            "Gestion de inventario",
             "Cupones y promociones",
-            "Analitica y dashboards base",
-            "Automatizacion de emails",
-            "Campanas siempre activas"
+            "Panel de analytics"
           ],
           "is_highlighted": true,
           "is_custom": false,
@@ -445,14 +445,99 @@
         {
           "slug": "ecommerce-avanzado",
           "name": "Avanzado",
-          "price": 600,
-          "description": "Canal de venta digital mas completo, medible y listo para escalar.",
+          "price": 500,
+          "description": "Canal de venta digital listo para escalar en catalogo, integraciones y conversion.",
           "features": [
-            "Tienda con integraciones clave",
-            "Panel comercial y reportes",
-            "Automatizaciones de marketing",
-            "Embudo de remarketing",
-            "Soporte de optimizacion inicial"
+            "Productos ilimitados",
+            "Integraciones comerciales clave",
+            "Automatizaciones transaccionales",
+            "Analytics avanzado",
+            "Escalabilidad de catalogo y checkout"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 2,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "marketing-digital",
+      "title": "Marketing Digital",
+      "description": "Estrategias de captacion, contenido y campanas para generar demanda con medicion clara.",
+      "base_price": 150,
+      "currency": "USD",
+      "is_active": true,
+      "sort_order": 6,
+      "status": "published",
+      "image_url": null,
+      "gallery": [],
+      "skills": [
+        {"titulo": "Paid media", "descripcion": "Campanas en Meta y Google con segmentacion, presupuesto y objetivos comerciales claros."},
+        {"titulo": "Contenido", "descripcion": "Calendario, piezas y mensajes pensados para sostener presencia y mover prospectos."},
+        {"titulo": "Automatizacion", "descripcion": "Email marketing, remarketing y medicion para convertir trafico en oportunidades reales."}
+      ],
+      "content": "Servicio orientado a marcas que ya tienen una oferta clara y necesitan generar demanda, nutrir leads y sostener crecimiento con campanas y contenido medibles.",
+      "meta_title": "Marketing Digital | Nakomi Studio",
+      "meta_description": "Estrategias de marketing digital, contenido y campanas para atraer demanda, mejorar conversion y sostener crecimiento.",
+      "plans": [
+        {
+          "slug": "mkt-basico",
+          "name": "Basico",
+          "price": 150,
+          "description": "Gestion base de redes sociales y anuncios para mantener presencia y captar demanda.",
+          "features": [
+            "Gestion de 2 redes sociales",
+            "8 publicaciones por mes",
+            "1 campana de ads por mes",
+            "Reporte mensual",
+            "Setup basico de medicion"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 0,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "mkt-medio",
+          "name": "Profesional",
+          "price": 275,
+          "description": "Marketing con contenido, anuncios y email para mover trafico y leads de forma sostenida.",
+          "features": [
+            "Gestion de 3 redes sociales",
+            "15 publicaciones por mes",
+            "Campanas ads activas",
+            "Email marketing y newsletters",
+            "Reportes semanales"
+          ],
+          "is_highlighted": true,
+          "is_custom": false,
+          "sort_order": 1,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "mkt-avanzado",
+          "name": "Avanzado",
+          "price": 400,
+          "description": "Estrategia digital integral con automatizacion, testing y optimizacion continua.",
+          "features": [
+            "Gestion de 4 o mas redes",
+            "Campanas ads ilimitadas",
+            "Email marketing y automatizacion",
+            "Estrategia de contenidos",
+            "A/B testing y optimizacion"
           ],
           "is_highlighted": false,
           "is_custom": false,

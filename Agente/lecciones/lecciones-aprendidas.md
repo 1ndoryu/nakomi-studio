@@ -78,6 +78,10 @@
 ## Catálogo público — no vender servicios fantasma
 - Si la compra depende del catálogo real del backend, el detalle/listado público no debe caer a datasets estáticos que incluyan servicios ya no publicados. Aunque `apiCreateOrder()` normalice slugs, seguir mostrando `ecommerce`/`seo`/`marketing-digital` cuando la API solo expone 4 servicios termina reproduciendo 404 de negocio igualmente.
 
+## Catalogo CMS — no fusionar servicios reales para acomodar fallbacks
+- Si el negocio distingue `ecommerce` y `marketing-digital`, el CMS debe modelarlos como servicios separados aunque el frontend heredado tenga un fallback incompleto. Fusionarlos para “encajar” con el dataset estatico termina rompiendo el catalogo real y obliga a deshacer la carga luego.
+- La correccion segura es: arreglar primero la propuesta fuente y resincronizar el CMS; el fallback del frontend se corrige despues como tarea aparte, nunca al reves.
+
 ## Empty states — no mezclar jerarquías en la misma sección
 - Si una sección ya tiene un estado vacío completo con icono, título y texto, las tabs internas no deberían degradarse a un párrafo desnudo. Reutilizar un bloque común evita que el vacío “parcial” se vea como un render roto.
 
