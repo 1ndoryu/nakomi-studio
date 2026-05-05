@@ -1,0 +1,467 @@
+{
+  "proposal_id": "055A-1",
+  "generated_at": "2026-05-05",
+  "purpose": "Propuesta editable antes de cargar servicios, planes y fases reales en CMS/BD.",
+  "diagnosis": {
+    "cms_vs_public": "La pagina publica puede seguir mostrando planes aunque el CMS no los tenga porque SeccionPlanesServicio cae a obtenerPlanesServicio(slug) cuando la API devuelve planes vacios.",
+    "public_fallback_files": [
+      "frontend/src/components/servicios/SeccionPlanesServicio.tsx",
+      "frontend/src/data/planes/index.ts",
+      "frontend/src/data/planes/planes.ts"
+    ],
+    "proposal_note": "Para el quinto servicio propongo mantener el slug 'ecommerce' por compatibilidad con el fallback actual, aunque el titulo visible sea 'E-commerce y Marketing Digital'."
+  },
+  "generic_phase_template": [
+    {
+      "phase_number": 1,
+      "title": "Descubrimiento y alcance",
+      "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.",
+      "percentage_of_total": 20,
+      "estimated_days": 3,
+      "max_revisions": 1
+    },
+    {
+      "phase_number": 2,
+      "title": "Produccion e iteracion",
+      "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.",
+      "percentage_of_total": 50,
+      "estimated_days": 7,
+      "max_revisions": 2
+    },
+    {
+      "phase_number": 3,
+      "title": "QA, entrega y lanzamiento",
+      "description": "Revision final, entrega de activos y salida a produccion o handoff.",
+      "percentage_of_total": 30,
+      "estimated_days": 3,
+      "max_revisions": 1
+    }
+  ],
+  "services": [
+    {
+      "slug": "diseno-web",
+      "title": "Diseño de Sitios Web",
+      "description": "Diseño web profesional adaptado a las necesidades del negocio.",
+      "base_price_cents": 10000,
+      "currency": "USD",
+      "is_active": true,
+      "sort_order": 1,
+      "status": "published",
+      "image_url": null,
+      "gallery": [],
+      "skills": [
+        {"titulo": "UX y estructura", "descripcion": "Arquitectura de contenido y jerarquia clara para conversion."},
+        {"titulo": "Responsive", "descripcion": "Diseno adaptado a mobile, tablet y desktop."},
+        {"titulo": "Performance", "descripcion": "Optimizacion base para carga rapida y buena experiencia."}
+      ],
+      "content": "Servicio orientado a marcas que necesitan una presencia web clara, profesional y lista para crecer.",
+      "meta_title": "Diseño de Sitios Web | Nakomi Studio",
+      "meta_description": "Diseño y desarrollo de sitios web profesionales adaptados a las necesidades del negocio.",
+      "plans": [
+        {
+          "slug": "web-basico",
+          "name": "Basico",
+          "price_cents": 10000,
+          "description": "Landing o sitio corto para presentar servicios y captar contactos.",
+          "features": [
+            "Hasta 3 secciones principales",
+            "Formulario de contacto",
+            "Diseno responsive",
+            "Implementacion SEO basica",
+            "Entrega lista para publicar"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 0,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "web-profesional",
+          "name": "Profesional",
+          "price_cents": 17500,
+          "description": "Sitio corporativo multipagina con estructura mas completa y foco comercial.",
+          "features": [
+            "Hasta 6 paginas",
+            "Blog o seccion de contenido",
+            "SEO on-page intermedio",
+            "Panel editable en paginas clave",
+            "Soporte de lanzamiento"
+          ],
+          "is_highlighted": true,
+          "is_custom": false,
+          "sort_order": 1,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "web-avanzado",
+          "name": "Avanzado",
+          "price_cents": 25000,
+          "description": "Sitio premium con mas integraciones, automatizaciones y alcance editorial.",
+          "features": [
+            "Hasta 10 paginas",
+            "Blog y recursos descargables",
+            "Integraciones con CRM o email",
+            "SEO on-page completo",
+            "Capacitacion de uso"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 2,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "desarrollo-apps",
+      "title": "Desarrollo de Aplicaciones",
+      "description": "Aplicaciones moviles y web a medida.",
+      "base_price_cents": 20000,
+      "currency": "USD",
+      "is_active": true,
+      "sort_order": 2,
+      "status": "published",
+      "image_url": null,
+      "gallery": [],
+      "skills": [
+        {"titulo": "Arquitectura", "descripcion": "Estructura preparada para evolucion y mantenimiento."},
+        {"titulo": "Integraciones", "descripcion": "Conexion con APIs, paneles y servicios externos."},
+        {"titulo": "Escalabilidad", "descripcion": "Base tecnica pensada para crecer sin rehacer el proyecto."}
+      ],
+      "content": "Servicio enfocado en productos digitales a medida, desde MVPs hasta aplicaciones mas completas con panel y automatizaciones.",
+      "meta_title": "Desarrollo de Aplicaciones | Nakomi Studio",
+      "meta_description": "Aplicaciones web y moviles a medida con foco en producto, escalabilidad y mantenimiento.",
+      "plans": [
+        {
+          "slug": "apps-basico",
+          "name": "Basico",
+          "price_cents": 20000,
+          "description": "MVP funcional con flujo principal y alcance controlado.",
+          "features": [
+            "Una plataforma principal",
+            "Hasta 3 modulos funcionales",
+            "Autenticacion basica",
+            "Panel interno simple",
+            "Entrega documentada"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 0,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "apps-profesional",
+          "name": "Profesional",
+          "price_cents": 35000,
+          "description": "Aplicacion con panel, roles y alcance comercial mas robusto.",
+          "features": [
+            "Una plataforma con panel completo",
+            "Hasta 6 modulos funcionales",
+            "Roles y permisos",
+            "Integracion con una API externa",
+            "Soporte de estabilizacion"
+          ],
+          "is_highlighted": true,
+          "is_custom": false,
+          "sort_order": 1,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "apps-avanzado",
+          "name": "Avanzado",
+          "price_cents": 50000,
+          "description": "Producto digital de mayor alcance con arquitectura y flujos mas complejos.",
+          "features": [
+            "Web y/o movil segun alcance",
+            "Hasta 10 modulos funcionales",
+            "Arquitectura API robusta",
+            "Integraciones multiples",
+            "Capacitacion y handoff tecnico"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 2,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "agentes-ia",
+      "title": "Agentes de IA",
+      "description": "Soluciones de inteligencia artificial integradas.",
+      "base_price_cents": 6000,
+      "currency": "USD",
+      "is_active": true,
+      "sort_order": 3,
+      "status": "published",
+      "image_url": null,
+      "gallery": [],
+      "skills": [
+        {"titulo": "Automatizacion", "descripcion": "Agentes orientados a reducir tareas repetitivas y tiempos de respuesta."},
+        {"titulo": "Integracion", "descripcion": "Conexion con canales, formularios, CRM o bases de conocimiento."},
+        {"titulo": "Analitica", "descripcion": "Medicion de conversaciones, uso y oportunidades de mejora."}
+      ],
+      "content": "Servicio orientado a integrar asistentes y automatizaciones con IA en procesos internos, atencion comercial o soporte.",
+      "meta_title": "Agentes de IA | Nakomi Studio",
+      "meta_description": "Implementacion de agentes de IA y automatizaciones integradas en procesos comerciales y operativos.",
+      "plans": [
+        {
+          "slug": "ia-basico",
+          "name": "Basico",
+          "price_cents": 6000,
+          "description": "Agente inicial para una tarea acotada o canal concreto.",
+          "features": [
+            "Un agente principal",
+            "Un canal o integracion",
+            "Base de conocimiento inicial",
+            "Prompting y reglas base",
+            "Tablero de revision simple"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 0,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "ia-profesional",
+          "name": "Profesional",
+          "price_cents": 15000,
+          "description": "Automatizacion multi-canal con mejor contexto y supervision.",
+          "features": [
+            "Hasta 2 agentes o flujos",
+            "Multi-canal",
+            "Base documental ampliada",
+            "Derivacion a humano",
+            "Medicion de conversaciones"
+          ],
+          "is_highlighted": true,
+          "is_custom": false,
+          "sort_order": 1,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "ia-avanzado",
+          "name": "Avanzado",
+          "price_cents": 30000,
+          "description": "Solucion de IA integrada en procesos centrales del negocio.",
+          "features": [
+            "Arquitectura multi-agente",
+            "Integraciones varias",
+            "Workflow con aprobaciones",
+            "Analitica y tuning continuo",
+            "Capacitacion de equipo"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 2,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "branding",
+      "title": "Identidad de Marca",
+      "description": "Diseño de identidad visual completa.",
+      "base_price_cents": 15000,
+      "currency": "USD",
+      "is_active": true,
+      "sort_order": 4,
+      "status": "published",
+      "image_url": null,
+      "gallery": [],
+      "skills": [
+        {"titulo": "Direccion visual", "descripcion": "Definicion del lenguaje visual y tono de marca."},
+        {"titulo": "Sistema grafico", "descripcion": "Logo, color, tipografia y recursos base coherentes."},
+        {"titulo": "Aplicaciones", "descripcion": "Bajada a piezas utiles para web, redes y presentaciones."}
+      ],
+      "content": "Servicio orientado a construir o reordenar la identidad visual de la marca para que sea coherente, reconocible y aplicable.",
+      "meta_title": "Identidad de Marca | Nakomi Studio",
+      "meta_description": "Desarrollo de identidad visual, sistema grafico y aplicaciones de marca para negocios y productos.",
+      "plans": [
+        {
+          "slug": "branding-basico",
+          "name": "Basico",
+          "price_cents": 15000,
+          "description": "Base visual clara para marcas que necesitan ordenar su presencia.",
+          "features": [
+            "Logo principal",
+            "Paleta y tipografia base",
+            "Mini guia de uso",
+            "Versiones digitales",
+            "Entrega editable"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 0,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "branding-profesional",
+          "name": "Profesional",
+          "price_cents": 27500,
+          "description": "Sistema visual mas completo para marcas que ya venden y necesitan consistencia.",
+          "features": [
+            "Sistema de logo completo",
+            "Paleta y tipografias extendidas",
+            "Manual resumido de marca",
+            "Piezas base para redes",
+            "Aplicaciones comerciales clave"
+          ],
+          "is_highlighted": true,
+          "is_custom": false,
+          "sort_order": 1,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "branding-avanzado",
+          "name": "Avanzado",
+          "price_cents": 40000,
+          "description": "Identidad mas profunda con toolkit visual para varias superficies.",
+          "features": [
+            "Sistema visual completo",
+            "Manual extendido",
+            "Plantillas de piezas clave",
+            "Iconografia o recursos de apoyo",
+            "Handoff con criterios de uso"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 2,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "ecommerce",
+      "title": "E-commerce y Marketing Digital",
+      "description": "Tiendas online y campañas digitales orientadas a conversion.",
+      "base_price_cents": 25000,
+      "currency": "USD",
+      "is_active": true,
+      "sort_order": 5,
+      "status": "published",
+      "image_url": null,
+      "gallery": [],
+      "skills": [
+        {"titulo": "Commerce", "descripcion": "Estructura de tienda, pagos, catalogo y flujo de compra."},
+        {"titulo": "Campanas", "descripcion": "Activacion de anuncios, captacion y remarketing base."},
+        {"titulo": "Conversion", "descripcion": "Medicion y optimizacion de embudos, oferta y checkout."}
+      ],
+      "content": "Servicio combinado para marcas que necesitan vender online y acompanar ese canal con activacion comercial y medicion.",
+      "meta_title": "E-commerce y Marketing Digital | Nakomi Studio",
+      "meta_description": "Tiendas online y activacion digital con foco en conversion, ventas y crecimiento sostenido.",
+      "plans": [
+        {
+          "slug": "ecommerce-basico",
+          "name": "Basico",
+          "price_cents": 25000,
+          "description": "Tienda esencial para empezar a vender con una base comercial ordenada.",
+          "features": [
+            "Catalogo inicial",
+            "Pasarela de pago",
+            "Checkout funcional",
+            "Pixel y analitica basica",
+            "Campana de lanzamiento simple"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 0,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "ecommerce-profesional",
+          "name": "Profesional",
+          "price_cents": 40000,
+          "description": "Tienda con operacion comercial mas robusta y activacion digital continua.",
+          "features": [
+            "Catalogo e inventario ampliado",
+            "Cupones y promociones",
+            "Analitica y dashboards base",
+            "Automatizacion de emails",
+            "Campanas siempre activas"
+          ],
+          "is_highlighted": true,
+          "is_custom": false,
+          "sort_order": 1,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        },
+        {
+          "slug": "ecommerce-avanzado",
+          "name": "Avanzado",
+          "price_cents": 60000,
+          "description": "Canal de venta digital mas completo, medible y listo para escalar.",
+          "features": [
+            "Tienda con integraciones clave",
+            "Panel comercial y reportes",
+            "Automatizaciones de marketing",
+            "Embudo de remarketing",
+            "Soporte de optimizacion inicial"
+          ],
+          "is_highlighted": false,
+          "is_custom": false,
+          "sort_order": 2,
+          "phases": [
+            {"phase_number": 1, "title": "Descubrimiento y alcance", "description": "Kickoff, recopilacion de requisitos y definicion del alcance aprobado.", "percentage_of_total": 20, "estimated_days": 3, "max_revisions": 1},
+            {"phase_number": 2, "title": "Produccion e iteracion", "description": "Ejecucion principal del servicio, iteraciones y ajustes con feedback.", "percentage_of_total": 50, "estimated_days": 7, "max_revisions": 2},
+            {"phase_number": 3, "title": "QA, entrega y lanzamiento", "description": "Revision final, entrega de activos y salida a produccion o handoff.", "percentage_of_total": 30, "estimated_days": 3, "max_revisions": 1}
+          ]
+        }
+      ]
+    }
+  ]
+}

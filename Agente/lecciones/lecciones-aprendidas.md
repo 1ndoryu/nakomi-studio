@@ -193,3 +193,7 @@
 ## Editor inline vs panel - un fix no existe si el control path real sigue duplicado
 - Cuando una misma UI reutiliza el mismo modal pero lo monta desde dos owners distintos, no basta con corregir uno. Si el stack apunta a otro provider, hay que seguir ese call site exacto antes de dar el bug por cerrado.
 - Si dos flows necesitan decidir lo mismo sobre persistencia (`guardar planes o no`), extraer un helper compartido es más seguro que copiar la condición. En este caso, el drift entre `SubTabServicios` y `AdminEditorProvider` mantuvo vivo el 422 aunque el panel ya estaba corregido.
+
+## Servicios publicos - un fallback estatico puede ocultar deuda real del CMS
+- Si la vista pública cae a un dataset estático cuando la API devuelve planes vacíos, el sitio puede aparentar estar “bien” mientras el CMS refleja la realidad de la BD. Esa divergencia confunde el diagnóstico y retrasa la corrección del origen de datos real.
+- En este repo, `SeccionPlanesServicio` usa `obtenerPlanesServicio(slug)` como fallback. Mientras exista, cualquier auditoría de catálogo debe distinguir entre “planes reales del backend” y “planes heredados del frontend”.
