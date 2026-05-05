@@ -50,6 +50,7 @@ frontend/tsconfig.tsbuildinfo
 !/scripts/dev.mjs
 !/scripts/prerender.mjs
 !/scripts/check-roadmap.mjs
+!/scripts/push-services-cms.ps1
 !/scripts/watch-cargo-target.ps1
 /legacy-assets/
 /colors/

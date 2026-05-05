@@ -197,3 +197,7 @@
 ## Servicios publicos - un fallback estatico puede ocultar deuda real del CMS
 - Si la vista pública cae a un dataset estático cuando la API devuelve planes vacíos, el sitio puede aparentar estar “bien” mientras el CMS refleja la realidad de la BD. Esa divergencia confunde el diagnóstico y retrasa la corrección del origen de datos real.
 - En este repo, `SeccionPlanesServicio` usa `obtenerPlanesServicio(slug)` como fallback. Mientras exista, cualquier auditoría de catálogo debe distinguir entre “planes reales del backend” y “planes heredados del frontend”.
+
+## Sync admin de servicios - preferir el slug activo y no tocar media vacia
+- Si un servicio tiene aliases legacy en la misma BD, el sync por API no puede elegir el primer slug que coincida. Debe priorizar el registro `is_active = true`; en Nakomi, `diseno-de-sitios-web` es el servicio público activo y `diseno-web` quedó como legacy inactivo.
+- Cuando la propuesta no trae `image_url` o `gallery`, el sync debe omitir esos campos o preservar la media existente. Enviar media vacía desde el cargador pisa información del CMS justo en la parte que el usuario quiere seguir gestionando manualmente.
