@@ -26,3 +26,5 @@
 - Se mantuvieron y actualizaron `desarrollo-apps`, `agentes-ia` y `branding`.
 - Se corrigio `ecommerce` para que vuelva a representar solo el servicio de tienda online.
 - Se creo `marketing-digital` como servicio independiente con SEO, contenido, skills y 3 planes.
+- Se ampliaron las descripciones de Capabilities en todos los servicios para que cada bloque tenga un parrafo breve pero mas explicativo en la vista publica.
+- `marketing-digital` se mantuvo archivado durante la resincronizacion (`status = archived`, `is_active = false`) para no volver a publicarlo por accidente.

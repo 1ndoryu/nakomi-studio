@@ -205,3 +205,7 @@
 ## Sync admin de servicios - preferir el slug activo y no tocar media vacia
 - Si un servicio tiene aliases legacy en la misma BD, el sync por API no puede elegir el primer slug que coincida. Debe priorizar el registro `is_active = true`; en Nakomi, `diseno-de-sitios-web` es el servicio público activo y `diseno-web` quedó como legacy inactivo.
 - Cuando la propuesta no trae `image_url` o `gallery`, el sync debe omitir esos campos o preservar la media existente. Enviar media vacía desde el cargador pisa información del CMS justo en la parte que el usuario quiere seguir gestionando manualmente.
+
+## Capabilities del CMS - mas texto, mismo estado de publicacion
+- Si el usuario pide ampliar las Capabilities de servicios, el cambio real vive en `skills.descripcion` del catalogo CMS. La validacion mas fiable es medir por API que esas descripciones crecieron y no solo confiar en una lectura visual indirecta.
+- Cuando un servicio ya fue archivado manualmente, cualquier sync de copy debe respetar ese estado en la fuente reusable (`status = archived`, `is_active = false`) o lo reactivara en el siguiente empuje aunque el texto sea el unico objetivo del cambio.
