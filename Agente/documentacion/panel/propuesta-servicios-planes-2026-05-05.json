@@ -2,6 +2,8 @@
   "proposal_id": "055A-1",
   "generated_at": "2026-05-05",
   "purpose": "Propuesta editable antes de cargar servicios, planes y fases reales en CMS/BD.",
+  "pricing_format": "whole_currency_units",
+  "pricing_note": "Los importes de este JSON estan expresados en unidades enteras de la moneda indicada, no en centavos.",
   "diagnosis": {
     "cms_vs_public": "La pagina publica puede seguir mostrando planes aunque el CMS no los tenga porque SeccionPlanesServicio cae a obtenerPlanesServicio(slug) cuando la API devuelve planes vacios.",
     "public_fallback_files": [
@@ -42,7 +44,7 @@
       "slug": "diseno-web",
       "title": "Diseño de Sitios Web",
       "description": "Diseño web profesional adaptado a las necesidades del negocio.",
-      "base_price_cents": 10000,
+      "base_price": 100,
       "currency": "USD",
       "is_active": true,
       "sort_order": 1,
@@ -61,7 +63,7 @@
         {
           "slug": "web-basico",
           "name": "Basico",
-          "price_cents": 10000,
+          "price": 100,
           "description": "Landing o sitio corto para presentar servicios y captar contactos.",
           "features": [
             "Hasta 3 secciones principales",
@@ -82,7 +84,7 @@
         {
           "slug": "web-profesional",
           "name": "Profesional",
-          "price_cents": 17500,
+          "price": 150,
           "description": "Sitio corporativo multipagina con estructura mas completa y foco comercial.",
           "features": [
             "Hasta 6 paginas",
@@ -103,7 +105,7 @@
         {
           "slug": "web-avanzado",
           "name": "Avanzado",
-          "price_cents": 25000,
+          "price": 300,
           "description": "Sitio premium con mas integraciones, automatizaciones y alcance editorial.",
           "features": [
             "Hasta 10 paginas",
@@ -127,7 +129,7 @@
       "slug": "desarrollo-apps",
       "title": "Desarrollo de Aplicaciones",
       "description": "Aplicaciones moviles y web a medida.",
-      "base_price_cents": 20000,
+      "base_price": 200,
       "currency": "USD",
       "is_active": true,
       "sort_order": 2,
@@ -146,7 +148,7 @@
         {
           "slug": "apps-basico",
           "name": "Basico",
-          "price_cents": 20000,
+          "price": 200,
           "description": "MVP funcional con flujo principal y alcance controlado.",
           "features": [
             "Una plataforma principal",
@@ -167,7 +169,7 @@
         {
           "slug": "apps-profesional",
           "name": "Profesional",
-          "price_cents": 35000,
+          "price": 350,
           "description": "Aplicacion con panel, roles y alcance comercial mas robusto.",
           "features": [
             "Una plataforma con panel completo",
@@ -188,7 +190,7 @@
         {
           "slug": "apps-avanzado",
           "name": "Avanzado",
-          "price_cents": 50000,
+          "price": 500,
           "description": "Producto digital de mayor alcance con arquitectura y flujos mas complejos.",
           "features": [
             "Web y/o movil segun alcance",
@@ -212,7 +214,7 @@
       "slug": "agentes-ia",
       "title": "Agentes de IA",
       "description": "Soluciones de inteligencia artificial integradas.",
-      "base_price_cents": 6000,
+      "base_price": 120,
       "currency": "USD",
       "is_active": true,
       "sort_order": 3,
@@ -231,7 +233,7 @@
         {
           "slug": "ia-basico",
           "name": "Basico",
-          "price_cents": 6000,
+          "price": 120,
           "description": "Agente inicial para una tarea acotada o canal concreto.",
           "features": [
             "Un agente principal",
@@ -252,7 +254,7 @@
         {
           "slug": "ia-profesional",
           "name": "Profesional",
-          "price_cents": 15000,
+          "price": 200,
           "description": "Automatizacion multi-canal con mejor contexto y supervision.",
           "features": [
             "Hasta 2 agentes o flujos",
@@ -273,7 +275,7 @@
         {
           "slug": "ia-avanzado",
           "name": "Avanzado",
-          "price_cents": 30000,
+          "price": 300,
           "description": "Solucion de IA integrada en procesos centrales del negocio.",
           "features": [
             "Arquitectura multi-agente",
@@ -297,7 +299,7 @@
       "slug": "branding",
       "title": "Identidad de Marca",
       "description": "Diseño de identidad visual completa.",
-      "base_price_cents": 15000,
+      "base_price": 200,
       "currency": "USD",
       "is_active": true,
       "sort_order": 4,
@@ -316,7 +318,7 @@
         {
           "slug": "branding-basico",
           "name": "Basico",
-          "price_cents": 15000,
+          "price": 200,
           "description": "Base visual clara para marcas que necesitan ordenar su presencia.",
           "features": [
             "Logo principal",
@@ -337,7 +339,7 @@
         {
           "slug": "branding-profesional",
           "name": "Profesional",
-          "price_cents": 27500,
+          "price": 275,
           "description": "Sistema visual mas completo para marcas que ya venden y necesitan consistencia.",
           "features": [
             "Sistema de logo completo",
@@ -358,7 +360,7 @@
         {
           "slug": "branding-avanzado",
           "name": "Avanzado",
-          "price_cents": 40000,
+          "price": 400,
           "description": "Identidad mas profunda con toolkit visual para varias superficies.",
           "features": [
             "Sistema visual completo",
@@ -382,7 +384,7 @@
       "slug": "ecommerce",
       "title": "E-commerce y Marketing Digital",
       "description": "Tiendas online y campañas digitales orientadas a conversion.",
-      "base_price_cents": 25000,
+      "base_price": 200,
       "currency": "USD",
       "is_active": true,
       "sort_order": 5,
@@ -401,7 +403,7 @@
         {
           "slug": "ecommerce-basico",
           "name": "Basico",
-          "price_cents": 25000,
+          "price": 200,
           "description": "Tienda esencial para empezar a vender con una base comercial ordenada.",
           "features": [
             "Catalogo inicial",
@@ -422,7 +424,7 @@
         {
           "slug": "ecommerce-profesional",
           "name": "Profesional",
-          "price_cents": 40000,
+          "price": 300,
           "description": "Tienda con operacion comercial mas robusta y activacion digital continua.",
           "features": [
             "Catalogo e inventario ampliado",
@@ -443,7 +445,7 @@
         {
           "slug": "ecommerce-avanzado",
           "name": "Avanzado",
-          "price_cents": 60000,
+          "price": 600,
           "description": "Canal de venta digital mas completo, medible y listo para escalar.",
           "features": [
             "Tienda con integraciones clave",
