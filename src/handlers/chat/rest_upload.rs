@@ -83,10 +83,7 @@ struct UploadPayload {
 }
 
 /* [174A-2] Valida que la sesión exista antes de tocar multipart o disco. */
-async fn ensure_session_accepts_upload(
-    state: &AppState,
-    session_id: Uuid,
-) -> Result<(), AppError> {
+async fn ensure_session_accepts_upload(state: &AppState, session_id: Uuid) -> Result<(), AppError> {
     let session = crate::repositories::ChatRepository::find_session_by_id(&state.pool, session_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Sesión no encontrada".into()))?;

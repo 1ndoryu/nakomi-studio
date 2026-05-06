@@ -12,7 +12,7 @@ import {SEOHead} from '../components/seo/SEOHead';
 import {POSTS_BLOG, apiPostToPostBlog} from '../data/blog';
 import type {PostBlog} from '../types/contenido';
 import {obtenerImagenBlog} from '../hooks/useImagenes';
-import {navegar} from '../navegacionSPA';
+import {spaClick} from '../navegacionSPA';
 import {Button} from '../components/ui/Button';
 import {AdminOverlay} from '../components/ui/AdminOverlay';
 import OptimizedImage from '../components/ui/OptimizedImage';
@@ -28,7 +28,7 @@ const TarjetaArticulo: React.FC<{post: PostBlog; destacado?: boolean}> = ({post,
 
     return (
         <AdminOverlay contentType="blog" itemId={post.adminId || String(post.id)}>
-            <a href={post.link || '#'} onClick={(e) => { e.preventDefault(); if (post.link) navegar(post.link); }} className={`tarjetaArticulo ${destacado ? 'tarjetaArticuloDestacado' : ''}`}>
+            <a href={post.link || '#'} onClick={e => { if (post.link) spaClick(e, post.link); }} className={`tarjetaArticulo ${destacado ? 'tarjetaArticuloDestacado' : ''}`}>
                 <OptimizedImage src={imagenFinal} alt={post.titulo} className="articuloImagen" width={480} height={640} sizes="(max-width: 768px) 100vw, 50vw" />
                 <div className="articuloOverlay">
                     <span className="articuloCategoria">{post.categoria}</span>

@@ -40,6 +40,10 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
     const [tab, setTab] = useState<TabEditor>('general');
     const form = useEditorServicio(servicio, abierto);
 
+    const handleCategoriasChange = useCallback((valor: string) => {
+        form.setCategorias(valor.split(',').map(item => item.trim()).filter(Boolean));
+    }, [form]);
+
     const handleGuardar = useCallback(async () => {
         await onGuardar(form.buildBody(), form.buildPlansBody());
     }, [form, onGuardar]);
@@ -81,6 +85,15 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
                                 onChange={e => form.setDescripcion(e.target.value)}
                                 placeholder="Descripción corta del servicio"
                                 rows={3}
+                            />
+                        </label>
+
+                        <label className="editorServicioLabel">
+                            Categorías
+                            <Input
+                                value={form.categorias.join(', ')}
+                                onChange={e => handleCategoriasChange(e.target.value)}
+                                placeholder="web, software, ai"
                             />
                         </label>
 

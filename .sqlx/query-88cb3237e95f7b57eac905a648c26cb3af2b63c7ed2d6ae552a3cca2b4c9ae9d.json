@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO services (title, slug, description, base_price_cents, currency,\n             image_url, gallery, skills, content, meta_title, meta_description, status, sort_order)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n             RETURNING id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,\n             image_url, gallery, skills, content, meta_title, meta_description, status, updated_at",
+  "query": "INSERT INTO services (title, slug, description, categories, base_price_cents, currency,\n             image_url, gallery, skills, content, meta_title, meta_description, status, sort_order)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)\n             RETURNING id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,\n             image_url, gallery, skills, content, meta_title, meta_description, status, updated_at",
   "describe": {
     "columns": [
       {
@@ -25,66 +25,71 @@
       },
       {
         "ordinal": 4,
+        "name": "categories",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
         "name": "base_price_cents",
         "type_info": "Int4"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "currency",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "is_active",
         "type_info": "Bool"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "sort_order",
         "type_info": "Int4"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "image_url",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "gallery",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "skills",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "content",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "meta_title",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "meta_description",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "status",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -94,6 +99,7 @@
         "Varchar",
         "Varchar",
         "Text",
+        "Jsonb",
         "Int4",
         "Varchar",
         "Varchar",
@@ -116,6 +122,7 @@
       false,
       false,
       false,
+      false,
       true,
       false,
       false,
@@ -126,5 +133,5 @@
       false
     ]
   },
-  "hash": "edbf11ac7bab0a03c3d4c8b2b863e993601b4c3addbd8656054c41c4d3b58547"
+  "hash": "88cb3237e95f7b57eac905a648c26cb3af2b63c7ed2d6ae552a3cca2b4c9ae9d"
 }

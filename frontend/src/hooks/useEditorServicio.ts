@@ -32,6 +32,7 @@ export interface EditorServicioState {
     titulo: string;
     slug: string;
     descripcion: string;
+    categorias: string[];
     contenido: string;
     precioCents: number;
     imagenUrl: string;
@@ -43,6 +44,7 @@ export interface EditorServicioState {
     setTitulo: (v: string) => void;
     setSlug: (v: string) => void;
     setDescripcion: (v: string) => void;
+    setCategorias: (v: string[]) => void;
     setContenido: (v: string) => void;
     setPrecioCents: (v: number) => void;
     setImagenUrl: (v: string) => void;
@@ -60,6 +62,7 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
     const [titulo, setTitulo] = useState('');
     const [slug, setSlug] = useState('');
     const [descripcion, setDescripcion] = useState('');
+    const [categorias, setCategorias] = useState<string[]>([]);
     const [contenido, setContenido] = useState('');
     const [precioCents, setPrecioCents] = useState(0);
     const [imagenUrl, setImagenUrl] = useState('');
@@ -105,6 +108,7 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
         setTitulo('');
         setSlug('');
         setDescripcion('');
+        setCategorias([]);
         setContenido('');
         setPrecioCents(0);
         setImagenUrl('');
@@ -121,6 +125,7 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
             setTitulo(servicio.title);
             setSlug(servicio.slug);
             setDescripcion(servicio.description ?? '');
+            setCategorias(servicio.categories ?? []);
             setContenido(servicio.content ?? '');
             setPrecioCents(servicio.base_price_cents);
             setImagenUrl(servicio.image_url ?? '');
@@ -138,6 +143,7 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
         title: titulo,
         slug,
         description: descripcion || undefined,
+        categories: categorias,
         base_price_cents: precioCents,
         image_url: imagenUrl || undefined,
         content: contenido || undefined,
@@ -145,7 +151,7 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
         meta_description: metaDescription || undefined,
         status,
         sort_order: sortOrder,
-    }), [titulo, slug, descripcion, precioCents, imagenUrl, contenido, metaTitle, metaDescription, status, sortOrder]);
+    }), [titulo, slug, descripcion, categorias, precioCents, imagenUrl, contenido, metaTitle, metaDescription, status, sortOrder]);
 
     /* [074A-66] Convierte PlanEditable[] a SavePlanBody[] para el API */
     const buildPlansBody = useCallback((): SavePlanBody[] => {
@@ -171,9 +177,9 @@ export function useEditorServicio(servicio: AdminService | null, abierto: boolea
     }, [planes]);
 
     return {
-        titulo, slug, descripcion, contenido, precioCents, imagenUrl,
+        titulo, slug, descripcion, categorias, contenido, precioCents, imagenUrl,
         metaTitle, metaDescription, status, sortOrder, planes,
-        setTitulo, setSlug, setDescripcion, setContenido, setPrecioCents,
+        setTitulo, setSlug, setDescripcion, setCategorias, setContenido, setPrecioCents,
         setImagenUrl, setMetaTitle, setMetaDescription, setStatus, setSortOrder,
         setPlanes, buildBody, buildPlansBody, resetear,
     };

@@ -83,8 +83,8 @@ pub use refund::{
 };
 pub use review::{CreateReviewBody, OrderReview, RespondReviewBody, ReviewResponse};
 pub use service::{
-    AdminServiceResponse, CreateServiceRequest, SavePhaseItem, SavePlanItem,
-    SaveServicePlansRequest, ServiceDetailResponse, ServicePlan, ServicePlanPhase,
+    parse_service_categories, AdminServiceResponse, CreateServiceRequest, SavePhaseItem,
+    SavePlanItem, SaveServicePlansRequest, ServiceDetailResponse, ServicePlan, ServicePlanPhase,
     ServicePlanPhaseResponse, ServicePlanResponse, ServiceRecord, UpdateServiceRequest,
 };
 pub use team_member::{

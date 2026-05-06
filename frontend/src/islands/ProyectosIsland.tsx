@@ -11,7 +11,6 @@ import '../styles/variables.css';
 import './ProyectosIsland.css';
 import {CatalogPageShell} from '../components/layout/CatalogPageShell';
 import {mapAdminProjectsToProyectos} from '../data/showcase';
-import {CATEGORIAS_PROYECTOS} from '../data/navegacion';
 import {BarraFiltros} from '../components/servicios/BarraFiltros';
 import {Badge} from '../components/ui/Badge';
 import {AdminOverlay} from '../components/ui/AdminOverlay';
@@ -19,6 +18,7 @@ import OptimizedImage from '../components/ui/OptimizedImage';
 import {obtenerImagenShowcase} from '../hooks/useImagenes';
 import {Proyecto} from '../types/contenido';
 import {apiListPublicProjects} from '../api/admin-projects';
+import {buildFilterCategories, extractCategoryIds} from '../utils/catalogCategories';
 
 interface ProyectosIslandProps {
     titulo?: string;
@@ -27,7 +27,7 @@ interface ProyectosIslandProps {
 /* [064A-64] TarjetaProyecto traduce descripcion y cliente via content translations */
 const TarjetaProyecto: React.FC<{proyecto: Proyecto; indice: number}> = ({proyecto, indice}) => {
     const {t} = useTranslation();
-    const categorias = Array.isArray(proyecto.categorias) ? proyecto.categorias : [proyecto.categorias];
+    const categorias = extractCategoryIds(proyecto.categorias);
 
     /* Fallback a imagen showcase si el backend no resolvió la URL */
     const imagenSrc = proyecto.imagen || obtenerImagenShowcase(indice);
@@ -69,10 +69,15 @@ export const ProyectosIsland = ({titulo}: ProyectosIslandProps): JSX.Element => 
         [apiProjects]
     );
 
+    const categoriasDisponibles = useMemo(
+        () => buildFilterCategories(proyectos.flatMap(proyecto => extractCategoryIds(proyecto.categorias))),
+        [proyectos]
+    );
+
     const proyectosFiltrados = useMemo(() => {
         return proyectos.filter(p => {
             const coincideCategoria = categoriaActiva === 'todos' ||
-                (Array.isArray(p.categorias) ? p.categorias.includes(categoriaActiva) : p.categorias === categoriaActiva);
+                extractCategoryIds(p.categorias).includes(categoriaActiva);
             const coincideBusqueda = !busqueda ||
                 p.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
                 p.cliente.toLowerCase().includes(busqueda.toLowerCase());
@@ -90,7 +95,7 @@ export const ProyectosIsland = ({titulo}: ProyectosIslandProps): JSX.Element => 
             description={t('projects_page.description')}
         >
             <BarraFiltros
-                categorias={CATEGORIAS_PROYECTOS}
+                categorias={categoriasDisponibles}
                 categoriaActiva={categoriaActiva}
                 busqueda={busqueda}
                 onCategoriaChange={setCategoriaActiva}

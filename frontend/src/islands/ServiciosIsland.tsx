@@ -9,7 +9,6 @@ import {CatalogPageShell} from '../components/layout/CatalogPageShell';
 import {BarraFiltros} from '../components/servicios/BarraFiltros';
 import {GridServicios} from '../components/servicios/GridServicios';
 import {useServicios} from '../hooks/useServicios';
-import {CATEGORIAS_SERVICIOS} from '../data/navegacion';
 
 interface ServiciosIslandProps {
     titulo?: string;
@@ -17,7 +16,7 @@ interface ServiciosIslandProps {
 
 export const ServiciosIsland = ({titulo}: ServiciosIslandProps): JSX.Element => {
     const {t} = useTranslation();
-    const {categoriaActiva, setCategoriaActiva, busqueda, setBusqueda, serviciosFiltrados} = useServicios();
+    const {categoriaActiva, categoriasDisponibles, setCategoriaActiva, busqueda, setBusqueda, serviciosFiltrados} = useServicios();
 
     return (
         <CatalogPageShell
@@ -28,7 +27,7 @@ export const ServiciosIsland = ({titulo}: ServiciosIslandProps): JSX.Element => 
             title={titulo || t('services_page.title')}
             description={t('services_page.description')}
         >
-            <BarraFiltros categorias={CATEGORIAS_SERVICIOS} categoriaActiva={categoriaActiva} busqueda={busqueda} onCategoriaChange={setCategoriaActiva} onBusquedaChange={setBusqueda} />
+            <BarraFiltros categorias={categoriasDisponibles} categoriaActiva={categoriaActiva} busqueda={busqueda} onCategoriaChange={setCategoriaActiva} onBusquedaChange={setBusqueda} />
             <GridServicios servicios={serviciosFiltrados} />
         </CatalogPageShell>
     );

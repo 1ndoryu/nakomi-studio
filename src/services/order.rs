@@ -7,9 +7,9 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::{
-    CreateOrderRequest, Order, OrderPhaseResponse, OrderResponse, OrderStatus, PaymentMode,
-    PhaseStatus, ServiceDetailResponse, ServicePlanPhaseResponse, ServicePlanResponse,
-    UpdateOrderPhaseDefinitionRequest,
+    parse_service_categories, CreateOrderRequest, Order, OrderPhaseResponse, OrderResponse,
+    OrderStatus, PaymentMode, PhaseStatus, ServiceDetailResponse, ServicePlanPhaseResponse,
+    ServicePlanResponse, UpdateOrderPhaseDefinitionRequest,
 };
 use crate::repositories::{
     CreateOrderParams, CreatePhaseParams, OrderRepository, ServiceRepository,
@@ -50,6 +50,7 @@ impl OrderService {
                 slug: svc.slug,
                 title: svc.title,
                 description: svc.description,
+                categories: parse_service_categories(&svc.categories),
                 image_url: svc.image_url,
                 base_price_cents: svc.base_price_cents,
                 skills: svc.skills,
@@ -96,6 +97,7 @@ impl OrderService {
             slug: svc.slug,
             title: svc.title,
             description: svc.description,
+            categories: parse_service_categories(&svc.categories),
             image_url: svc.image_url,
             base_price_cents: svc.base_price_cents,
             skills: svc.skills,
@@ -617,9 +619,7 @@ impl OrderService {
             ));
         }
 
-        if effective_role != UserRole::Admin
-            && order.assigned_employee_id != Some(user_id)
-        {
+        if effective_role != UserRole::Admin && order.assigned_employee_id != Some(user_id) {
             return Err(AppError::Forbidden(
                 "Solo el empleado asignado o un administrador puede gestionar las fases".into(),
             ));
@@ -653,9 +653,7 @@ impl OrderService {
             ));
         }
 
-        if effective_role != UserRole::Admin
-            && order.assigned_employee_id != Some(user_id)
-        {
+        if effective_role != UserRole::Admin && order.assigned_employee_id != Some(user_id) {
             return Err(AppError::Forbidden(
                 "Solo el empleado asignado o un administrador puede gestionar las fases".into(),
             ));

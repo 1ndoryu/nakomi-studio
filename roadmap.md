@@ -32,4 +32,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
-- 035A-34: API privada para el agente en producción. Plan creado en `Agente/planes/plan-cms-api-agente-2026-05-15.md`. **Bloqueado — pendiente respuesta del usuario:** ¿Qué contenido específico necesitas modificar remotamente? Servicios/planes ya tienen endpoints admin. ¿También textos del landing, blog, configuración del sitio?
+(sin tareas pendientes)

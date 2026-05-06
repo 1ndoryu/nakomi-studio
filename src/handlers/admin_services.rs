@@ -13,8 +13,9 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    AdminServiceResponse, CreateServiceRequest, ReorderRequest, SaveServicePlansRequest,
-    ServicePlanPhaseResponse, ServicePlanResponse, UpdateServiceRequest, UserRole,
+    parse_service_categories, AdminServiceResponse, CreateServiceRequest, ReorderRequest,
+    SaveServicePlansRequest, ServicePlanPhaseResponse, ServicePlanResponse, UpdateServiceRequest,
+    UserRole,
 };
 use crate::repositories::{ServiceRepository, UpdateServiceParams};
 use crate::AppState;
@@ -99,6 +100,7 @@ async fn list_all(
             slug: svc.slug,
             title: svc.title,
             description: svc.description,
+            categories: parse_service_categories(&svc.categories),
             base_price_cents: svc.base_price_cents,
             currency: svc.currency,
             is_active: svc.is_active,
@@ -147,6 +149,7 @@ async fn create(
         slug: svc.slug,
         title: svc.title,
         description: svc.description,
+        categories: parse_service_categories(&svc.categories),
         base_price_cents: svc.base_price_cents,
         currency: svc.currency,
         is_active: svc.is_active,
@@ -192,10 +195,16 @@ async fn update(
         .await?
         .ok_or_else(|| AppError::NotFound("Servicio no encontrado".into()))?;
 
+    let categories_json = body
+        .categories
+        .as_ref()
+        .map(|categories| serde_json::json!(categories));
+
     let params = UpdateServiceParams {
         title: body.title.as_deref(),
         slug: body.slug.as_deref(),
         description: body.description.as_deref(),
+        categories: categories_json.as_ref(),
         base_price_cents: body.base_price_cents,
         currency: body.currency.as_deref(),
         is_active: body.is_active,
@@ -240,6 +249,7 @@ async fn update(
         slug: svc.slug,
         title: svc.title,
         description: svc.description,
+        categories: parse_service_categories(&svc.categories),
         base_price_cents: svc.base_price_cents,
         currency: svc.currency,
         is_active: svc.is_active,

@@ -289,6 +289,7 @@ foreach ($service in Ensure-Array $proposal.services) {
         title = [string]$service.title
         slug = $targetSlug
         description = if ($null -eq $service.description) { $null } else { [string]$service.description }
+        categories = @(Ensure-Array $service.categories | ForEach-Object { [string]$_ })
         base_price_cents = [int]$service.base_price * 100
         currency = [string]$service.currency
         is_active = [bool]$service.is_active

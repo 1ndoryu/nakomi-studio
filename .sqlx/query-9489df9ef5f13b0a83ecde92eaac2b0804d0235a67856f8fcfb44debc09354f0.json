@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,\n             image_url, gallery, skills, content, meta_title, meta_description, status, updated_at\n             FROM services WHERE slug = $1 AND is_active = true",
+  "query": "SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,\n             image_url, gallery, skills, content, meta_title, meta_description, status, updated_at\n             FROM services ORDER BY sort_order, created_at DESC",
   "describe": {
     "columns": [
       {
@@ -25,80 +25,84 @@
       },
       {
         "ordinal": 4,
+        "name": "categories",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
         "name": "base_price_cents",
         "type_info": "Int4"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "currency",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "is_active",
         "type_info": "Bool"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "sort_order",
         "type_info": "Int4"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "image_url",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "gallery",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "skills",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "content",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "meta_title",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "meta_description",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "status",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
       false,
       false,
       true,
+      false,
       false,
       false,
       false,
@@ -114,5 +118,5 @@
       false
     ]
   },
-  "hash": "2f60795bfc6962b9aca40310208426b7adb6bf6d6ec548e2068f6eaada6dff42"
+  "hash": "9489df9ef5f13b0a83ecde92eaac2b0804d0235a67856f8fcfb44debc09354f0"
 }

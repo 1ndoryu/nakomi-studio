@@ -28,6 +28,7 @@ export interface AdminService {
     slug: string;
     title: string;
     description: string | null;
+    categories: string[];
     base_price_cents: number;
     currency: string;
     is_active: boolean;
@@ -48,6 +49,7 @@ export interface CreateServiceBody {
     title: string;
     slug: string;
     description?: string;
+    categories?: string[];
     base_price_cents?: number;
     currency?: string;
     image_url?: string;
@@ -64,6 +66,7 @@ export interface UpdateServiceBody {
     title?: string;
     slug?: string;
     description?: string;
+    categories?: string[];
     base_price_cents?: number;
     currency?: string;
     is_active?: boolean;
@@ -157,6 +160,7 @@ export interface PublicService {
     slug: string;
     title: string;
     description: string | null;
+    categories: string[];
     image_url: string | null;
     base_price_cents: number;
     skills: unknown[];

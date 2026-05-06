@@ -22,16 +22,12 @@ interface BarraFiltrosProps {
 export const BarraFiltros: React.FC<BarraFiltrosProps> = ({categorias, categoriaActiva, busqueda, onCategoriaChange, onBusquedaChange}) => {
     const {t} = useTranslation();
 
-    /* [044A-2] Mapeo de labels de categoría a claves i18n */
     const CAT_KEYS: Record<string, string> = {
-        'Todos': 'categories.all',
-        'Diseño Web': 'categories.web',
-        'Software': 'categories.software',
-        'Inteligencia Artificial': 'categories.ai',
-        'Branding': 'categories.branding',
-        'Web': 'categories.web',
-        'Aplicaciones': 'categories.software',
-        'IA': 'categories.ai',
+        todos: 'categories.all',
+        web: 'categories.web',
+        software: 'categories.software',
+        ai: 'categories.ai',
+        branding: 'categories.branding',
     };
 
     return (
@@ -39,7 +35,7 @@ export const BarraFiltros: React.FC<BarraFiltrosProps> = ({categorias, categoria
             <div className="filtrosCategorias">
                 {categorias.map(cat => (
                     <Button variante="texto" key={cat.id} className={`filtroBoton ${categoriaActiva === cat.id ? 'activo' : ''}`} onClick={() => onCategoriaChange(cat.id)}>
-                        {t(CAT_KEYS[cat.label] || cat.label)}
+                        {CAT_KEYS[cat.id] ? t(CAT_KEYS[cat.id]) : cat.label}
                     </Button>
                 ))}
             </div>

@@ -5,7 +5,7 @@
  * [044A-38 Fase 1] Redirige / → /panel si el usuario está logueado.
  * [154A-6] Code splitting con React.lazy para rutas pesadas (PanelIsland, AdminEditorProvider). */
 
-import {useEffect, lazy, Suspense} from 'react';
+import {useLayoutEffect, lazy, Suspense} from 'react';
 import {BrowserRouter, Routes, Route, useNavigate, useParams} from 'react-router-dom';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {registrarNavigate} from './navegacionSPA';
@@ -58,7 +58,9 @@ const queryClient = new QueryClient({
 /* Registra navigate de React Router en el módulo navegacionSPA para compatibilidad */
 function NavigateRegistrar() {
     const navigate = useNavigate();
-    useEffect(() => {
+    useLayoutEffect(() => {
+        /* [065A-4] Registrar navigate antes del primer paint evita que CTAs tempranos
+         * caigan al fallback window.location.href y recarguen el documento completo. */
         registrarNavigate((to: string) => navigate(to));
     }, [navigate]);
     return null;

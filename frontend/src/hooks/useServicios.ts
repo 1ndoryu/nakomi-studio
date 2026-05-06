@@ -6,6 +6,7 @@ import {useState, useMemo} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {Servicio} from '../types/servicios';
 import {apiListPublicServices, type PublicService} from '../api/admin-services';
+import {buildFilterCategories, extractCategoryIds} from '../utils/catalogCategories';
 
 /* Convierte PublicService (API) → Servicio (frontend) */
 function convertirServicio(s: PublicService): Servicio {
@@ -15,7 +16,7 @@ function convertirServicio(s: PublicService): Servicio {
         titulo: s.title,
         descripcion: s.description || '',
         imagen: s.image_url || '',
-        categorias: [],
+        categorias: extractCategoryIds(s.categories),
         link: `/servicios/${s.slug}`,
         skills: Array.isArray(s.skills) ? s.skills.map((sk: unknown, i: number) => {
             const obj = sk as Record<string, string>;
@@ -46,6 +47,11 @@ export const useServicios = ({initialCategory = 'todos', initialSearch = ''}: Us
         [apiData]
     );
 
+    const categoriasDisponibles = useMemo(
+        () => buildFilterCategories(servicios.flatMap(servicio => servicio.categorias)),
+        [servicios]
+    );
+
     /* Filtrado de servicios según categoría y búsqueda */
     const serviciosFiltrados = useMemo(() => {
         return servicios.filter((servicio: Servicio) => {
@@ -62,6 +68,7 @@ export const useServicios = ({initialCategory = 'todos', initialSearch = ''}: Us
 
     return {
         categoriaActiva,
+        categoriasDisponibles,
         setCategoriaActiva,
         busqueda,
         setBusqueda,

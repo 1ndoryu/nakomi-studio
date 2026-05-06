@@ -18,6 +18,7 @@ pub struct UpdateServiceParams<'a> {
     pub title: Option<&'a str>,
     pub slug: Option<&'a str>,
     pub description: Option<&'a str>,
+    pub categories: Option<&'a serde_json::Value>,
     pub base_price_cents: Option<i32>,
     pub currency: Option<&'a str>,
     pub is_active: Option<bool>,
@@ -200,7 +201,7 @@ impl ServiceRepository {
     pub async fn list_services(pool: &PgPool) -> Result<Vec<ServiceRecord>, sqlx::Error> {
         sqlx::query_as!(
             ServiceRecord,
-            r#"SELECT id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,
+            r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
              FROM services WHERE is_active = true ORDER BY sort_order"#,
         )
@@ -214,7 +215,7 @@ impl ServiceRepository {
     ) -> Result<Option<ServiceRecord>, sqlx::Error> {
         sqlx::query_as!(
             ServiceRecord,
-            r#"SELECT id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,
+            r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
              FROM services WHERE slug = $1 AND is_active = true"#,
             slug,
@@ -309,7 +310,7 @@ impl ServiceRepository {
     pub async fn list_all_services(pool: &PgPool) -> Result<Vec<ServiceRecord>, sqlx::Error> {
         sqlx::query_as!(
             ServiceRecord,
-            r#"SELECT id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,
+            r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
              FROM services ORDER BY sort_order, created_at DESC"#,
         )
@@ -324,7 +325,7 @@ impl ServiceRepository {
     ) -> Result<Option<ServiceRecord>, sqlx::Error> {
         sqlx::query_as!(
             ServiceRecord,
-            r#"SELECT id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,
+            r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
              FROM services WHERE id = $1"#,
             id,
@@ -340,14 +341,16 @@ impl ServiceRepository {
     ) -> Result<ServiceRecord, sqlx::Error> {
         sqlx::query_as!(
             ServiceRecord,
-            r#"INSERT INTO services (title, slug, description, base_price_cents, currency,
+            r#"INSERT INTO services (title, slug, description, categories, base_price_cents, currency,
              image_url, gallery, skills, content, meta_title, meta_description, status, sort_order)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-             RETURNING id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+             RETURNING id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at"#,
             params.title,
             params.slug,
             params.description,
+            serde_json::to_value(params.categories.clone().unwrap_or_default())
+                .unwrap_or_else(|_| serde_json::json!([])),
             params.base_price_cents.unwrap_or(0),
             params.currency.as_deref().unwrap_or("USD"),
             params.image_url,
@@ -374,26 +377,28 @@ impl ServiceRepository {
              title = COALESCE($2, title),
              slug = COALESCE($3, slug),
              description = COALESCE($4, description),
-             base_price_cents = COALESCE($5, base_price_cents),
-             currency = COALESCE($6, currency),
-             is_active = COALESCE($7, is_active),
-             image_url = COALESCE($8, image_url),
-             gallery = COALESCE($9, gallery),
-             skills = COALESCE($10, skills),
-             content = COALESCE($11, content),
-             meta_title = COALESCE($12, meta_title),
-             meta_description = COALESCE($13, meta_description),
-             status = COALESCE($14, status),
-             sort_order = COALESCE($15, sort_order),
+               categories = COALESCE($5, categories),
+               base_price_cents = COALESCE($6, base_price_cents),
+               currency = COALESCE($7, currency),
+               is_active = COALESCE($8, is_active),
+               image_url = COALESCE($9, image_url),
+               gallery = COALESCE($10, gallery),
+               skills = COALESCE($11, skills),
+               content = COALESCE($12, content),
+               meta_title = COALESCE($13, meta_title),
+               meta_description = COALESCE($14, meta_description),
+               status = COALESCE($15, status),
+               sort_order = COALESCE($16, sort_order),
              updated_at = NOW()
              WHERE id = $1
-             RETURNING id, slug, title, description, base_price_cents, currency, is_active, sort_order, created_at,
+               RETURNING id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
                image_url, gallery, skills, content, meta_title, meta_description, status, updated_at",
         )
         .bind(id)
         .bind(params.title)
         .bind(params.slug)
         .bind(params.description)
+           .bind(params.categories)
         .bind(params.base_price_cents)
         .bind(params.currency)
         .bind(params.is_active)

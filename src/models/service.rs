@@ -18,6 +18,7 @@ pub struct ServiceRecord {
     pub slug: String,
     pub title: String,
     pub description: Option<String>,
+    pub categories: serde_json::Value,
     pub base_price_cents: i32,
     pub currency: String,
     pub is_active: bool,
@@ -76,6 +77,7 @@ pub struct ServiceDetailResponse {
     pub slug: String,
     pub title: String,
     pub description: Option<String>,
+    pub categories: Vec<String>,
     pub image_url: Option<String>,
     pub base_price_cents: i32,
     pub skills: serde_json::Value,
@@ -93,6 +95,7 @@ pub struct AdminServiceResponse {
     pub slug: String,
     pub title: String,
     pub description: Option<String>,
+    pub categories: Vec<String>,
     pub base_price_cents: i32,
     pub currency: String,
     pub is_active: bool,
@@ -117,6 +120,7 @@ pub struct CreateServiceRequest {
     #[validate(length(min = 1, max = 100))]
     pub slug: String,
     pub description: Option<String>,
+    pub categories: Option<Vec<String>>,
     pub base_price_cents: Option<i32>,
     pub currency: Option<String>,
     pub image_url: Option<String>,
@@ -139,6 +143,7 @@ pub struct UpdateServiceRequest {
     #[validate(length(min = 1, max = 100))]
     pub slug: Option<String>,
     pub description: Option<String>,
+    pub categories: Option<Vec<String>>,
     #[validate(range(min = 0))]
     pub base_price_cents: Option<i32>,
     #[validate(length(min = 3, max = 3))]
@@ -228,4 +233,9 @@ pub struct SavePhaseItem {
     pub percentage_of_total: i32,
     pub estimated_days: i32,
     pub max_revisions: i32,
+}
+
+#[must_use]
+pub fn parse_service_categories(categories: &serde_json::Value) -> Vec<String> {
+    serde_json::from_value(categories.clone()).unwrap_or_default()
 }

@@ -251,8 +251,7 @@ async fn handle_visitor_ws(
     let send_task = spawn_visitor_send_task(sender, rx);
 
     /* [T-1] Registrar sesión en timing service */
-    let timing_tx =
-        register_visitor_timing_session(&state, &session, session_id, &params, user_id);
+    let timing_tx = register_visitor_timing_session(&state, &session, session_id, &params, user_id);
 
     /* Procesar mensajes del visitante. Retorna true si el cierre fue explícito
      * (usuario cerró chat o rate limit forzó cierre). */

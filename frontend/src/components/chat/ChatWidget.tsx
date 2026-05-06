@@ -42,6 +42,14 @@ export const ChatWidget: React.FC = () => {
     const location = useLocation();
     if (location.pathname.startsWith('/panel')) return null;
 
+    useEffect(() => {
+        /* [065A-1] El widget también se abre desde CTAs externos via store.
+         * Si ya llega abierto al montar o cambia a abierto sin pasar por handleOpen,
+         * igual debe iniciar el WebSocket del visitante. */
+        if (!abierto || connected || connecting) return;
+        connect(undefined, storeContext);
+    }, [abierto, connected, connecting, connect, storeContext]);
+
     /* [064A-52] Al abrir, conectar directamente sin pedir nombre.
      * El agente IA pedirá el nombre al usuario si lo necesita.
      * [084A-28] Pasa el contexto del store al WS (hosting, servicio, etc.) */

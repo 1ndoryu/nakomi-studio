@@ -171,12 +171,7 @@ pub async fn process_visitor_messages(
             WsClientMessage::Message { content } => {
                 if matches!(
                     handle_visitor_text_message(
-                        state,
-                        session_id,
-                        visitor_id,
-                        client_ip,
-                        timing_tx,
-                        content,
+                        state, session_id, visitor_id, client_ip, timing_tx, content,
                     )
                     .await,
                     VisitorTextFlow::Close

@@ -337,7 +337,8 @@ pub async fn add_order_phase_handler(
     Path(order_id): Path<Uuid>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
     auth.require_role(&[UserRole::Employee, UserRole::Admin])?;
-    let phase = OrderService::add_phase(&state.pool, order_id, auth.user_id, auth.effective_role).await?;
+    let phase =
+        OrderService::add_phase(&state.pool, order_id, auth.user_id, auth.effective_role).await?;
     Ok((StatusCode::CREATED, Json(phase)))
 }
 
@@ -348,7 +349,14 @@ pub async fn delete_order_phase_handler(
     Path((order_id, phase_number)): Path<(Uuid, i32)>,
 ) -> Result<StatusCode, AppError> {
     auth.require_role(&[UserRole::Employee, UserRole::Admin])?;
-    OrderService::delete_phase(&state.pool, order_id, phase_number, auth.user_id, auth.effective_role).await?;
+    OrderService::delete_phase(
+        &state.pool,
+        order_id,
+        phase_number,
+        auth.user_id,
+        auth.effective_role,
+    )
+    .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -364,7 +372,6 @@ pub fn routes() -> Router<AppState> {
         .route("/orders/:order_id/phases", post(add_order_phase_handler))
         .route(
             "/orders/:order_id/phases/:phase_number",
-            patch(update_order_phase_definition_handler)
-                .delete(delete_order_phase_handler),
+            patch(update_order_phase_definition_handler).delete(delete_order_phase_handler),
         )
 }

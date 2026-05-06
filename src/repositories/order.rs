@@ -648,10 +648,7 @@ impl OrderRepository {
     }
 
     /* [035A-30] Número de fase máximo para la orden — para agregar la siguiente fase. */
-    pub async fn max_phase_number(
-        pool: &PgPool,
-        order_id: Uuid,
-    ) -> Result<i32, sqlx::Error> {
+    pub async fn max_phase_number(pool: &PgPool, order_id: Uuid) -> Result<i32, sqlx::Error> {
         let result: Option<i32> = sqlx::query_scalar!(
             "SELECT MAX(phase_number) FROM order_phases WHERE order_id = $1",
             order_id,

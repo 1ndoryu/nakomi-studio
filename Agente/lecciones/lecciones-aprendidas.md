@@ -15,6 +15,7 @@
 - `#[sqlx(default)]` solo funciona con `query_as` (runtime), no con la macro.
 - Tras modificar queries con `sqlx::query!` o `query_as!`, SIEMPRE ejecutar `cargo sqlx prepare`.
 - Si la query nueva depende de una columna recién agregada, primero correr `cargo sqlx migrate run` contra la base local de `DATABASE_URL`; si no, `cargo sqlx prepare` falla aunque el código esté bien.
+- Si la base local principal tiene checksums viejos de migraciones ya aplicadas, no fuerces esa BD para regenerar `.sqlx/`: crea una base temporal limpia, corre ahí `cargo sqlx migrate run` y luego `cargo sqlx prepare`.
 
 ## PowerShell + cargo
 - cargo escribe progreso en stderr. PowerShell interpreta stderr como error.
@@ -40,6 +41,7 @@
 - Para cambios de código, SIEMPRE usar deploy, no restart.
 - coolify-manager.exe `deploy --name` es para WordPress themes, no para apps Rust. Usar API directa.
 - coolify-manager.exe `restart` no siempre reinicia los contenedores de apps Docker Compose; `redeploy` (API) es más fiable para forzar recreación.
+- En `studio` (nakomi.studio), los endpoints admin firmados por JWT usan el env runtime `SERVICE_PASSWORD_64_JWTSECRET`; `JWT_SECRET` listado en Coolify no autenticó `/api/admin/blog` durante la verificación real.
 
 ## Rust/Axum — Timeouts HTTP obligatorios para APIs externas
 - **NUNCA crear `reqwest::Client::new()` sin `.timeout()` en código de producción.** Una API externa que se cuelga bloquea la tarea async indefinidamente. Si la tarea retiene una conexión del pool de BD (SQLx), agota el pool y congela toda la aplicación (deadlock de pool). Síntomas: proceso vivo pero 503, tcp backlog lleno, threads dormidos.

@@ -10,7 +10,7 @@ import {SeccionHeader} from '../ui/SeccionHeader';
 import {obtenerImagenBlog} from '../../hooks/useImagenes';
 import {POSTS_BLOG, apiPostToPostBlog} from '../../data/blog';
 import {apiListPublicBlog} from '../../api/admin-blog';
-import {navegar} from '../../navegacionSPA';
+import {spaClick} from '../../navegacionSPA';
 import OptimizedImage from '../ui/OptimizedImage';
 import './SeccionBlog.css';
 
@@ -54,7 +54,7 @@ export const SeccionBlog: React.FC = () => {
 
                 <div className="blogGrid">
                     {posts.slice(0, 3).map(post => (
-                        <a key={post.id} href={post.link || '#'} onClick={(e) => { e.preventDefault(); if (post.link) navegar(post.link); }} className="blogCard">
+                        <a key={post.id} href={post.link || '#'} onClick={e => { if (post.link) spaClick(e, post.link); }} className="blogCard">
                             <OptimizedImage src={post.imagen || obtenerImagenBlog(post.id)} alt={post.titulo} className="blogImagen" sizes="(max-width: 768px) 100vw, 33vw" />
                             <div className="blogOverlay">
                                 <span className="blogCategoria">{post.categoria}</span>
