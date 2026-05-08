@@ -1,10 +1,11 @@
 /* [044A-28] Handlers SEO: robots.txt y sitemap.xml.
  * [114A-SEO3] sitemap.xml ahora incluye rutas dinámicas (servicios, proyectos) desde BD.
- * [124A-SENT-R1] Queries directas → ServiceRepository::public_slugs y ProjectRepository::public_slugs. */
+ * [124A-SENT-R1] Queries directas → ServiceRepository::public_slugs y ProjectRepository::public_slugs.
+ * [074A-marketing] Blog posts publicados añadidos al sitemap. */
 use axum::http::header;
 use axum::{extract::State, response::IntoResponse, routing::get, Router};
 
-use crate::repositories::{ProjectRepository, ServiceRepository};
+use crate::repositories::{BlogRepository, ProjectRepository, ServiceRepository};
 use crate::AppState;
 
 const SITE_URL: &str = "https://nakomi.studio";
@@ -50,6 +51,13 @@ async fn sitemap_xml(State(state): State<AppState>) -> impl IntoResponse {
     if let Ok(slugs) = ProjectRepository::public_slugs(&state.pool).await {
         for slug in slugs {
             rutas.push((format!("/proyectos/{slug}"), "0.7", "monthly"));
+        }
+    }
+
+    /* [074A-marketing] Rutas dinámicas: posts publicados del blog */
+    if let Ok(slugs) = BlogRepository::public_slugs(&state.pool).await {
+        for slug in slugs {
+            rutas.push((format!("/blog/{slug}"), "0.9", "weekly"));
         }
     }
 

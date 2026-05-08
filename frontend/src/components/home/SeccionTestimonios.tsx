@@ -18,11 +18,15 @@ export const SeccionTestimonios: React.FC = () => {
     const itemsVisuales = [...items, ...items];
     const [modalAbierto, setModalAbierto] = useState(false);
 
+    /* [074A-marketing] Hook siempre llamado (Rules of Hooks) con totalItems seguro en 0.
+     * El guard vacío viene DESPUÉS de todos los hooks. */
     const {indiceActual, conTransicion, dragOffset, handlers} = useCarruselInfinito({
         totalItems: items.length,
         tiempoEspera: 5000,
         tiempoTransicion: 500
     });
+
+    if (items.length === 0) return null;
 
     return (
         <section className="seccionTestimonios">

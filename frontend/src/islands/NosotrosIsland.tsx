@@ -2,8 +2,9 @@
  * Componente: NosotrosIsland
  * Página "Sobre Nosotros" con misión, equipo, marcas y testimonios.
  * [074A-13] Equipo cargado desde API pública con fallback a datos estáticos.
+ * [074A-marketing] Person schemas inyectados dinámicamente desde equipo real.
  */
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import '../styles/variables.css';
 import './NosotrosIsland.css';
@@ -17,6 +18,7 @@ import {MIEMBROS_DATA} from '../data/miembros';
 import {Miembro} from '../types/contenido';
 import {apiListPublicTeamMembers} from '../api/admin-team';
 import type {AdminTeamMember} from '../api/admin-team';
+import {personSchema, breadcrumbSchema} from '../components/seo/schemas';
 
 interface NosotrosIslandProps {
     titulo?: string;
@@ -87,12 +89,27 @@ export const NosotrosIsland = ({titulo}: NosotrosIslandProps): JSX.Element => {
         return () => ctrl.abort();
     }, []);
 
+    /* [074A-marketing] @graph con breadcrumb + Person schemas del equipo real */
+    const jsonLd = useMemo(() => ({
+        '@context': 'https://schema.org',
+        '@graph': [
+            breadcrumbSchema([
+                {name: 'Inicio', url: '/'},
+                {name: 'Nosotros', url: '/nosotros'},
+            ]),
+            ...miembros.map(m =>
+                personSchema(m.nombre, m.cargo, m.bio, m.avatar, m.id)
+            ),
+        ],
+    }), [miembros]);
+
     return (
         <LayoutPagina className="nosotrosMain" id="paginaNosotros">
             <SEOHead
                 title="Nosotros"
-                description="Conoce al equipo de Nakomi Studio, nuestra misión y valores."
+                description="Conoce al equipo de Nakomi Studio: diseñadores y desarrolladores basados en Copenhague, especializados en web, apps e IA."
                 path="/nosotros"
+                jsonLd={jsonLd}
             />
             {/* Hero */}
             <section className="nosotrosHero">

@@ -15,11 +15,14 @@
         "logout": "Salir"
     },
     "hero": {
-        "title_start": "Estudio creativo especializado en ",
-        "title_web": "diseño web",
-        "title_software": "software",
-        "description": "Fusionamos diseño gráfico con ingeniería de software para crear soluciones web, aplicaciones y herramientas de inteligencia artificial que destacan por su estética y rendimiento.",
-        "cta": "Comenzar proyecto"
+        "title_start": "Diseño y código que ",
+        "title_web": "compiten",
+        "title_software": "duran",
+        "description": "Estudio creativo basado en Copenhague. Construimos con Rust para rendimiento real, diseñamos con criterio editorial, y hablamos tu idioma — español, inglés o japonés.",
+        "cta": "Comenzar proyecto",
+        "badge_rust": "⚡ APIs en Rust",
+        "badge_editorial": "✦ Diseño editorial",
+        "badge_langs": "🌍 ES · EN · JA"
     },
     "sections": {
         "services": "Services",
@@ -136,7 +139,7 @@
         "newsletter_submit": "Suscribir",
         "newsletter_sending": "Enviando...",
         "newsletter_success": "¡Suscripción exitosa! Te mantendremos informado.",
-        "copyright": "© {{year}} Nakomi Template. All rights reserved.",
+        "copyright": "© {{year}} Nakomi Studio. All rights reserved.",
         "privacy": "Política de Privacidad"
     },
     "auth": {

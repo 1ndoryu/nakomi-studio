@@ -20,7 +20,7 @@ export const BienvenidaIsland = (): JSX.Element => {
     return (
         <LayoutPagina className="mainContainer">
             <SEOHead
-                description="Agencia creativa especializada en desarrollo web, diseño UI/UX y soluciones digitales."
+                description="Estudio creativo basado en Copenhague. Diseño web, apps e IA construidos con Rust para rendimiento real. Operamos en español, inglés y japonés."
                 path="/"
                 jsonLd={{...organizationSchema, ...websiteSchema}}
             />

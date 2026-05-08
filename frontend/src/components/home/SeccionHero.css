@@ -1,6 +1,7 @@
 /*
  * Estilos para el componente SeccionHero
  * Define la estructura y presentacion de la seccion principal (Hero)
+ * [074A-marketing] Badges diferenciadores añadidos.
  */
 
 .seccionHero {
@@ -57,6 +58,25 @@
 
 .heroBoton {
     margin-top: var(--spacing-lg);
+}
+
+/* [074A-marketing] Badges diferenciadores bajo la descripción */
+.heroBadges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-md);
+}
+
+.heroBadge {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono, var(--font-primary));
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    white-space: nowrap;
 }
 
 .heroImagenFondo {

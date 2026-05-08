@@ -247,4 +247,13 @@ impl BlogRepository {
                 .await?;
         Ok(row.map(|r| r.0.unwrap_or(r.1)))
     }
+
+    /* [074A-marketing] Slugs de posts publicados para sitemap.xml */
+    pub async fn public_slugs(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
+        let rows: Vec<(String,)> =
+            sqlx::query_as("SELECT slug FROM blog_posts WHERE status = 'published' ORDER BY published_at DESC")
+                .fetch_all(pool)
+                .await?;
+        Ok(rows.into_iter().map(|r| r.0).collect())
+    }
 }
