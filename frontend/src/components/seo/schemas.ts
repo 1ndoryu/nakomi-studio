@@ -124,7 +124,7 @@ export const personSchema = (nombre: string, cargo: string, bio: string, avatar:
     jobTitle: cargo,
     description: bio,
     image: avatar.startsWith('http') ? avatar : `${SITE_URL}${avatar}`,
-    url: `${SITE_URL}/nosotros`,
+    url: `${SITE_URL}/nosotros#${encodeURIComponent(slug)}`,
     worksFor: {
         '@type': 'Organization',
         name: 'Nakomi Studio',

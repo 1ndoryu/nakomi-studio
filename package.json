@@ -3,7 +3,7 @@
   "private": true,
   "description": "Comandos unificados para el monorepo Rust + React",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
+    "dev": "node glory-rs/scripts/dev.mjs",
     "check": "cargo check && cargo clippy && npm --prefix frontend run type-check",
     "self-check": "powershell -ExecutionPolicy Bypass -File scripts/self-check.ps1",
     "check:back": "cargo check && cargo clippy",

@@ -23,6 +23,12 @@
 - Comandos largos o ambiguos no se deben "esperar" por intuicion: si no tienen criterio de fin claro, se ejecutan en background/async y se validan con una senal puntual (puerto, health, proceso, archivo generado, ultimas lineas del log).
 - Si `npx` o una CLI puede pedir confirmacion, usar `-y` o modo no interactivo desde el inicio; si no, el flujo parece colgado aunque en realidad esta esperando input.
 
+## Node/Vite — dependencias por rama
+- Cambiar de rama no actualiza `frontend/node_modules`: Git cambia `package.json`/`package-lock.json`, pero el árbol instalado queda como estado local compartido.
+- Vite puede detectar el lockfile nuevo y reoptimizar, pero no instala paquetes ausentes. El launcher compartido `glory-rs/scripts/dev.mjs` debe sincronizar una vez por huella de lockfile antes de arrancar Vite.
+- Recalcular la huella después de `npm install`, porque npm puede ajustar `package-lock.json` y dejar un marker obsoleto si se guarda la huella previa.
+- Si un script es agnóstico del flujo local (`dev`, limpieza de target, reparación de dependencias), debe vivir en `glory-rs/scripts/`; la raíz solo debe conservar wrappers o scripts específicos inevitables.
+
 ## Code Sentinel — sentinel-disable-file
 - Al crear sentinel-disable-file comments, SIEMPRE usar el ID exacto de la regla, no un alias inventado.
 - `button-nativo` ≠ `html-nativo-en-vez-de-componente`. El sentinel solo reconoce el ID registrado en ruleRegistry.ts.
