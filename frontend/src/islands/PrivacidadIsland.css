@@ -7,6 +7,9 @@
 
 .privacidadContenido {
     padding: var(--seccion-padding-y) var(--seccion-padding-x);
+    /* [095A-7] El header global es fijo y esta página arranca con texto,
+     * así que necesita aire extra arriba para que el título no quede tapado. */
+    padding-top: calc(var(--seccion-padding-y) + var(--spacing-xl));
 }
 
 .privacidadContenedor {
@@ -29,7 +32,7 @@
     margin-bottom: var(--spacing-xl);
 }
 
-.privacidadSeccion h2 {
+.privacidadSubtitulo {
     font-family: var(--font-primary);
     font-size: var(--text-lg);
     margin-bottom: var(--spacing-sm);
