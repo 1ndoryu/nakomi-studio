@@ -36,8 +36,6 @@ export function AdminOverlay({ contentType, itemId, children, className }: Admin
                     onCerrar={() => setMenuOpen(false)}
                     ariaLabel="Opciones de administración"
                     triggerTamano="pequeno"
-                    triggerClassName="adminOverlayTrigger"
-                    panelClassName="adminOverlayPanel"
                     items={[
                         {
                             id: 'edit',

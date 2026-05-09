@@ -8,7 +8,7 @@
     padding: 0;
     border-radius: var(--radius-lg);
     background: var(--bg-card-subtle);
-    color: inherit; /* hereda del contexto padre: blanco en footer oscuro, oscuro en panel claro */
+    color: var(--text-primary);
     text-decoration: none;
 }
 
@@ -22,6 +22,7 @@
     top: calc(100% + 8px);
     right: 0;
     min-width: 200px;
+    max-width: calc(100vw - 16px);
     max-height: 320px;
     overflow-y: auto;
     padding: var(--spacing-xs);
@@ -31,10 +32,14 @@
     z-index: 100;
 }
 
-/* Abre hacia arriba cuando el panel se saldria por debajo del viewport */
-.menuContextualPanel--arriba {
+.menuContextualPanelArriba {
     top: auto;
     bottom: calc(100% + 8px);
+}
+
+.menuContextualPanelIzquierda {
+    right: auto;
+    left: 0;
 }
 
 .menuContextualContenido {

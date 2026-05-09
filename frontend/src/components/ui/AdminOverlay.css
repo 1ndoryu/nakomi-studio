@@ -18,28 +18,3 @@
 .adminOverlay:hover .adminOverlayAcciones {
     opacity: 1;
 }
-
-/* sentinel-disable-next-line css-especificacion-diseno-local */
-.adminOverlayTrigger {
-    background: var(--brand-white);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-full);
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.adminOverlayTrigger:hover {
-    background: var(--bg-accent);
-    border-color: var(--border-hover);
-}
-
-/* sentinel-disable-next-line css-especificacion-diseno-local */
-.adminOverlayPanel {
-    right: 0;
-    left: auto;
-    min-width: 140px;
-}

@@ -1,4 +1,4 @@
-import React, {useRef, useState, useLayoutEffect} from 'react';
+import React, {useLayoutEffect, useRef, useState} from 'react';
 import {MoreHorizontal} from 'lucide-react';
 import {Button} from './Button';
 import './ContextMenu.css';
@@ -28,6 +28,8 @@ interface MenuContextualProps {
     children?: React.ReactNode;
 }
 
+type MenuContextualPosicion = 'abajoDerecha' | 'abajoIzquierda' | 'arribaDerecha' | 'arribaIzquierda';
+
 export const MenuContextual: React.FC<MenuContextualProps> = ({
     abierto,
     onToggle,
@@ -44,14 +46,35 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
     children,
 }) => {
     const contenedorRef = useRef<HTMLDivElement>(null);
-    const [abreArriba, setAbreArriba] = useState(false);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const [posicion, setPosicion] = useState<MenuContextualPosicion>('abajoDerecha');
 
-    /* Detecta si el panel se saldria por debajo del viewport y ajusta direccion */
     useLayoutEffect(() => {
-        if (!abierto || !contenedorRef.current) { return; }
-        const rect = contenedorRef.current.getBoundingClientRect();
-        const espacioAbajo = window.innerHeight - rect.bottom;
-        setAbreArriba(espacioAbajo < 320);
+        if (!abierto) { return; }
+
+        const actualizarPosicion = () => {
+            const contenedor = contenedorRef.current;
+            const panel = panelRef.current;
+            if (!contenedor || !panel) { return; }
+
+            const margenViewport = 8;
+            const contenedorRect = contenedor.getBoundingClientRect();
+            const panelRect = panel.getBoundingClientRect();
+            const espacioAbajo = window.innerHeight - contenedorRect.bottom;
+            const espacioArriba = contenedorRect.top;
+            const abreArriba = panelRect.height + margenViewport > espacioAbajo && espacioArriba > espacioAbajo;
+            const alinearIzquierda = contenedorRect.right - panelRect.width < margenViewport;
+
+            setPosicion(`${abreArriba ? 'arriba' : 'abajo'}${alinearIzquierda ? 'Izquierda' : 'Derecha'}` as MenuContextualPosicion);
+        };
+
+        actualizarPosicion();
+        window.addEventListener('resize', actualizarPosicion);
+        window.addEventListener('scroll', actualizarPosicion, true);
+        return () => {
+            window.removeEventListener('resize', actualizarPosicion);
+            window.removeEventListener('scroll', actualizarPosicion, true);
+        };
     }, [abierto]);
 
     const handleBlur = (event: React.FocusEvent<HTMLDivElement>) => {
@@ -62,9 +85,10 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
         onCerrar();
     };
 
-    const clasePanel = [
+    const clasesPanel = [
         'menuContextualPanel',
-        abreArriba ? 'menuContextualPanel--arriba' : '',
+        posicion.startsWith('arriba') ? 'menuContextualPanelArriba' : '',
+        posicion.endsWith('Izquierda') ? 'menuContextualPanelIzquierda' : '',
         panelClassName,
     ].filter(Boolean).join(' ');
 
@@ -84,7 +108,7 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
             </Button>
 
             {abierto && (
-                <div className={clasePanel} role="menu">
+                <div ref={panelRef} className={clasesPanel} role="menu">
                     {children ? (
                         <div className="menuContextualContenido">{children}</div>
                     ) : (
