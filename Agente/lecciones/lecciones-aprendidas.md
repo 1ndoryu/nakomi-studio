@@ -46,6 +46,7 @@
 - Si `tsc` emite en el mismo `dist/` que esbuild, puede sobrescribir el CLI bundlereado con una version que conserva aliases `@/`. Despues del type-check, regenerar el bundle o separar outDirs.
 - El smoke valido de una CLI editor-agnostica no es importar funciones desde tests: hay que ejecutar `node dist/cli/index.js ...` contra un workspace temporal para confirmar que Node puro no carga `vscode` ni aliases sin resolver.
 - Si el entrypoint ya tiene shebang, no agregar otro con `banner` de esbuild; el segundo shebang queda en linea 2 y rompe `require()`/ejecucion.
+- Los snapshots de equivalencia deben normalizar rutas relativas y rangos 0-indexed; los codigos de salida se prueban aparte porque un fixture con errores debe devolver `1` aunque su JSON sea el esperado.
 
 ## Coolify — deploy vs restart
 - `POST /api/v1/services/{uuid}/restart` solo reinicia containers existentes con la misma imagen.

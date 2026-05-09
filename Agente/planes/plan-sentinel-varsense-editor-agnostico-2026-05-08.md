@@ -286,6 +286,15 @@ Criterio de cierre:
 - Restriccion respetada: no se reinstalo la extension de VS Code; el bloque se valido con compile, tests y CLI compilado.
 - Pendiente tecnico: Fase 4 matriz de equivalencia para VarSense, LSP/Zed y checks CI de no importacion de `vscode` siguen activos en el plan global.
 
+## Avance 2026-05-09 - equivalencia VarSense
+
+- `095A-1`: VarSense avanzo Fase 4 con fixtures versionados en `fixtures/equivalence/` para `scan` y `orphan-classes`.
+- `095A-1`: La suite normaliza hallazgos por archivo relativo, `ruleId`, severidad, linea, columna y mensaje, y compara el core directo contra el CLI para evitar divergencias entre superficies.
+- Se agregaron snapshots `expected-findings.json` para variables no definidas, valores hardcodeados, propiedades prohibidas, CSS inline y clases huerfanas.
+- Para evitar duplicacion de defaults, los patrones base de CLI (`DEFAULT_*_PATTERNS`) quedaron exportados y la prueba core consume el mismo contrato que `varsense scan`.
+- Validacion: VarSense `npm test` paso (`34 passing`) e incluye compile, compile:tests, lint, suite VS Code y equivalencia core/CLI. Smoke CLI real contra fixtures versionados paso con codigos esperados (`scan` = 1 por errores reales; `orphan-classes` = 0).
+- Pendiente tecnico: matriz equivalente de Sentinel mas amplia, LSP/Zed y checks CI de no importacion de `vscode` siguen activos en el plan global.
+
 ## Riesgos y mitigaciones
 
 - Riesgo: duplicar reglas entre CLI y VS Code. Mitigacion: VS Code debe llamar core, nunca al reves.
