@@ -15,14 +15,11 @@
         "logout": "ログアウト"
     },
     "hero": {
-        "title_start": "競争力があり、",
-        "title_web": "長続きする",
-        "title_software": "デザインとコード",
-        "description": "コペンハーゲンを拠点とするクリエイティブスタジオ。Rustで本物のパフォーマンスを実現し、編集的な精度でデザインし、あなたの言語で対応します — スペイン語、英語、日本語。",
-        "cta": "プロジェクトを始める",
-        "badge_rust": "⚡ Rust API",
-        "badge_editorial": "✦ エディトリアルデザイン",
-        "badge_langs": "🌍 ES · EN · JA"
+        "title_start": "",
+        "title_web": "ウェブデザイン",
+        "title_software": "ソフトウェア",
+        "description": "グラフィックデザインとソフトウェアエンジニアリングを融合し、美しさとパフォーマンスを兼ね備えたウェブソリューション、アプリケーション、AIツールを創造します。",
+        "cta": "プロジェクトを始める"
     },
     "sections": {
         "services": "サービス",
@@ -139,7 +136,7 @@
         "newsletter_submit": "登録",
         "newsletter_sending": "送信中...",
         "newsletter_success": "登録完了！最新情報をお届けします。",
-        "copyright": "© {{year}} Nakomi Studio. All rights reserved.",
+        "copyright": "© {{year}} Nakomi Template. All rights reserved.",
         "privacy": "プライバシーポリシー"
     },
     "auth": {

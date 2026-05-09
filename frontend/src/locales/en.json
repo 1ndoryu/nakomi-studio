@@ -15,14 +15,11 @@
         "logout": "Log Out"
     },
     "hero": {
-        "title_start": "Design and code that ",
-        "title_web": "compete",
-        "title_software": "last",
-        "description": "Creative studio based in Copenhagen. We build with Rust for real performance, design with editorial precision, and work in your language — Spanish, English, or Japanese.",
-        "cta": "Start a project",
-        "badge_rust": "⚡ Rust APIs",
-        "badge_editorial": "✦ Editorial design",
-        "badge_langs": "🌍 ES · EN · JA"
+        "title_start": "Creative studio specialized in ",
+        "title_web": "web design",
+        "title_software": "software",
+        "description": "We merge graphic design with software engineering to create web solutions, applications, and AI tools that stand out for their aesthetics and performance.",
+        "cta": "Start a project"
     },
     "sections": {
         "services": "Services",
@@ -139,7 +136,7 @@
         "newsletter_submit": "Subscribe",
         "newsletter_sending": "Sending...",
         "newsletter_success": "Subscribed successfully! We'll keep you updated.",
-        "copyright": "© {{year}} Nakomi Studio. All rights reserved.",
+        "copyright": "© {{year}} Nakomi Template. All rights reserved.",
         "privacy": "Privacy Policy"
     },
     "auth": {
