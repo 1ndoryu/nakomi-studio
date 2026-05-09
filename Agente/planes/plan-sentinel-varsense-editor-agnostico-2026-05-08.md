@@ -295,6 +295,14 @@ Criterio de cierre:
 - Validacion: VarSense `npm test` paso (`34 passing`) e incluye compile, compile:tests, lint, suite VS Code y equivalencia core/CLI. Smoke CLI real contra fixtures versionados paso con codigos esperados (`scan` = 1 por errores reales; `orphan-classes` = 0).
 - Pendiente tecnico: matriz equivalente de Sentinel mas amplia, LSP/Zed y checks CI de no importacion de `vscode` siguen activos en el plan global.
 
+## Avance 2026-05-09 - LSP VarSense
+
+- `095A-2`: VarSense avanzo Fase 5 con un servidor LSP stdio (`varsense-lsp`) que publica diagnostics desde el mismo core usado por CLI y VS Code.
+- Se agrego `src/lsp/diagnostics.ts` como adaptador puro `CoreFinding -> Diagnostic` y `src/lsp/server.ts` como servidor Node con `textDocumentSync: Incremental`.
+- El build genera `dist/lsp/server.js`, `package.json` expone el binario `varsense-lsp` y el README documenta `node ./dist/lsp/server.js --stdio` para editores compatibles.
+- Validacion: VarSense `npm test` paso (`36 passing`) e incluye tests del mapper LSP. Smoke stdio real inicializo el server compilado, abrio el fixture CSS y confirmo `textDocument/publishDiagnostics` con `variableNoDefinida`.
+- Pendiente tecnico: integrar este LSP en Zed, repetir el patron para Sentinel o definir server combinado, y agregar checks CI de no importacion de `vscode` en `src/core/**`.
+
 ## Riesgos y mitigaciones
 
 - Riesgo: duplicar reglas entre CLI y VS Code. Mitigacion: VS Code debe llamar core, nunca al reves.
