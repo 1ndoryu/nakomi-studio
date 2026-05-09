@@ -1,11 +1,11 @@
 /* [044A-2] Selector de idioma compacto para el Header.
  * Muestra código del idioma actual y dropdown con opciones.
- * [054A-17] Refactorizado de dropdown artesanal a MenuContextual. */
+ * [054A-17] Refactorizado de dropdown artesanal a MenuContextual.
+ * [095A] Sin className overrides: MenuContextual detecta posicion automaticamente. */
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {MenuContextual} from './ContextMenu';
 import {Button} from './Button';
-import './LanguageSelector.css';
 
 const LANGUAGES = [
     {code: 'es', label: 'ES', nombre: 'Español'},
@@ -31,15 +31,12 @@ export const LanguageSelector = () => {
             onCerrar={() => setOpen(false)}
             ariaLabel="Seleccionar idioma"
             triggerContent={currentLang.label}
-            triggerClassName="selectorIdiomaTrigger"
-            panelClassName="selectorIdiomaLista"
-            className="selectorIdioma"
         >
             {LANGUAGES.map(lang => (
                 <Button
                     key={lang.code}
                     variante="texto"
-                    className={`selectorIdiomaOpcion ${lang.code === i18n.language ? 'activo' : ''}`}
+                    className={lang.code === i18n.language ? 'activo' : ''}
                     onClick={() => cambiarIdioma(lang.code)}
                     type="button"
                 >

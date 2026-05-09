@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useRef, useState, useLayoutEffect} from 'react';
 import {MoreHorizontal} from 'lucide-react';
 import {Button} from './Button';
 import './ContextMenu.css';
@@ -43,6 +43,17 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
     triggerTamano = 'pequeno',
     children,
 }) => {
+    const contenedorRef = useRef<HTMLDivElement>(null);
+    const [abreArriba, setAbreArriba] = useState(false);
+
+    /* Detecta si el panel se saldria por debajo del viewport y ajusta direccion */
+    useLayoutEffect(() => {
+        if (!abierto || !contenedorRef.current) { return; }
+        const rect = contenedorRef.current.getBoundingClientRect();
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        setAbreArriba(espacioAbajo < 320);
+    }, [abierto]);
+
     const handleBlur = (event: React.FocusEvent<HTMLDivElement>) => {
         const nextTarget = event.relatedTarget as Node | null;
         if (nextTarget && event.currentTarget.contains(nextTarget)) {
@@ -51,8 +62,14 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
         onCerrar();
     };
 
+    const clasePanel = [
+        'menuContextualPanel',
+        abreArriba ? 'menuContextualPanel--arriba' : '',
+        panelClassName,
+    ].filter(Boolean).join(' ');
+
     return (
-        <div className={`menuContextual ${className}`.trim()} onBlur={handleBlur}>
+        <div ref={contenedorRef} className={`menuContextual ${className}`.trim()} onBlur={handleBlur}>
             <Button
                 className={`menuContextualBoton ${triggerClassName}`.trim()}
                 onClick={onToggle}
@@ -67,7 +84,7 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
             </Button>
 
             {abierto && (
-                <div className={`menuContextualPanel ${panelClassName}`.trim()} role="menu">
+                <div className={clasePanel} role="menu">
                     {children ? (
                         <div className="menuContextualContenido">{children}</div>
                     ) : (
