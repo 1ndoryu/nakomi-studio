@@ -10,7 +10,6 @@ export const ENLACES_HEADER: EnlaceNavegacion[] = [
     {label: 'Servicios', href: '/servicios/'},
     {label: 'Proyectos', href: '/proyectos/'},
     {label: 'Nosotros', href: '/nosotros/'},
-    {label: 'Blog', href: '/blog/'},
     {
         label: 'Soluciones',
         href: '/soluciones/',
@@ -30,7 +29,6 @@ export const ENLACES_FOOTER: EnlaceFooter[] = [
     {label: 'Servicios', href: '/servicios/'},
     {label: 'Proyectos', href: '/proyectos/'},
     {label: 'Nosotros', href: '/nosotros/'},
-    {label: 'Blog', href: '/blog/'},
     {label: 'Contacto', href: '/contacto/'},
     {label: 'Política de Privacidad', href: '/politica-privacidad/'}
 ];

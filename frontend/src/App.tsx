@@ -15,7 +15,6 @@ import {ScrollToTop} from './components/ui/ScrollToTop';
 import {BienvenidaIsland} from './islands/BienvenidaIsland';
 import {ServiciosIsland} from './islands/ServiciosIsland';
 import {ProyectosIsland} from './islands/ProyectosIsland';
-import {BlogIsland} from './islands/BlogIsland';
 import {NotFoundIsland} from './islands/NotFoundIsland';
 
 /* [204A-2] Lazy: páginas de detalle y rutas secundarias.
@@ -23,7 +22,6 @@ import {NotFoundIsland} from './islands/NotFoundIsland';
  * Las listings (Servicios, Proyectos, Blog) siguen eager porque son rutas de aterrizaje frecuentes. */
 const ServicioIndividualIsland = lazy(() => import('./islands/ServicioIndividualIsland').then(m => ({default: m.ServicioIndividualIsland})));
 const ProyectoIndividualIsland = lazy(() => import('./islands/ProyectoIndividualIsland').then(m => ({default: m.ProyectoIndividualIsland})));
-const BlogSingleIsland = lazy(() => import('./islands/BlogSingleIsland').then(m => ({default: m.BlogSingleIsland})));
 const NosotrosIsland = lazy(() => import('./islands/NosotrosIsland').then(m => ({default: m.NosotrosIsland})));
 const SolucionesIsland = lazy(() => import('./islands/SolucionesIsland').then(m => ({default: m.SolucionesIsland})));
 const SolucionPlaceholderIsland = lazy(() => import('./islands/SolucionPlaceholderIsland').then(m => ({default: m.SolucionPlaceholderIsland})));
@@ -93,12 +91,6 @@ function ProyectoDetallePage() {
     );
 }
 
-/* Wrapper: resuelve slug de blog post */
-function BlogDetallePage() {
-    const {slug} = useParams<{slug: string}>();
-    return <BlogSingleIsland slug={slug} />;
-}
-
 /* [074A-1] Home siempre muestra BienvenidaIsland, logueado o no.
  * Los usuarios logueados pueden navegar libremente por el sitio.
  * El panel se accede desde el header (botón "Panel"). */
@@ -116,8 +108,6 @@ function App() {
                     <Route path="/proyectos" element={<ProyectosIsland />} />
                     <Route path="/proyectos/:slug" element={<Suspense fallback={null}><ProyectoDetallePage /></Suspense>} />
                     <Route path="/nosotros" element={<Suspense fallback={null}><NosotrosIsland /></Suspense>} />
-                    <Route path="/blog" element={<BlogIsland />} />
-                    <Route path="/blog/:slug" element={<Suspense fallback={null}><BlogDetallePage /></Suspense>} />
                     <Route path="/soluciones" element={<Suspense fallback={null}><SolucionesIsland /></Suspense>} />
                     {/* [064A-32] Hosting tiene página propia, el resto usa placeholder */}
                     <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />

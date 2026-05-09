@@ -19,7 +19,6 @@ const FOOTER_NAV_KEYS: Record<string, string> = {
     'Servicios': 'nav.services',
     'Proyectos': 'nav.projects',
     'Nosotros': 'nav.about',
-    'Blog': 'nav.blog',
     'Contacto': 'nav.contact',
     'Política de Privacidad': 'footer.privacy',
 };

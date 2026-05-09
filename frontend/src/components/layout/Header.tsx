@@ -32,7 +32,6 @@ const NAV_KEYS: Record<string, string> = {
     'Servicios': 'nav.services',
     'Proyectos': 'nav.projects',
     'Nosotros': 'nav.about',
-    'Blog': 'nav.blog',
     'Soluciones': 'nav.solutions',
     'WordPress Hosting': 'nav.hosting',
 };

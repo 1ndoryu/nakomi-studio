@@ -15,6 +15,13 @@
     padding-bottom: var(--spacing-xl);
 }
 
+/* [095A-N9] Cuando la sección de contacto queda al final del <main>, el siguiente bloque real
+ * es el footer global. En ese caso no debe verse "compacta": recupera un cierre amplio sin
+ * pedir props adicionales al caller. */
+.seccionContactoCompacta:last-child {
+    padding-bottom: var(--spacing-4xl);
+}
+
 .contactoContenedor {
     width: 100%;
     max-width: var(--container-width);

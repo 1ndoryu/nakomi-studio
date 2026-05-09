@@ -10,7 +10,6 @@ import {SEOHead} from '../components/seo/SEOHead';
 import {organizationSchema, websiteSchema} from '../components/seo/schemas';
 import {SeccionHero} from '../components/home/SeccionHero';
 import {SeccionServicios} from '../components/home/SeccionServicios';
-import {SeccionBlog} from '../components/home/SeccionBlog';
 import {SeccionContacto} from '../components/home/SeccionContacto';
 import {SeccionShowcase} from '../components/home/SeccionShowcase';
 
@@ -28,7 +27,6 @@ export const BienvenidaIsland = (): JSX.Element => {
             <SeccionShowcase />
             <SeccionServicios />
             <SeccionContacto compacto />
-            <SeccionBlog />
         </LayoutPagina>
     );
 };
