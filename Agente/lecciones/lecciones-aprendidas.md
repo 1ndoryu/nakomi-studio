@@ -42,6 +42,11 @@
 - `modal-estructura-no-canonica` no puede limitarse a `form/div` internos: también debe inspeccionar `className` sobre el propio `<Modal>`, porque clases como `usuariosModal` o `checkoutModal` redefinen el contenedor compartido y si no se miran ahí el reporte queda ciego justo en el punto de entrada.
 - Para detectar especificaciones de diseño CSS, no depender de nombres `boton/button`: cruzar rol interactivo local (`Trigger`, `Lista`, `Opcion`, `__dropdown`) con varias propiedades visuales (`background`, `border`, tipografia, padding, transition/animation) y cubrirlo con fixture core vs CLI.
 
+## VarSense — CLI editor-agnostico
+- Si `tsc` emite en el mismo `dist/` que esbuild, puede sobrescribir el CLI bundlereado con una version que conserva aliases `@/`. Despues del type-check, regenerar el bundle o separar outDirs.
+- El smoke valido de una CLI editor-agnostica no es importar funciones desde tests: hay que ejecutar `node dist/cli/index.js ...` contra un workspace temporal para confirmar que Node puro no carga `vscode` ni aliases sin resolver.
+- Si el entrypoint ya tiene shebang, no agregar otro con `banner` de esbuild; el segundo shebang queda en linea 2 y rompe `require()`/ejecucion.
+
 ## Coolify — deploy vs restart
 - `POST /api/v1/services/{uuid}/restart` solo reinicia containers existentes con la misma imagen.
 - `GET /api/v1/deploy?uuid={uuid}&force=true` trigger un rebuild completo (git pull + docker build).

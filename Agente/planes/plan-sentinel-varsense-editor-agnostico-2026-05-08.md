@@ -274,6 +274,18 @@ Criterio de cierre:
 - Restriccion respetada: no se reinstalo la extension de VS Code; el bloque se valido solo con compile, tests y CLI compilado.
 - Pendiente tecnico: Fase 3 VarSense CLI, LSP/Zed y checks CI de no importacion de `vscode` siguen activos en el plan global.
 
+## Avance 2026-05-08 - CLI VarSense
+
+- `085A-5`: VarSense avanzo Fase 3 con `src/cli/index.ts` y binario `varsense` en `package.json`.
+- El comando soporta `varsense scan --workspace . --format markdown --output .varsense-report.md` y `varsense orphan-classes --workspace . --format json`.
+- Se agregaron providers Node (`NodeWorkspaceFileProvider`, `NodeDocumentProvider`), analizador core de documentos y reporte Markdown puro, reutilizando `VariableIndexBuilder`, `ClassIndexBuilder` y `cssParser` sin cargar VS Code.
+- La CLI lee `varsense.config.json` cuando existe, acepta patrones de inclusion/exclusion, archivos de variables, severidades para hardcoded/inline/banned properties y configuracion de clases huerfanas.
+- Codigos de salida implementados: `0` sin errores, `1` con hallazgos de severidad error, `2` fallo de ejecucion/config.
+- Gotcha resuelto: `tsc` emitia `dist/cli/index.js` sin bundle y conservaba aliases `@/`; `compile:tests` ahora regenera esbuild despues del type-check para que el binario final sea ejecutable en Node puro. Tambien se evito duplicar el shebang entre el entrypoint y el bundle.
+- Validacion: VarSense `npm test` paso (`32 passing`) e incluye compile, compile:tests, lint y suite VS Code. Smoke CLI real con `node dist/cli/index.js scan --workspace <tmp> --format json` paso y emitio hallazgo `valorHardcoded` con rango/severidad correctos.
+- Restriccion respetada: no se reinstalo la extension de VS Code; el bloque se valido con compile, tests y CLI compilado.
+- Pendiente tecnico: Fase 4 matriz de equivalencia para VarSense, LSP/Zed y checks CI de no importacion de `vscode` siguen activos en el plan global.
+
 ## Riesgos y mitigaciones
 
 - Riesgo: duplicar reglas entre CLI y VS Code. Mitigacion: VS Code debe llamar core, nunca al reves.
