@@ -303,6 +303,13 @@ Criterio de cierre:
 - Validacion: VarSense `npm test` paso (`36 passing`) e incluye tests del mapper LSP. Smoke stdio real inicializo el server compilado, abrio el fixture CSS y confirmo `textDocument/publishDiagnostics` con `variableNoDefinida`.
 - Pendiente tecnico: integrar este LSP en Zed, repetir el patron para Sentinel o definir server combinado, y agregar checks CI de no importacion de `vscode` en `src/core/**`.
 
+## Avance 2026-05-09 - guard core sin VS Code
+
+- `095A-3`: Sentinel y VarSense avanzaron Fase 7 con `scripts/check-core-no-vscode.mjs`, que falla si `src/core/**` importa `vscode` fuera de `vscodeAdapter.ts`.
+- En Sentinel, `npm run test:unit` ahora ejecuta `npm run check:core` despues de compilar; en VarSense, `npm test` lo ejecuta dentro de `pretest` despues de compile/lint.
+- Validacion: Sentinel `npm run test:unit` paso (`291 passing`, `1 pending`) con `[check-core-no-vscode] OK`. VarSense `npm test` paso (`36 passing`) con `[check-core-no-vscode] OK`.
+- Pendiente tecnico: integrar el guard en CI remoto formal, crear extension Zed o configuracion Zed que lance el LSP, y decidir si Sentinel tendra LSP propio o server combinado.
+
 ## Riesgos y mitigaciones
 
 - Riesgo: duplicar reglas entre CLI y VS Code. Mitigacion: VS Code debe llamar core, nunca al reves.

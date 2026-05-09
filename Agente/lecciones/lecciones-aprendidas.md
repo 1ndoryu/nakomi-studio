@@ -48,6 +48,7 @@
 - Si el entrypoint ya tiene shebang, no agregar otro con `banner` de esbuild; el segundo shebang queda en linea 2 y rompe `require()`/ejecucion.
 - Los snapshots de equivalencia deben normalizar rutas relativas y rangos 0-indexed; los codigos de salida se prueban aparte porque un fixture con errores debe devolver `1` aunque su JSON sea el esperado.
 - Un LSP no queda validado por probar solo el mapper de diagnostics: hay que levantar el binario compilado por stdio, enviar `initialize` y `textDocument/didOpen`, y verificar `textDocument/publishDiagnostics`.
+- Los guards de `src/core/**` deben permitir solo el adaptador boundary (`vscodeAdapter.ts`) y fallar sobre cualquier import directo de `vscode`; asi se protege la arquitectura editor-agnostica sin bloquear la compatibilidad VS Code existente.
 
 ## Coolify — deploy vs restart
 - `POST /api/v1/services/{uuid}/restart` solo reinicia containers existentes con la misma imagen.
