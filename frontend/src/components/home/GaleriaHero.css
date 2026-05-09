@@ -28,6 +28,31 @@
     opacity: 1;
 }
 
+.galeriaHeroZonaClick {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    z-index: 5;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.galeriaHeroZonaClickAnterior {
+    left: 0;
+}
+
+.galeriaHeroZonaClickSiguiente {
+    right: 0;
+}
+
+.galeriaHeroZonaClick:focus-visible {
+    outline: 2px solid var(--color-info);
+    outline-offset: -4px;
+}
+
 /* Overlay: apila detalle encima de la pill, alineados a la derecha */
 .galeriaHeroOverlay {
     position: absolute;

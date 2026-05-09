@@ -3,61 +3,18 @@
  * Las imágenes rotan con crossfade. Proporción 1200x600 con bordes redondeados.
  * Overlay inferior-derecho: nombre del proyecto (enlace al detalle) + icono info que
  * expande descripción y enlaces del proyecto. Estilo pill inspirado en chatWidgetBubble. */
-import React, {useState, useEffect, useMemo, useCallback} from 'react';
-import {useQuery} from '@tanstack/react-query';
+import React from 'react';
 import {Info, X} from 'lucide-react';
 import OptimizedImage from '../ui/OptimizedImage';
 import {Button} from '../ui/Button';
 import {spaClick} from '../../navegacionSPA';
-import {apiListPublicProjects} from '../../api/admin-projects';
-import type {AdminProject} from '../../api/admin-projects';
+import {useGaleriaHero} from '../../hooks/useGaleriaHero';
 import './GaleriaHero.css';
 
-interface EntradaGaleria {
-    url: string;
-    proyecto: AdminProject;
-}
-
 export const GaleriaHero: React.FC = () => {
-    const {data: proyectos} = useQuery({
-        queryKey: ['public-projects-gallery'],
-        queryFn: apiListPublicProjects,
-        staleTime: 5 * 60 * 1000,
-        retry: 1,
-    });
+    const {actual, entradas, expandido, href, indice, irAnterior, irSiguiente, toggleExpandido} = useGaleriaHero();
 
-    /* Filtrar proyectos con in_carousel=true y que tengan imagen */
-    const entradas = useMemo((): EntradaGaleria[] => {
-        if (!proyectos) return [];
-        return proyectos
-            .filter(p => p.in_carousel)
-            .map(p => ({ url: p.gallery_image || p.featured_image, proyecto: p }))
-            .filter((e): e is EntradaGaleria => !!e.url);
-    }, [proyectos]);
-
-    const [indice, setIndice] = useState(0);
-    const [expandido, setExpandido] = useState(false);
-
-    useEffect(() => {
-        if (entradas.length <= 1) return;
-        const intervalo = setInterval(() => {
-            setIndice(prev => (prev + 1) % entradas.length);
-            setExpandido(false);
-        }, 10000);
-        return () => clearInterval(intervalo);
-    }, [entradas.length]);
-
-    const toggleExpandido = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setExpandido(prev => !prev);
-    }, []);
-
-    if (entradas.length === 0) return null;
-
-    const actual = entradas[indice];
-    const slug = actual.proyecto.slug;
-    const href = `/proyectos/${slug}`;
+    if (!actual) return null;
 
     return (
         <div className="galeriaHeroContenedor">
@@ -72,6 +29,23 @@ export const GaleriaHero: React.FC = () => {
                     loading={i === 0 ? 'eager' : 'lazy'}
                 />
             ))}
+
+            {entradas.length > 1 && (
+                <>
+                    <button
+                        type="button"
+                        className="galeriaHeroZonaClick galeriaHeroZonaClickAnterior"
+                        onClick={irAnterior}
+                        aria-label="Ver proyecto anterior"
+                    />
+                    <button
+                        type="button"
+                        className="galeriaHeroZonaClick galeriaHeroZonaClickSiguiente"
+                        onClick={irSiguiente}
+                        aria-label="Ver proyecto siguiente"
+                    />
+                </>
+            )}
 
             {/* Overlay inferior-derecho */}
             <div className="galeriaHeroOverlay">

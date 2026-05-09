@@ -138,6 +138,7 @@ fn register_visitor_timing_session(
     session_id: Uuid,
     params: &VisitorWsParams,
     user_id: Option<Uuid>,
+    visitor_ip: Option<String>,
 ) -> tokio::sync::mpsc::Sender<TimingEvent> {
     state.chat_timing.register_session(
         session_id,
@@ -145,11 +146,13 @@ fn register_visitor_timing_session(
         crate::services::TimingSessionDeps {
             pool: state.pool.clone(),
             ai_config: state.ai_config.clone(),
+            chat_timing: state.chat_timing.clone(),
             hub: state.chat_hub.clone(),
             notification_hub: state.notification_hub.clone(),
             http_client: state.http_client.clone(),
             stripe_key: state.stripe_secret_key.clone(),
             visitor_id: params.visitor_id.clone(),
+            client_ip: visitor_ip,
             user_id,
             context: params.context.clone(),
             email_config: state.email_config.clone(),
@@ -251,7 +254,14 @@ async fn handle_visitor_ws(
     let send_task = spawn_visitor_send_task(sender, rx);
 
     /* [T-1] Registrar sesión en timing service */
-    let timing_tx = register_visitor_timing_session(&state, &session, session_id, &params, user_id);
+    let timing_tx = register_visitor_timing_session(
+        &state,
+        &session,
+        session_id,
+        &params,
+        user_id,
+        visitor_ip.clone(),
+    );
 
     /* Procesar mensajes del visitante. Retorna true si el cierre fue explícito
      * (usuario cerró chat o rate limit forzó cierre). */

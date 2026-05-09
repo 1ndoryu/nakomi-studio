@@ -220,6 +220,41 @@ async fn handle_ai_and_escalation(
     session: &crate::models::ChatSession,
     content: &str,
 ) {
+    if content.len() > crate::services::ChatTimingService::max_ai_combined_chars() {
+        let _ = state
+            .chat_hub
+            .send_message(
+                session_id,
+                "ai",
+                Some("ai"),
+                "Recibí demasiado texto de golpe. Envíame un resumen más corto o espera a una persona del equipo.",
+            )
+            .await;
+        return;
+    }
+
+    let budget_key = session
+        .visitor_id
+        .clone()
+        .unwrap_or_else(|| session_id.to_string());
+    let (budget_result, budget_msg) = state
+        .chat_timing
+        .check_visitor_ai_budget(&budget_key, content);
+    if !matches!(budget_result, crate::services::RateCheckResult::Ok) {
+        let _ = state
+            .chat_hub
+            .send_message(
+                session_id,
+                "ai",
+                Some("ai"),
+                budget_msg
+                    .as_deref()
+                    .unwrap_or("Límite temporal del asistente alcanzado."),
+            )
+            .await;
+        return;
+    }
+
     let ai_resp = AiChatService::generate_response(
         &state.pool,
         &state.ai_config,

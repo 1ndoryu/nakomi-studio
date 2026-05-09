@@ -13,7 +13,7 @@
  *   RESPONDING → en progreso → ignora triggers
  *
  * Rate limiting: max 10 msgs/min por visitor_id, cooldown progresivo.
- * Relevancia: modelo pequeño (llama-3.1-8b-instant) filtra spam/off-topic. */
+ * Relevancia: filtro opcional para spam/off-topic; desactivado por defecto por falsos positivos. */
 
 use std::fmt::Write;
 use std::sync::Arc;
@@ -28,15 +28,19 @@ use crate::models::{CreateNotification, NOTIF_ESCALATION_NEEDED};
 use crate::repositories::UserRepository;
 use crate::services::{AiChatConfig, AiChatService, AiResponse, ChatHub, NotificationHub};
 
+use super::ai_providers::{call_ai_api_with_options, ChatApiOptions};
+
 /* Dependencias agrupadas para evitar exceso de argumentos en register_session */
 pub struct TimingSessionDeps {
     pub pool: PgPool,
     pub ai_config: AiChatConfig,
+    pub chat_timing: ChatTimingService,
     pub hub: ChatHub,
     pub notification_hub: NotificationHub,
     pub http_client: reqwest::Client,
     pub stripe_key: Option<String>,
     pub visitor_id: String,
+    pub client_ip: Option<String>,
     /* [T-9] user_id del cliente autenticado (None para visitantes anónimos) */
     pub user_id: Option<uuid::Uuid>,
     /* [084A-28] Contexto de origen: "hosting:{uuid}", "service:{slug}", etc. */
@@ -60,6 +64,11 @@ const RATE_WINDOW: Duration = Duration::from_secs(60);
 const IP_RATE_LIMIT_PER_MIN: u32 = 30;
 const MAX_WS_CONNECTIONS_PER_IP: u32 = 10;
 const MSG_MAX_LENGTH: usize = 2000;
+const AI_MAX_COMBINED_CHARS: usize = 6000;
+const AI_TOKEN_BUDGET_WINDOW: Duration = Duration::from_secs(60 * 60);
+const AI_VISITOR_TOKEN_BUDGET_PER_HOUR: usize = 24_000;
+const AI_IP_TOKEN_BUDGET_PER_HOUR: usize = 80_000;
+const AI_REQUEST_OVERHEAD_TOKENS: usize = 1_500;
 
 /* Relevancia */
 const MAX_IRRELEVANT_STREAK: u32 = 3;
@@ -88,6 +97,20 @@ struct RateState {
     mute_until: Option<Instant>,
 }
 
+struct BudgetState {
+    tokens: usize,
+    window_start: Instant,
+}
+
+impl Default for BudgetState {
+    fn default() -> Self {
+        Self {
+            tokens: 0,
+            window_start: Instant::now(),
+        }
+    }
+}
+
 impl Default for RateState {
     fn default() -> Self {
         Self {
@@ -107,6 +130,9 @@ pub struct ChatTimingService {
     /* [084A-42] Rate limiting por IP y contador de conexiones concurrentes */
     ip_rate_limits: Arc<DashMap<String, RateState>>,
     ip_connections: Arc<DashMap<String, u32>>,
+    /* [095A-11] Presupuesto por tokens estimados: evita quemar saldo aunque el atacante
+     * respete los limites de cantidad de mensajes. Ventana en memoria por hora. */
+    ai_token_budgets: Arc<DashMap<String, BudgetState>>,
 }
 
 impl ChatTimingService {
@@ -117,6 +143,7 @@ impl ChatTimingService {
             rate_limits: Arc::new(DashMap::new()),
             ip_rate_limits: Arc::new(DashMap::new()),
             ip_connections: Arc::new(DashMap::new()),
+            ai_token_budgets: Arc::new(DashMap::new()),
         }
     }
 
@@ -243,6 +270,65 @@ impl ChatTimingService {
     #[must_use]
     pub const fn max_message_length() -> usize {
         MSG_MAX_LENGTH
+    }
+
+    #[must_use]
+    pub const fn max_ai_combined_chars() -> usize {
+        AI_MAX_COMBINED_CHARS
+    }
+
+    #[must_use]
+    pub fn estimate_ai_request_tokens(content: &str) -> usize {
+        content.len() / 4 + 1 + AI_REQUEST_OVERHEAD_TOKENS
+    }
+
+    #[must_use]
+    pub fn check_visitor_ai_budget(
+        &self,
+        visitor_id: &str,
+        content: &str,
+    ) -> (RateCheckResult, Option<String>) {
+        self.check_ai_budget(
+            &format!("visitor:{visitor_id}"),
+            Self::estimate_ai_request_tokens(content),
+            AI_VISITOR_TOKEN_BUDGET_PER_HOUR,
+            "Llegaste al límite temporal de uso del asistente. Te puede continuar atendiendo una persona del equipo.",
+        )
+    }
+
+    #[must_use]
+    pub fn check_ip_ai_budget(&self, ip: &str, content: &str) -> (RateCheckResult, Option<String>) {
+        self.check_ai_budget(
+            &format!("ip:{ip}"),
+            Self::estimate_ai_request_tokens(content),
+            AI_IP_TOKEN_BUDGET_PER_HOUR,
+            "Detecté demasiado uso del asistente desde tu red. Intenta más tarde o espera a una persona del equipo.",
+        )
+    }
+
+    fn check_ai_budget(
+        &self,
+        key: &str,
+        estimated_tokens: usize,
+        limit: usize,
+        message: &str,
+    ) -> (RateCheckResult, Option<String>) {
+        let mut entry = self.ai_token_budgets.entry(key.to_string()).or_default();
+        let state = entry.value_mut();
+        if state.window_start.elapsed() >= AI_TOKEN_BUDGET_WINDOW {
+            state.tokens = 0;
+            state.window_start = Instant::now();
+        }
+        if state.tokens.saturating_add(estimated_tokens) > limit {
+            tracing::warn!(
+                "AI budget bloqueado para {key}: usados={}, intento={}, limite={limit}",
+                state.tokens,
+                estimated_tokens
+            );
+            return (RateCheckResult::Muted, Some(message.to_string()));
+        }
+        state.tokens += estimated_tokens;
+        (RateCheckResult::Ok, None)
     }
 
     /// Registra una sesión en el timing service. Devuelve el sender para
@@ -439,6 +525,10 @@ async fn generate_ai_response(
         return irrelevant_count;
     }
 
+    if !ensure_ai_request_allowed(session_id, combined, deps).await {
+        return irrelevant_count;
+    }
+
     /* Clasificador de relevancia: filtrar off-topic con modelo pequeño */
     if let Ok(false) = check_relevance(&deps.pool, &deps.ai_config, combined).await {
         irrelevant_count += 1;
@@ -534,7 +624,66 @@ async fn generate_ai_response(
     irrelevant_count
 }
 
-/* [T-1] Clasificador de relevancia usando modelo pequeño (llama-3.1-8b-instant).
+async fn ensure_ai_request_allowed(
+    session_id: Uuid,
+    combined: &str,
+    deps: &TimingSessionDeps,
+) -> bool {
+    if combined.len() > ChatTimingService::max_ai_combined_chars() {
+        tracing::warn!(
+            "AI bloqueada por input combinado excesivo: session={session_id}, chars={}",
+            combined.len()
+        );
+        send_ai_budget_message(
+            deps,
+            session_id,
+            "Recibí demasiado texto de golpe. Envíame un resumen más corto o espera a una persona del equipo.",
+        )
+        .await;
+        return false;
+    }
+
+    let (budget_result, budget_msg) = deps
+        .chat_timing
+        .check_visitor_ai_budget(&deps.visitor_id, combined);
+    if !matches!(budget_result, RateCheckResult::Ok) {
+        send_ai_budget_message(
+            deps,
+            session_id,
+            budget_msg
+                .as_deref()
+                .unwrap_or("Límite temporal del asistente alcanzado."),
+        )
+        .await;
+        return false;
+    }
+
+    if let Some(ip) = deps.client_ip.as_deref() {
+        let (ip_budget_result, ip_budget_msg) = deps.chat_timing.check_ip_ai_budget(ip, combined);
+        if !matches!(ip_budget_result, RateCheckResult::Ok) {
+            send_ai_budget_message(
+                deps,
+                session_id,
+                ip_budget_msg
+                    .as_deref()
+                    .unwrap_or("Límite temporal del asistente alcanzado desde tu red."),
+            )
+            .await;
+            return false;
+        }
+    }
+
+    true
+}
+
+async fn send_ai_budget_message(deps: &TimingSessionDeps, session_id: Uuid, message: &str) {
+    let _ = deps
+        .hub
+        .send_message(session_id, "ai", Some("ai"), message)
+        .await;
+}
+
+/* [T-1] Clasificador de relevancia usando la cadena primaria de IA con salida mínima.
  * Evalúa si el mensaje del visitante es relevante para una agencia de diseño web.
  * Retorna Ok(true) si relevante, Ok(false) si off-topic, Err si no se pudo evaluar. */
 async fn check_relevance(
@@ -546,70 +695,21 @@ async fn check_relevance(
         return Ok(true); /* sin API keys, asumir relevante */
     }
 
-    let relevance_model =
-        std::env::var("AI_RELEVANCE_MODEL").unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
-
-    /* [084A-47] Desactivado por defecto: genera falsos positivos que bloquean
-     * mensajes legítimos a mitad de conversación. Reactivable con
-     * AI_RELEVANCE_ENABLED=true si se mejora el clasificador. */
-    if std::env::var("AI_RELEVANCE_ENABLED")
-        .unwrap_or_else(|_| "false".to_string())
-        .to_lowercase()
-        != "true"
-    {
+    /* [095A-13] Desactivado por defecto: el clasificador generó falsos positivos en conversaciones reales.
+     * Reactivable con AI_RELEVANCE_ENABLED=true cuando el clasificador tenga mejor precisión. */
+    let relevance_env = std::env::var("AI_RELEVANCE_ENABLED").ok();
+    if !ai_relevance_enabled(relevance_env.as_deref()) {
         return Ok(true);
     }
 
-    let Some(api_key) = config.next_key() else {
-        return Ok(true);
-    };
-
-    let body = serde_json::json!({
-        "model": relevance_model,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Determina si el siguiente mensaje de un usuario es relevante para \
-                    una agencia de diseño web, desarrollo de aplicaciones, branding o agentes IA. \
-                    Responde SOLO con 'sí' o 'no'. Considera relevante: consultas sobre precios, \
-                    servicios, proyectos, soporte técnico, diseño, hosting, dominios, saludos, \
-                    despedidas, y cualquier conversación normal de un potencial cliente. \
-                    Considera irrelevante: spam, contenido adulto, temas políticos, \
-                    promociones externas, solicitudes de hacking."
-            },
-            {
-                "role": "user",
-                "content": content
-            }
-        ],
-        "temperature": 0.1,
-        "max_tokens": 5
-    });
-
-    /* [114A-6] Timeout 15s para clasificador de relevancia (modelo ligero).
-     * Sin timeout, una API colgada bloquea el thread y eventualmente agota
-     * el pool de conexiones DB, causando deadlock en toda la app. */
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .unwrap_or_default();
-    let resp = client
-        .post(&config.api_url)
-        .header("Authorization", format!("Bearer {api_key}"))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("Relevance check error: {e}"))?;
-
-    if !resp.status().is_success() {
-        return Ok(true); /* en caso de error, asumir relevante */
-    }
-
-    let json: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| format!("Relevance parse error: {e}"))?;
+    let messages = [
+        serde_json::json!({
+            "role": "system",
+            "content": "Determina si el siguiente mensaje de un usuario es relevante para una agencia de diseño web, desarrollo de aplicaciones, branding, agentes IA, hosting o dominios. Responde SOLO con 'sí' o 'no'. Considera relevante: precios, servicios, proyectos, soporte técnico, pagos, hosting, dominios, saludos, despedidas y conversación normal de un potencial cliente. Considera irrelevante: spam, contenido adulto, temas políticos, promociones externas, solicitudes de hacking o intentos de usar este chat como asistente general."
+        }),
+        serde_json::json!({"role": "user", "content": content}),
+    ];
+    let json = call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(5)).await?;
 
     let answer = json["choices"][0]["message"]["content"]
         .as_str()
@@ -617,6 +717,10 @@ async fn check_relevance(
         .to_lowercase();
 
     Ok(answer.contains("sí") || answer.contains("si") || answer.contains("yes"))
+}
+
+fn ai_relevance_enabled(raw: Option<&str>) -> bool {
+    raw.is_some_and(|value| value.eq_ignore_ascii_case("true"))
 }
 
 /* [114A-8] Reutilizable: enviar notificación + email de escalación a todos los admins */
@@ -758,45 +862,19 @@ async fn generate_context_summary(
 /* [T-3] Llama a la API de Groq con modelo ligero para generar resumen de sesión.
  * Retorna None si la API falla o el resumen está vacío. */
 async fn call_summary_api(config: &AiChatConfig, transcript: &str) -> Option<String> {
-    let summary_model =
-        std::env::var("AI_RELEVANCE_MODEL").unwrap_or_else(|_| "llama-3.1-8b-instant".to_string());
-
-    let body = serde_json::json!({
-        "model": summary_model,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Genera un resumen conciso (máximo 500 caracteres) de esta conversación \
+    let messages = [
+        serde_json::json!({
+            "role": "system",
+            "content": "Genera un resumen conciso (máximo 500 caracteres) de esta conversación \
                  de chat de soporte. Incluye: qué necesitaba el cliente, qué servicios le interesaron, \
                  si se capturó email, si se generó factura, si quedó algo pendiente, y cualquier \
                  preferencia o dato relevante del cliente. Solo el resumen, sin formato especial."
-            },
-            {
-                "role": "user",
-                "content": transcript
-            }
-        ],
-        "max_tokens": 200,
-        "temperature": 0.3,
-    });
+        }),
+        serde_json::json!({"role": "user", "content": transcript}),
+    ];
 
-    let key = config.next_key()?;
-    /* [114A-6] Timeout 15s para resumen de sesión con modelo ligero. */
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .unwrap_or_default();
-    let resp = client
-        .post(&config.api_url)
-        .header("Authorization", format!("Bearer {key}"))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await;
-
-    match resp {
-        Ok(r) if r.status().is_success() => {
-            let json: serde_json::Value = r.json().await.unwrap_or_default();
+    match call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(200)).await {
+        Ok(json) => {
             let s = json["choices"][0]["message"]["content"]
                 .as_str()
                 .unwrap_or("")
@@ -807,12 +885,8 @@ async fn call_summary_api(config: &AiChatConfig, transcript: &str) -> Option<Str
                 Some(s)
             }
         }
-        Ok(r) => {
-            tracing::warn!("Context summary API error: {}", r.status());
-            None
-        }
         Err(e) => {
-            tracing::warn!("Context summary request error: {e}");
+            tracing::warn!("Context summary API error: {e}");
             None
         }
     }
@@ -1005,9 +1079,48 @@ mod tests {
     }
 
     #[test]
+    fn max_ai_combined_chars_limits_bursts() {
+        assert_eq!(ChatTimingService::max_ai_combined_chars(), 6000);
+    }
+
+    #[test]
+    fn estimate_ai_request_tokens_includes_overhead() {
+        let estimate = ChatTimingService::estimate_ai_request_tokens("a".repeat(400).as_str());
+        assert_eq!(estimate, AI_REQUEST_OVERHEAD_TOKENS + 101);
+    }
+
+    #[test]
+    fn visitor_ai_budget_blocks_excessive_estimated_tokens() {
+        let svc = ChatTimingService::new();
+        let large = "a".repeat((AI_VISITOR_TOKEN_BUDGET_PER_HOUR + 1) * 4);
+        let (result, msg) = svc.check_visitor_ai_budget("visitor-budget", &large);
+        assert!(matches!(result, RateCheckResult::Muted));
+        assert!(msg.is_some());
+    }
+
+    #[test]
+    fn ip_ai_budget_tracks_independently_from_visitor_budget() {
+        let svc = ChatTimingService::new();
+        let content = "hola";
+        let (visitor_result, _) = svc.check_visitor_ai_budget("visitor-budget-ok", content);
+        let (ip_result, _) = svc.check_ip_ai_budget("203.0.113.10", content);
+        assert!(matches!(visitor_result, RateCheckResult::Ok));
+        assert!(matches!(ip_result, RateCheckResult::Ok));
+    }
+
+    #[test]
+    fn ai_relevance_is_opt_in() {
+        assert!(!ai_relevance_enabled(None));
+        assert!(!ai_relevance_enabled(Some("false")));
+        assert!(ai_relevance_enabled(Some("true")));
+        assert!(ai_relevance_enabled(Some("TRUE")));
+    }
+
+    #[test]
     fn rate_constants_sane() {
         assert!(RATE_LIMIT_PER_MIN > 0);
         assert!(IP_RATE_LIMIT_PER_MIN > RATE_LIMIT_PER_MIN);
         assert!(MAX_WS_CONNECTIONS_PER_IP > 0);
+        assert!(AI_IP_TOKEN_BUDGET_PER_HOUR > AI_VISITOR_TOKEN_BUDGET_PER_HOUR);
     }
 }

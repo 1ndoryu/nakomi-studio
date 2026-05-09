@@ -1,6 +1,6 @@
-/* [064A-29] AI Chat Service: integraciÃ³n con Groq API (OpenAI-compatible).
+/* [064A-29] AI Chat Service: integración con Groq API (OpenAI-compatible).
  * Rotacion de 3 API keys por mensaje (round-robin via AtomicUsize).
- * System prompt dinÃ¡mico: pre-venta (servicios, precios) vs soporte de orden
+ * System prompt dinámico: pre-venta (servicios, precios) vs soporte de orden
  * (contexto de orden, fase actual, historial). Usa reqwest HTTP client. */
 
 use std::fmt::Write;
@@ -16,14 +16,14 @@ use crate::services::ai_tools::{self, RichMessage};
 
 /* [084A-30] Sanitiza texto controlado por el usuario antes de inyectarlo en el system prompt.
  * Previene prompt injection: elimina caracteres de control, trunca longitud excesiva,
- * y envuelve el dato en delimitadores para que el modelo lo trate como dato, no instrucciÃ³n. */
+ * y envuelve el dato en delimitadores para que el modelo lo trate como dato, no instrucción. */
 pub(crate) fn sanitize_for_prompt(input: &str, max_len: usize) -> String {
     input
         .chars()
         .filter(|c| !c.is_control() || *c == '\n')
         .take(max_len)
         .collect::<String>()
-        .replace("INSTRUCCIÃ“N", "")
+        .replace("INSTRUCCIÓN", "")
         .replace("INSTRUCTION", "")
         .replace("IGNORE", "")
         .replace("SYSTEM", "")
@@ -33,21 +33,24 @@ pub(crate) fn sanitize_for_prompt(input: &str, max_len: usize) -> String {
  * Cada llamada a generate_response incrementa y usa mod num_keys. */
 static KEY_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/* [114A-12] Toggle global de rotaciÃ³n de API keys.
- * Si estÃ¡ desactivado, siempre se usa la primera key (sin round-robin).
+/* [114A-12] Toggle global de rotación de API keys.
+ * Si está desactivado, siempre se usa la primera key (sin round-robin).
  * Controlado desde el panel admin via endpoint PATCH /api/admin/configuracion/rotacion. */
 static ROTATION_ENABLED: AtomicBool = AtomicBool::new(true);
 
 /// Configuracion del servicio de IA con soporte multi-proveedor.
-/// Groq como primario (rotacion de keys), Gemini como fallback.
-/// Ambas APIs son OpenAI-compatibles (mismo formato de request).
+/// `DeepSeek` como primario, `Groq` como fallback y `Gemini` como ultimo respaldo.
+/// Las APIs usan formato OpenAI-compatible.
 #[derive(Clone)]
 pub struct AiChatConfig {
+    pub(crate) deepseek_key: Option<String>,
+    pub(crate) deepseek_model: String,
+    pub(crate) deepseek_url: String,
     pub api_keys: Vec<String>,
     pub model: String,
     pub api_url: String,
     /* [084A-37] Google Gemini como proveedor secundario OpenAI-compatible.
-     * Se usa como fallback cuando Groq agota todos los modelosÃ—keys. */
+     * Se usa como fallback cuando Groq agota todos los modelos x keys. */
     pub(crate) gemini_key: Option<String>,
     pub(crate) gemini_url: String,
 }
@@ -57,6 +60,27 @@ impl AiChatConfig {
     /// Fallback a `AI_API_KEY`/`GEMINI_API_KEY`/`OPENAI_API_KEY` si no hay keys Groq.
     #[must_use]
     pub fn from_env() -> Self {
+        let deepseek_key = std::env::var("DEEPSEEK_API_KEY")
+            .or_else(|_| std::env::var("DEEPSEEK_API"))
+            .ok()
+            .filter(|k| !k.is_empty());
+        let deepseek_model =
+            std::env::var("DEEPSEEK_MODEL").unwrap_or_else(|_| "deepseek-v4-flash".to_string());
+        let deepseek_allowed = [
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "deepseek-chat",
+            "deepseek-reasoner",
+        ];
+        let deepseek_model = if deepseek_allowed.contains(&deepseek_model.as_str()) {
+            deepseek_model
+        } else {
+            tracing::warn!("Modelo DeepSeek no permitido: {deepseek_model}, usando default");
+            "deepseek-v4-flash".to_string()
+        };
+        let deepseek_url = std::env::var("DEEPSEEK_API_URL")
+            .unwrap_or_else(|_| "https://api.deepseek.com/chat/completions".to_string());
+
         let mut keys = Vec::new();
         for var in ["GROQ_API_1", "GROQ_API_2", "GROQ_API_3", "GROQ_API"] {
             if let Ok(k) = std::env::var(var) {
@@ -65,7 +89,7 @@ impl AiChatConfig {
                 }
             }
         }
-        /* Fallback a keys genÃ©ricas si no hay Groq */
+        /* Fallback a keys genéricas si no hay Groq */
         if keys.is_empty() {
             for var in ["AI_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"] {
                 if let Ok(k) = std::env::var(var) {
@@ -109,6 +133,9 @@ impl AiChatConfig {
         let gemini_url = std::env::var("GEMINI_API_URL").unwrap_or_else(|_| {
             "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions".to_string()
         });
+        if deepseek_key.is_some() {
+            tracing::info!("AI: DeepSeek configurado como proveedor primario");
+        }
         if gemini_key.is_some() {
             tracing::info!("AI: Gemini configurado como proveedor secundario");
         }
@@ -130,6 +157,9 @@ impl AiChatConfig {
         );
 
         Self {
+            deepseek_key,
+            deepseek_model,
+            deepseek_url,
             api_keys: keys,
             model,
             api_url,
@@ -140,11 +170,11 @@ impl AiChatConfig {
 
     #[must_use]
     pub fn is_configured(&self) -> bool {
-        !self.api_keys.is_empty() || self.gemini_key.is_some()
+        self.deepseek_key.is_some() || !self.api_keys.is_empty() || self.gemini_key.is_some()
     }
 
     /* [064A-29] Selecciona la siguiente API key en rotacion round-robin.
-     * [114A-12] Si la rotaciÃ³n estÃ¡ desactivada, siempre retorna la primera key. */
+     * [114A-12] Si la rotación está desactivada, siempre retorna la primera key. */
     pub(crate) fn next_key(&self) -> Option<&str> {
         if self.api_keys.is_empty() {
             return None;
@@ -156,11 +186,11 @@ impl AiChatConfig {
         Some(&self.api_keys[idx])
     }
 
-    /* [114A-12] Control de rotaciÃ³n desde el panel admin */
+    /* [114A-12] Control de rotación desde el panel admin */
     pub fn set_rotation_enabled(enabled: bool) {
         ROTATION_ENABLED.store(enabled, Ordering::Relaxed);
         tracing::info!(
-            "RotaciÃ³n de API keys: {}",
+            "Rotación de API keys: {}",
             if enabled { "activada" } else { "desactivada" }
         );
     }
@@ -170,7 +200,7 @@ impl AiChatConfig {
         ROTATION_ENABLED.load(Ordering::Relaxed)
     }
 
-    /// Retorna el Ã­ndice actual del contador de rotaciÃ³n (mod total keys)
+    /// Retorna el índice actual del contador de rotación (mod total keys)
     #[must_use]
     pub fn current_key_index(&self) -> usize {
         if self.api_keys.is_empty() {
@@ -187,7 +217,7 @@ impl AiChatConfig {
 
     /* [084A-36] Cadena de modelos fallback Groq ordenados por inteligencia.
      * GPT-OSS-120B como primario. Maverick eliminado (deprecated en Groq abril 2026).
-     * El modelo primario (self.model) va primero, seguido por los demÃ¡s en orden descendente. */
+     * El modelo primario (self.model) va primero, seguido por los demás en orden descendente. */
     pub(crate) fn model_fallback_chain(&self) -> Vec<&str> {
         let all_models = [
             "openai/gpt-oss-120b",
@@ -209,8 +239,8 @@ impl AiChatConfig {
 
 pub struct AiChatService;
 
-/* [T-6] Respuesta de IA con seÃ±al de escalaciÃ³n y mensajes ricos (T-2).
- * `needs_escalation` = true si la IA detecta que necesita intervenciÃ³n humana.
+/* [T-6] Respuesta de IA con señal de escalación y mensajes ricos (T-2).
+ * `needs_escalation` = true si la IA detecta que necesita intervención humana.
  * `rich_messages` contiene service_cards, invoices, etc. generados por tool calls. */
 pub struct AiResponse {
     pub text: String,
@@ -218,8 +248,8 @@ pub struct AiResponse {
     pub rich_messages: Vec<RichMessage>,
 }
 
-/* [T-9] Contexto de la sesiÃ³n de chat para generate_response.
- * Agrupa parÃ¡metros relacionados para no exceder 7 argumentos.
+/* [T-9] Contexto de la sesión de chat para generate_response.
+ * Agrupa parámetros relacionados para no exceder 7 argumentos.
  * [084A-28] Campo context para soporte contextual (hosting, servicio, etc.) */
 pub struct AiSessionContext<'a> {
     pub session_id: Uuid,
@@ -230,8 +260,8 @@ pub struct AiSessionContext<'a> {
 
 impl AiChatService {
     /// Genera respuesta de IA con soporte para tool use (function calling).
-    /// Loop: envÃ­a mensajes â†’ si la IA llama tools â†’ ejecuta â†’ reenvÃ­a resultados â†’ repite.
-    /// MÃ¡ximo 3 iteraciones de tool calls para prevenir loops infinitos.
+    /// Loop: envía mensajes -> si la IA llama tools -> ejecuta -> reenvía resultados -> repite.
+    /// Máximo 3 iteraciones de tool calls para prevenir loops infinitos.
     pub async fn generate_response(
         pool: &PgPool,
         config: &AiChatConfig,
@@ -243,8 +273,8 @@ impl AiChatService {
         if !config.is_configured() {
             tracing::warn!("AI: sin API keys configuradas, usando fallback");
             return Ok(AiResponse {
-                text: "Un miembro del equipo se conectarÃ¡ pronto para ayudarte. \
-                       Mientras tanto, Â¿en quÃ© puedo orientarte?"
+                text: "Un miembro del equipo se conectará pronto para ayudarte. \
+                      Mientras tanto, ¿en qué puedo orientarte?"
                     .to_string(),
                 needs_escalation: true,
                 rich_messages: Vec::new(),
@@ -270,15 +300,15 @@ impl AiChatService {
         let mut rich_messages: Vec<RichMessage> = Vec::new();
         let mut needs_escalation = false;
 
-        /* [T-2] Tool call loop: mÃ¡ximo 3 iteraciones */
+        /* [T-2] Tool call loop: máximo 3 iteraciones */
         for iteration in 0..3 {
-            let resp = call_groq_api(config, &messages, Some(&tools)).await?;
+            let resp = call_ai_api(config, &messages, Some(&tools)).await?;
 
             let choice = &resp["choices"][0];
             let tool_calls = &choice["message"]["tool_calls"];
 
             if tool_calls.is_array() && tool_calls.as_array().is_some_and(|a| !a.is_empty()) {
-                /* La IA quiere llamar tools â€” ejecutarlas */
+                /* La IA quiere llamar tools: ejecutarlas */
                 messages.push(choice["message"].clone());
                 let tool_results = process_tool_calls(
                     ToolCallLoopContext {
@@ -332,7 +362,7 @@ impl AiChatService {
         }
 
         /* Si agotamos iteraciones de tools, generar sin tools */
-        let resp = call_groq_api(config, &messages, None).await?;
+        let resp = call_ai_api(config, &messages, None).await?;
         let text = resp["choices"][0]["message"]["content"]
             .as_str()
             .unwrap_or("Disculpa, hubo un problema procesando tu solicitud.");
@@ -357,7 +387,7 @@ impl AiChatService {
     ) -> Result<AiResponse, String> {
         if !config.is_configured() {
             return Ok(AiResponse {
-                text: "El equipo responderÃ¡ pronto.".to_string(),
+                text: "El equipo responderá pronto.".to_string(),
                 needs_escalation: false,
                 rich_messages: Vec::new(),
             });
@@ -377,10 +407,10 @@ impl AiChatService {
             messages.push(serde_json::json!({"role": role, "content": msg.content}));
         }
 
-        let resp = call_groq_api(config, &messages, None).await?;
-        let text = resp["choices"][0]["message"]["content"].as_str().unwrap_or(
-            "Disculpa, no pude procesar tu mensaje. Un miembro del equipo te asistirÃ¡.",
-        );
+        let resp = call_ai_api(config, &messages, None).await?;
+        let text = resp["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("Disculpa, no pude procesar tu mensaje. Un miembro del equipo te asistirá.");
         let (clean_text, escalation) = parse_escalation(text);
         Ok(AiResponse {
             text: clean_text,
@@ -389,59 +419,43 @@ impl AiChatService {
         })
     }
 
-    /* [T-10c] Genera resumen de la conversaciÃ³n de la orden si hay >5 msgs.
+    /* [T-10c] Genera resumen de la conversación de la orden si hay >5 msgs.
      * Usa modelo ligero (8b), reemplaza ai_summary de la orden. */
     pub async fn maybe_update_order_summary(
         pool: &PgPool,
         config: &AiChatConfig,
-        http_client: &reqwest::Client,
+        _http_client: &reqwest::Client,
         order_id: Uuid,
         msgs: &[ChatMessage],
     ) {
-        let Some(api_key) = config.next_key() else {
-            return;
-        };
-
         let mut conversation = String::new();
         for m in msgs.iter().take(50) {
             let _ = writeln!(conversation, "[{}]: {}", m.sender_type, m.content);
         }
 
         let prompt = format!(
-            "Resume esta conversaciÃ³n de soporte de pedido en mÃ¡ximo 200 palabras. \
+            "Resume esta conversación de soporte de pedido en máximo 200 palabras. \
              Incluye: solicitudes del cliente, cambios pedidos, estado emocional, \
-             acciones pendientes.\n\nConversaciÃ³n:\n{conversation}"
+             acciones pendientes.\n\nConversación:\n{conversation}"
         );
 
-        let body = serde_json::json!({
-            "model": "llama-3.1-8b-instant",
-            "messages": [
-                {"role": "system", "content": "Eres un asistente que genera resÃºmenes concisos de conversaciones de soporte."},
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0.3,
-            "max_tokens": 400
-        });
+        let messages = [
+            serde_json::json!({"role": "system", "content": "Eres un asistente que genera resúmenes concisos de conversaciones de soporte."}),
+            serde_json::json!({"role": "user", "content": prompt}),
+        ];
 
-        let resp = http_client
-            .post(&config.api_url)
-            .header("Authorization", format!("Bearer {api_key}"))
-            .json(&body)
-            .send()
-            .await;
-
-        if let Ok(r) = resp {
-            if let Ok(json) = r.json::<Value>().await {
-                if let Some(summary) = json["choices"][0]["message"]["content"].as_str() {
-                    let _ = OrderRepository::update_ai_summary(pool, order_id, summary).await;
-                }
+        if let Ok(json) =
+            call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(400)).await
+        {
+            if let Some(summary) = json["choices"][0]["message"]["content"].as_str() {
+                let _ = OrderRepository::update_ai_summary(pool, order_id, summary).await;
             }
         }
     }
 }
 
-/* [174A-2] Providers extraÃ­dos a ai_providers.rs */
-use super::ai_providers::call_groq_api;
+/* [174A-2] Providers extraídos a ai_providers.rs */
+use super::ai_providers::{call_ai_api, call_ai_api_with_options, ChatApiOptions};
 
 struct ToolCallLoopContext<'a> {
     pool: &'a PgPool,
@@ -455,7 +469,7 @@ struct ToolCallLoopContext<'a> {
 /* [T-2] Ejecutar tool calls y recopilar rich messages.
  * Retorna Vec<String> con los resultados JSON de cada tool.
  * [T-3] visitor_id para tools que actualizan visitor_profiles.
- * [124A-CHAT2] session_id para actualizar visitor_name en la sesiÃ³n.
+ * [124A-CHAT2] session_id para actualizar visitor_name en la sesión.
  * [095A-8] ToolCallLoopContext evita firmas crecientes al sumar tools de hosting. */
 async fn process_tool_calls(
     ctx: ToolCallLoopContext<'_>,
@@ -471,7 +485,7 @@ async fn process_tool_calls(
         let name = call["function"]["name"].as_str().unwrap_or("");
         /* [084A-52] Parsing defensivo: Gemini puede retornar arguments como
          * objeto JSON directo en vez de string JSON (OpenAI spec = string).
-         * Si es string â†’ parse; si es objeto â†’ usar directo; si es otro â†’ vacÃ­o. */
+         * Si es string -> parse; si es objeto -> usar directo; si es otro -> vacío. */
         let args: Value = if let Some(s) = call["function"]["arguments"].as_str() {
             serde_json::from_str(s).unwrap_or_default()
         } else if call["function"]["arguments"].is_object() {
@@ -521,7 +535,7 @@ fn tool_results_with_ids<'a>(
 }
 
 /* [T-6] Detecta y elimina el tag [ESCALATE] de la respuesta de la IA.
- * Retorna (texto limpio, necesita_escalaciÃ³n). */
+ * Retorna (texto limpio, necesita escalación). */
 fn parse_escalation(raw: &str) -> (String, bool) {
     let trimmed = raw.trim();
     if trimmed.starts_with("[ESCALATE]") {
@@ -532,15 +546,15 @@ fn parse_escalation(raw: &str) -> (String, bool) {
     }
 }
 
-/* [084A-29] EstimaciÃ³n rÃ¡pida de tokens para un texto.
- * HeurÃ­stica: ~4 caracteres por token para LLaMA/GPT (mezcla inglÃ©s/espaÃ±ol).
+/* [084A-29] Estimación rápida de tokens para un texto.
+ * Heurística: ~4 caracteres por token para LLaMA/GPT (mezcla inglés/español).
  * No reemplaza un tokenizer real pero es suficiente para decisiones de truncamiento. */
 fn estimate_tokens(text: &str) -> usize {
     text.len() / 4 + 1
 }
 
 /* [084A-48] Construye el array de mensajes para la API con truncamiento inteligente.
- * Budget de 32k tokens (mÃ¡s eficiente en costo/latencia). Mensajes antiguos se comprimen
+ * Budget de 32k tokens (más eficiente en costo/latencia). Mensajes antiguos se comprimen
  * como resumen inline priorizando siempre el contexto reciente. */
 fn build_context_messages(
     system_prompt: &str,
@@ -569,7 +583,7 @@ fn build_context_messages(
             .map(|m| format!("{}: {}", m.sender_type, m.content))
             .collect();
         let truncated = older.join("\n");
-        /* [084A-32] Resumen mÃ¡s generoso: 8k chars, priorizando los msgs mÃ¡s recientes del lote truncado */
+        /* [084A-32] Resumen más generoso: 8k chars, priorizando los msgs más recientes del lote truncado */
         let summary_text = if truncated.len() > 8000 {
             let tail = &truncated[truncated.len().saturating_sub(7500)..];
             format!(
@@ -582,7 +596,7 @@ fn build_context_messages(
         messages.push(serde_json::json!({
             "role": "system",
             "content": format!(
-                "[Resumen de {} mensajes anteriores de esta conversaciÃ³n]:\n{}",
+                "[Resumen de {} mensajes anteriores de esta conversación]:\n{}",
                 fit_from, summary_text
             )
         }));
@@ -608,7 +622,7 @@ fn build_context_messages(
 use super::ai_prompts::{build_intermediary_prompt, build_system_prompt};
 
 /* [084A-33] Unit tests para funciones puras del servicio AI chat.
- * Cubren: sanitizaciÃ³n, estimaciÃ³n tokens, contexto, parseo escalaciÃ³n,
+ * Cubren: sanitización, estimación tokens, contexto, parseo escalación,
  * cadena fallback, y round-robin de keys. */
 #[cfg(test)]
 mod tests {
@@ -657,9 +671,9 @@ mod tests {
 
     #[test]
     fn parse_escalation_no_tag() {
-        let (text, esc) = parse_escalation("Hola, Â¿en quÃ© puedo ayudarte?");
+        let (text, esc) = parse_escalation("Hola, ¿en qué puedo ayudarte?");
         assert!(!esc);
-        assert_eq!(text, "Hola, Â¿en quÃ© puedo ayudarte?");
+        assert_eq!(text, "Hola, ¿en qué puedo ayudarte?");
     }
 
     #[test]
@@ -679,7 +693,7 @@ mod tests {
                 id: Uuid::new_v4(),
                 session_id: Uuid::new_v4(),
                 sender_type: "ai".into(),
-                content: "Â¡Hola! Â¿En quÃ© puedo ayudarte?".into(),
+                content: "¡Hola! ¿En qué puedo ayudarte?".into(),
                 sender_id: None,
                 created_at: chrono::Utc::now(),
                 message_type: None,
@@ -696,6 +710,9 @@ mod tests {
     /* [084A-37] Helper para crear config de test sin repetir campos Gemini */
     fn test_config(keys: Vec<String>, model: &str) -> AiChatConfig {
         AiChatConfig {
+            deepseek_key: None,
+            deepseek_model: "deepseek-v4-flash".into(),
+            deepseek_url: "https://api.deepseek.com/chat/completions".into(),
             api_keys: keys,
             model: model.to_string(),
             api_url: "https://api.groq.com".into(),
@@ -752,13 +769,28 @@ mod tests {
         assert!(config.next_key().is_none());
     }
 
-    /* [084A-37] Tests para configuraciÃ³n multi-proveedor Gemini */
+    /* [084A-37] Tests para configuración multi-proveedor Gemini */
     #[test]
     fn is_configured_with_only_gemini() {
         let mut config = test_config(vec![], "test");
         assert!(!config.is_configured());
         config.gemini_key = Some("gemini-key-123".into());
         assert!(config.is_configured());
+    }
+
+    #[test]
+    fn is_configured_with_only_deepseek() {
+        let mut config = test_config(vec![], "test");
+        assert!(!config.is_configured());
+        config.deepseek_key = Some("deepseek-key".into());
+        assert!(config.is_configured());
+    }
+
+    #[test]
+    fn deepseek_defaults_to_flash_model() {
+        let config = test_config(vec![], "test");
+        assert_eq!(config.deepseek_model, "deepseek-v4-flash");
+        assert!(config.deepseek_url.contains("api.deepseek.com"));
     }
 
     #[test]
