@@ -10,7 +10,7 @@
 .selectorIdiomaTrigger {
     background: transparent;
     border: none;
-    color: var(--text-dark);
+    color: var(--bg-primary); /* blanco: el selector vive sobre fondo oscuro */
     padding: 4px 8px;
     border-radius: var(--radius-sm);
     cursor: pointer;
@@ -21,15 +21,17 @@
 }
 
 .selectorIdiomaTrigger:hover {
-    color: var(--text-primary);
+    color: var(--bg-primary);
+    opacity: 0.75;
 }
 
-/* Dropdown con estilo subMenuDesplegable */
+/* Dropdown — abre hacia arriba para no salirse en el footer */
 .selectorIdiomaLista {
     position: absolute;
-    top: 100%;
+    bottom: calc(100% + 4px);
+    top: auto;
     right: 0;
-    padding-top: var(--spacing-xs);
+    padding-bottom: var(--spacing-xs);
     list-style: none;
     margin: 0;
     background-color: transparent;
