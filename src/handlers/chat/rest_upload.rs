@@ -320,7 +320,8 @@ fn spawn_file_ai_processing(ctx: FileAiContext) {
                         crate::services::AiSessionContext {
                             session_id: ctx.session_id,
                             visitor_id: s.visitor_id.as_deref(),
-                            user_id: None,
+                            auth: None,
+                            user_id: s.user_id,
                             context: None,
                         },
                         &user_msg,

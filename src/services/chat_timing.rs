@@ -43,6 +43,8 @@ pub struct TimingSessionDeps {
     pub client_ip: Option<String>,
     /* [T-9] user_id del cliente autenticado (None para visitantes anónimos) */
     pub user_id: Option<uuid::Uuid>,
+    /* [095A-20] Rol real/operativo firmado para autorizar tools sensibles. */
+    pub auth: Option<crate::services::ai_tools::ToolAuthContext>,
     /* [084A-28] Contexto de origen: "hosting:{uuid}", "service:{slug}", etc. */
     pub context: Option<String>,
     /* [114A-8] Config SMTP para email de escalación (None si SMTP no configurado) */
@@ -565,6 +567,7 @@ async fn generate_ai_response(
             crate::services::AiSessionContext {
                 session_id,
                 visitor_id: Some(&deps.visitor_id),
+                auth: deps.auth,
                 user_id: deps.user_id,
                 context: deps.context.as_deref(),
             },

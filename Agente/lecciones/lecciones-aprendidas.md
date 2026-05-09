@@ -177,6 +177,11 @@
 - Si el sistema persiste nuevos tipos semánticos de mensaje (`ai_intermediary`, por ejemplo), el esquema de `chat_messages.sender_type` debe crecer junto con el código. Dejarlo en `VARCHAR(10)` hace que la IA genere bien pero no pueda guardar la respuesta.
 - En rutas de chat con `tokio::spawn`, ignorar el resultado de `send_message().await` convierte un fallo de persistencia en un "la IA no responde" imposible de diagnosticar desde la UI. Al menos hay que registrar el error explícitamente.
 
+## Chatbot de cuenta — el prompt no autoriza
+- Si el bot puede consultar pedidos, pagos, hosting o reportes, el prompt solo debe orientar la conversación. La frontera real es un contexto firmado (`user_id`, rol real, rol operativo, impersonator) pasado a cada tool y validado en backend.
+- `visitor_id` persistido sin owner key mezcla conversaciones cuando alguien hace logout/login o impersona en el mismo navegador. Separar storage por identidad/rol efectivo evita fugas entre cuentas.
+- Los logs de tools deben incluir nombre, sesión y status, pero nunca argumentos crudos: pueden contener email, reportes o detalles de pago.
+
 ## Panel interno — storage solo no alcanza para deep links
 - Si una vista interna del panel debe sobrevivir recargas, compartirse por URL o abrirse desde una notificación, `localStorage`/`sessionStorage` y custom events no bastan. La URL debe ser una fuente observable de verdad y los hooks dueños del detalle deben hidratarse desde `location.search`.
 - Al sincronizar estado profundo (`order`, `hostingId`, `chat`) a la URL, no borrar el query param en el primer render si ese mismo param todavía está intentando hidratar el estado. El orden correcto es: leer URL, seleccionar recurso, luego persistir el estado ya resuelto.

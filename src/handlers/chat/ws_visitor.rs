@@ -81,11 +81,21 @@ async fn lookup_country_from_ip(client: &reqwest::Client, ip: Option<&str>) -> O
     }
 }
 
-fn try_extract_user_id(token: Option<&str>, jwt_secret: &str) -> Option<uuid::Uuid> {
+fn try_extract_auth_context(
+    token: Option<&str>,
+    jwt_secret: &str,
+) -> Option<crate::services::ai_tools::ToolAuthContext> {
     token.and_then(|t| {
         crate::services::AuthService::verify_token(t, jwt_secret)
             .ok()
-            .map(|claims| claims.sub)
+            .map(|claims| {
+                crate::services::ai_tools::ToolAuthContext::new(
+                    claims.sub,
+                    claims.role,
+                    claims.effective_role,
+                    claims.impersonator,
+                )
+            })
     })
 }
 
@@ -137,9 +147,10 @@ fn register_visitor_timing_session(
     session: &crate::models::ChatSession,
     session_id: Uuid,
     params: &VisitorWsParams,
-    user_id: Option<Uuid>,
+    auth: Option<crate::services::ai_tools::ToolAuthContext>,
     visitor_ip: Option<String>,
 ) -> tokio::sync::mpsc::Sender<TimingEvent> {
+    let user_id = auth.map(|auth| auth.user_id);
     state.chat_timing.register_session(
         session_id,
         session.visitor_name.clone(),
@@ -154,6 +165,7 @@ fn register_visitor_timing_session(
             visitor_id: params.visitor_id.clone(),
             client_ip: visitor_ip,
             user_id,
+            auth,
             context: params.context.clone(),
             email_config: state.email_config.clone(),
         },
@@ -209,9 +221,15 @@ async fn handle_visitor_ws(
     }
 
     /* [T-9] Detectar usuario autenticado si envió token JWT */
-    let user_id = try_extract_user_id(params.token.as_deref(), &state.jwt_secret);
-    if let Some(uid) = user_id {
-        tracing::info!("Chat visitor autenticado como user_id={uid}");
+    let auth = try_extract_auth_context(params.token.as_deref(), &state.jwt_secret);
+    if let Some(auth) = auth {
+        tracing::info!(
+            user_id = %auth.user_id,
+            role = %auth.role,
+            effective_role = %auth.effective_role,
+            impersonator = ?auth.impersonator,
+            "Chat visitor autenticado"
+        );
     }
 
     let session = match state
@@ -252,8 +270,9 @@ async fn handle_visitor_ws(
     /* [095A-16] Identidad persistente: si el widget trae JWT, vincular la sesión
      * y el perfil del visitor al usuario real. Así la IA recibe contexto registrado
      * y el panel puede distinguir cliente/admin aunque el chat haya nacido como visitor. */
-    if let Some(uid) = user_id {
-        link_authenticated_visitor_context(&state, session_id, &params.visitor_id, uid).await;
+    if let Some(auth) = auth {
+        link_authenticated_visitor_context(&state, session_id, &params.visitor_id, auth.user_id)
+            .await;
     }
 
     /* [064A-29] Enviar historial de mensajes previos al reconectar */
@@ -296,7 +315,7 @@ async fn handle_visitor_ws(
         &session,
         session_id,
         &params,
-        user_id,
+        auth,
         visitor_ip.clone(),
     );
 

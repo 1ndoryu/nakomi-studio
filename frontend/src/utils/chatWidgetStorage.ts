@@ -2,6 +2,8 @@ import type {ChatMessage} from '../api/chat';
 
 export const CHAT_VISITOR_ID_KEY = 'nakomi_visitor_id';
 export const CHAT_SESSION_ID_KEY = 'nakomi_chat_session_id';
+export const CHAT_OWNER_KEY = 'nakomi_chat_owner_key';
+export const ANONYMOUS_CHAT_OWNER = 'anonymous';
 
 const CHAT_MESSAGES_KEY = 'nakomi_chat_messages';
 const MAX_PERSISTED_MESSAGES = 100;
@@ -25,8 +27,25 @@ function isChatMessage(value: unknown): value is ChatMessage {
         && typeof message.created_at === 'string';
 }
 
-export function getOrCreateChatVisitorId(): string {
+function clearChatSessionData(): void {
+    localStorage.removeItem(CHAT_VISITOR_ID_KEY);
+    localStorage.removeItem(CHAT_SESSION_ID_KEY);
+    localStorage.removeItem(CHAT_MESSAGES_KEY);
+}
+
+export function ensureChatStorageOwner(ownerKey: string): boolean {
+    if (!canUseStorage()) return false;
+    const normalizedOwner = ownerKey || ANONYMOUS_CHAT_OWNER;
+    const savedOwner = localStorage.getItem(CHAT_OWNER_KEY);
+    if (savedOwner === normalizedOwner) return false;
+    clearChatSessionData();
+    localStorage.setItem(CHAT_OWNER_KEY, normalizedOwner);
+    return true;
+}
+
+export function getOrCreateChatVisitorId(ownerKey = ANONYMOUS_CHAT_OWNER): string {
     if (!canUseStorage()) return crypto.randomUUID();
+    ensureChatStorageOwner(ownerKey);
     const saved = localStorage.getItem(CHAT_VISITOR_ID_KEY);
     if (saved) return saved;
     const id = crypto.randomUUID();
@@ -67,9 +86,12 @@ export function savePersistedChatMessages(sessionId: string | null, messages: Ch
     localStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(payload));
 }
 
-export function clearChatWidgetStorage(): void {
+export function clearChatWidgetStorage(ownerKey?: string): void {
     if (!canUseStorage()) return;
-    localStorage.removeItem(CHAT_VISITOR_ID_KEY);
-    localStorage.removeItem(CHAT_SESSION_ID_KEY);
-    localStorage.removeItem(CHAT_MESSAGES_KEY);
+    clearChatSessionData();
+    if (ownerKey) {
+        localStorage.setItem(CHAT_OWNER_KEY, ownerKey);
+    } else {
+        localStorage.removeItem(CHAT_OWNER_KEY);
+    }
 }

@@ -11,13 +11,16 @@
  * Cada tool retorna un resultado JSON que se reenvía a la IA + opcionalmente
  * un mensaje rico para el WS del visitante. */
 
+use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::models::{HostingPlanConfig, HostingSubscription, SelfSubscribeRequest};
-use crate::repositories::{ChatRepository, CreateHostingParams, HostingRepository, UserRepository};
+use crate::models::{HostingPlanConfig, HostingSubscription, SelfSubscribeRequest, UserRole};
+use crate::repositories::{
+    ChatRepository, CreateHostingParams, HostingRepository, ProblemRepository, UserRepository,
+};
 use crate::services::{CheckoutParams, HostingStripeService};
 
 /* Resultado de ejecutar una tool: JSON para la IA y opcionalmente un
@@ -42,8 +45,41 @@ pub struct ToolExecutionContext<'a> {
     pub http_client: &'a reqwest::Client,
     pub stripe_key: Option<&'a str>,
     pub visitor_id: Option<&'a str>,
-    pub user_id: Option<Uuid>,
+    pub auth: Option<ToolAuthContext>,
     pub session_id: Uuid,
+}
+
+/* [095A-20] Identidad autenticada que acompaña cada tool call.
+ * El prompt puede describir permisos, pero la autorización real vive aquí:
+ * user_id = sujeto del JWT; role/effective_role = contrato firmado; impersonator = admin origen. */
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ToolAuthContext {
+    pub user_id: Uuid,
+    pub role: UserRole,
+    pub effective_role: UserRole,
+    pub impersonator: Option<Uuid>,
+}
+
+impl ToolAuthContext {
+    #[must_use]
+    pub const fn new(
+        user_id: Uuid,
+        role: UserRole,
+        effective_role: UserRole,
+        impersonator: Option<Uuid>,
+    ) -> Self {
+        Self {
+            user_id,
+            role,
+            effective_role,
+            impersonator,
+        }
+    }
+
+    #[must_use]
+    pub const fn is_effective_admin(self) -> bool {
+        matches!(self.effective_role, UserRole::Admin)
+    }
 }
 
 /* [T-2][T-3] Definiciones de tools en formato OpenAI/Groq.
@@ -191,8 +227,13 @@ pub async fn execute_tool(
             exec_create_invoice(ctx.http_client, ctx.stripe_key, ctx.session_id, arguments).await
         }
         "list_hosting_plans" => exec_list_hosting_plans(ctx.pool).await,
-        "list_my_hostings" => exec_list_my_hostings(ctx.pool, ctx.user_id).await,
+        "list_my_hostings" => exec_list_my_hostings(ctx.pool, ctx.auth).await,
         "create_hosting_checkout" => exec_create_hosting_checkout(&ctx, arguments).await,
+        "list_my_orders" => exec_list_my_orders(ctx.pool, ctx.auth).await,
+        "list_my_payments" => exec_list_my_payments(ctx.pool, ctx.auth).await,
+        "list_my_reports" => exec_list_my_reports(ctx.pool, ctx.auth).await,
+        "create_order_report" => exec_create_order_report(ctx.pool, ctx.auth, arguments).await,
+        "admin_operational_summary" => exec_admin_operational_summary(ctx.pool, ctx.auth).await,
         "request_human_assistance" => exec_request_human(arguments),
         "capture_email" => {
             exec_capture_email(ctx.pool, ctx.visitor_id, ctx.session_id, arguments).await
@@ -201,12 +242,53 @@ pub async fn execute_tool(
             exec_save_client_info(ctx.pool, ctx.visitor_id, ctx.session_id, arguments).await
         }
         "create_support_ticket" => {
-            exec_create_support_ticket(ctx.pool, ctx.visitor_id, arguments).await
+            exec_create_support_ticket(ctx.pool, ctx.auth, ctx.visitor_id, arguments).await
         }
-        _ => ToolExecResult {
-            tool_result_json: json!({"error": "Tool desconocida"}).to_string(),
-            rich_message: None,
-        },
+        _ => tool_status("error", "Tool desconocida"),
+    }
+}
+
+fn tool_json(payload: impl serde::Serialize) -> ToolExecResult {
+    ToolExecResult {
+        tool_result_json: serde_json::to_string(&payload).unwrap_or_else(|e| {
+            tracing::error!("Error serializando resultado de AI tool: {e}");
+            json!({"status": "error", "message": "No se pudo serializar el resultado"}).to_string()
+        }),
+        rich_message: None,
+    }
+}
+
+fn tool_status(status: &str, message: &str) -> ToolExecResult {
+    tool_json(json!({"status": status, "message": message}))
+}
+
+fn requires_login(message: &str) -> ToolExecResult {
+    tool_status("requires_login", message)
+}
+
+fn forbidden(message: &str) -> ToolExecResult {
+    tool_status("forbidden", message)
+}
+
+fn not_found(message: &str) -> ToolExecResult {
+    tool_status("not_found", message)
+}
+
+fn require_auth(auth: Option<ToolAuthContext>) -> Result<ToolAuthContext, ToolExecResult> {
+    auth.ok_or_else(|| {
+        requires_login("Para consultar datos de tu cuenta necesitas iniciar sesión.")
+    })
+}
+
+fn can_access_order(
+    auth: ToolAuthContext,
+    client_id: Uuid,
+    assigned_employee_id: Option<Uuid>,
+) -> bool {
+    match auth.effective_role {
+        UserRole::Admin => true,
+        UserRole::Employee => assigned_employee_id == Some(auth.user_id),
+        UserRole::Client => client_id == auth.user_id,
     }
 }
 
@@ -233,32 +315,57 @@ async fn exec_list_hosting_plans(pool: &PgPool) -> ToolExecResult {
         },
         Err(e) => {
             tracing::error!("Error listando planes hosting para AI tool: {e}");
-            ToolExecResult {
-                tool_result_json: json!({"error": "No se pudieron listar los planes de hosting"})
-                    .to_string(),
-                rich_message: None,
-            }
+            tool_status("error", "No se pudieron listar los planes de hosting")
         }
     }
 }
 
-async fn exec_list_my_hostings(pool: &PgPool, user_id: Option<Uuid>) -> ToolExecResult {
-    let Some(user_id) = user_id else {
-        return ToolExecResult {
-            tool_result_json: json!({
-                "status": "requires_login",
-                "message": "Para consultar tus hostings necesitas iniciar sesión."
-            })
-            .to_string(),
-            rich_message: None,
-        };
+async fn exec_list_my_hostings(pool: &PgPool, auth: Option<ToolAuthContext>) -> ToolExecResult {
+    let auth = match require_auth(auth) {
+        Ok(auth) => auth,
+        Err(result) => return result,
     };
 
-    match HostingRepository::list_by_user_id(pool, user_id).await {
-        Ok(hostings) => ToolExecResult {
-            tool_result_json: json!({
+    match HostingRepository::list_by_user_id(pool, auth.user_id).await {
+        Ok(hostings) => {
+            let hostings = with_hosting_events(pool, hostings).await;
+            tool_json(json!({
                 "status": "ok",
-                "hostings": hostings.into_iter().map(|hosting| json!({
+                "scope": auth.effective_role.to_string(),
+                "hostings": hostings,
+            }))
+        }
+        Err(e) => {
+            tracing::error!(
+                user_id = %auth.user_id,
+                effective_role = %auth.effective_role,
+                "Error listando hostings del usuario: {e}"
+            );
+            tool_status("error", "No se pudieron consultar tus hostings")
+        }
+    }
+}
+
+async fn with_hosting_events(pool: &PgPool, hostings: Vec<HostingSubscription>) -> Vec<Value> {
+    let mut result = Vec::with_capacity(hostings.len());
+    for hosting in hostings {
+        let events = match HostingRepository::list_events(pool, hosting.id, 5).await {
+            Ok(events) => events,
+            Err(e) => {
+                tracing::warn!(hosting_id = %hosting.id, "Error listando eventos hosting para AI tool: {e}");
+                Vec::new()
+            }
+        }
+        .into_iter()
+            .map(|event| {
+                json!({
+                    "event_type": event.event_type,
+                    "details": event.details,
+                    "created_at": event.created_at,
+                })
+            })
+            .collect::<Vec<_>>();
+        result.push(json!({
                     "id": hosting.id,
                     "plan": hosting.plan,
                     "domain": hosting.domain,
@@ -269,20 +376,10 @@ async fn exec_list_my_hostings(pool: &PgPool, user_id: Option<Uuid>) -> ToolExec
                     "coolify_site_name": hosting.coolify_site_name,
                     "sftp_user": hosting.sftp_user,
                     "sftp_port": hosting.sftp_port,
-                })).collect::<Vec<_>>()
-            })
-            .to_string(),
-            rich_message: None,
-        },
-        Err(e) => {
-            tracing::error!("Error listando hostings del usuario {user_id}: {e}");
-            ToolExecResult {
-                tool_result_json: json!({"error": "No se pudieron consultar tus hostings"})
-                    .to_string(),
-                rich_message: None,
-            }
-        }
+                    "events": events,
+        }));
     }
+    result
 }
 
 fn chat_public_base_url() -> String {
@@ -297,7 +394,7 @@ async fn exec_create_hosting_checkout(
     ctx: &ToolExecutionContext<'_>,
     args: &Value,
 ) -> ToolExecResult {
-    let Some(user_id) = ctx.user_id else {
+    let Ok(auth) = require_auth(ctx.auth) else {
         return hosting_requires_login();
     };
     let Some(stripe_key) = ctx.stripe_key else {
@@ -312,13 +409,13 @@ async fn exec_create_hosting_checkout(
         Ok(config) => config,
         Err(result) => return result,
     };
-    let (client_name, client_email) = match fetch_hosting_client(ctx.pool, user_id).await {
+    let (client_name, client_email) = match fetch_hosting_client(ctx.pool, auth.user_id).await {
         Ok(client) => client,
         Err(result) => return result,
     };
     let sub = match create_chat_hosting_subscription(
         ctx.pool,
-        user_id,
+        auth.user_id,
         &req,
         &plan_config,
         &client_name,
@@ -341,21 +438,13 @@ async fn exec_create_hosting_checkout(
 }
 
 fn tool_error(message: &str) -> ToolExecResult {
-    ToolExecResult {
-        tool_result_json: json!({"error": message}).to_string(),
-        rich_message: None,
-    }
+    tool_status("error", message)
 }
 
 fn hosting_requires_login() -> ToolExecResult {
-    ToolExecResult {
-        tool_result_json: json!({
-            "status": "requires_login",
-            "message": "Para contratar hosting y generar checkout mensual debes iniciar sesión o crear una cuenta."
-        })
-        .to_string(),
-        rich_message: None,
-    }
+    requires_login(
+        "Para contratar hosting y generar checkout mensual debes iniciar sesión o crear una cuenta.",
+    )
 }
 
 fn parse_hosting_checkout_request(args: &Value) -> Result<SelfSubscribeRequest, ToolExecResult> {
@@ -511,6 +600,591 @@ fn hosting_checkout_success(sub: &HostingSubscription, checkout_url: &str) -> To
     }
 }
 
+#[derive(sqlx::FromRow)]
+struct ToolOrderRow {
+    id: Uuid,
+    order_number: i32,
+    client_id: Uuid,
+    service_title: String,
+    service_slug: String,
+    plan_name: String,
+    status: String,
+    current_phase: i32,
+    total_phases: i64,
+    final_price_cents: i32,
+    currency: String,
+    assigned_employee_id: Option<Uuid>,
+    assigned_employee_name: Option<String>,
+    open_reports: i64,
+    deliverables_count: i64,
+    phases: Value,
+    updated_at: DateTime<Utc>,
+}
+
+async fn exec_list_my_orders(pool: &PgPool, auth: Option<ToolAuthContext>) -> ToolExecResult {
+    let auth = match require_auth(auth) {
+        Ok(auth) => auth,
+        Err(result) => return result,
+    };
+    match query_orders_for_scope(pool, auth).await {
+        Ok(orders) => tool_json(json!({
+            "status": "ok",
+            "scope": auth.effective_role.to_string(),
+            "orders": orders.iter().map(order_row_json).collect::<Vec<_>>(),
+        })),
+        Err(e) => {
+            tracing::error!(
+                user_id = %auth.user_id,
+                effective_role = %auth.effective_role,
+                "Error listando pedidos para AI tool: {e}"
+            );
+            tool_status("error", "No se pudieron consultar los pedidos")
+        }
+    }
+}
+
+async fn query_orders_for_scope(
+    pool: &PgPool,
+    auth: ToolAuthContext,
+) -> Result<Vec<ToolOrderRow>, sqlx::Error> {
+    match auth.effective_role {
+        UserRole::Admin => {
+            let query = order_admin_query();
+            sqlx::query_as::<_, ToolOrderRow>(&query)
+                .fetch_all(pool)
+                .await
+        }
+        UserRole::Employee => {
+            let query = order_employee_query();
+            sqlx::query_as::<_, ToolOrderRow>(&query)
+                .bind(auth.user_id)
+                .fetch_all(pool)
+                .await
+        }
+        UserRole::Client => {
+            let query = order_client_query();
+            sqlx::query_as::<_, ToolOrderRow>(&query)
+                .bind(auth.user_id)
+                .fetch_all(pool)
+                .await
+        }
+    }
+}
+
+fn order_row_json(row: &ToolOrderRow) -> Value {
+    json!({
+        "id": row.id,
+        "order_number": row.order_number,
+        "client_id": row.client_id,
+        "service_title": row.service_title,
+        "service_slug": row.service_slug,
+        "plan_name": row.plan_name,
+        "status": row.status,
+        "current_phase": row.current_phase,
+        "total_phases": row.total_phases,
+        "final_price_cents": row.final_price_cents,
+        "currency": row.currency,
+        "assigned_employee_id": row.assigned_employee_id,
+        "assigned_employee_name": row.assigned_employee_name,
+        "open_reports": row.open_reports,
+        "deliverables_count": row.deliverables_count,
+        "phases": row.phases,
+        "updated_at": row.updated_at,
+    })
+}
+
+const ORDER_SELECT_BASE: &str = "
+SELECT o.id,
+       o.order_number,
+       o.client_id,
+       s.title AS service_title,
+       s.slug AS service_slug,
+       sp.name AS plan_name,
+       o.status::text AS status,
+       o.current_phase,
+       (SELECT COUNT(*) FROM order_phases op WHERE op.order_id = o.id) AS total_phases,
+       o.final_price_cents,
+       o.currency,
+       o.assigned_employee_id,
+       COALESCE(employee.display_name, employee.email) AS assigned_employee_name,
+       (SELECT COUNT(*) FROM order_problems prob WHERE prob.order_id = o.id AND prob.status IN ('open', 'in_review')) AS open_reports,
+       (SELECT COUNT(*) FROM phase_deliverables d JOIN order_phases phase ON phase.id = d.phase_id WHERE phase.order_id = o.id) AS deliverables_count,
+       COALESCE((
+           SELECT jsonb_agg(jsonb_build_object(
+               'phase_number', phase.phase_number,
+               'title', phase.title,
+               'status', phase.status::text,
+               'revisions_used', phase.revisions_used,
+               'max_revisions', phase.max_revisions,
+               'deadline', phase.deadline
+           ) ORDER BY phase.phase_number)
+           FROM order_phases phase
+           WHERE phase.order_id = o.id
+       ), '[]'::jsonb) AS phases,
+       o.updated_at
+FROM orders o
+JOIN services s ON s.id = o.service_id
+JOIN service_plans sp ON sp.id = o.plan_id
+LEFT JOIN users employee ON employee.id = o.assigned_employee_id";
+
+fn order_admin_query() -> String {
+    format!("{ORDER_SELECT_BASE} ORDER BY o.updated_at DESC LIMIT 12")
+}
+
+fn order_employee_query() -> String {
+    format!(
+        "{ORDER_SELECT_BASE} WHERE o.assigned_employee_id = $1 ORDER BY o.updated_at DESC LIMIT 12"
+    )
+}
+
+fn order_client_query() -> String {
+    format!("{ORDER_SELECT_BASE} WHERE o.client_id = $1 ORDER BY o.updated_at DESC LIMIT 12")
+}
+
+#[derive(sqlx::FromRow)]
+struct ToolPaymentRow {
+    payment_id: Uuid,
+    order_id: Uuid,
+    order_number: i32,
+    phase_number: Option<i32>,
+    amount_cents: i32,
+    currency: String,
+    status: String,
+    payment_mode: String,
+    description: Option<String>,
+    created_at: DateTime<Utc>,
+}
+
+async fn exec_list_my_payments(pool: &PgPool, auth: Option<ToolAuthContext>) -> ToolExecResult {
+    let auth = match require_auth(auth) {
+        Ok(auth) => auth,
+        Err(result) => return result,
+    };
+    match query_payments_for_scope(pool, auth).await {
+        Ok(payments) => tool_json(json!({
+            "status": "ok",
+            "scope": auth.effective_role.to_string(),
+            "payments": payments.iter().map(payment_row_json).collect::<Vec<_>>(),
+        })),
+        Err(e) => {
+            tracing::error!(
+                user_id = %auth.user_id,
+                effective_role = %auth.effective_role,
+                "Error listando pagos para AI tool: {e}"
+            );
+            tool_status("error", "No se pudieron consultar los pagos")
+        }
+    }
+}
+
+async fn query_payments_for_scope(
+    pool: &PgPool,
+    auth: ToolAuthContext,
+) -> Result<Vec<ToolPaymentRow>, sqlx::Error> {
+    match auth.effective_role {
+        UserRole::Admin => {
+            let query = payment_admin_query();
+            sqlx::query_as::<_, ToolPaymentRow>(&query)
+                .fetch_all(pool)
+                .await
+        }
+        UserRole::Employee => {
+            let query = payment_employee_query();
+            sqlx::query_as::<_, ToolPaymentRow>(&query)
+                .bind(auth.user_id)
+                .fetch_all(pool)
+                .await
+        }
+        UserRole::Client => {
+            let query = payment_client_query();
+            sqlx::query_as::<_, ToolPaymentRow>(&query)
+                .bind(auth.user_id)
+                .fetch_all(pool)
+                .await
+        }
+    }
+}
+
+fn payment_row_json(row: &ToolPaymentRow) -> Value {
+    json!({
+        "payment_id": row.payment_id,
+        "order_id": row.order_id,
+        "order_number": row.order_number,
+        "phase_number": row.phase_number,
+        "amount_cents": row.amount_cents,
+        "currency": row.currency,
+        "status": row.status,
+        "payment_mode": row.payment_mode,
+        "description": row.description,
+        "created_at": row.created_at,
+        "can_retry_from_panel": row.status == "pending" || row.status == "failed",
+    })
+}
+
+const PAYMENT_SELECT_BASE: &str = "
+SELECT p.id AS payment_id,
+       p.order_id,
+       o.order_number,
+       phase.phase_number,
+       p.amount_cents,
+       p.currency,
+       p.status::text AS status,
+       p.payment_mode::text AS payment_mode,
+       p.description,
+       p.created_at
+FROM order_payments p
+JOIN orders o ON o.id = p.order_id
+LEFT JOIN order_phases phase ON phase.id = p.phase_id";
+
+fn payment_admin_query() -> String {
+    format!("{PAYMENT_SELECT_BASE} ORDER BY p.created_at DESC LIMIT 20")
+}
+
+fn payment_employee_query() -> String {
+    format!("{PAYMENT_SELECT_BASE} WHERE o.assigned_employee_id = $1 ORDER BY p.created_at DESC LIMIT 20")
+}
+
+fn payment_client_query() -> String {
+    format!("{PAYMENT_SELECT_BASE} WHERE o.client_id = $1 ORDER BY p.created_at DESC LIMIT 20")
+}
+
+#[derive(sqlx::FromRow)]
+struct ToolReportRow {
+    id: Uuid,
+    order_id: Uuid,
+    order_number: i32,
+    reporter_id: Uuid,
+    reporter_name: String,
+    reporter_role: String,
+    reason: String,
+    status: String,
+    admin_response: Option<String>,
+    created_at: DateTime<Utc>,
+}
+
+async fn exec_list_my_reports(pool: &PgPool, auth: Option<ToolAuthContext>) -> ToolExecResult {
+    let auth = match require_auth(auth) {
+        Ok(auth) => auth,
+        Err(result) => return result,
+    };
+    match query_reports_for_scope(pool, auth).await {
+        Ok(reports) => tool_json(json!({
+            "status": "ok",
+            "scope": auth.effective_role.to_string(),
+            "reports": reports.iter().map(report_row_json).collect::<Vec<_>>(),
+        })),
+        Err(e) => {
+            tracing::error!(
+                user_id = %auth.user_id,
+                effective_role = %auth.effective_role,
+                "Error listando reportes para AI tool: {e}"
+            );
+            tool_status("error", "No se pudieron consultar los reportes")
+        }
+    }
+}
+
+async fn query_reports_for_scope(
+    pool: &PgPool,
+    auth: ToolAuthContext,
+) -> Result<Vec<ToolReportRow>, sqlx::Error> {
+    match auth.effective_role {
+        UserRole::Admin => {
+            let query = report_admin_query();
+            sqlx::query_as::<_, ToolReportRow>(&query)
+                .fetch_all(pool)
+                .await
+        }
+        UserRole::Employee => {
+            let query = report_employee_query();
+            sqlx::query_as::<_, ToolReportRow>(&query)
+                .bind(auth.user_id)
+                .fetch_all(pool)
+                .await
+        }
+        UserRole::Client => {
+            let query = report_client_query();
+            sqlx::query_as::<_, ToolReportRow>(&query)
+                .bind(auth.user_id)
+                .fetch_all(pool)
+                .await
+        }
+    }
+}
+
+fn report_row_json(row: &ToolReportRow) -> Value {
+    json!({
+        "id": row.id,
+        "order_id": row.order_id,
+        "order_number": row.order_number,
+        "reporter_id": row.reporter_id,
+        "reporter_name": row.reporter_name,
+        "reporter_role": row.reporter_role,
+        "reason": row.reason,
+        "status": row.status,
+        "admin_response": row.admin_response,
+        "created_at": row.created_at,
+    })
+}
+
+const REPORT_SELECT_BASE: &str = "
+SELECT prob.id,
+       prob.order_id,
+       o.order_number,
+       prob.reporter_id,
+       COALESCE(reporter.display_name, reporter.email) AS reporter_name,
+       prob.reporter_role,
+       prob.reason,
+       prob.status::text AS status,
+       prob.admin_response,
+       prob.created_at
+FROM order_problems prob
+JOIN orders o ON o.id = prob.order_id
+JOIN users reporter ON reporter.id = prob.reporter_id";
+
+fn report_admin_query() -> String {
+    format!("{REPORT_SELECT_BASE} ORDER BY prob.created_at DESC LIMIT 20")
+}
+
+fn report_employee_query() -> String {
+    format!("{REPORT_SELECT_BASE} WHERE o.assigned_employee_id = $1 ORDER BY prob.created_at DESC LIMIT 20")
+}
+
+fn report_client_query() -> String {
+    format!("{REPORT_SELECT_BASE} WHERE o.client_id = $1 ORDER BY prob.created_at DESC LIMIT 20")
+}
+
+#[derive(sqlx::FromRow)]
+struct OrderAccessRow {
+    id: Uuid,
+    order_number: i32,
+    client_id: Uuid,
+    assigned_employee_id: Option<Uuid>,
+}
+
+async fn exec_create_order_report(
+    pool: &PgPool,
+    auth: Option<ToolAuthContext>,
+    args: &Value,
+) -> ToolExecResult {
+    let auth = match require_auth(auth) {
+        Ok(auth) => auth,
+        Err(result) => return result,
+    };
+    let reason = args["reason"].as_str().unwrap_or("").trim();
+    if !(10..=2000).contains(&reason.chars().count()) {
+        return tool_status(
+            "error",
+            "El reporte necesita una descripción entre 10 y 2000 caracteres.",
+        );
+    }
+    let order = match resolve_order_for_report(pool, auth, args).await {
+        Ok(order) => order,
+        Err(result) => return result,
+    };
+    match ProblemRepository::create(
+        pool,
+        order.id,
+        auth.user_id,
+        &auth.effective_role.to_string(),
+        reason,
+    )
+    .await
+    {
+        Ok(problem) => tool_json(json!({
+            "status": "ok",
+            "report_id": problem.id,
+            "order_id": order.id,
+            "order_number": order.order_number,
+            "report_status": problem.status,
+            "message": "Reporte creado. El equipo lo revisará desde el panel."
+        })),
+        Err(e) => {
+            tracing::error!(
+                user_id = %auth.user_id,
+                order_id = %order.id,
+                "Error creando reporte desde AI tool: {e}"
+            );
+            tool_status("error", "No se pudo crear el reporte")
+        }
+    }
+}
+
+async fn resolve_order_for_report(
+    pool: &PgPool,
+    auth: ToolAuthContext,
+    args: &Value,
+) -> Result<OrderAccessRow, ToolExecResult> {
+    let row = if let Some(order_id) = args["order_id"]
+        .as_str()
+        .and_then(|v| Uuid::parse_str(v).ok())
+    {
+        find_order_access_by_id(pool, order_id).await
+    } else if let Some(order_number) = args["order_number"]
+        .as_i64()
+        .and_then(|v| i32::try_from(v).ok())
+    {
+        find_order_access_by_number(pool, order_number).await
+    } else {
+        return Err(tool_status(
+            "error",
+            "Indica order_id u order_number para crear el reporte.",
+        ));
+    }
+    .map_err(|e| {
+        tracing::error!("Error resolviendo pedido para reporte AI: {e}");
+        tool_status("error", "No se pudo verificar el pedido")
+    })?
+    .ok_or_else(|| not_found("Pedido no encontrado"))?;
+
+    if can_access_order(auth, row.client_id, row.assigned_employee_id) {
+        Ok(row)
+    } else {
+        Err(forbidden(
+            "No tienes permisos para crear reportes sobre ese pedido.",
+        ))
+    }
+}
+
+async fn find_order_access_by_id(
+    pool: &PgPool,
+    order_id: Uuid,
+) -> Result<Option<OrderAccessRow>, sqlx::Error> {
+    sqlx::query_as::<_, OrderAccessRow>(ORDER_ACCESS_SELECT_ID)
+        .bind(order_id)
+        .fetch_optional(pool)
+        .await
+}
+
+async fn find_order_access_by_number(
+    pool: &PgPool,
+    order_number: i32,
+) -> Result<Option<OrderAccessRow>, sqlx::Error> {
+    sqlx::query_as::<_, OrderAccessRow>(ORDER_ACCESS_SELECT_NUMBER)
+        .bind(order_number)
+        .fetch_optional(pool)
+        .await
+}
+
+const ORDER_ACCESS_SELECT_ID: &str = "
+SELECT id, order_number, client_id, assigned_employee_id
+FROM orders
+WHERE id = $1";
+const ORDER_ACCESS_SELECT_NUMBER: &str = "
+SELECT id, order_number, client_id, assigned_employee_id
+FROM orders
+WHERE order_number = $1";
+
+#[derive(sqlx::FromRow)]
+struct AdminOrderStats {
+    total: i64,
+    payment_held: i64,
+    awaiting_assignment: i64,
+    in_progress: i64,
+    under_review: i64,
+    completed: i64,
+    disputed: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct AdminReportStats {
+    open_reports: i64,
+    in_review_reports: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct StatusCountRow {
+    status: String,
+    total: i64,
+}
+
+async fn exec_admin_operational_summary(
+    pool: &PgPool,
+    auth: Option<ToolAuthContext>,
+) -> ToolExecResult {
+    let auth = match require_auth(auth) {
+        Ok(auth) => auth,
+        Err(result) => return result,
+    };
+    if !auth.is_effective_admin() {
+        return forbidden(
+            "Solo un administrador efectivo puede consultar el resumen operativo global.",
+        );
+    }
+
+    let order_stats = match query_admin_order_stats(pool).await {
+        Ok(stats) => stats,
+        Err(e) => {
+            tracing::error!(user_id = %auth.user_id, "Error consultando stats admin de pedidos: {e}");
+            return tool_status("error", "No se pudo consultar el resumen operativo");
+        }
+    };
+    let report_stats = query_admin_report_stats(pool)
+        .await
+        .unwrap_or(AdminReportStats {
+            open_reports: 0,
+            in_review_reports: 0,
+        });
+    let hosting_by_status = query_hosting_status_counts(pool).await.unwrap_or_default();
+
+    tool_json(json!({
+        "status": "ok",
+        "orders": {
+            "total": order_stats.total,
+            "payment_held": order_stats.payment_held,
+            "awaiting_assignment": order_stats.awaiting_assignment,
+            "in_progress": order_stats.in_progress,
+            "under_review": order_stats.under_review,
+            "completed": order_stats.completed,
+            "disputed": order_stats.disputed,
+        },
+        "reports": {
+            "open": report_stats.open_reports,
+            "in_review": report_stats.in_review_reports,
+        },
+        "hosting_by_status": hosting_by_status.into_iter().map(|row| json!({
+            "status": row.status,
+            "total": row.total,
+        })).collect::<Vec<_>>(),
+    }))
+}
+
+async fn query_admin_order_stats(pool: &PgPool) -> Result<AdminOrderStats, sqlx::Error> {
+    sqlx::query_as::<_, AdminOrderStats>(
+        "SELECT COUNT(*) AS total,
+            COUNT(*) FILTER (WHERE status = 'payment_held') AS payment_held,
+            COUNT(*) FILTER (WHERE status = 'awaiting_assignment') AS awaiting_assignment,
+            COUNT(*) FILTER (WHERE status = 'in_progress') AS in_progress,
+            COUNT(*) FILTER (WHERE status = 'under_review') AS under_review,
+            COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+            COUNT(*) FILTER (WHERE status = 'disputed') AS disputed
+         FROM orders",
+    )
+    .fetch_one(pool)
+    .await
+}
+
+async fn query_admin_report_stats(pool: &PgPool) -> Result<AdminReportStats, sqlx::Error> {
+    sqlx::query_as::<_, AdminReportStats>(
+        "SELECT COUNT(*) FILTER (WHERE status = 'open') AS open_reports,
+                COUNT(*) FILTER (WHERE status = 'in_review') AS in_review_reports
+         FROM order_problems",
+    )
+    .fetch_one(pool)
+    .await
+}
+
+async fn query_hosting_status_counts(pool: &PgPool) -> Result<Vec<StatusCountRow>, sqlx::Error> {
+    sqlx::query_as::<_, StatusCountRow>(
+        "SELECT status, COUNT(*) AS total
+         FROM hosting_subscriptions
+         GROUP BY status
+         ORDER BY status",
+    )
+    .fetch_all(pool)
+    .await
+}
+
 /* [084A-51] exec_show_service y exec_list_services eliminados — herramientas desactivadas.
  * Las service cards son antinaturales en el chat conversacional. Si se reactivan en el futuro,
  * recuperar implementación del git history (commit anterior a 084A-51). */
@@ -527,10 +1201,7 @@ async fn exec_create_invoice(
     args: &Value,
 ) -> ToolExecResult {
     let Some(stripe_key) = stripe_key else {
-        return ToolExecResult {
-            tool_result_json: json!({"error": "Stripe no configurado"}).to_string(),
-            rich_message: None,
-        };
+        return tool_status("error", "Stripe no configurado");
     };
 
     /* [084A-52] Parsing robusto: algunos modelos envían amount_cents como float
@@ -554,32 +1225,25 @@ async fn exec_create_invoice(
              email_empty={}, args_raw={args}",
             client_email.is_empty()
         );
-        return ToolExecResult {
-            tool_result_json: json!({
-                "error": "Monto y email son requeridos",
-                "detail": format!(
-                    "amount_cents={amount_cents}, client_email={}",
-                    if client_email.is_empty() { "(vacío)" } else { "(presente)" }
-                )
-            })
-            .to_string(),
-            rich_message: None,
-        };
+        return tool_json(json!({
+            "status": "error",
+            "error": "Monto y email son requeridos",
+            "detail": format!(
+                "amount_cents={amount_cents}, client_email={}",
+                if client_email.is_empty() { "(vacío)" } else { "(presente)" }
+            )
+        }));
     }
 
     /* Paso 1: crear/buscar customer por email */
-    let customer_id = match find_or_create_stripe_customer(http_client, stripe_key, client_email)
-        .await
-    {
-        Ok(id) => id,
-        Err(e) => {
-            tracing::error!("Stripe create customer error: {e}");
-            return ToolExecResult {
-                tool_result_json: json!({"error": "Error creando cliente en Stripe"}).to_string(),
-                rich_message: None,
-            };
-        }
-    };
+    let customer_id =
+        match find_or_create_stripe_customer(http_client, stripe_key, client_email).await {
+            Ok(id) => id,
+            Err(e) => {
+                tracing::error!("Stripe create customer error: {e}");
+                return tool_status("error", "Error creando cliente en Stripe");
+            }
+        };
 
     /* Paso 2: crear invoice con session_id en metadata para detectar pago via webhook */
     let invoice = match create_stripe_invoice(
@@ -596,10 +1260,7 @@ async fn exec_create_invoice(
         Ok(inv) => inv,
         Err(e) => {
             tracing::error!("Stripe create invoice error: {e}");
-            return ToolExecResult {
-                tool_result_json: json!({"error": "Error creando factura"}).to_string(),
-                rich_message: None,
-            };
+            return tool_status("error", "Error creando factura");
         }
     };
 
@@ -618,9 +1279,10 @@ async fn exec_create_invoice(
         /* [084A-38] No incluir payment_url en tool_result_json — la IA lo repite en texto plano.
          * El link de pago solo va en la RichMessage metadata (la card lo muestra con botón). */
         tool_result_json: json!({
+            "status": "ok",
             "invoice_id": invoice.id,
             "amount_usd": price_usd,
-            "status": invoice.status,
+            "invoice_status": invoice.status,
             "message": "Factura creada exitosamente. El cliente verá una tarjeta visual con botón de pago. NO repitas el link de pago en tu respuesta."
         })
         .to_string(),
@@ -831,18 +1493,12 @@ async fn exec_capture_email(
     args: &Value,
 ) -> ToolExecResult {
     let Some(vid) = visitor_id else {
-        return ToolExecResult {
-            tool_result_json: json!({"error": "visitor_id no disponible"}).to_string(),
-            rich_message: None,
-        };
+        return tool_status("error", "visitor_id no disponible");
     };
 
     let email = args["email"].as_str().unwrap_or("");
     if email.is_empty() || !email.contains('@') {
-        return ToolExecResult {
-            tool_result_json: json!({"error": "Email inválido"}).to_string(),
-            rich_message: None,
-        };
+        return tool_status("error", "Email inválido");
     }
 
     let display_name = args["display_name"].as_str();
@@ -868,10 +1524,7 @@ async fn exec_capture_email(
         }
         Err(e) => {
             tracing::error!("Error guardando email visitor {vid}: {e}");
-            ToolExecResult {
-                tool_result_json: json!({"error": "Error guardando email"}).to_string(),
-                rich_message: None,
-            }
+            tool_status("error", "Error guardando email")
         }
     }
 }
@@ -886,10 +1539,7 @@ async fn exec_save_client_info(
     args: &Value,
 ) -> ToolExecResult {
     let Some(vid) = visitor_id else {
-        return ToolExecResult {
-            tool_result_json: json!({"error": "visitor_id no disponible"}).to_string(),
-            rich_message: None,
-        };
+        return tool_status("error", "visitor_id no disponible");
     };
 
     /* Si la IA capturó el nombre, actualizar visitor_name en la sesión para el panel */
@@ -949,17 +1599,62 @@ async fn exec_save_client_info(
         }
         Err(e) => {
             tracing::error!("Error guardando preferencias visitor {vid}: {e}");
-            ToolExecResult {
-                tool_result_json: json!({"error": "Error guardando información"}).to_string(),
-                rich_message: None,
-            }
+            tool_status("error", "Error guardando información")
         }
     }
 }
 
-/* [T-9] Definición de tools para clientes registrados */
+/* [T-9][095A-20] Tools de cuenta registradas y protegidas por rol efectivo. */
 fn registered_client_tool_defs() -> Value {
     json!([
+        {
+            "type": "function",
+            "function": {
+                "name": "list_my_orders",
+                "description": "Lista pedidos visibles para la cuenta autenticada. Cliente: sus propios pedidos. Empleado: pedidos asignados. Admin efectivo: pedidos recientes globales. Úsalo antes de responder estados, fases, entregables o empleado asignado.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_my_payments",
+                "description": "Lista pagos/facturas de pedidos visibles para la cuenta autenticada. No revela secretos de Stripe; informa estado, monto, fase y si puede reintentarse desde el panel.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_my_reports",
+                "description": "Lista reportes/problemas abiertos o recientes visibles según rol: cliente por sus pedidos, empleado por pedidos asignados, admin efectivo global.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "create_order_report",
+                "description": "Crea un reporte de problema sobre un pedido visible para la cuenta autenticada. Requiere order_id u order_number y una descripción clara. Valida permisos en backend.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "order_id": { "type": "string", "description": "UUID del pedido si está disponible" },
+                        "order_number": { "type": "integer", "description": "Número legible del pedido si el usuario lo menciona" },
+                        "reason": { "type": "string", "description": "Problema reportado, entre 10 y 2000 caracteres" }
+                    },
+                    "required": ["reason"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "admin_operational_summary",
+                "description": "Resumen operativo global para administradores efectivos: pedidos por estado, reportes abiertos y hosting. Prohibida para clientes, empleados e impersonaciones sin rol admin efectivo.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
         {
             "type": "function",
             "function": {
@@ -993,25 +1688,23 @@ fn registered_client_tool_defs() -> Value {
 /* [T-9] Crear ticket de soporte: guarda como nota interna en la sesión de chat. */
 async fn exec_create_support_ticket(
     pool: &PgPool,
+    auth: Option<ToolAuthContext>,
     visitor_id: Option<&str>,
     args: &Value,
 ) -> ToolExecResult {
+    let auth = match require_auth(auth) {
+        Ok(auth) => auth,
+        Err(result) => return result,
+    };
     let category = args["category"].as_str().unwrap_or("general");
     let description = args["description"].as_str().unwrap_or("");
     let priority = args["priority"].as_str().unwrap_or("medium");
 
     if description.is_empty() {
-        return ToolExecResult {
-            tool_result_json: json!({"error": "Se necesita una descripción del problema"})
-                .to_string(),
-            rich_message: None,
-        };
+        return tool_status("error", "Se necesita una descripción del problema");
     }
 
-    let ticket_content = format!(
-        "[TICKET SOPORTE] Cat: {category} | Prioridad: {priority} | Visitor: {} | Descripción: {description}",
-        visitor_id.unwrap_or("anónimo"),
-    );
+    let ticket_owner = visitor_id.unwrap_or("anónimo");
 
     /* Se almacena como nota en visitor_profile.context_summary para que el equipo lo vea.
      * En el futuro se puede crear una tabla dedicada de tickets. */
@@ -1021,12 +1714,20 @@ async fn exec_create_support_ticket(
             "category": category,
             "priority": priority,
             "description": description,
+            "user_id": auth.user_id,
+            "effective_role": auth.effective_role.to_string(),
             "created_at": chrono::Utc::now().to_rfc3339(),
         });
         let _ = ChatRepository::update_visitor_preferences(pool, vid, &ticket_json).await;
     }
 
-    tracing::info!("Ticket de soporte creado: {ticket_content}");
+    tracing::info!(
+        user_id = %auth.user_id,
+        visitor_id = ticket_owner,
+        category,
+        priority,
+        "Ticket de soporte creado desde chatbot"
+    );
 
     ToolExecResult {
         tool_result_json: json!({
@@ -1034,6 +1735,7 @@ async fn exec_create_support_ticket(
             "message": "Ticket de soporte creado exitosamente. El equipo lo revisará pronto.",
             "category": category,
             "priority": priority,
+            "user_id": auth.user_id,
         })
         .to_string(),
         rich_message: Some(RichMessage {
@@ -1065,17 +1767,17 @@ mod tests {
     }
 
     #[test]
-    fn tool_definitions_has_eight_tools() {
+    fn tool_definitions_has_thirteen_tools() {
         let defs = tool_definitions();
         let arr = defs.as_array().unwrap();
         /* 2 service (create_invoice, request_human_assistance)
          * + 3 hosting (list_hosting_plans, list_my_hostings, create_hosting_checkout)
          * + 2 visitor (capture_email, save_client_info)
-         * + 1 registered (create_support_ticket) = 8 */
+         * + 6 registered/account = 13 */
         assert_eq!(
             arr.len(),
-            8,
-            "Se esperan 8 tools, encontradas {}",
+            13,
+            "Se esperan 13 tools, encontradas {}",
             arr.len()
         );
     }
@@ -1123,6 +1825,11 @@ mod tests {
         assert!(names.contains(&"request_human_assistance"));
         assert!(names.contains(&"capture_email"));
         assert!(names.contains(&"save_client_info"));
+        assert!(names.contains(&"list_my_orders"));
+        assert!(names.contains(&"list_my_payments"));
+        assert!(names.contains(&"list_my_reports"));
+        assert!(names.contains(&"create_order_report"));
+        assert!(names.contains(&"admin_operational_summary"));
         assert!(names.contains(&"create_support_ticket"));
     }
 
@@ -1166,7 +1873,7 @@ mod tests {
                 http_client: &http,
                 stripe_key: None,
                 visitor_id: None,
-                user_id: None,
+                auth: None,
                 session_id: uuid::Uuid::nil(),
             },
             "nonexistent_tool",
@@ -1174,7 +1881,7 @@ mod tests {
         )
         .await;
         let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
-        assert!(parsed["error"].is_string());
+        assert_eq!(parsed["status"], "error");
         assert!(result.rich_message.is_none());
     }
 
@@ -1188,7 +1895,7 @@ mod tests {
                 http_client: &http,
                 stripe_key: Some("sk_test_fake"),
                 visitor_id: None,
-                user_id: None,
+                auth: None,
                 session_id: uuid::Uuid::nil(),
             },
             "create_hosting_checkout",
@@ -1210,7 +1917,12 @@ mod tests {
                 http_client: &http,
                 stripe_key: None,
                 visitor_id: None,
-                user_id: Some(uuid::Uuid::nil()),
+                auth: Some(ToolAuthContext::new(
+                    uuid::Uuid::nil(),
+                    UserRole::Client,
+                    UserRole::Client,
+                    None,
+                )),
                 session_id: uuid::Uuid::nil(),
             },
             "create_hosting_checkout",
@@ -1218,9 +1930,82 @@ mod tests {
         )
         .await;
         let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
-        assert!(parsed["error"]
+        assert!(parsed["message"]
             .as_str()
             .is_some_and(|error| error.contains("Stripe")));
         assert!(result.rich_message.is_none());
+    }
+
+    #[tokio::test]
+    async fn list_my_orders_requires_login() {
+        let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
+        let http = reqwest::Client::new();
+        let result = execute_tool(
+            ToolExecutionContext {
+                pool: &pool,
+                http_client: &http,
+                stripe_key: None,
+                visitor_id: None,
+                auth: None,
+                session_id: uuid::Uuid::nil(),
+            },
+            "list_my_orders",
+            &json!({}),
+        )
+        .await;
+        let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
+        assert_eq!(parsed["status"], "requires_login");
+    }
+
+    #[tokio::test]
+    async fn admin_summary_forbidden_for_client() {
+        let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
+        let http = reqwest::Client::new();
+        let result = execute_tool(
+            ToolExecutionContext {
+                pool: &pool,
+                http_client: &http,
+                stripe_key: None,
+                visitor_id: None,
+                auth: Some(ToolAuthContext::new(
+                    uuid::Uuid::nil(),
+                    UserRole::Client,
+                    UserRole::Client,
+                    None,
+                )),
+                session_id: uuid::Uuid::nil(),
+            },
+            "admin_operational_summary",
+            &json!({}),
+        )
+        .await;
+        let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
+        assert_eq!(parsed["status"], "forbidden");
+    }
+
+    #[tokio::test]
+    async fn create_order_report_requires_order_identifier() {
+        let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
+        let http = reqwest::Client::new();
+        let result = execute_tool(
+            ToolExecutionContext {
+                pool: &pool,
+                http_client: &http,
+                stripe_key: None,
+                visitor_id: None,
+                auth: Some(ToolAuthContext::new(
+                    uuid::Uuid::nil(),
+                    UserRole::Client,
+                    UserRole::Client,
+                    None,
+                )),
+                session_id: uuid::Uuid::nil(),
+            },
+            "create_order_report",
+            &json!({"reason": "El entregable no corresponde a lo acordado"}),
+        )
+        .await;
+        let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
+        assert_eq!(parsed["status"], "error");
     }
 }

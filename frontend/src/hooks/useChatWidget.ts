@@ -10,6 +10,7 @@ import {useAuthStore} from '../stores/authStore';
 import {playNotificationSound} from '../utils/notificationSound';
 import {
     clearChatWidgetStorage,
+    ensureChatStorageOwner,
     getOrCreateChatVisitorId,
     getSavedChatSessionId,
     loadPersistedChatMessages,
@@ -30,7 +31,24 @@ export interface TypingIndicator {
     content: string;
 }
 
+type ChatAuthUser = {
+    userId: string;
+    role: string;
+    effectiveRole: string;
+    impersonating: boolean;
+} | null;
+
+function buildChatOwnerKey(user: ChatAuthUser): string {
+    if (!user) return 'anonymous';
+    const impersonating = user.impersonating ? 'impersonating' : 'direct';
+    return `user:${user.userId}:role:${user.role}:effective:${user.effectiveRole}:${impersonating}`;
+}
+
 export function useChatWidget() {
+    const authToken = useAuthStore(s => s.token);
+    const authUser = useAuthStore(s => s.user);
+    const chatOwnerKey = buildChatOwnerKey(authUser);
+    ensureChatStorageOwner(chatOwnerKey);
     const initialSessionId = getSavedChatSessionId();
     const [connected, setConnected] = useState(false);
     const [connecting, setConnecting] = useState(false);
@@ -48,6 +66,8 @@ export function useChatWidget() {
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const intentionalCloseRef = useRef(false);
+    const connectInnerRef = useRef<(visitorName?: string, context?: string | null) => void>(() => undefined);
+    const lastOwnerKeyRef = useRef(chatOwnerKey);
     /* Guardar últimos args de connect para reconexión */
     const lastConnectArgsRef = useRef<{visitorName?: string; context?: string | null}>({});
 
@@ -58,20 +78,32 @@ export function useChatWidget() {
         saveChatSessionId(nextSessionId);
     }, []);
 
-    const resetLocalChatState = useCallback((closeSocket: boolean) => {
-        clearChatWidgetStorage();
+    const resetLocalChatState = useCallback((closeSocket: boolean, ownerKey?: string) => {
+        clearChatWidgetStorage(ownerKey);
         sessionIdRef.current = null;
         setMessages([]);
         setSessionId(null);
         setTyping(null);
         setConnecting(false);
+        if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = null;
+        }
+        if (connectTimeoutRef.current) {
+            clearTimeout(connectTimeoutRef.current);
+            connectTimeoutRef.current = null;
+        }
         if (typingTimerRef.current) {
             clearTimeout(typingTimerRef.current);
             typingTimerRef.current = null;
         }
         if (closeSocket && wsRef.current) {
             intentionalCloseRef.current = true;
-            wsRef.current.close();
+            const ws = wsRef.current;
+            ws.onclose = null;
+            ws.onerror = null;
+            ws.onmessage = null;
+            ws.close();
             wsRef.current = null;
             setConnected(false);
         }
@@ -147,14 +179,14 @@ export function useChatWidget() {
             /* [084A-40] /reset: limpiar todo el estado local y desconectar.
              * El visitante obtiene un estado fresco al volver a abrir el chat. */
             case 'reset':
-                resetLocalChatState(true);
+                resetLocalChatState(true, chatOwnerKey);
                 break;
 
             case 'error':
                 console.warn('[ChatWidget] Server error:', msg.message);
                 break;
         }
-    }, [resetLocalChatState, setActiveSessionId]);
+    }, [chatOwnerKey, resetLocalChatState, setActiveSessionId]);
 
     /* [154A-3] Intento de reconexión con backoff exponencial */
     const scheduleReconnect = useCallback(() => {
@@ -168,7 +200,7 @@ export function useChatWidget() {
         reconnectTimerRef.current = setTimeout(() => {
             reconnectTimerRef.current = null;
             const args = lastConnectArgsRef.current;
-            connectInner(args.visitorName, args.context);
+            connectInnerRef.current(args.visitorName, args.context);
         }, delay);
     }, []);
 
@@ -177,9 +209,8 @@ export function useChatWidget() {
         if (wsRef.current) return;
         setConnecting(true);
 
-        const visitorId = getOrCreateChatVisitorId();
-        /* [T-9] Enviar JWT si el usuario está autenticado */
-        const authToken = useAuthStore.getState().token;
+        const visitorId = getOrCreateChatVisitorId(chatOwnerKey);
+        /* [T-9][095A-20] Enviar JWT actual si el usuario está autenticado. */
         const url = buildVisitorWsUrl(visitorId, visitorName, authToken, context);
         const ws = new WebSocket(url);
         wsRef.current = ws;
@@ -236,7 +267,28 @@ export function useChatWidget() {
                 /* Mensaje no JSON, ignorar */
             }
         };
-    }, [handleServerMessage, scheduleReconnect]);
+    }, [authToken, chatOwnerKey, handleServerMessage, scheduleReconnect]);
+
+    useEffect(() => {
+        connectInnerRef.current = connectInner;
+    }, [connectInner]);
+
+    useEffect(() => {
+        if (lastOwnerKeyRef.current === chatOwnerKey) return;
+        lastOwnerKeyRef.current = chatOwnerKey;
+
+        /* [095A-20] Una cuenta/rol efectivo distinto no puede heredar visitor_id,
+         * session_id ni mensajes locales de otra identidad del mismo navegador. */
+        const hadActiveConnection = Boolean(wsRef.current) || connected || connecting;
+        const args = lastConnectArgsRef.current;
+        resetLocalChatState(true, chatOwnerKey);
+        retriesRef.current = 0;
+        intentionalCloseRef.current = false;
+
+        if (hadActiveConnection) {
+            connectInnerRef.current(args.visitorName, args.context);
+        }
+    }, [chatOwnerKey, connected, connecting, resetLocalChatState]);
 
     const connect = useCallback((visitorName?: string, context?: string | null) => {
         intentionalCloseRef.current = false;
@@ -273,11 +325,11 @@ export function useChatWidget() {
             wsRef.current.send(JSON.stringify({type: 'message', content}));
             if (content.trim().toLowerCase() === '/reset') {
                 intentionalCloseRef.current = true;
-                resetLocalChatState(false);
+                resetLocalChatState(false, chatOwnerKey);
                 bcRef.current?.postMessage({type: 'reset'} satisfies WsServerMessage);
             }
         }
-    }, [resetLocalChatState]);
+    }, [chatOwnerKey, resetLocalChatState]);
 
     /* [054A-8] Throttle typing a 200ms para no saturar el WS */
     const sendTyping = useCallback((content: string) => {

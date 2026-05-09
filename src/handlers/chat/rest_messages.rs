@@ -205,7 +205,7 @@ pub async fn send_message(
                     &req.content,
                 );
             } else if s.ai_enabled {
-                handle_ai_and_escalation(&state, session_id, &s, &req.content).await;
+                handle_ai_and_escalation(&state, session_id, &s, &auth, &req.content).await;
             }
         }
     }
@@ -218,6 +218,7 @@ async fn handle_ai_and_escalation(
     state: &AppState,
     session_id: Uuid,
     session: &crate::models::ChatSession,
+    auth: &AuthUser,
     content: &str,
 ) {
     if content.len() > crate::services::ChatTimingService::max_ai_combined_chars() {
@@ -263,7 +264,13 @@ async fn handle_ai_and_escalation(
         crate::services::AiSessionContext {
             session_id,
             visitor_id: session.visitor_id.as_deref(),
-            user_id: None,
+            auth: Some(crate::services::ai_tools::ToolAuthContext::new(
+                auth.user_id,
+                auth.role,
+                auth.effective_role,
+                auth.impersonator,
+            )),
+            user_id: Some(auth.user_id),
             context: None,
         },
         content,

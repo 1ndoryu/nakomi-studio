@@ -254,6 +254,7 @@ pub struct AiResponse {
 pub struct AiSessionContext<'a> {
     pub session_id: Uuid,
     pub visitor_id: Option<&'a str>,
+    pub auth: Option<ai_tools::ToolAuthContext>,
     pub user_id: Option<Uuid>,
     pub context: Option<&'a str>,
 }
@@ -281,11 +282,13 @@ impl AiChatService {
             });
         }
 
+        let resolved_user_id = ctx.auth.map(|auth| auth.user_id).or(ctx.user_id);
         let system_prompt = build_system_prompt(
             pool,
             ctx.session_id,
             ctx.visitor_id,
-            ctx.user_id,
+            resolved_user_id,
+            ctx.auth,
             ctx.context,
         )
         .await;
@@ -316,7 +319,7 @@ impl AiChatService {
                         http_client,
                         stripe_key,
                         visitor_id: ctx.visitor_id,
-                        user_id: ctx.user_id,
+                        auth: ctx.auth,
                         session_id: ctx.session_id,
                     },
                     tool_calls,
@@ -462,7 +465,7 @@ struct ToolCallLoopContext<'a> {
     http_client: &'a reqwest::Client,
     stripe_key: Option<&'a str>,
     visitor_id: Option<&'a str>,
-    user_id: Option<Uuid>,
+    auth: Option<ai_tools::ToolAuthContext>,
     session_id: Uuid,
 }
 
@@ -493,7 +496,7 @@ async fn process_tool_calls(
         } else {
             Value::Object(serde_json::Map::new())
         };
-        tracing::debug!("AI tool call: {name}({args})");
+        tracing::debug!("AI tool call solicitada: {name}");
 
         let result = ai_tools::execute_tool(
             ai_tools::ToolExecutionContext {
@@ -501,19 +504,35 @@ async fn process_tool_calls(
                 http_client: ctx.http_client,
                 stripe_key: ctx.stripe_key,
                 visitor_id: ctx.visitor_id,
-                user_id: ctx.user_id,
+                auth: ctx.auth,
                 session_id: ctx.session_id,
             },
             name,
             &args,
         )
         .await;
+        let status = tool_result_status(&result.tool_result_json);
+        tracing::info!(
+            session_id = %ctx.session_id,
+            tool = %name,
+            status = %status,
+            user_id = ?ctx.auth.map(|auth| auth.user_id),
+            effective_role = ?ctx.auth.map(|auth| auth.effective_role),
+            "AI tool ejecutada"
+        );
         if let Some(rm) = result.rich_message {
             rich_messages.push(rm);
         }
         results.push(result.tool_result_json);
     }
     results
+}
+
+fn tool_result_status(raw: &str) -> String {
+    serde_json::from_str::<Value>(raw)
+        .ok()
+        .and_then(|value| value["status"].as_str().map(str::to_string))
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 /* Emparejar IDs de tool_calls con sus resultados */
