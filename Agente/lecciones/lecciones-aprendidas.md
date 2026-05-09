@@ -40,6 +40,7 @@
 - `inline-style-prohibido` debe aceptar `style={{ '--mi-var': valor }}` también cuando el objeto está en una sola línea; si no, barras de progreso y layouts con CSS vars vuelven a romper el reporte.
 - Para validar una versión local de Sentinel contra otro repo sin reinstalar la extensión del editor, usar `CODE_SENTINEL_TARGET_WORKSPACE=<ruta> npm test` en `.agent/code-sentinel`; ese host de pruebas puede regenerar `.sentinel-report.md` de forma reproducible.
 - `modal-estructura-no-canonica` no puede limitarse a `form/div` internos: también debe inspeccionar `className` sobre el propio `<Modal>`, porque clases como `usuariosModal` o `checkoutModal` redefinen el contenedor compartido y si no se miran ahí el reporte queda ciego justo en el punto de entrada.
+- Para detectar especificaciones de diseño CSS, no depender de nombres `boton/button`: cruzar rol interactivo local (`Trigger`, `Lista`, `Opcion`, `__dropdown`) con varias propiedades visuales (`background`, `border`, tipografia, padding, transition/animation) y cubrirlo con fixture core vs CLI.
 
 ## Coolify — deploy vs restart
 - `POST /api/v1/services/{uuid}/restart` solo reinicia containers existentes con la misma imagen.
