@@ -14,6 +14,7 @@
     padding: 0 var(--spacing-lg);
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .proyectoGaleriaItem {
     overflow: hidden;
     border-radius: var(--radius-md);

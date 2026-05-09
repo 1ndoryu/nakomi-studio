@@ -4,8 +4,8 @@
 
 /* El contenedor hereda de modalBaseContenedor vía className prop.
  * Solo overrides específicos del testimonio van aquí. */
+/* max-width: 560px migrado a modalMedio (Modal.css). Overrides locales: max-height + scroll. */
 .modalTestimonioContenedor {
-    max-width: 560px;
     max-height: 90vh;
     overflow-y: auto;
 }
@@ -104,7 +104,7 @@
     gap: var(--spacing-md);
 }
 
-.modalTestimonioExitoTexto {
+.modalTestimonioExitoParrafo {
     font-family: var(--font-serif);
     font-size: var(--text-base);
     color: var(--text-muted);

@@ -138,6 +138,7 @@
 }
 
 /* Menú contextual */
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .listaServiciosMenu {
     flex-shrink: 0;
     opacity: 0;

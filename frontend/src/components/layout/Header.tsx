@@ -143,7 +143,9 @@ export const Header: React.FC = () => {
                 </div>
             </header>
 
-            {/* [064A-61] Menú móvil: overlay modal centrado con glassmorphism */}
+            {/* [064A-61] Menú móvil: overlay modal centrado con glassmorphism.
+                Usa <Modal> como base de overlay/focus-trap, no es un diálogo genérico. */}
+            {/* sentinel-disable-next-line modal-estructura-no-canonica */}
             <Modal abierto={menuMovilAbierto} onCerrar={cerrarMenuMovil} className="menuMovilPanel">
                 <nav role="navigation" aria-label={t('accessibility.main_nav')}>
                     {/* Vista principal o submenú */}

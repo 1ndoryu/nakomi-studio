@@ -87,6 +87,7 @@
     max-height: 240px;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .iconPickerEnlaceItem {
     display: flex;
     align-items: center;

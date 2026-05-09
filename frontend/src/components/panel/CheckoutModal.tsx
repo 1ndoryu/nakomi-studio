@@ -66,7 +66,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
 
     if (!stripePromise) {
         return (
-            <Modal abierto onCerrar={onClose} className="checkoutModal">
+            <Modal abierto onCerrar={onClose} className="modalCompacto">
                 <p className="checkoutError">
                     Stripe no está configurado. Agrega
                     VITE_STRIPE_PUBLISHABLE_KEY al .env
@@ -76,7 +76,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
     }
 
     return (
-        <Modal abierto onCerrar={onClose} className="checkoutModal">
+        <Modal abierto onCerrar={onClose} className="modalCompacto">
             <p className="checkoutMonto">
                 {formatPrice(props.amountCents, props.currency)}
             </p>

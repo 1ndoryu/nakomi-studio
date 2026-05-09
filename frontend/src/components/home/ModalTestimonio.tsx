@@ -78,10 +78,10 @@ export const ModalTestimonio: React.FC<ModalTestimonioProps> = ({abierto, onCerr
     };
 
     return (
-        <Modal abierto={abierto} onCerrar={onCerrar} className="modalTestimonioContenedor">
+        <Modal abierto={abierto} onCerrar={onCerrar} className="modalMedio modalTestimonioContenedor">
             {estado === 'exito' ? (
                     <div className="modalTestimonioExito">
-                        <p className="modalTestimonioExitoTexto">
+                        <p className="modalTestimonioExitoParrafo">
                             Tu testimonio ha sido enviado y está pendiente de aprobación.
                             Lo revisaremos y publicaremos lo antes posible.
                         </p>

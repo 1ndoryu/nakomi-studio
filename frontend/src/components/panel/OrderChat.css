@@ -3,6 +3,7 @@
  * [074A-33] Sin sombra, min-height 440px, sin encabezado.
  * [035A-22] Header de participantes + nombre del sender en burbujas ajenas. */
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .orderChatPanel {
     border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);

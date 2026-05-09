@@ -50,7 +50,7 @@ export const EditorBlog: React.FC<EditorBlogProps> = ({
     }, [form]);
 
     return (
-        <Modal abierto={abierto} onCerrar={onCerrar} className="editorBlogModal modalSinPadding">
+        <Modal abierto={abierto} onCerrar={onCerrar} className="modalGrande modalSinPadding editorBlogModal">
             <div className="editorBlogTabs">
                 {TABS.map(t => (
                     <button

@@ -2,10 +2,7 @@
  * [064A-55] Migrado a <Modal> base — overlay removido, .checkoutModal es className del Modal. */
 
 /* [064A-54] Padding ~30px (--spacing-lg = 2rem ≈ 32px). Sin boton cerrar X. */
-.checkoutModal {
-    width: 90%;
-    max-width: 480px;
-}
+/* .checkoutModal eliminado — solo tenía sizing, migrado a modalCompacto (Modal.css). */
 
 /* [084A-8] .checkoutTitulo reemplazado por .modalTitulo (Modal.css) */
 

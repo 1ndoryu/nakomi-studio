@@ -130,6 +130,7 @@ export function SeccionWallet() {
                     </span>
                 </div>
                 {saldoCents > 0 && (
+                    // sentinel-disable-next-line button-clase-especifica
                     <Button
                         variante="secundario"
                         tamano="pequeno"

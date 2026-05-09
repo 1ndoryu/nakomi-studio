@@ -1,9 +1,9 @@
 /* [074A-9] Estilos del editor modal de servicios CMS.
  * Diseño: modal fullscreen-ish con tabs superiores, cuerpo scrollable, footer fijo. */
 
+/* max-width: 800px migrado a modalGrande (Modal.css) */
 .editorServicioModal {
     width: 90vw;
-    max-width: 800px;
     max-height: 85vh;
     display: flex;
     flex-direction: column;

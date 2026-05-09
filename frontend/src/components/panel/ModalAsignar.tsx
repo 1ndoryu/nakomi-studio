@@ -39,7 +39,7 @@ export function ModalAsignar({ orderId, abierto, onCerrar, onAsignado }: ModalAs
     });
 
     return (
-        <Modal abierto={abierto} onCerrar={onCerrar} className="modalAsignar">
+        <Modal abierto={abierto} onCerrar={onCerrar}>
             {isLoading ? (
                 <div className="modalAsignarCargando">
                     <Loader2 className="modalAsignarSpinner" size={24} />

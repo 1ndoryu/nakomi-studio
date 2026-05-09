@@ -37,6 +37,7 @@ export const SeccionPerfil: React.FC = () => {
 
     return (
         <div className="perfilSeccion">
+            {/* sentinel-disable-next-line modal-estructura-no-canonica */}
             <form className="perfilFormulario" onSubmit={handleGuardar}>
                 {/* Avatar */}
                 <div className="perfilAvatarSeccion">

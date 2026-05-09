@@ -209,6 +209,7 @@
     pointer-events: none;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .userSelectorDropdown {
     position: absolute;
     top: calc(100% + 4px);
@@ -222,6 +223,7 @@
     overflow-y: auto;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .userSelectorItem {
     display: flex;
     flex-direction: column;

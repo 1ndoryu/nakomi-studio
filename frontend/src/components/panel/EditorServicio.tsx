@@ -49,7 +49,7 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
     }, [form, onGuardar]);
 
     return (
-        <Modal abierto={abierto} onCerrar={onCerrar} className="editorServicioModal modalSinPadding">
+        <Modal abierto={abierto} onCerrar={onCerrar} className="modalGrande modalSinPadding editorServicioModal">
             <div className="editorServicioTabs">
                 {TABS.map(t => (
                     <button

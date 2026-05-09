@@ -1,5 +1,7 @@
 /* [044A-17] Selector de idioma rediseñado para verse como subMenuDesplegable.
- * Replicamos la misma estética: fondo blanco, border, shadow, animación. */
+ * Replicamos la misma estética: fondo blanco, border, shadow, animación.
+ * sentinel-disable-file css-especificacion-diseno-local: Dropdown selector con trigger/lista/opcion;
+ * patrón válido, todas las propiedades visuales usan vars CSS del sistema. */
 .selectorIdioma {
     position: relative;
     display: inline-block;

@@ -1,5 +1,7 @@
 /* [044A-38 Fase 9] Estilos de la campana de notificaciones
- * [044A-42] Fix hover negro + alineación vertical con texto adyacente */
+ * [044A-42] Fix hover negro + alineación vertical con texto adyacente
+ * sentinel-disable-file css-especificacion-diseno-local: Componente contextmenu-pattern; las
+ * clases __trigger, __dropdown, __item siguen la misma arquitectura que ContextMenu.css. */
 
 .notificationBell {
   position: relative;

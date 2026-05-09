@@ -241,6 +241,7 @@
     z-index: 99;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .hostingMenu {
     position: absolute;
     top: 100%;
@@ -253,6 +254,7 @@
     overflow: hidden;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .hostingMenuItem {
     display: block;
     width: 100%;

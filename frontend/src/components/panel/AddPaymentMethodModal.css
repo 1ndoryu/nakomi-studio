@@ -1,6 +1,4 @@
-.agregarTarjetaModal {
-    width: min(100%, 520px);
-}
+/* .agregarTarjetaModal eliminado — solo tenía sizing (520px), migrado a modalMedio (Modal.css). */
 
 .agregarTarjetaStripeField {
     padding: var(--spacing-md);

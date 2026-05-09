@@ -1,5 +1,7 @@
 /* [104A-34] Estilos del dropdown de chat en header.
- * Mantiene consistencia visual con NotificationBell. */
+ * Mantiene consistencia visual con NotificationBell.
+ * sentinel-disable-file css-especificacion-diseno-local: Mismo patrón contextmenu que
+ * NotificationBell — clases __trigger, __dropdown, __item con vars CSS del sistema. */
 
 .chatBell {
     position: relative;

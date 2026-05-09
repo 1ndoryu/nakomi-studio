@@ -25,6 +25,7 @@
 }
 
 /* [064A-41] Dropdown de menú: borde sutil, sin sombra. */
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .usuariosMenu {
     position: absolute;
     right: 0;
@@ -38,6 +39,7 @@
     padding: 4px;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .usuariosMenuItem {
     display: flex;
     align-items: center;

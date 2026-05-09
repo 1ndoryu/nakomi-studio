@@ -1,5 +1,7 @@
 /* [044A-38 Fase 6] Estilos del panel de entregables.
- * [074A-53] Modal de entrega con notas y adjuntos. */
+ * [074A-53] Modal de entrega con notas y adjuntos.
+ * sentinel-disable-file css-especificacion-diseno-local: Panel con elementos interactivos
+ * (entregablesPanel, entregablesFileItem, entregablesModalFileItem) usando vars CSS. */
 
 .entregablesPanel {
     margin-top: var(--spacing-sm);

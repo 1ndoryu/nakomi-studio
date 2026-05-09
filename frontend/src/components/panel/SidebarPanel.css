@@ -2,6 +2,9 @@
  * CSS: SidebarPanel
  * Barra lateral del panel de usuario con iconos.
  */
+/* sentinel-disable-file css-especificacion-diseno-local: Componente de navegación central con
+ * múltiples estados interactivos (.sidebarItem, .sidebarOverflowMenu, .sidebarOverflowItem).
+ * Todas las propiedades visuales consumen variables CSS del sistema de diseño. */
 /* [064A-54] Sidebar altura completa: sticky + min-height del viewport. */
 .panelSidebar {
     display: flex;

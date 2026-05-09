@@ -1,6 +1,8 @@
 /*
  * Estilos para el Header
- */
+ * sentinel-disable-file css-especificacion-diseno-local: Header con submenús desplegables;
+ * .iconoDesplegable, .subMenuDesplegable, .menuMovilPanel son partes del sistema de navegación
+ * global con vars CSS del sistema. */
 
 .cabeceraPrincipal {
     position: fixed;

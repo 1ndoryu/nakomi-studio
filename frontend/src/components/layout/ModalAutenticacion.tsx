@@ -30,7 +30,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
     } = useAutenticacion(onCerrar);
 
     return (
-        <Modal abierto={abierto} onCerrar={onCerrar} className="modalAutenticacion">
+        <Modal abierto={abierto} onCerrar={onCerrar} className="modalCompacto modalAutenticacion">
                 {/* [044A-15] Eliminado boton cerrar y titulo por solicitud del usuario.
                  * Se cierra haciendo click fuera del modal (overlay) o con Escape. */}
 
@@ -89,7 +89,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
                         <Button
                             variante="texto"
                             type="button"
-                            className="modalEnlaceTexto"
+                            className="modalEnlace"
                             onClick={() => setVista('recuperar')}
                         >
                             {t('auth.forgot_password')}
@@ -194,7 +194,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
                     <div className="modalFormulario">
                         {recuperar.enviado ? (
                             <div className="modalExito">
-                                <p className="modalExitoTexto">{t('auth.recover_sent')}</p>
+                                <p className="modalExitoParrafo">{t('auth.recover_sent')}</p>
                                 <Button variante="outline" onClick={resetRecuperacion}>
                                     {t('auth.back_login')}
                                 </Button>
@@ -217,7 +217,7 @@ export const ModalAutenticacion: React.FC<ModalAutenticacionProps> = ({abierto, 
                                 <Button variante="primario" tamano="mediano" className="modalAccionPrincipal" disabled={cargando}>
                                     {cargando ? t('auth.sending') : t('auth.send_link')}
                                 </Button>
-                                <Button variante="texto" type="button" className="modalEnlaceTexto" onClick={() => setVista('login')}>
+                                <Button variante="texto" type="button" className="modalEnlace" onClick={() => setVista('login')}>
                                     {t('auth.back_login_text')}
                                 </Button>
                             </form>

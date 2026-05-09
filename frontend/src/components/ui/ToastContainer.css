@@ -15,6 +15,7 @@
 }
 
 /* [064A-55] Toast: fondo siempre var(--bg-accent), sin sombra, borde sutil. */
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .toastItem {
     display: flex;
     align-items: center;

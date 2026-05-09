@@ -43,45 +43,45 @@ export const EditorMiembro: React.FC<EditorMiembroProps> = ({miembro, abierto, g
     };
 
     return (
-        <Modal abierto={abierto} onCerrar={onCerrar} className="editorMiembroModal">
+        <Modal abierto={abierto} onCerrar={onCerrar} className="modalMedio">
             <div className="editorMiembroContenido">
-                <div className="editorMiembroCampo">
+                <div className="modalCampo">
                     <label>Nombre</label>
                     <input type="text" value={editor.nombre} onChange={e => editor.setNombre(e.target.value)} placeholder="Nombre del miembro" />
                 </div>
-                <div className="editorMiembroCampo">
+                <div className="modalCampo">
                     <label>Slug</label>
                     <input type="text" value={editor.slug} onChange={e => editor.setSlug(e.target.value)} placeholder="slug-unico" />
                 </div>
-                <div className="editorMiembroCampo">
+                <div className="modalCampo">
                     <label>Cargo</label>
                     <input type="text" value={editor.cargo} onChange={e => editor.setCargo(e.target.value)} placeholder="CEO, Developer, etc." />
                 </div>
-                <div className="editorMiembroCampo">
+                <div className="modalCampo">
                     <label>Bio</label>
                     <textarea value={editor.bio} onChange={e => editor.setBio(e.target.value)} placeholder="Descripción breve del miembro" rows={3} />
                 </div>
-                <div className="editorMiembroCampo">
+                <div className="modalCampo">
                     <label>Avatar</label>
                     <UploadImage valor={editor.avatar} onChange={editor.setAvatar} etiqueta="Subir avatar" />
                 </div>
                 <div className="editorMiembroFila">
-                    <div className="editorMiembroCampo">
+                    <div className="modalCampo">
                         <label>LinkedIn</label>
                         <input type="text" value={editor.linkedin} onChange={e => editor.setLinkedin(e.target.value)} placeholder="URL LinkedIn" />
                     </div>
-                    <div className="editorMiembroCampo">
+                    <div className="modalCampo">
                         <label>GitHub</label>
                         <input type="text" value={editor.github} onChange={e => editor.setGithub(e.target.value)} placeholder="URL GitHub" />
                     </div>
                 </div>
                 <div className="editorMiembroFila">
-                    <div className="editorMiembroCampo">
+                    <div className="modalCampo">
                         <label>Twitter</label>
                         <input type="text" value={editor.twitter} onChange={e => editor.setTwitter(e.target.value)} placeholder="URL Twitter/X" />
                     </div>
                 </div>
-                <div className="editorMiembroCampo">
+                <div className="modalCampo">
                     <label>Estado</label>
                     <div className="editorMiembroEstados">
                         {['published', 'draft', 'archived'].map(s => (

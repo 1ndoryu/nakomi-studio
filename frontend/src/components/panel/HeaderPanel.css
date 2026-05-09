@@ -2,7 +2,8 @@
  * CSS: HeaderPanel
  * Header minimalista para el panel de usuario.
  * Usa los mismos estilos de enlaceNavegacionWrapper del header global.
- */
+ * sentinel-disable-file css-especificacion-diseno-local: Componente de navegación panel;
+ * .headerPanel, .headerPanelSubmenu, .headerPanelSubmenuItem usan solo vars del sistema. */
 .headerPanel {
     width: 100%;
     max-width: var(--container-width);

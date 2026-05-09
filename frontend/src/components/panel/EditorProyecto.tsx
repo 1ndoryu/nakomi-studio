@@ -59,7 +59,7 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
     }, [form]);
 
     return (
-        <Modal abierto={abierto} onCerrar={onCerrar} className="editorProyectoModal modalSinPadding">
+        <Modal abierto={abierto} onCerrar={onCerrar} className="modalGrande modalSinPadding editorProyectoModal">
             <div className="editorProyectoTabs">
                 {TABS.map(t => (
                     <button

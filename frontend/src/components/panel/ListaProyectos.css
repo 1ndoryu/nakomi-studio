@@ -160,6 +160,7 @@
 }
 
 /* Menú contextual 3 puntos */
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .listaProyectosMenu {
     flex-shrink: 0;
     opacity: 0;

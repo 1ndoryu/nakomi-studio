@@ -4,7 +4,9 @@
  * Opciones: reportar, extensión de tiempo (empleado), cancelar.
  * custom toggle (<label> con CSS switch).
  * sentinel-disable-file limite-lineas: Componente orquestador de detalle de orden;
- * lógica principal ya extraída a useOrdenDetalle + sub-componentes. */
+ * lógica principal ya extraída a useOrdenDetalle + sub-componentes.
+ * sentinel-disable-file usestate-excesivo: 5 estados necesarios para flujos independientes
+ * (fases, intermediario, modal asignar); ya se usa useOrdenDetalle para el estado principal. */
 import React, {useState, useCallback} from 'react';
 import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft, UserCheck, Plus} from 'lucide-react';
 import {

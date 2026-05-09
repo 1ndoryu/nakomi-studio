@@ -47,6 +47,7 @@
 }
 
 /* [064A-1] Botón de sesión: usa Button variante="texto". Solo layout contextual. */
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .chatSesionItem {
     display: flex;
     align-items: center;

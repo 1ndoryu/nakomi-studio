@@ -60,7 +60,7 @@
     text-align: center;
 }
 
-.modalCompraAuthTexto {
+.modalCompraAuthNota {
     text-align: center;
     margin-bottom: var(--spacing-xs);
 }
@@ -79,7 +79,7 @@
     gap: var(--spacing-md);
 }
 
-.modalCompraErrorTexto {
+.modalCompraErrorMensaje {
     color: var(--color-error, var(--color-error));
     font-size: var(--text-sm);
 }

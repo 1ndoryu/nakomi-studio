@@ -1,10 +1,7 @@
 /* [074A-13] Estilos del editor de miembros del equipo.
  * [084A-8] Migrado a <Modal> base — overlay/contenedor eliminados, usa .editorMiembroModal como className. */
 
-.editorMiembroModal {
-    width: 100%;
-    max-width: 560px;
-}
+/* .editorMiembroModal eliminado — solo tenía max-width: 560px, migrado a modalMedio (Modal.css). */
 
 .editorMiembroContenido {
     padding: var(--spacing-lg);

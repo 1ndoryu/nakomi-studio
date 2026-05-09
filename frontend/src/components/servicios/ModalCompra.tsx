@@ -83,7 +83,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
     }
 
     return (
-        <Modal abierto={abierto} onCerrar={onCerrar} className="modalCompraContenido">
+            <Modal abierto={abierto} onCerrar={onCerrar}>
             {/* [035A-4] Resumen minimo: sin wrapper extra ni brief previo a la compra. */}
             {(paso === 'resumen' || paso === 'auth') && (
                 <p className="modalTexto">{plan.descripcion}</p>
@@ -179,7 +179,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                             )}
                         </div>
                     )}
-                    {errorMsg && <p className="modalCompraErrorTexto">{errorMsg}</p>}
+                    {errorMsg && <p className="modalCompraErrorMensaje">{errorMsg}</p>}
                     <Button variante="primario" tamano="mediano" onClick={handleContinuar} className="modalCompraCta">
                         {isHosting || isVps
                             ? t('purchase.continue_pay', 'Continuar al checkout')
@@ -198,12 +198,12 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
             {/* [064A-3] Paso auth: solo email. Si email ya existe, muestra password */}
             {paso === 'auth' && (
                 <ModalBody as="form" onSubmit={handleAuth}>
-                    <p className="modalTexto modalCompraAuthTexto">
+                    <p className="modalTexto modalCompraAuthNota">
                         {emailExiste
                             ? t('purchase.existing_account', 'Ya tienes cuenta. Introduce tu contraseña para continuar.')
                             : t('purchase.enter_email', 'Introduce tu email para continuar')}
                     </p>
-                    {errorMsg && <p className="modalCompraErrorTexto">{errorMsg}</p>}
+                    {errorMsg && <p className="modalCompraErrorMensaje">{errorMsg}</p>}
                     <Input
                         type="email"
                         placeholder={t('auth.email_placeholder', 'tu@email.com')}
@@ -247,7 +247,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
             {/* Error */}
             {paso === 'error' && (
                 <div className="modalCompraError">
-                    <p className="modalCompraErrorTexto">{errorMsg}</p>
+                    <p className="modalCompraErrorMensaje">{errorMsg}</p>
                     <Button variante="outline" tamano="pequeno" onClick={reintentar}>
                         {t('common.retry', 'Intentar de nuevo')}
                     </Button>

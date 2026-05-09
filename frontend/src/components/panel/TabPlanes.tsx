@@ -4,7 +4,9 @@
  * sentinel-disable-file html-nativo-en-vez-de-componente: Botones de eliminar/agregar usan
  * <button> nativo porque son acciones inline donde botonBase interfiere con layout.
  * sentinel-disable-file componente-sin-hook: Estado vive en el padre (planes prop),
- * los callbacks son wiring trivial que no justifica un hook separado. */
+ * los callbacks son wiring trivial que no justifica un hook separado.
+ * sentinel-disable-file limite-lineas: Editor de planes con cards expandibles inline;
+ * refactor generaría prop-drilling excesivo sin ganancia real de mantenibilidad. */
 import React, {useCallback} from 'react';
 import {Input} from '../ui/Input';
 import {Textarea} from '../ui/Textarea';

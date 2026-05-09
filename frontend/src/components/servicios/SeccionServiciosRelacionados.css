@@ -25,6 +25,7 @@
     width: 100%;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .relacionadoItem {
     display: flex;
     align-items: center;

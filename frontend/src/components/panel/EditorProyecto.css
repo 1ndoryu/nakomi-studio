@@ -3,11 +3,11 @@
  * Tabs con underline matching contenidoSubTabs (084A-12). */
 
 /* Colores de Google para SEO preview */
+/* max-width: 800px migrado a modalGrande (Modal.css) */
 .editorProyectoModal {
     --seo-titulo: #1a0dab;
     --seo-url: #006621;
     width: 90vw;
-    max-width: 800px;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
@@ -137,6 +137,7 @@
     gap: var(--spacing-sm);
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .editorProyectoGaleriaItem {
     position: relative;
     aspect-ratio: 4 / 3;

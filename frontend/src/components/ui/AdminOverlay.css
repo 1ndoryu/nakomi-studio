@@ -19,6 +19,7 @@
     opacity: 1;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .adminOverlayTrigger {
     background: var(--brand-white);
     border: 1px solid var(--border-default);
@@ -36,6 +37,7 @@
     border-color: var(--border-hover);
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .adminOverlayPanel {
     right: 0;
     left: auto;

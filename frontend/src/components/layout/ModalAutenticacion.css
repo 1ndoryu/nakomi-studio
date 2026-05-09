@@ -2,12 +2,11 @@
  * El overlay y focus trap vienen del componente <Modal> base.
  * Esta clase se aplica al contenedor interno via className prop. */
 
-/* [044A-15] Contenedor principal: fondo blanco, padding 40px, sin titulo ni boton cerrar */
+/* [044A-15] Contenedor principal: fondo blanco, padding 40px, sin titulo ni boton cerrar.
+ * max-width migrado a modalCompacto (Modal.css). */
 .modalAutenticacion {
     background-color: var(--brand-white);
     border-radius: var(--radius-xl);
-    width: 100%;
-    max-width: 440px;
     max-height: 90vh;
     overflow-y: auto;
     padding: 40px;
@@ -96,7 +95,7 @@
 }
 
 /* Enlace de texto (olvidaste contraseña, volver) */
-.modalEnlaceTexto {
+.modalEnlace {
     font-family: var(--font-primary);
     font-size: var(--text-sm);
     color: var(--text-tertiary);
@@ -108,7 +107,7 @@
     transition: color var(--transicion-rapida);
 }
 
-.modalEnlaceTexto:hover {
+.modalEnlace:hover {
     color: var(--brand-black);
 }
 
@@ -190,7 +189,7 @@
     align-items: flex-start;
 }
 
-.modalExitoTexto {
+.modalExitoParrafo {
     font-family: var(--font-serif);
     font-size: var(--text-base);
     color: var(--text-muted);

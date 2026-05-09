@@ -31,7 +31,7 @@ export function AddPaymentMethodModal({open, onClose, onSaved}: AddPaymentMethod
 
     if (!stripePromise) {
         return (
-            <Modal abierto onCerrar={onClose} className="agregarTarjetaModal">
+            <Modal abierto onCerrar={onClose} className="modalMedio">
                 <ModalBody>
                     <p className="agregarTarjetaError">Stripe no esta configurado en este entorno.</p>
                     <div className="modalAcciones">
@@ -43,7 +43,7 @@ export function AddPaymentMethodModal({open, onClose, onSaved}: AddPaymentMethod
     }
 
     return (
-        <Modal abierto onCerrar={onClose} className="agregarTarjetaModal">
+        <Modal abierto onCerrar={onClose} className="modalMedio">
             <ModalBody>
                 <p className="modalTexto">
                     La tarjeta se guardara en Stripe y quedara disponible para pagos futuros.

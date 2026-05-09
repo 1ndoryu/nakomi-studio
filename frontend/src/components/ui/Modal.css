@@ -36,6 +36,12 @@
     padding: 0;
 }
 
+/* Variantes de ancho para contenedor: usar como className en <Modal> cuando el
+ * contenido necesita más espacio que los 420px por defecto. */
+.modalBaseContenedor.modalCompacto { max-width: 480px; }
+.modalBaseContenedor.modalMedio    { max-width: 560px; }
+.modalBaseContenedor.modalGrande   { max-width: 800px; }
+
 /* [084A-8][035A-6] Clases estandarizadas para titulos, texto y acciones.
  * Todos los modales que necesiten titulo deben usar .modalTitulo (h3).
  * Todo copy neutral debe usar .modalTexto.

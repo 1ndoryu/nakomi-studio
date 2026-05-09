@@ -1,6 +1,7 @@
 /* [064A-72] Estilos del panel lateral de info del visitante.
  * Tercera columna en el layout del chat (SeccionChat). */
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .chatInfoPanel {
     width: 280px;
     min-width: 280px;

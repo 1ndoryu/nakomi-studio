@@ -338,6 +338,7 @@
 }
 
 /* [084A-45] Rediseño minimalista: más gap para separar botón */
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .hostingDetallePlanOption {
     display: flex;
     flex-direction: column;

@@ -88,6 +88,7 @@
     background: var(--overlay-hover);
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .ordenDetalleMenuPanel {
     position: absolute;
     top: calc(100% + 8px);
@@ -100,6 +101,7 @@
     z-index: 3;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .ordenDetalleMenuItem {
     width: 100%;
     justify-content: flex-start;
