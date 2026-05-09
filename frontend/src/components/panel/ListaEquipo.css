@@ -90,14 +90,13 @@
 }
 
 /* Menú contextual */
-/* sentinel-disable-next-line css-especificacion-diseno-local */
-.equipoListaMenu {
+.equipoListaAcciones {
     flex-shrink: 0;
     opacity: 0;
     transition: opacity 0.2s;
 }
 
-.equipoListaFila:hover .equipoListaMenu {
+.equipoListaFila:hover .equipoListaAcciones {
     opacity: 1;
 }
 

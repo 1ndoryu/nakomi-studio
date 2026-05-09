@@ -146,7 +146,7 @@ function FilaProyecto({
                 )}
             </div>
 
-            <div className="listaProyectosMenu" onClick={e => e.stopPropagation()}>
+            <div className="listaProyectosAcciones" onClick={e => e.stopPropagation()}>
                 <MenuContextual
                     abierto={menuActivo === proyecto.id}
                     onToggle={() => setMenuActivo(prev => prev === proyecto.id ? null : proyecto.id)}

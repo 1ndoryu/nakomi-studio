@@ -231,46 +231,6 @@
     color: var(--text-tertiary);
 }
 
-.hostingMenuWrapper {
-    position: relative;
-}
-
-.hostingMenuOverlay {
-    position: fixed;
-    inset: 0;
-    z-index: 99;
-}
-
-/* sentinel-disable-next-line css-especificacion-diseno-local */
-.hostingMenu {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-hover);
-    border-radius: var(--radius-md);
-    z-index: 100;
-    min-width: 140px;
-    overflow: hidden;
-}
-
-/* sentinel-disable-next-line css-especificacion-diseno-local */
-.hostingMenuItem {
-    display: block;
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: var(--text-sm);
-    cursor: pointer;
-    transition: background 0.1s;
-}
-
-.hostingMenuItem:hover {
-    background: var(--bg-dark);
-}
-
 /* ── Form crear ────────────────────────────── */
 /* [035A-24] El layout base del cuerpo del modal ahora sale de .modalFormulario.
  * Esta clase solo conserva el ancho extra de hosting cuando hace falta. */

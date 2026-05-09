@@ -24,64 +24,6 @@
     background: var(--overlay-hover);
 }
 
-/* [064A-41] Dropdown de menú: borde sutil, sin sombra. */
-/* sentinel-disable-next-line css-especificacion-diseno-local */
-.usuariosMenu {
-    position: absolute;
-    right: 0;
-    top: 100%;
-    margin-top: 4px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    min-width: 180px;
-    z-index: 10;
-    padding: 4px;
-}
-
-/* sentinel-disable-next-line css-especificacion-diseno-local */
-.usuariosMenuItem {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 12px;
-    border: none;
-    background: transparent;
-    font-size: var(--text-sm);
-    font-family: var(--font-primary);
-    color: var(--brand-black);
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: background 0.15s;
-}
-
-.usuariosMenuItem:hover {
-    background: var(--overlay-hover);
-}
-
-.usuariosMenuItemBan {
-    color: var(--color-error-text);
-}
-
-.usuariosMenuItemBan:hover {
-    background: var(--color-error-bg);
-}
-
-.usuariosMenuItemReactivar {
-    color: var(--color-success-text);
-}
-
-.usuariosMenuItemReactivar:hover {
-    background: var(--color-success-bg);
-}
-
-.usuariosMenuDivider {
-    border: none;
-    border-top: 1px solid var(--border-default);
-    margin: 4px 0;
-}
-
 /* Paginación */
 
 .usuariosPaginacion {

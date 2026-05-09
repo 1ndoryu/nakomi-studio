@@ -160,14 +160,13 @@
 }
 
 /* Menú contextual 3 puntos */
-/* sentinel-disable-next-line css-especificacion-diseno-local */
-.listaProyectosMenu {
+.listaProyectosAcciones {
     flex-shrink: 0;
     opacity: 0;
     transition: opacity 0.2s;
 }
 
-.listaProyectosFila:hover .listaProyectosMenu {
+.listaProyectosFila:hover .listaProyectosAcciones {
     opacity: 1;
 }
 
