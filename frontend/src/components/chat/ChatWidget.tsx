@@ -198,6 +198,7 @@ function renderMessageContent(msg: {
             const amountCents = (msg.metadata?.amount_cents as number) || 0;
             const currency = (msg.metadata?.currency as string) || 'usd';
             const description = (msg.metadata?.description as string) || '';
+            const title = (msg.metadata?.title as string) || 'Factura';
             const status = (msg.metadata?.status as string) || '';
             const amountFormatted = (amountCents / 100).toFixed(2);
             const isPaid = status === 'paid';
@@ -206,7 +207,7 @@ function renderMessageContent(msg: {
             return (
                 <div className="chatWidgetMsgRich chatWidgetInvoiceCard">
                     <div className="chatWidgetInvoiceHeader">
-                        <span className="chatWidgetInvoiceTitle">Factura</span>
+                        <span className="chatWidgetInvoiceTitle">{title}</span>
                         {isPaid && <span className="chatWidgetInvoicePaid">Pagada</span>}
                         {isOpen && <span className="chatWidgetInvoicePending">Pendiente</span>}
                     </div>

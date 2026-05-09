@@ -281,11 +281,14 @@ impl AiChatService {
                 /* La IA quiere llamar tools â€” ejecutarlas */
                 messages.push(choice["message"].clone());
                 let tool_results = process_tool_calls(
-                    pool,
-                    http_client,
-                    stripe_key,
-                    ctx.visitor_id,
-                    ctx.session_id,
+                    ToolCallLoopContext {
+                        pool,
+                        http_client,
+                        stripe_key,
+                        visitor_id: ctx.visitor_id,
+                        user_id: ctx.user_id,
+                        session_id: ctx.session_id,
+                    },
                     tool_calls,
                     &mut rich_messages,
                 )
@@ -308,7 +311,7 @@ impl AiChatService {
 
                 tracing::debug!(
                     "AI tool call iteration {}, {} tools executed",
-                    iteration + 1,
+                    iteration,
                     tool_results.len()
                 );
                 continue;
@@ -440,16 +443,22 @@ impl AiChatService {
 /* [174A-2] Providers extraÃ­dos a ai_providers.rs */
 use super::ai_providers::call_groq_api;
 
+struct ToolCallLoopContext<'a> {
+    pool: &'a PgPool,
+    http_client: &'a reqwest::Client,
+    stripe_key: Option<&'a str>,
+    visitor_id: Option<&'a str>,
+    user_id: Option<Uuid>,
+    session_id: Uuid,
+}
+
 /* [T-2] Ejecutar tool calls y recopilar rich messages.
  * Retorna Vec<String> con los resultados JSON de cada tool.
  * [T-3] visitor_id para tools que actualizan visitor_profiles.
- * [124A-CHAT2] session_id para actualizar visitor_name en la sesiÃ³n. */
+ * [124A-CHAT2] session_id para actualizar visitor_name en la sesiÃ³n.
+ * [095A-8] ToolCallLoopContext evita firmas crecientes al sumar tools de hosting. */
 async fn process_tool_calls(
-    pool: &PgPool,
-    http_client: &reqwest::Client,
-    stripe_key: Option<&str>,
-    visitor_id: Option<&str>,
-    session_id: Uuid,
+    ctx: ToolCallLoopContext<'_>,
     tool_calls: &Value,
     rich_messages: &mut Vec<RichMessage>,
 ) -> Vec<String> {
@@ -473,11 +482,14 @@ async fn process_tool_calls(
         tracing::debug!("AI tool call: {name}({args})");
 
         let result = ai_tools::execute_tool(
-            pool,
-            http_client,
-            stripe_key,
-            visitor_id,
-            session_id,
+            ai_tools::ToolExecutionContext {
+                pool: ctx.pool,
+                http_client: ctx.http_client,
+                stripe_key: ctx.stripe_key,
+                visitor_id: ctx.visitor_id,
+                user_id: ctx.user_id,
+                session_id: ctx.session_id,
+            },
             name,
             &args,
         )

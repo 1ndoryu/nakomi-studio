@@ -13,8 +13,12 @@
 
 use serde_json::{json, Value};
 use sqlx::PgPool;
+use uuid::Uuid;
+use validator::Validate;
 
-use crate::repositories::ChatRepository;
+use crate::models::{HostingPlanConfig, HostingSubscription, SelfSubscribeRequest};
+use crate::repositories::{ChatRepository, CreateHostingParams, HostingRepository, UserRepository};
+use crate::services::{CheckoutParams, HostingStripeService};
 
 /* Resultado de ejecutar una tool: JSON para la IA y opcionalmente un
  * mensaje rico para mostrar en el chat del visitante. */
@@ -31,12 +35,24 @@ pub struct RichMessage {
     pub metadata: Value,
 }
 
+/* [095A-8] Contexto de ejecución de tools. Agrupa pool, HTTP, sesión y usuario
+ * para no seguir ampliando firmas cada vez que una tool necesita contexto real. */
+pub struct ToolExecutionContext<'a> {
+    pub pool: &'a PgPool,
+    pub http_client: &'a reqwest::Client,
+    pub stripe_key: Option<&'a str>,
+    pub visitor_id: Option<&'a str>,
+    pub user_id: Option<Uuid>,
+    pub session_id: Uuid,
+}
+
 /* [T-2][T-3] Definiciones de tools en formato OpenAI/Groq.
  * Se incluyen en el body de la API junto con los mensajes.
  * Dividido en service_tools + visitor_tools para no exceder líneas. */
 pub fn tool_definitions() -> Value {
     let mut tools = service_tool_defs();
     if let Some(arr) = tools.as_array_mut() {
+        arr.extend(hosting_tool_defs().as_array().cloned().unwrap_or_default());
         arr.extend(visitor_tool_defs().as_array().cloned().unwrap_or_default());
         /* [T-9] Tools para clientes registrados */
         arr.extend(
@@ -47,6 +63,44 @@ pub fn tool_definitions() -> Value {
         );
     }
     tools
+}
+
+/* [095A-8] Tools de hosting: asesoría con catálogo real, consulta de hostings del cliente
+ * y checkout mensual Stripe. No ejecutan provisioning/restart/stop: eso sigue siendo admin-only. */
+fn hosting_tool_defs() -> Value {
+    json!([
+        {
+            "type": "function",
+            "function": {
+                "name": "list_hosting_plans",
+                "description": "Lista planes reales de WordPress hosting desde la configuración de la base de datos. Úsalo para asesorar precios, recursos y diferencias antes de recomendar un plan.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_my_hostings",
+                "description": "Lista las suscripciones de hosting del cliente registrado, con plan, dominio, estado y datos operativos básicos. Úsalo cuando el cliente pregunte por su hosting o quiera gestionarlo.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "create_hosting_checkout",
+                "description": "Crea una suscripción pending de WordPress hosting y un checkout mensual real de Stripe. Úsalo solo cuando un cliente registrado confirme que quiere contratar un plan concreto. Si el cliente no está registrado, la tool indicará que debe iniciar sesión.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "plan": { "type": "string", "description": "Slug del plan: basico, pro o ecommerce" },
+                        "domain": { "type": "string", "description": "Dominio opcional del cliente, sin https:// ni rutas" }
+                    },
+                    "required": ["plan"]
+                }
+            }
+        }
+    ])
 }
 
 /* [084A-51] show_service y list_services removidos — las service cards son antinaturales
@@ -128,26 +182,332 @@ fn visitor_tool_defs() -> Value {
  * visitor_id necesario para tools que actualizan visitor_profiles (T-3).
  * [124A-CHAT2] session_id necesario para actualizar visitor_name en chat_sessions al capturar nombre. */
 pub async fn execute_tool(
-    pool: &PgPool,
-    http_client: &reqwest::Client,
-    stripe_key: Option<&str>,
-    visitor_id: Option<&str>,
-    session_id: uuid::Uuid,
+    ctx: ToolExecutionContext<'_>,
     tool_name: &str,
     arguments: &Value,
 ) -> ToolExecResult {
     match tool_name {
         "create_invoice" => {
-            exec_create_invoice(http_client, stripe_key, session_id, arguments).await
+            exec_create_invoice(ctx.http_client, ctx.stripe_key, ctx.session_id, arguments).await
         }
+        "list_hosting_plans" => exec_list_hosting_plans(ctx.pool).await,
+        "list_my_hostings" => exec_list_my_hostings(ctx.pool, ctx.user_id).await,
+        "create_hosting_checkout" => exec_create_hosting_checkout(&ctx, arguments).await,
         "request_human_assistance" => exec_request_human(arguments),
-        "capture_email" => exec_capture_email(pool, visitor_id, session_id, arguments).await,
-        "save_client_info" => exec_save_client_info(pool, visitor_id, session_id, arguments).await,
-        "create_support_ticket" => exec_create_support_ticket(pool, visitor_id, arguments).await,
+        "capture_email" => {
+            exec_capture_email(ctx.pool, ctx.visitor_id, ctx.session_id, arguments).await
+        }
+        "save_client_info" => {
+            exec_save_client_info(ctx.pool, ctx.visitor_id, ctx.session_id, arguments).await
+        }
+        "create_support_ticket" => {
+            exec_create_support_ticket(ctx.pool, ctx.visitor_id, arguments).await
+        }
         _ => ToolExecResult {
             tool_result_json: json!({"error": "Tool desconocida"}).to_string(),
             rich_message: None,
         },
+    }
+}
+
+async fn exec_list_hosting_plans(pool: &PgPool) -> ToolExecResult {
+    match HostingRepository::list_plan_configs(pool).await {
+        Ok(plans) => ToolExecResult {
+            tool_result_json: json!({
+                "status": "ok",
+                "plans": plans.into_iter().map(|plan| json!({
+                    "plan": plan.plan_name,
+                    "monthly_price_cents": plan.monthly_price_cents,
+                    "storage_limit_mb": plan.storage_limit_mb,
+                    "bandwidth_limit_gb": plan.bandwidth_limit_gb,
+                    "wp_cpu_millicores": plan.wp_cpu_millicores,
+                    "wp_memory_mb": plan.wp_memory_mb,
+                    "db_cpu_millicores": plan.db_cpu_millicores,
+                    "db_memory_mb": plan.db_memory_mb,
+                    "ssh_cpu_millicores": plan.ssh_cpu_millicores,
+                    "ssh_memory_mb": plan.ssh_memory_mb,
+                })).collect::<Vec<_>>()
+            })
+            .to_string(),
+            rich_message: None,
+        },
+        Err(e) => {
+            tracing::error!("Error listando planes hosting para AI tool: {e}");
+            ToolExecResult {
+                tool_result_json: json!({"error": "No se pudieron listar los planes de hosting"})
+                    .to_string(),
+                rich_message: None,
+            }
+        }
+    }
+}
+
+async fn exec_list_my_hostings(pool: &PgPool, user_id: Option<Uuid>) -> ToolExecResult {
+    let Some(user_id) = user_id else {
+        return ToolExecResult {
+            tool_result_json: json!({
+                "status": "requires_login",
+                "message": "Para consultar tus hostings necesitas iniciar sesión."
+            })
+            .to_string(),
+            rich_message: None,
+        };
+    };
+
+    match HostingRepository::list_by_user_id(pool, user_id).await {
+        Ok(hostings) => ToolExecResult {
+            tool_result_json: json!({
+                "status": "ok",
+                "hostings": hostings.into_iter().map(|hosting| json!({
+                    "id": hosting.id,
+                    "plan": hosting.plan,
+                    "domain": hosting.domain,
+                    "status": hosting.status,
+                    "monthly_price_cents": hosting.monthly_price_cents,
+                    "storage_limit_mb": hosting.storage_limit_mb,
+                    "server_ip": hosting.server_ip,
+                    "coolify_site_name": hosting.coolify_site_name,
+                    "sftp_user": hosting.sftp_user,
+                    "sftp_port": hosting.sftp_port,
+                })).collect::<Vec<_>>()
+            })
+            .to_string(),
+            rich_message: None,
+        },
+        Err(e) => {
+            tracing::error!("Error listando hostings del usuario {user_id}: {e}");
+            ToolExecResult {
+                tool_result_json: json!({"error": "No se pudieron consultar tus hostings"})
+                    .to_string(),
+                rich_message: None,
+            }
+        }
+    }
+}
+
+fn chat_public_base_url() -> String {
+    std::env::var("GLORY_PUBLIC_URL")
+        .or_else(|_| std::env::var("PUBLIC_URL"))
+        .unwrap_or_else(|_| "https://nakomi.studio".to_string())
+        .trim_end_matches('/')
+        .to_string()
+}
+
+async fn exec_create_hosting_checkout(
+    ctx: &ToolExecutionContext<'_>,
+    args: &Value,
+) -> ToolExecResult {
+    let Some(user_id) = ctx.user_id else {
+        return hosting_requires_login();
+    };
+    let Some(stripe_key) = ctx.stripe_key else {
+        return tool_error("Stripe no configurado para checkout de hosting");
+    };
+
+    let req = match parse_hosting_checkout_request(args) {
+        Ok(req) => req,
+        Err(result) => return result,
+    };
+    let plan_config = match fetch_hosting_plan_config(ctx.pool, &req.plan).await {
+        Ok(config) => config,
+        Err(result) => return result,
+    };
+    let (client_name, client_email) = match fetch_hosting_client(ctx.pool, user_id).await {
+        Ok(client) => client,
+        Err(result) => return result,
+    };
+    let sub = match create_chat_hosting_subscription(
+        ctx.pool,
+        user_id,
+        &req,
+        &plan_config,
+        &client_name,
+        &client_email,
+    )
+    .await
+    {
+        Ok(sub) => sub,
+        Err(result) => return result,
+    };
+    let checkout_url =
+        match create_chat_hosting_checkout_url(ctx.http_client, stripe_key, &sub, &client_email)
+            .await
+        {
+            Ok(url) => url,
+            Err(result) => return result,
+        };
+
+    hosting_checkout_success(&sub, &checkout_url)
+}
+
+fn tool_error(message: &str) -> ToolExecResult {
+    ToolExecResult {
+        tool_result_json: json!({"error": message}).to_string(),
+        rich_message: None,
+    }
+}
+
+fn hosting_requires_login() -> ToolExecResult {
+    ToolExecResult {
+        tool_result_json: json!({
+            "status": "requires_login",
+            "message": "Para contratar hosting y generar checkout mensual debes iniciar sesión o crear una cuenta."
+        })
+        .to_string(),
+        rich_message: None,
+    }
+}
+
+fn parse_hosting_checkout_request(args: &Value) -> Result<SelfSubscribeRequest, ToolExecResult> {
+    let domain = args["domain"]
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string);
+    let req = SelfSubscribeRequest {
+        plan: args["plan"].as_str().unwrap_or("").trim().to_string(),
+        domain,
+    };
+    req.validate()
+        .map(|()| req)
+        .map_err(|e| tool_error(&format!("Datos de hosting inválidos: {e}")))
+}
+
+async fn fetch_hosting_plan_config(
+    pool: &PgPool,
+    plan: &str,
+) -> Result<HostingPlanConfig, ToolExecResult> {
+    match HostingRepository::get_plan_config(pool, plan).await {
+        Ok(Some(config)) => Ok(config),
+        Ok(None) => Err(tool_error(&format!("Plan de hosting inválido: {plan}"))),
+        Err(e) => {
+            tracing::error!("Error consultando plan hosting {plan}: {e}");
+            Err(tool_error("No se pudo consultar el plan de hosting"))
+        }
+    }
+}
+
+async fn fetch_hosting_client(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<(String, String), ToolExecResult> {
+    match UserRepository::find_by_id(pool, user_id).await {
+        Ok(Some(user)) => Ok((
+            user.display_name.unwrap_or_else(|| user.email.clone()),
+            user.email,
+        )),
+        Ok(None) => Err(tool_error("Usuario no encontrado")),
+        Err(e) => {
+            tracing::error!("Error consultando usuario {user_id}: {e}");
+            Err(tool_error("No se pudo consultar el usuario"))
+        }
+    }
+}
+
+async fn create_chat_hosting_subscription(
+    pool: &PgPool,
+    user_id: Uuid,
+    req: &SelfSubscribeRequest,
+    plan_config: &HostingPlanConfig,
+    client_name: &str,
+    client_email: &str,
+) -> Result<HostingSubscription, ToolExecResult> {
+    let sub = HostingRepository::create(
+        pool,
+        CreateHostingParams {
+            user_id: Some(user_id),
+            client_name,
+            client_email,
+            plan: &req.plan,
+            domain: req.domain.as_deref(),
+            coolify_site_name: None,
+            monthly_price_cents: plan_config.monthly_price_cents,
+            storage_limit_mb: plan_config.storage_limit_mb,
+        },
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Error creando suscripción hosting desde chatbot: {e}");
+        tool_error("No se pudo crear la suscripción de hosting")
+    })?;
+    record_chat_hosting_event(pool, sub.id, user_id, &req.plan).await;
+    Ok(sub)
+}
+
+async fn record_chat_hosting_event(pool: &PgPool, sub_id: Uuid, user_id: Uuid, plan: &str) {
+    if let Err(e) = HostingRepository::add_event(
+        pool,
+        sub_id,
+        "created",
+        Some(json!({"plan": plan, "by": user_id.to_string(), "source": "chatbot-hosting"})),
+    )
+    .await
+    {
+        tracing::warn!("Error registrando evento chatbot-hosting para {sub_id}: {e}");
+    }
+}
+
+async fn create_chat_hosting_checkout_url(
+    http_client: &reqwest::Client,
+    stripe_key: &str,
+    sub: &HostingSubscription,
+    client_email: &str,
+) -> Result<String, ToolExecResult> {
+    let base_url = chat_public_base_url();
+    let success_url =
+        format!("{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}");
+    let cancel_url = format!("{base_url}/panel?hosting=cancelled");
+    HostingStripeService::create_checkout_session(&CheckoutParams {
+        http_client,
+        stripe_key,
+        subscription_id: sub.id,
+        plan: &sub.plan,
+        amount_cents: sub.monthly_price_cents,
+        customer_email: client_email,
+        success_url: &success_url,
+        cancel_url: &cancel_url,
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!(
+            "Error creando checkout hosting desde chatbot para {}: {e}",
+            sub.id
+        );
+        tool_error("No se pudo crear el checkout de hosting")
+    })
+}
+
+fn hosting_checkout_success(sub: &HostingSubscription, checkout_url: &str) -> ToolExecResult {
+    let description = format!("Suscripción mensual WordPress Hosting {}", sub.plan);
+    ToolExecResult {
+        tool_result_json: json!({
+            "status": "ok",
+            "hosting_subscription_id": sub.id,
+            "plan": sub.plan,
+            "domain": sub.domain,
+            "amount_cents": sub.monthly_price_cents,
+            "message": "Checkout mensual de hosting creado. El cliente verá una tarjeta visual con botón de pago. NO repitas el link en texto."
+        })
+        .to_string(),
+        rich_message: Some(RichMessage {
+            content: format!(
+                "Hosting {} — ${:.2} USD/mes",
+                sub.plan,
+                f64::from(sub.monthly_price_cents) / 100.0
+            ),
+            message_type: "invoice".to_string(),
+            metadata: json!({
+                "title": "Hosting WordPress",
+                "payment_url": checkout_url,
+                "amount_cents": sub.monthly_price_cents,
+                "currency": "usd",
+                "status": "open",
+                "description": description,
+                "hosting_subscription_id": sub.id,
+                "plan": sub.plan,
+                "domain": sub.domain,
+            }),
+        }),
     }
 }
 
@@ -705,16 +1065,17 @@ mod tests {
     }
 
     #[test]
-    fn tool_definitions_has_five_tools() {
+    fn tool_definitions_has_eight_tools() {
         let defs = tool_definitions();
         let arr = defs.as_array().unwrap();
         /* 2 service (create_invoice, request_human_assistance)
+         * + 3 hosting (list_hosting_plans, list_my_hostings, create_hosting_checkout)
          * + 2 visitor (capture_email, save_client_info)
-         * + 1 registered (create_support_ticket) = 5 */
+         * + 1 registered (create_support_ticket) = 8 */
         assert_eq!(
             arr.len(),
-            5,
-            "Se esperan 5 tools, encontradas {}",
+            8,
+            "Se esperan 8 tools, encontradas {}",
             arr.len()
         );
     }
@@ -756,6 +1117,9 @@ mod tests {
             .map(|t| t["function"]["name"].as_str().unwrap())
             .collect();
         assert!(names.contains(&"create_invoice"));
+        assert!(names.contains(&"list_hosting_plans"));
+        assert!(names.contains(&"list_my_hostings"));
+        assert!(names.contains(&"create_hosting_checkout"));
         assert!(names.contains(&"request_human_assistance"));
         assert!(names.contains(&"capture_email"));
         assert!(names.contains(&"save_client_info"));
@@ -797,17 +1161,66 @@ mod tests {
         let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
         let http = reqwest::Client::new();
         let result = execute_tool(
-            &pool,
-            &http,
-            None,
-            None,
-            uuid::Uuid::nil(),
+            ToolExecutionContext {
+                pool: &pool,
+                http_client: &http,
+                stripe_key: None,
+                visitor_id: None,
+                user_id: None,
+                session_id: uuid::Uuid::nil(),
+            },
             "nonexistent_tool",
             &json!({}),
         )
         .await;
         let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
         assert!(parsed["error"].is_string());
+        assert!(result.rich_message.is_none());
+    }
+
+    #[tokio::test]
+    async fn create_hosting_checkout_requires_login() {
+        let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
+        let http = reqwest::Client::new();
+        let result = execute_tool(
+            ToolExecutionContext {
+                pool: &pool,
+                http_client: &http,
+                stripe_key: Some("sk_test_fake"),
+                visitor_id: None,
+                user_id: None,
+                session_id: uuid::Uuid::nil(),
+            },
+            "create_hosting_checkout",
+            &json!({"plan": "basico"}),
+        )
+        .await;
+        let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
+        assert_eq!(parsed["status"], "requires_login");
+        assert!(result.rich_message.is_none());
+    }
+
+    #[tokio::test]
+    async fn create_hosting_checkout_requires_stripe_key() {
+        let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
+        let http = reqwest::Client::new();
+        let result = execute_tool(
+            ToolExecutionContext {
+                pool: &pool,
+                http_client: &http,
+                stripe_key: None,
+                visitor_id: None,
+                user_id: Some(uuid::Uuid::nil()),
+                session_id: uuid::Uuid::nil(),
+            },
+            "create_hosting_checkout",
+            &json!({"plan": "basico"}),
+        )
+        .await;
+        let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
+        assert!(parsed["error"]
+            .as_str()
+            .is_some_and(|error| error.contains("Stripe")));
         assert!(result.rich_message.is_none());
     }
 }
