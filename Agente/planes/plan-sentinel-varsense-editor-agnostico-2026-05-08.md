@@ -310,6 +310,16 @@ Criterio de cierre:
 - Validacion: Sentinel `npm run test:unit` paso (`291 passing`, `1 pending`) con `[check-core-no-vscode] OK`. VarSense `npm test` paso (`36 passing`) con `[check-core-no-vscode] OK`.
 - Pendiente tecnico: integrar el guard en CI remoto formal, crear extension Zed o configuracion Zed que lance el LSP, y decidir si Sentinel tendra LSP propio o server combinado.
 
+## Avance 2026-05-09 - integracion Zed VarSense
+
+- `095A-4`: VarSense avanzo Fase 6 con una integracion Zed en `integrations/zed/`, basada en `extension.toml`, crate Rust/WASM y `language_server_command`.
+- La extension registra `varsense-lsp` para CSS, SCSS, LESS, TSX, JSX, TypeScript y JavaScript, con `language_ids` LSP equivalentes a los que usa el core.
+- El adaptador no duplica reglas ni empaqueta el LSP: primero respeta `VARSENSE_LSP_PATH`, luego `worktree.which("varsense-lsp")` y finalmente usa `../../dist/lsp/server.js` para desarrollo local.
+- Se agrego `.zed/tasks.json` con tareas para ejecutar `varsense scan` y `varsense orphan-classes` desde Zed, y README especifico con instalacion dev/publicacion.
+- El cierre detecto un bug real: el bundle LSP importaba defaults desde `@/cli` y ejecutaba la ayuda CLI por stdio. Se movieron los defaults a `src/core/config.ts` y `npm test` ahora incluye `npm run smoke:lsp` para impedir regresion.
+- Validacion del bloque: `npm test`, `npm run check:zed`, `cargo check --manifest-path integrations/zed/Cargo.toml --target wasm32-wasip2` y smoke stdio del LSP compilado. La verificacion visual dentro de Zed queda manual si Zed no esta disponible en el entorno.
+- Pendiente tecnico: repetir el patron para Sentinel o decidir un LSP combinado; formalizar CI remoto que ejecute `check:zed` cuando el target WASI este instalado.
+
 ## Riesgos y mitigaciones
 
 - Riesgo: duplicar reglas entre CLI y VS Code. Mitigacion: VS Code debe llamar core, nunca al reves.

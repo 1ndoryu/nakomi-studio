@@ -48,7 +48,10 @@
 - Si el entrypoint ya tiene shebang, no agregar otro con `banner` de esbuild; el segundo shebang queda en linea 2 y rompe `require()`/ejecucion.
 - Los snapshots de equivalencia deben normalizar rutas relativas y rangos 0-indexed; los codigos de salida se prueban aparte porque un fixture con errores debe devolver `1` aunque su JSON sea el esperado.
 - Un LSP no queda validado por probar solo el mapper de diagnostics: hay que levantar el binario compilado por stdio, enviar `initialize` y `textDocument/didOpen`, y verificar `textDocument/publishDiagnostics`.
+- El LSP no debe importar defaults desde el entrypoint CLI. En un bundle esbuild, `require.main === module` puede hacer que el codigo de CLI imprima `Uso:` por stdio y rompa cualquier cliente LSP. Mover defaults/config a `core/config` y cubrirlo con smoke real.
 - Los guards de `src/core/**` deben permitir solo el adaptador boundary (`vscodeAdapter.ts`) y fallar sobre cualquier import directo de `vscode`; asi se protege la arquitectura editor-agnostica sin bloquear la compatibilidad VS Code existente.
+- La integracion Zed debe ser un launcher fino: registrar `language_servers`, resolver `varsense-lsp` por entorno/PATH/dist local y no copiar reglas ni empaquetar el servidor dentro de la extension.
+- En manifests Zed reales, la tabla estable observada es `language_servers`; algunos docs muestran `language-servers` en ejemplos multi-lenguaje, asi que validar contra ejemplos oficiales antes de copiar sintaxis.
 
 ## Coolify — deploy vs restart
 - `POST /api/v1/services/{uuid}/restart` solo reinicia containers existentes con la misma imagen.
