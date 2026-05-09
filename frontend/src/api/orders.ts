@@ -91,32 +91,11 @@ export interface UpdateOrderPhaseDefinitionRequest {
     max_revisions?: number;
 }
 
-/* [094A-21] El catálogo frontend mantiene IDs legacy (`web-basico`, `diseno-web`),
- * mientras el backend resuelve slugs canónicos (`basico`, `diseno-web`).
- * Normalizamos aquí para que la compra siga funcionando aunque el catálogo visual
- * y el contrato de la API hayan evolucionado por separado. */
-const ORDER_SERVICE_SLUG_ALIASES: Record<string, string> = {
-    'diseno-web': 'diseno-web',
-    'diseno-de-sitios-web': 'diseno-web',
-    'desarrollo-de-aplicaciones': 'desarrollo-apps',
-    'agentes-de-ia': 'agentes-ia',
-    'identidad-de-marca': 'branding',
-    'e-commerce': 'ecommerce',
-};
-
-const ORDER_PLAN_SLUGS = new Set(['basico', 'medio', 'avanzado', 'personalizado']);
-
-function normalizeOrderServiceSlug(serviceSlug: string): string {
-    const normalized = serviceSlug.trim().toLowerCase();
-    return ORDER_SERVICE_SLUG_ALIASES[normalized] || normalized;
-}
-
-function normalizeOrderPlanSlug(planSlug: string): string {
-    const normalized = planSlug.trim().toLowerCase();
-    if (ORDER_PLAN_SLUGS.has(normalized)) return normalized;
-
-    const suffix = normalized.split('-').pop() || normalized;
-    return ORDER_PLAN_SLUGS.has(suffix) ? suffix : normalized;
+/* [095A-19] La API de ordenes acepta aliases legacy en backend.
+ * El frontend solo limpia espacios/case para no convertir slugs vivos del CMS
+ * (`diseno-de-sitios-web`) a slugs antiguos (`diseno-web`) que causan 404. */
+function normalizeOrderSlug(slug: string): string {
+    return slug.trim().toLowerCase();
 }
 
 /*    API CALLS */
@@ -134,8 +113,8 @@ export async function apiGetOrder(orderId: string): Promise<OrderDetailResponse>
 export async function apiCreateOrder(req: CreateOrderRequest): Promise<OrderResponse> {
     const normalizedRequest: CreateOrderRequest = {
         ...req,
-        service_slug: normalizeOrderServiceSlug(req.service_slug),
-        plan_slug: normalizeOrderPlanSlug(req.plan_slug),
+        service_slug: normalizeOrderSlug(req.service_slug),
+        plan_slug: normalizeOrderSlug(req.plan_slug),
     };
     const {data} = await instance.post<OrderResponse>('/api/orders', normalizedRequest);
     return data;

@@ -17,6 +17,7 @@ pub mod image_processing;
 mod note;
 mod notification;
 mod order;
+mod order_slugs;
 mod payment;
 mod payment_method;
 mod seed;

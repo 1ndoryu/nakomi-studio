@@ -8,9 +8,15 @@ import {useState, useCallback, useRef, useEffect} from 'react';
 import {buildVisitorWsUrl, apiUploadChatFile, type WsServerMessage, type ChatMessage} from '../api/chat';
 import {useAuthStore} from '../stores/authStore';
 import {playNotificationSound} from '../utils/notificationSound';
+import {
+    clearChatWidgetStorage,
+    getOrCreateChatVisitorId,
+    getSavedChatSessionId,
+    loadPersistedChatMessages,
+    saveChatSessionId,
+    savePersistedChatMessages,
+} from '../utils/chatWidgetStorage';
 
-const STORAGE_KEY_VISITOR_ID = 'nakomi_visitor_id';
-const STORAGE_KEY_SESSION_ID = 'nakomi_chat_session_id';
 const TYPING_THROTTLE_MS = 200;
 const BC_CHANNEL_NAME = 'nakomi-chat';
 /* [154A-3] Reconexión automática con backoff */
@@ -19,33 +25,19 @@ const WS_MAX_RETRIES = 5;
 const WS_BASE_BACKOFF_MS = 1_000;
 const WS_MAX_BACKOFF_MS = 15_000;
 
-function getOrCreateVisitorId(): string {
-    const saved = localStorage.getItem(STORAGE_KEY_VISITOR_ID);
-    if (saved) return saved;
-    const id = crypto.randomUUID();
-    localStorage.setItem(STORAGE_KEY_VISITOR_ID, id);
-    return id;
-}
-
-function getSavedSessionId(): string | null {
-    return localStorage.getItem(STORAGE_KEY_SESSION_ID);
-}
-
-function saveSessionId(id: string): void {
-    localStorage.setItem(STORAGE_KEY_SESSION_ID, id);
-}
-
 export interface TypingIndicator {
     sender: string;
     content: string;
 }
 
 export function useChatWidget() {
+    const initialSessionId = getSavedChatSessionId();
     const [connected, setConnected] = useState(false);
     const [connecting, setConnecting] = useState(false);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [messages, setMessages] = useState<ChatMessage[]>(() => loadPersistedChatMessages(initialSessionId));
     const [typing, setTyping] = useState<TypingIndicator | null>(null);
-    const [sessionId, setSessionId] = useState<string | null>(getSavedSessionId);
+    const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
+    const sessionIdRef = useRef<string | null>(initialSessionId);
     const wsRef = useRef<WebSocket | null>(null);
     const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastTypingSentRef = useRef<number>(0);
@@ -59,22 +51,47 @@ export function useChatWidget() {
     /* Guardar últimos args de connect para reconexión */
     const lastConnectArgsRef = useRef<{visitorName?: string; context?: string | null}>({});
 
+    const setActiveSessionId = useCallback((nextSessionId: string) => {
+        if (sessionIdRef.current === nextSessionId) return;
+        sessionIdRef.current = nextSessionId;
+        setSessionId(nextSessionId);
+        saveChatSessionId(nextSessionId);
+    }, []);
+
+    const resetLocalChatState = useCallback((closeSocket: boolean) => {
+        clearChatWidgetStorage();
+        sessionIdRef.current = null;
+        setMessages([]);
+        setSessionId(null);
+        setTyping(null);
+        setConnecting(false);
+        if (typingTimerRef.current) {
+            clearTimeout(typingTimerRef.current);
+            typingTimerRef.current = null;
+        }
+        if (closeSocket && wsRef.current) {
+            intentionalCloseRef.current = true;
+            wsRef.current.close();
+            wsRef.current = null;
+            setConnected(false);
+        }
+    }, []);
+
     /* [T-4] Procesar un WsServerMessage (reutilizado por WS onmessage y BroadcastChannel) */
     const handleServerMessage = useCallback((msg: WsServerMessage) => {
         switch (msg.type) {
             case 'message':
                 if (msg.id && msg.session_id && msg.content) {
-                    if (!sessionId) {
-                        setSessionId(msg.session_id);
-                        saveSessionId(msg.session_id);
-                    }
+                    const incomingSessionId = msg.session_id;
+                    setActiveSessionId(incomingSessionId);
                     setMessages(prev => {
-                        if (prev.some(m => m.id === msg.id)) return prev;
-                        return [
-                            ...prev,
+                        const base = prev.every(m => m.session_id === incomingSessionId) ? prev : [];
+                        if (base.some(m => m.id === msg.id)) return base;
+                        const next = [
+                            ...base,
                             {
                                 id: msg.id!,
-                                session_id: msg.session_id!,
+                                session_id: incomingSessionId,
                                 sender_type: msg.sender || 'unknown',
                                 sender_id: msg.sender_id ?? null,
                                 content: msg.content!,
@@ -85,6 +102,8 @@ export function useChatWidget() {
                                 metadata: msg.metadata ?? null,
                             },
                         ];
+                        savePersistedChatMessages(incomingSessionId, next);
+                        return next;
                     });
                     setTyping(null);
                     if (typingTimerRef.current) {
@@ -114,8 +133,10 @@ export function useChatWidget() {
             case 'session_new':
                 if (msg.session?.id) {
                     const sid = String(msg.session.id);
-                    setSessionId(sid);
-                    saveSessionId(sid);
+                    if (sid !== sessionIdRef.current) {
+                        setMessages(loadPersistedChatMessages(sid));
+                    }
+                    setActiveSessionId(sid);
                 }
                 break;
 
@@ -126,24 +147,14 @@ export function useChatWidget() {
             /* [084A-40] /reset: limpiar todo el estado local y desconectar.
              * El visitante obtiene un estado fresco al volver a abrir el chat. */
             case 'reset':
-                localStorage.removeItem(STORAGE_KEY_VISITOR_ID);
-                localStorage.removeItem(STORAGE_KEY_SESSION_ID);
-                setMessages([]);
-                setSessionId(null);
-                setTyping(null);
-                setConnected(false);
-                intentionalCloseRef.current = true;
-                if (wsRef.current) {
-                    wsRef.current.close();
-                    wsRef.current = null;
-                }
+                resetLocalChatState(true);
                 break;
 
             case 'error':
                 console.warn('[ChatWidget] Server error:', msg.message);
                 break;
         }
-    }, [sessionId]);
+    }, [resetLocalChatState, setActiveSessionId]);
 
     /* [154A-3] Intento de reconexión con backoff exponencial */
     const scheduleReconnect = useCallback(() => {
@@ -166,7 +177,7 @@ export function useChatWidget() {
         if (wsRef.current) return;
         setConnecting(true);
 
-        const visitorId = getOrCreateVisitorId();
+        const visitorId = getOrCreateChatVisitorId();
         /* [T-9] Enviar JWT si el usuario está autenticado */
         const authToken = useAuthStore.getState().token;
         const url = buildVisitorWsUrl(visitorId, visitorName, authToken, context);
@@ -225,7 +236,7 @@ export function useChatWidget() {
                 /* Mensaje no JSON, ignorar */
             }
         };
-    }, [sessionId, handleServerMessage, scheduleReconnect]);
+    }, [handleServerMessage, scheduleReconnect]);
 
     const connect = useCallback((visitorName?: string, context?: string | null) => {
         intentionalCloseRef.current = false;
@@ -260,8 +271,13 @@ export function useChatWidget() {
     const sendMessage = useCallback((content: string) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({type: 'message', content}));
+            if (content.trim().toLowerCase() === '/reset') {
+                intentionalCloseRef.current = true;
+                resetLocalChatState(false);
+                bcRef.current?.postMessage({type: 'reset'} satisfies WsServerMessage);
+            }
         }
-    }, []);
+    }, [resetLocalChatState]);
 
     /* [054A-8] Throttle typing a 200ms para no saturar el WS */
     const sendTyping = useCallback((content: string) => {

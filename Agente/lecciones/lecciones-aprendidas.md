@@ -94,6 +94,7 @@
 ## Checkout de órdenes — IDs visuales no son contrato
 - Si el catálogo frontend usa IDs compuestos para UI/traducciones (`web-basico`, `apps-medio`) pero el backend persiste slugs canónicos (`basico`, `medio`), normalizar en el cliente API antes del POST. Un `404` en creación puede ser un `NotFound` de dominio, no una ruta faltante.
 - Los alias de `service_slug` también envejecen: si el backend vuelve a usar `diseno-web` como canónico y el cliente lo sigue remapeando a `diseno-de-sitios-web`, reaparece un `404` aunque el `plan_slug` ya esté bien normalizado.
+- [095A-19] Si el CMS puede cambiar el slug público activo, la compatibilidad legacy debe vivir en backend y probar primero el slug recibido. El frontend no debe decidir el canónico porque se desactualiza con cada sync de contenido.
 
 ## Catálogo público — no vender servicios fantasma
 - Si la compra depende del catálogo real del backend, el detalle/listado público no debe caer a datasets estáticos que incluyan servicios ya no publicados. Aunque `apiCreateOrder()` normalice slugs, seguir mostrando `ecommerce`/`seo`/`marketing-digital` cuando la API solo expone 4 servicios termina reproduciendo 404 de negocio igualmente.

@@ -37,6 +37,22 @@ function normalizeVpsTier(planId: string): string {
     return planId.trim().toLowerCase().replace(/^vps-/, '');
 }
 
+function getPurchaseErrorMessage(err: unknown, fallback: string): string {
+    if (typeof err === 'object' && err !== null && 'response' in err) {
+        const response = (err as {response?: {data?: {message?: unknown}}}).response;
+        const message = response?.data?.message;
+        if (typeof message === 'string' && message.trim()) {
+            return message;
+        }
+    }
+
+    if (err instanceof Error && !err.message.startsWith('Request failed with status code')) {
+        return err.message;
+    }
+
+    return fallback;
+}
+
 export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraParams) {
     const logueado = useAuthStore(s => s.logueado);
     const login = useAuthStore(s => s.login);
@@ -81,10 +97,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             window.location.href = response.checkout_url;
         } catch (err: unknown) {
             setPaso('error');
-            const msg = err instanceof Error
-                ? err.message
-                : 'Error al iniciar el checkout de hosting.';
-            setErrorMsg(msg);
+            setErrorMsg(getPurchaseErrorMessage(err, 'Error al iniciar el checkout de hosting.'));
         }
     };
 
@@ -100,10 +113,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             window.location.href = response.checkout_url;
         } catch (err: unknown) {
             setPaso('error');
-            const msg = err instanceof Error
-                ? err.message
-                : 'Error al iniciar el checkout de VPS.';
-            setErrorMsg(msg);
+            setErrorMsg(getPurchaseErrorMessage(err, 'Error al iniciar el checkout de VPS.'));
         }
     };
 
@@ -143,8 +153,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             }
         } catch (err: unknown) {
             setPaso('error');
-            const msg = err instanceof Error ? err.message : 'Error al crear la orden.';
-            setErrorMsg(msg);
+            setErrorMsg(getPurchaseErrorMessage(err, 'Error al crear la orden.'));
         }
     };
 
@@ -226,8 +235,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
                 setErrorMsg('Ya tienes cuenta. Introduce tu contraseña para continuar.');
             } else {
                 setPaso('error');
-                const msg = err instanceof Error ? err.message : 'Error al procesar. Intenta de nuevo.';
-                setErrorMsg(msg);
+                setErrorMsg(getPurchaseErrorMessage(err, 'Error al procesar. Intenta de nuevo.'));
             }
         }
     };

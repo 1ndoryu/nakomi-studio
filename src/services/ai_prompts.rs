@@ -7,6 +7,7 @@ use std::fmt::Write;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::models::UserRole;
 use crate::repositories::{
     ChatRepository, HostingRepository, OrderRepository, ServiceRepository, UserRepository,
 };
@@ -197,9 +198,22 @@ async fn append_registered_client_context(prompt: &mut String, pool: &PgPool, ui
     prompt.push_str("CLIENTE REGISTRADO:\n");
     let display = sanitize_for_prompt(user.display_name.as_deref().unwrap_or(&user.username), 100);
     let email = sanitize_for_prompt(&user.email, 200);
+    let effective_role = user.effective_role();
     let _ = writeln!(prompt, "- Nombre: {display} ({email})");
-    let _ = writeln!(prompt, "- Rol: {:?}", user.role);
-    prompt.push_str("Ya está registrado — no pedir email ni nombre.\n\n");
+    let _ = writeln!(prompt, "- Rol real: {}", user.role);
+    let _ = writeln!(prompt, "- Rol operativo: {effective_role}");
+    prompt.push_str("Ya está registrado — no pedir email ni nombre.\n");
+    match user.role {
+        UserRole::Admin => prompt.push_str(
+            "Es administrador de Nakomi Studio. Trátalo como operador interno: puede consultar estado global, revisar clientes, pagos, hosting y reportes. No lo trates como lead anónimo.\n\n",
+        ),
+        UserRole::Employee => prompt.push_str(
+            "Es miembro del equipo. Prioriza contexto operativo, pedidos asignados, reportes y escalaciones internas.\n\n",
+        ),
+        UserRole::Client => prompt.push_str(
+            "Es cliente registrado. Prioriza sus pedidos, pagos, hosting, reportes y soporte de su cuenta.\n\n",
+        ),
+    }
 
     if let Ok(orders) = OrderRepository::list_orders_for_client(pool, uid).await {
         if !orders.is_empty() {

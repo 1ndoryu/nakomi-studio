@@ -25,6 +25,13 @@
 - `frontend/src/api/orders.ts` volvió a tratar `diseno-web` como slug canónico y dejó `diseno-de-sitios-web` solo como alias legacy de entrada.
 - Validación real: el flujo público local de `Diseño de Sitios Web` dejó de fallar con `404` en `POST /api/orders` y avanzó hasta el modal de Stripe.
 
+## Ajuste adicional [095A-19]
+- Producción volvió a exponer slugs del CMS como `diseno-de-sitios-web`, `desarrollo-de-aplicaciones`, `agentes-de-ia` e `identidad-de-marca`.
+- El frontend seguía reescribiendo esos slugs vivos hacia slugs legacy antes de `POST /api/orders`, provocando `Servicio 'diseno-web' no encontrado` y el mensaje genérico de Axios `Request failed with status code 404`.
+- La normalización frágil se movió al backend en `src/services/order_slugs.rs`: `OrderService::create_order` intenta primero el slug recibido y después aliases conocidos.
+- `frontend/src/api/orders.ts` ya solo hace `trim().toLowerCase()`; no decide cuál slug es canónico.
+- `frontend/src/hooks/useModalCompra.ts` extrae `response.data.message` para que cualquier fallo restante muestre el motivo real de dominio en vez del 404 genérico de Axios.
+
 ## Validación
 - `npm --prefix frontend run type-check`
 - `npm --prefix frontend run build`

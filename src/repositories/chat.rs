@@ -244,6 +244,25 @@ impl ChatRepository {
         Ok(row.0)
     }
 
+    /* [095A-16] Vincular la sesión visitor con el usuario autenticado detectado por JWT.
+     * Sin esto, recargas o reconexiones preservan el chat pero no dejan identidad persistente
+     * para panel, historial ni futuras herramientas con permisos de usuario. */
+    pub async fn link_session_to_user(
+        pool: &PgPool,
+        session_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE chat_sessions SET user_id = $2, updated_at = NOW() \
+             WHERE id = $1 AND (user_id IS NULL OR user_id != $2)",
+        )
+        .bind(session_id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     /* [084A-40] Borrar todos los mensajes de una sesión (usado por /reset) */
     pub async fn delete_session_messages(
         pool: &PgPool,

@@ -46,3 +46,13 @@ Si DeepSeek devuelve error HTTP, rate limit o error de red, el backend intenta G
 No guardar claves en markdown, roadmap, commits ni logs. El valor real de `DEEPSEEK_API_KEY` se sube a producción con `coolify-manager-rs sync-env` usando un archivo temporal fuera del repo o `.env` ignorado por git.
 
 En esta instancia de Coolify, la escritura por `sync-env` necesitó compatibilidad con el contrato real `key/value`; las variables quedaron verificadas en el servicio `studio` sin imprimir valores: `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL`, `DEEPSEEK_API_URL` y `AI_RELEVANCE_ENABLED=false`.
+
+## Continuidad e identidad [095A-16, 095A-17]
+
+- El widget persiste `visitor_id`, `chat_session_id` y hasta 100 mensajes por sesión en `localStorage` para evitar parpadeo vacío al recargar.
+- Una desconexión normal del WebSocket ya no cierra la sesión en backend; solo marca offline y libera timing en memoria.
+- `/reset` es el flujo explícito para borrar conversación: limpia storage, UI, sesión activa y deja que backend borre mensajes.
+- Si el WebSocket trae JWT, `chat_sessions.user_id` y `visitor_profiles.user_id/email/display_name` quedan vinculados al usuario autenticado.
+- El prompt distingue rol real y rol operativo para admin, employee y client. Un admin logueado ya no debe tratarse como lead anónimo.
+
+El plan activo `Agente/planes/plan-chatbot-identidad-roles-2026-05-09.md` conserva las fases pendientes de auditoría: permisos de tools, acciones por rol, historial de pagos, pedidos, hosting y observabilidad.

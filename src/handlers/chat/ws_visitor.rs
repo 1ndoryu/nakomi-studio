@@ -12,7 +12,7 @@ use futures::{SinkExt, StreamExt};
 use std::net::SocketAddr;
 
 use crate::models::WsServerMessage;
-use crate::repositories::ChatRepository;
+use crate::repositories::{ChatRepository, UserRepository};
 use crate::services::TimingEvent;
 use crate::AppState;
 use uuid::Uuid;
@@ -160,6 +160,36 @@ fn register_visitor_timing_session(
     )
 }
 
+/* [095A-16] Persistir identidad autenticada fuera del prompt inmediato.
+ * El JWT ya llega por WebSocket; este enlace deja la sesión y el visitor_profile
+ * preparados para historial, panel y futuras tools con permisos reales. */
+async fn link_authenticated_visitor_context(
+    state: &AppState,
+    session_id: Uuid,
+    visitor_id: &str,
+    user_id: Uuid,
+) {
+    if let Err(e) = ChatRepository::link_session_to_user(&state.pool, session_id, user_id).await {
+        tracing::warn!("Error vinculando chat_session {session_id} a user {user_id}: {e}");
+    }
+    if let Err(e) = ChatRepository::link_visitor_to_user(&state.pool, visitor_id, user_id).await {
+        tracing::warn!("Error vinculando visitor_profile a user {user_id}: {e}");
+    }
+    if let Ok(Some(user)) = UserRepository::find_by_id(&state.pool, user_id).await {
+        let display_name = user.display_name.as_deref().unwrap_or(&user.username);
+        if let Err(e) = ChatRepository::update_visitor_email(
+            &state.pool,
+            visitor_id,
+            &user.email,
+            Some(display_name),
+        )
+        .await
+        {
+            tracing::warn!("Error enriqueciendo visitor_profile autenticado {user_id}: {e}");
+        }
+    }
+}
+
 /* [035A-21] Orquestador WS legacy: handshake, anti-bot, spawn de tareas y cleanup final.
  * Se documenta la excepción hasta dividir el flujo por fases sin cambiar comportamiento. */
 #[allow(clippy::too_many_lines)]
@@ -217,6 +247,13 @@ async fn handle_visitor_ws(
     .await
     {
         tracing::warn!("Error upserting visitor_profile: {e}");
+    }
+
+    /* [095A-16] Identidad persistente: si el widget trae JWT, vincular la sesión
+     * y el perfil del visitor al usuario real. Así la IA recibe contexto registrado
+     * y el panel puede distinguir cliente/admin aunque el chat haya nacido como visitor. */
+    if let Some(uid) = user_id {
+        link_authenticated_visitor_context(&state, session_id, &params.visitor_id, uid).await;
     }
 
     /* [064A-29] Enviar historial de mensajes previos al reconectar */
@@ -297,13 +334,22 @@ async fn cleanup_visitor_session(
     timing_tx: &tokio::sync::mpsc::Sender<TimingEvent>,
 ) {
     let remaining = state.chat_hub.unsubscribe(session_id);
-    if explicit_close || remaining == 0 {
+    if explicit_close {
         state
             .chat_hub
             .notify_visitor_offline(session_id, Some(visitor_online_at));
         let _ = timing_tx.send(TimingEvent::Disconnect).await;
         state.chat_timing.unregister_session(session_id);
         let _ = state.chat_hub.close_session(session_id).await;
+    } else if remaining == 0 {
+        /* [095A-16] Recargar/cerrar pestaña no significa cerrar conversación.
+         * Se marca offline y se libera timing en memoria, pero la sesión queda activa
+         * para que el mismo visitor_id recupere historial al volver. */
+        state
+            .chat_hub
+            .notify_visitor_offline(session_id, Some(visitor_online_at));
+        let _ = timing_tx.send(TimingEvent::Disconnect).await;
+        state.chat_timing.unregister_session(session_id);
     }
     if !ip_for_tracking.is_empty() {
         state.chat_timing.track_ip_disconnect(ip_for_tracking);
