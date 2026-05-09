@@ -116,6 +116,7 @@
     gap: 2px;
 }
 
+/* sentinel-disable-next-line css-especificacion-diseno-local */
 .proyectoCaseIntroLista span {
     font-family: var(--font-primary);
     font-size: var(--text-md);

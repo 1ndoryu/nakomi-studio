@@ -136,7 +136,7 @@
         "newsletter_submit": "登録",
         "newsletter_sending": "送信中...",
         "newsletter_success": "登録完了！最新情報をお届けします。",
-        "copyright": "© {{year}} Nakomi Template. All rights reserved.",
+        "copyright": "© {{year}} Nakomi Studio. All rights reserved.",
         "privacy": "プライバシーポリシー"
     },
     "auth": {

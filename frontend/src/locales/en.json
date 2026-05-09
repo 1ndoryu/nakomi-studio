@@ -136,7 +136,7 @@
         "newsletter_submit": "Subscribe",
         "newsletter_sending": "Sending...",
         "newsletter_success": "Subscribed successfully! We'll keep you updated.",
-        "copyright": "© {{year}} Nakomi Template. All rights reserved.",
+        "copyright": "© {{year}} Nakomi Studio. All rights reserved.",
         "privacy": "Privacy Policy"
     },
     "auth": {

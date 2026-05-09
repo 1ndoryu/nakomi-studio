@@ -1,0 +1,53 @@
+/* [095A-5] Estilos de la página de Política de Privacidad.
+ * Usa variables del sistema; sin especificaciones de diseño locales. */
+
+.privacidadMain {
+    min-height: 80vh;
+}
+
+.privacidadContenido {
+    padding: var(--seccion-padding-y) var(--seccion-padding-x);
+}
+
+.privacidadContenedor {
+    max-width: 72ch;
+    margin: 0 auto;
+}
+
+.privacidadTitulo {
+    font-family: var(--font-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.privacidadFecha {
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    margin-bottom: var(--spacing-xl);
+}
+
+.privacidadSeccion {
+    margin-bottom: var(--spacing-xl);
+}
+
+.privacidadSeccion h2 {
+    font-family: var(--font-primary);
+    font-size: var(--text-lg);
+    margin-bottom: var(--spacing-sm);
+}
+
+.privacidadSeccion p,
+.privacidadSeccion li {
+    font-family: var(--font-primary);
+    font-size: var(--text-md);
+    color: var(--text-muted);
+    line-height: 1.7;
+}
+
+.privacidadSeccion ul {
+    padding-left: var(--spacing-lg);
+    margin: var(--spacing-sm) 0;
+}
+
+.privacidadSeccion li {
+    margin-bottom: var(--spacing-xs);
+}

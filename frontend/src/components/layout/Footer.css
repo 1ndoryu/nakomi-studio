@@ -133,6 +133,14 @@
     opacity: 1;
 }
 
+/* [095A-4] footerLinkAccion: botón con apariencia de enlace de footer (para "Contacto" que abre chat) */
+.footerLinkAccion {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
 .footerCopyright {
     font-family: var(--font-mono);
     font-size: var(--text-xs);

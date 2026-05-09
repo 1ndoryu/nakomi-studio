@@ -26,6 +26,9 @@ interface MenuContextualProps {
     triggerVariante?: 'primario' | 'secundario' | 'outline' | 'texto';
     triggerTamano?: 'pequeno' | 'mediano' | 'grande';
     children?: React.ReactNode;
+    /* [095A-1] Prop semántica de contexto: 'oscuro' da color claro al trigger
+     * para fondos oscuros (footer, hero dark). No inyecta diseño local. */
+    contexto?: 'oscuro';
 }
 
 type MenuContextualPosicion = 'abajoDerecha' | 'abajoIzquierda' | 'arribaDerecha' | 'arribaIzquierda';
@@ -44,6 +47,7 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
     triggerVariante = 'texto',
     triggerTamano = 'pequeno',
     children,
+    contexto,
 }) => {
     const contenedorRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -93,7 +97,7 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
     ].filter(Boolean).join(' ');
 
     return (
-        <div ref={contenedorRef} className={`menuContextual ${className}`.trim()} onBlur={handleBlur}>
+        <div ref={contenedorRef} className={`menuContextual${contexto === 'oscuro' ? ' menuContextualOscuro' : ''} ${className}`.trim()} onBlur={handleBlur}>
             <Button
                 className={`menuContextualBoton ${triggerClassName}`.trim()}
                 onClick={onToggle}

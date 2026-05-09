@@ -30,6 +30,8 @@ const SolucionPlaceholderIsland = lazy(() => import('./islands/SolucionPlacehold
 const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
 
 const UsuarioPublicoIsland = lazy(() => import('./islands/UsuarioPublicoIsland').then(m => ({default: m.UsuarioPublicoIsland})));
+/* [095A-5] Página legal requerida por el footer */
+const PrivacidadIsland = lazy(() => import('./islands/PrivacidadIsland').then(m => ({default: m.PrivacidadIsland})));
 
 /* [054A-5] Toast system */
 import {ToastContainer} from './components/ui/ToastContainer';
@@ -122,9 +124,11 @@ function App() {
                     <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionPlaceholderIsland titulo="Servidores VPS" descripcion="Estamos preparando los planes VPS. Disponible próximamente." /></Suspense>} />
                     <Route path="/soluciones/:slug" element={<Suspense fallback={null}><SolucionPlaceholderIsland /></Suspense>} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
+                    {/* [095A-5] Política de privacidad accesible desde el footer */}
+                    <Route path="/politica-privacidad" element={<Suspense fallback={null}><PrivacidadIsland /></Suspense>} />
                     <Route path="/usuario/:username" element={<Suspense fallback={null}><UsuarioPublicoIsland /></Suspense>} />
-                    <Route path="/panel" element={<Suspense fallback={null}><PanelIsland /></Suspense>} />
-                    <Route path="/panel/chat" element={<Suspense fallback={null}><PanelIsland /></Suspense>} />
+                    <Route path="/panel" element={<Suspense fallback={<div className="panelCargando" />}><PanelIsland /></Suspense>} />
+                    <Route path="/panel/chat" element={<Suspense fallback={<div className="panelCargando" />}><PanelIsland /></Suspense>} />
                     {/* [044A-28] Página 404 real en vez de redirigir silenciosamente al home */}
                     <Route path="*" element={<NotFoundIsland />} />
                 </Routes>

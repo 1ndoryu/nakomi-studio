@@ -66,8 +66,10 @@ export function useSeccionHosting() {
         if (currentSection && currentSection !== 'hosting') {
             return;
         }
-        const incomingHostingId = getPanelHostingIdFromUrl();
-        if (!selectedHostingId && incomingHostingId) return;
+        /* [095A-2] Eliminada la guardia "!selectedHostingId && incomingHostingId" porque
+         * impedía que el botón Volver limpiara el hostingId de la URL:
+         * onVolver → setSelectedHostingId(null) → efecto se ejecuta → guardia devolvía
+         * early → URL conservaba el hostingId → segundo efecto lo releía → volvía al detalle. */
         syncPanelHostingInUrl(selectedHostingId);
     }, [selectedHostingId, location.search]);
 

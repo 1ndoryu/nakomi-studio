@@ -169,7 +169,7 @@ export const PanelIsland: React.FC = () => {
         }
     };
 
-    if (!logueado) return null;
+    if (!logueado) return <div className="panelCargando" />;
 
     return (
         <>

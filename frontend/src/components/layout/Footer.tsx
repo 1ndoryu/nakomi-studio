@@ -10,6 +10,7 @@ import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
 import {LanguageSelector} from '../ui/LanguageSelector';
 import {ENLACES_FOOTER} from '../../data/navegacion';
+import {useChatStore} from '../../stores/chatStore';
 import './Footer.css';
 
 /* [044A-2] Mapeo de labels de footer a claves i18n */
@@ -125,11 +126,27 @@ export const Footer: React.FC = () => {
 
                 <div className="footerBottom">
                     <nav className="footerLinks" aria-label="Enlaces del pie de página">
-                        {ENLACES_FOOTER.map(enlace => (
-                            <a key={enlace.label} href={enlace.href} className="footerLink" onClick={e => spaClick(e, enlace.href)}>
-                                {t(FOOTER_NAV_KEYS[enlace.label] || enlace.label)}
-                            </a>
-                        ))}
+                        {/* [095A-4] "Contacto" abre el chat en vez de navegar (ruta /contacto eliminada).
+                         * El resto usa spaClick normal. */}
+                        {ENLACES_FOOTER.map(enlace => {
+                            if (enlace.label === 'Contacto') {
+                                return (
+                                    <button
+                                        key={enlace.label}
+                                        type="button"
+                                        className="footerLink footerLinkAccion"
+                                        onClick={() => useChatStore.getState().abrir()}
+                                    >
+                                        {t(FOOTER_NAV_KEYS[enlace.label] || enlace.label)}
+                                    </button>
+                                );
+                            }
+                            return (
+                                <a key={enlace.label} href={enlace.href} className="footerLink" onClick={e => spaClick(e, enlace.href)}>
+                                    {t(FOOTER_NAV_KEYS[enlace.label] || enlace.label)}
+                                </a>
+                            );
+                        })}
                     </nav>
 
                     <span className="footerCopyright">{t('footer.copyright', {year: currentYear})}</span>

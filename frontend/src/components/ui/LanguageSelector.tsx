@@ -36,6 +36,7 @@ export const LanguageSelector = () => {
             ariaLabel="Seleccionar idioma"
             triggerContent={currentLang.label}
             items={menuItems}
+            contexto="oscuro"
         />
     );
 };

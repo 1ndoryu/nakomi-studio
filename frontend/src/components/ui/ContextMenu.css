@@ -42,6 +42,16 @@
     left: 0;
 }
 
+/* [095A-1] Contexto oscuro: el trigger muestra texto claro para fondos oscuros (footer, hero dark).
+ * Aplica sólo al botón del trigger; el panel sigue con estilos base. */
+.menuContextualOscuro .menuContextualBoton {
+    color: var(--bg-primary);
+}
+
+.menuContextualOscuro .menuContextualBoton:hover {
+    background: var(--white-10);
+}
+
 .menuContextualContenido {
     display: flex;
     flex-direction: column;
