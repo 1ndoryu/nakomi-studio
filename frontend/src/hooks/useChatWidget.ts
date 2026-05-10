@@ -7,7 +7,7 @@
 import {useState, useCallback, useRef, useEffect} from 'react';
 import {buildVisitorWsUrl, apiUploadChatFile, type WsServerMessage, type ChatMessage} from '../api/chat';
 import {useAuthStore} from '../stores/authStore';
-import {playNotificationSound} from '../utils/notificationSound';
+import {handleChatWidgetServerMessage} from './chatWidgetServerMessages';
 import {
     clearChatWidgetStorage,
     ensureChatStorageOwner,
@@ -15,7 +15,6 @@ import {
     getSavedChatSessionId,
     loadPersistedChatMessages,
     saveChatSessionId,
-    savePersistedChatMessages,
 } from '../utils/chatWidgetStorage';
 
 const TYPING_THROTTLE_MS = 200;
@@ -111,81 +110,18 @@ export function useChatWidget() {
 
     /* [T-4] Procesar un WsServerMessage (reutilizado por WS onmessage y BroadcastChannel) */
     const handleServerMessage = useCallback((msg: WsServerMessage) => {
-        switch (msg.type) {
-            case 'message':
-                if (msg.id && msg.session_id && msg.content) {
-                    const incomingSessionId = msg.session_id;
-                    setActiveSessionId(incomingSessionId);
-                    setMessages(prev => {
-                        const base = prev.every(m => m.session_id === incomingSessionId) ? prev : [];
-                        if (base.some(m => m.id === msg.id)) return base;
-                        const next = [
-                            ...base,
-                            {
-                                id: msg.id!,
-                                session_id: incomingSessionId,
-                                sender_type: msg.sender || 'unknown',
-                                sender_id: msg.sender_id ?? null,
-                                content: msg.content!,
-                                created_at: msg.created_at || new Date().toISOString(),
-                                sender_avatar_url: null,
-                                sender_display_name: null,
-                                message_type: msg.message_type ?? null,
-                                metadata: msg.metadata ?? null,
-                            },
-                        ];
-                        savePersistedChatMessages(incomingSessionId, next);
-                        return next;
-                    });
-                    setTyping(null);
-                    if (typingTimerRef.current) {
-                        clearTimeout(typingTimerRef.current);
-                        typingTimerRef.current = null;
-                    }
-                    /* [124A-SOUND] Sonar al recibir mensaje de IA o staff (no de uno mismo) */
-                    if (msg.sender !== 'visitor' && msg.sender !== 'client') {
-                        playNotificationSound();
-                    }
-                }
-                break;
-
-            case 'typing':
-                if (msg.sender && msg.sender !== 'visitor' && msg.sender !== 'client') {
-                    setTyping({sender: msg.sender, content: msg.content || ''});
-                    if (typingTimerRef.current) {
-                        clearTimeout(typingTimerRef.current);
-                    }
-                    typingTimerRef.current = setTimeout(() => {
-                        setTyping(null);
-                        typingTimerRef.current = null;
-                    }, 3000);
-                }
-                break;
-
-            case 'session_new':
-                if (msg.session?.id) {
-                    const sid = String(msg.session.id);
-                    if (sid !== sessionIdRef.current) {
-                        setMessages(loadPersistedChatMessages(sid));
-                    }
-                    setActiveSessionId(sid);
-                }
-                break;
-
-            case 'session_closed':
-                setConnected(false);
-                break;
-
-            /* [084A-40] /reset: limpiar todo el estado local y desconectar.
-             * El visitante obtiene un estado fresco al volver a abrir el chat. */
-            case 'reset':
-                resetLocalChatState(true, chatOwnerKey);
-                break;
-
-            case 'error':
-                console.warn('[ChatWidget] Server error:', msg.message);
-                break;
+        if (msg.type === 'session_closed') {
+            setConnected(false);
+            return;
         }
+        handleChatWidgetServerMessage({
+            chatOwnerKey,
+            setActiveSessionId,
+            setMessages,
+            setTyping,
+            typingTimerRef,
+            resetLocalChatState,
+        }, msg);
     }, [chatOwnerKey, resetLocalChatState, setActiveSessionId]);
 
     /* [154A-3] Intento de reconexión con backoff exponencial */
@@ -346,7 +282,10 @@ export function useChatWidget() {
      * y procesa IA en background (Vision, Whisper, PDF extract). */
     const [uploading, setUploading] = useState(false);
     const uploadFile = useCallback(async (file: File) => {
-        if (!sessionId) return;
+        if (!sessionId) {
+            console.warn('[ChatWidget] Upload ignorado: sesión aún no confirmada');
+            return;
+        }
         setUploading(true);
         try {
             await apiUploadChatFile(sessionId, file);

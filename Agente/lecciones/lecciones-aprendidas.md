@@ -28,6 +28,11 @@
 - Antes de `docker compose up -d --no-build --force-recreate --no-deps app`, comprobar que la imagen del servicio existe con `docker compose config` + `docker image inspect`.
 - Si la imagen fue podada, el recovery no-build debe abortar y pedir reconstrucción. Recrear sin imagen puede eliminar el contenedor anterior y convertir una incidencia recuperable en 503.
 
+## Chatbot — salida y adjuntos
+- El prompt no basta para evitar Markdown visible: limpiar la respuesta al boundary antes de persistir/enviar evita `**Texto**`, headers o listas cuando el modelo se sale del estilo de chat.
+- Las descripciones de imágenes no pueden quedar solo en `chat_attachments`; el historial IA se construye desde `chat_messages`, así que la metadata del mensaje debe incluir `ai_description`.
+- Si el upload depende de `sessionId` WS, el frontend debe bloquear el adjunto hasta recibirlo. Ignorar el upload en silencio se percibe como “el bot no ve imágenes”.
+
 ## Node/Vite — dependencias por rama
 - Cambiar de rama no actualiza `frontend/node_modules`: Git cambia `package.json`/`package-lock.json`, pero el árbol instalado queda como estado local compartido.
 - Vite puede detectar el lockfile nuevo y reoptimizar, pero no instala paquetes ausentes. El launcher compartido `glory-rs/scripts/dev.mjs` debe sincronizar una vez por huella de lockfile antes de arrancar Vite.

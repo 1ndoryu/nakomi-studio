@@ -638,12 +638,15 @@ impl ChatRepository {
         attachment_id: Uuid,
         description: &str,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("UPDATE chat_attachments SET ai_description = $2 WHERE id = $1")
-            .bind(attachment_id)
-            .bind(description)
-            .execute(pool)
-            .await?;
-        Ok(())
+        /* [105A-4] La IA lee chat_messages; copiamos la descripción a metadata en el mismo roundtrip. */
+        sqlx::query(
+                        "WITH updated_attachment AS (UPDATE chat_attachments SET ai_description = $2 WHERE id = $1 RETURNING message_id) UPDATE chat_messages SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('ai_description', $2::text) WHERE id IN (SELECT message_id FROM updated_attachment)",
+        )
+        .bind(attachment_id)
+        .bind(description)
+        .execute(pool)
+        .await
+        .map(drop)
     }
 
     /* [T-5] Listar adjuntos de un mensaje */

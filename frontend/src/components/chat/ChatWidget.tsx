@@ -32,6 +32,7 @@ export const ChatWidget: React.FC = () => {
         messages,
         typing,
         uploading,
+        sessionId,
         connect,
         sendMessage,
         sendTyping,
@@ -131,7 +132,7 @@ export const ChatWidget: React.FC = () => {
                 />
                 <ChatWidgetInput
                     input={input}
-                    connected={connected}
+                    connected={connected && Boolean(sessionId)}
                     uploading={uploading}
                     onInputChange={handleInputChange}
                     onKeyDown={handleKeyDown}

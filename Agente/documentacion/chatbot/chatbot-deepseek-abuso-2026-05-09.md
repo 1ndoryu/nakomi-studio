@@ -36,6 +36,15 @@ DeepSeek v4 flash soporta tool calls y JSON output según la documentación ofic
 - 80k tokens estimados por hora por IP.
 - Relevancia desactivada por defecto (`AI_RELEVANCE_ENABLED=false`) por falsos positivos; se mantiene como opt-in.
 - Prompt reforzado para no resolver tareas generalistas ni cambios de rol.
+- Sanitización de salida: aunque el prompt prohíbe Markdown, el backend elimina `**énfasis**`, backticks, headers y listas antes de persistir/enviar respuestas normales del chatbot.
+- Archivos de chat: imágenes se describen con Groq Vision (`meta-llama/llama-4-scout-17b-16e-instruct`, fallback Maverick) y la descripción se guarda en `chat_messages.metadata.ai_description` para que el historial posterior conserve contexto.
+
+## Imágenes y adjuntos [105A-4]
+
+- Al subir imagen, el backend crea el mensaje rico, guarda el adjunto y procesa la imagen en background con Groq Vision.
+- El resultado se guarda en `chat_attachments.ai_description` y también en `chat_messages.metadata.ai_description`.
+- `build_context_messages` inyecta esa metadata como “Descripción de la imagen”, así el modelo puede responder preguntas posteriores sin decir que no puede ver imágenes.
+- El frontend no permite adjuntar hasta recibir `sessionId` del WebSocket; antes existía una ventana corta donde el upload se ignoraba en silencio.
 
 ## Política de fallo
 

@@ -5,7 +5,9 @@
 
 use std::fmt::Write;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::OnceLock;
 
+use regex::Regex;
 use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -558,11 +560,61 @@ fn tool_results_with_ids<'a>(
 fn parse_escalation(raw: &str) -> (String, bool) {
     let trimmed = raw.trim();
     if trimmed.starts_with("[ESCALATE]") {
-        let clean = trimmed.trim_start_matches("[ESCALATE]").trim().to_string();
+        let clean = strip_chat_markdown(trimmed.trim_start_matches("[ESCALATE]").trim());
         (clean, true)
     } else {
-        (trimmed.to_string(), false)
+        (strip_chat_markdown(trimmed), false)
     }
+}
+
+fn markdown_regex(pattern: &'static str, slot: &'static OnceLock<Regex>) -> &'static Regex {
+    slot.get_or_init(|| Regex::new(pattern).expect("valid chatbot markdown regex"))
+}
+
+fn strip_chat_markdown(raw: &str) -> String {
+    static CODE: OnceLock<Regex> = OnceLock::new();
+    static BOLD: OnceLock<Regex> = OnceLock::new();
+    static BOLD_UNDERSCORE: OnceLock<Regex> = OnceLock::new();
+    static ITALIC: OnceLock<Regex> = OnceLock::new();
+    static ITALIC_UNDERSCORE: OnceLock<Regex> = OnceLock::new();
+    static STRIKE: OnceLock<Regex> = OnceLock::new();
+    static HEADINGS: OnceLock<Regex> = OnceLock::new();
+    static BULLETS: OnceLock<Regex> = OnceLock::new();
+    static ORDERED: OnceLock<Regex> = OnceLock::new();
+    static QUOTES: OnceLock<Regex> = OnceLock::new();
+    static RULES: OnceLock<Regex> = OnceLock::new();
+    static EXTRA_BLANKS: OnceLock<Regex> = OnceLock::new();
+
+    /* [105A-3] Defensa de salida: el prompt prohíbe Markdown, pero algunos modelos
+     * igual devuelven énfasis o listas. Se limpia al boundary antes de persistir/enviar. */
+    let mut text = raw.trim().to_string();
+    for (pattern, slot) in [
+        (r"`([^`\n]+)`", &CODE),
+        (r"\*\*([^*\n][^*]*?)\*\*", &BOLD),
+        (r"__([^_\n][^_]*?)__", &BOLD_UNDERSCORE),
+        (r"\*([^*\n][^*]*?)\*", &ITALIC),
+        (r"_([^_\n][^_]*?)_", &ITALIC_UNDERSCORE),
+        (r"~~([^~\n][^~]*?)~~", &STRIKE),
+    ] {
+        text = markdown_regex(pattern, slot)
+            .replace_all(&text, "$1")
+            .to_string();
+    }
+
+    for (pattern, slot, replacement) in [
+        (r"(?m)^\s{0,3}#{1,6}\s+", &HEADINGS, ""),
+        (r"(?m)^\s*[-*•]\s+", &BULLETS, ""),
+        (r"(?m)^\s*\d+[.)]\s+", &ORDERED, ""),
+        (r"(?m)^\s*>\s?", &QUOTES, ""),
+        (r"(?m)^\s*[-*_]{3,}\s*$", &RULES, ""),
+        (r"\n{3,}", &EXTRA_BLANKS, "\n\n"),
+    ] {
+        text = markdown_regex(pattern, slot)
+            .replace_all(&text, replacement)
+            .to_string();
+    }
+
+    text.trim().to_string()
 }
 
 /* [084A-29] Estimación rápida de tokens para un texto.
@@ -570,6 +622,38 @@ fn parse_escalation(raw: &str) -> (String, bool) {
  * No reemplaza un tokenizer real pero es suficiente para decisiones de truncamiento. */
 fn estimate_tokens(text: &str) -> usize {
     text.len() / 4 + 1
+}
+
+fn message_role_for_ai(msg: &ChatMessage) -> &'static str {
+    match msg.sender_type.as_str() {
+        "ai" | "ai_intermediary" => "assistant",
+        _ => "user",
+    }
+}
+
+fn message_content_for_ai(msg: &ChatMessage) -> String {
+    let mut content = msg.content.clone();
+    let Some(metadata) = msg.metadata.as_ref() else {
+        return content;
+    };
+    let Some(description) = metadata
+        .get("ai_description")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return content;
+    };
+
+    let label = match msg.message_type.as_deref() {
+        Some("image") => "Descripción de la imagen",
+        Some("audio") => "Transcripción del audio",
+        Some("file") => "Contenido del archivo",
+        _ => "Contexto del adjunto",
+    };
+    let safe_description = sanitize_for_prompt(description, 1_500);
+    let _ = write!(content, "\n[{label}: {safe_description}]");
+    content
 }
 
 /* [084A-48] Construye el array de mensajes para la API con truncamiento inteligente.
@@ -584,11 +668,15 @@ fn build_context_messages(
     let system_tokens = estimate_tokens(system_prompt);
     let user_tokens = estimate_tokens(user_message);
     let token_budget = 32_000_usize.saturating_sub(system_tokens + user_tokens + 2000);
+    let history_for_ai: Vec<(&str, String)> = history
+        .iter()
+        .map(|msg| (message_role_for_ai(msg), message_content_for_ai(msg)))
+        .collect();
 
     let mut history_tokens = 0usize;
     let mut fit_from = 0usize;
-    for (i, msg) in history.iter().enumerate().rev() {
-        let t = estimate_tokens(&msg.content);
+    for (i, (_, content)) in history_for_ai.iter().enumerate().rev() {
+        let t = estimate_tokens(content);
         if history_tokens + t > token_budget {
             fit_from = i + 1;
             break;
@@ -597,9 +685,9 @@ fn build_context_messages(
     }
 
     if fit_from > 0 {
-        let older: Vec<String> = history[..fit_from]
+        let older: Vec<String> = history_for_ai[..fit_from]
             .iter()
-            .map(|m| format!("{}: {}", m.sender_type, m.content))
+            .map(|(role, content)| format!("{role}: {content}"))
             .collect();
         let truncated = older.join("\n");
         /* [084A-32] Resumen más generoso: 8k chars, priorizando los msgs más recientes del lote truncado */
@@ -625,13 +713,8 @@ fn build_context_messages(
         );
     }
 
-    for msg in &history[fit_from..] {
-        let role = if msg.sender_type == "ai" {
-            "assistant"
-        } else {
-            "user"
-        };
-        messages.push(serde_json::json!({"role": role, "content": msg.content}));
+    for (role, content) in &history_for_ai[fit_from..] {
+        messages.push(serde_json::json!({"role": role, "content": content}));
     }
     messages.push(serde_json::json!({"role": "user", "content": user_message}));
     messages
@@ -696,6 +779,15 @@ mod tests {
     }
 
     #[test]
+    fn parse_escalation_strips_markdown_formatting() {
+        let (text, esc) = parse_escalation(
+            "[ESCALATE] **Claro**\n- Diseño web\n- `Pago seguro`\n## Siguiente paso",
+        );
+        assert!(esc);
+        assert_eq!(text, "Claro\nDiseño web\nPago seguro\nSiguiente paso");
+    }
+
+    #[test]
     fn build_context_fits_all_short_history() {
         let history = vec![
             ChatMessage {
@@ -724,6 +816,29 @@ mod tests {
         assert_eq!(msgs.len(), 4);
         assert_eq!(msgs[0]["role"], "system");
         assert_eq!(msgs[3]["role"], "user");
+    }
+
+    #[test]
+    fn build_context_includes_attachment_description_metadata() {
+        let session_id = Uuid::new_v4();
+        let history = vec![ChatMessage {
+            id: Uuid::new_v4(),
+            session_id,
+            sender_type: "client".into(),
+            content: "📷 referencia.png".into(),
+            sender_id: None,
+            created_at: chrono::Utc::now(),
+            message_type: Some("image".into()),
+            metadata: Some(serde_json::json!({
+                "file_name": "referencia.png",
+                "ai_description": "Mockup de landing con hero oscuro y CTA principal."
+            })),
+        }];
+        let msgs = build_context_messages("System prompt", &history, "Qué opinas?");
+        let content = msgs[1]["content"].as_str().unwrap_or_default();
+        assert!(content.contains("referencia.png"));
+        assert!(content.contains("Descripción de la imagen"));
+        assert!(content.contains("hero oscuro"));
     }
 
     /* [084A-37] Helper para crear config de test sin repetir campos Gemini */

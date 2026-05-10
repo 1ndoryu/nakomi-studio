@@ -25,44 +25,100 @@ pub async fn process_file_with_ai(
 }
 
 /* Groq Vision: envía imagen como base64 al modelo multimodal.
- * Usa llama-3.2-90b-vision-preview que soporta imágenes inline. */
+ * [105A-4] Usa Llama 4 Scout/Maverick; el antiguo modelo vision-preview quedó
+ * fuera de servicio y hacía que el chatbot respondiera que no podía ver imágenes. */
 async fn process_image_vision(
     config: &crate::services::AiChatConfig,
-    _http_client: &reqwest::Client,
+    http_client: &reqwest::Client,
     data: &[u8],
     mime_type: &str,
 ) -> Option<String> {
     use base64::Engine;
-    let api_key = config.next_key()?;
+    if config.total_keys() == 0 {
+        tracing::warn!("Vision: Groq no configurado; no hay API key para describir imagen");
+        return None;
+    }
+
     let b64 = base64::engine::general_purpose::STANDARD.encode(data);
+    let image_url = format!("data:{mime_type};base64,{b64}");
+    let mut last_error = String::new();
+
+    for model in vision_model_chain() {
+        for attempt in 0..config.total_keys() {
+            let Some(api_key) = config.next_key() else {
+                break;
+            };
+            match call_groq_vision(http_client, api_key, &model, &image_url).await {
+                Ok(text) => return Some(text),
+                Err(error) => {
+                    tracing::warn!(
+                        "Vision Groq [{model}] intento {} falló: {error}",
+                        attempt + 1
+                    );
+                    last_error = error;
+                }
+            }
+        }
+    }
+
+    tracing::error!("Vision: no se pudo describir imagen con Groq. Último error: {last_error}");
+    None
+}
+
+fn vision_model_chain() -> Vec<String> {
+    const DEFAULTS: [&str; 2] = [
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+    ];
+    let configured = std::env::var("GROQ_VISION_MODEL").ok();
+    let mut models = Vec::with_capacity(DEFAULTS.len() + 1);
+    if let Some(model) = configured.as_deref() {
+        if DEFAULTS.contains(&model) {
+            models.push(model.to_string());
+        } else {
+            tracing::warn!("GROQ_VISION_MODEL no permitido para vision: {model}");
+        }
+    }
+    for model in DEFAULTS {
+        if !models.iter().any(|existing| existing == model) {
+            models.push(model.to_string());
+        }
+    }
+    models
+}
+
+async fn call_groq_vision(
+    http_client: &reqwest::Client,
+    api_key: &str,
+    model: &str,
+    image_url: &str,
+) -> Result<String, String> {
+    let key_hint = &api_key[..api_key.len().min(8)];
 
     let body = serde_json::json!({
-        "model": "llama-3.2-90b-vision-preview",
+        "model": model,
         "messages": [
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": format!("data:{mime_type};base64,{b64}")
-                        }
+                        "type": "text",
+                        "text": "Describe esta imagen en español para que Claudia de Nakomi Studio pueda responder al cliente. Incluye texto visible, elementos de diseño, estilo, colores, problemas o intención probable. No digas que no puedes verla. Máximo 180 palabras."
                     },
                     {
-                        "type": "text",
-                        "text": "Describe brevemente esta imagen en español. Si contiene texto, transcríbelo. Si es un mockup o diseño, describe los elementos."
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url
+                        }
                     }
                 ]
             }
         ],
-        "max_tokens": 300
+        "temperature": 0.2,
+        "max_tokens": 450
     });
 
-    /* [114A-6] Timeout 30s para vision API — previene deadlock por API colgada */
-    let resp = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .unwrap_or_default()
+    let resp = http_client
         .post("https://api.groq.com/openai/v1/chat/completions")
         .header("Authorization", format!("Bearer {api_key}"))
         .header("Content-Type", "application/json")
@@ -72,22 +128,39 @@ async fn process_image_vision(
 
     match resp {
         Ok(r) if r.status().is_success() => {
-            let json: serde_json::Value = r.json().await.ok()?;
-            let text = json["choices"][0]["message"]["content"].as_str()?;
-            tracing::info!("Vision: imagen descrita ({} chars)", text.len());
-            Some(text.to_string())
+            let json: serde_json::Value = r
+                .json()
+                .await
+                .map_err(|e| format!("parse vision response: {e}"))?;
+            let text = json["choices"][0]["message"]["content"]
+                .as_str()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| "Vision response sin contenido".to_string())?;
+            tracing::info!(
+                "Vision: imagen descrita con {model} key {key_hint}... ({} chars)",
+                text.len()
+            );
+            Ok(text.to_string())
         }
         Ok(r) => {
             let status = r.status();
             let body_text = r.text().await.unwrap_or_default();
-            tracing::error!("Vision API error HTTP {status}: {body_text}");
-            None
+            Err(format!(
+                "HTTP {status}: {}",
+                truncate_error_body(&body_text, 500)
+            ))
         }
-        Err(e) => {
-            tracing::error!("Vision API error: {e}");
-            None
-        }
+        Err(e) => Err(format!("red: {e}")),
     }
+}
+
+fn truncate_error_body(body: &str, max_chars: usize) -> String {
+    let mut text: String = body.chars().take(max_chars).collect();
+    if body.chars().count() > max_chars {
+        text.push_str("...");
+    }
+    text
 }
 
 /* Groq Whisper STT: transcribe audio a texto.
