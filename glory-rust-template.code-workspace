@@ -1,0 +1,79 @@
+{
+	"folders": [
+        {
+            "path": "."
+        },
+        {
+            "path": "../WP/app/public/wp-content/themes/glorytemplate/.agent/coolify-manager-rs"
+        },
+        {
+            "path": "../WP/app/public/wp-content/themes/glorytemplate/.agent/code-sentinel"
+        },
+        {
+            "path": "../WP/app/public/wp-content/themes/glorytemplate/.agent/varsense"
+        }
+    ],
+    "settings": {
+        "cssVarsValidator.excludePatterns": [
+            "**/Glory/**",
+            "**/node_modules/**",
+            "**/vendor/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/*.min.css",
+            "**/*code-sentinel/**",
+            "**/public/assets/**",
+            "**/glory-rs/**",
+            "**/varsense/**"
+        ],
+        "cssVarsValidator.hardcodedDetection.properties": {
+            "font-size": true,
+            "color": true,
+            "background-color": true,
+            "background": true,
+            "border-color": true,
+            "border-radius": true,
+            "font-family": false,
+            "font-weight": false,
+            "line-height": false,
+            "gap": false,
+            "margin": false,
+            "padding": false,
+            "width": false,
+            "height": false,
+            "box-shadow": false,
+            "transition": false,
+            "opacity": false
+        },
+        "cssVarsValidator.hardcodedDetection.allowedValues": [
+            "0", "auto", "inherit", "initial", "unset", "none",
+            "transparent", "currentColor", "100%", "50%"
+        ],
+        "codeSentinel.exclude": [
+            "**/node_modules/**",
+            "**/vendor/**",
+            "**/dist/**",
+            "**/.venv/**",
+            "**/target/**",
+            "**/out/**",
+            "**/.agent/code-sentinel/**",
+            "**/.agent/varsense/**"
+        ],
+        "codeSentinel.directoryExceptions": [
+            "models",
+            "api",
+            "hooks",
+            "panel",
+            "islands",
+            "services",
+            "repositories",
+            "handlers",
+            "data",
+            "ui",
+            "scripts",
+            "servicios",
+            "home",
+            "frontend"
+        ]
+    }
+}

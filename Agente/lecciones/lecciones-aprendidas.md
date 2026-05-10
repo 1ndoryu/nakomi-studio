@@ -23,6 +23,8 @@
 - Comandos largos o ambiguos no se deben "esperar" por intuicion: si no tienen criterio de fin claro, se ejecutan en background/async y se validan con una senal puntual (puerto, health, proceso, archivo generado, ultimas lineas del log).
 - Si `npx` o una CLI puede pedir confirmacion, usar `-y` o modo no interactivo desde el inicio; si no, el flujo parece colgado aunque en realidad esta esperando input.
 - Si se ejecuta un binario release por path fijo, validar que el build actualizo ese mismo archivo. `CARGO_TARGET_DIR` puede mandar `cargo build --release` a otro target y dejar viejo `target/release/*.exe`; usar `--target-dir target` o ejecutar el binario del target real.
+- En apps Tauri/Rust, `current_exe()` puede apuntar a `C:\tmp\glory-target` por `CARGO_TARGET_DIR`; resolver configs desde ruta explícita/env/ancestros del cwd/`CARGO_MANIFEST_DIR` antes que junto al exe.
+- Si `clap --help` desborda la pila en Windows por un enum grande, envolver el entrypoint en un thread con stack explícito mantiene el CLI diagnosticable sin tocar cada subcomando.
 
 ## Coolify Rust — recovery no-build
 - Antes de `docker compose up -d --no-build --force-recreate --no-deps app`, comprobar que la imagen del servicio existe con `docker compose config` + `docker image inspect`.
