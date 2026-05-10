@@ -61,6 +61,12 @@
 - coolify-manager.exe `restart` no siempre reinicia los contenedores de apps Docker Compose; `redeploy` (API) es más fiable para forzar recreación.
 - En `studio` (nakomi.studio), los endpoints admin firmados por JWT usan el env runtime `SERVICE_PASSWORD_64_JWTSECRET`; `JWT_SECRET` listado en Coolify no autenticó `/api/admin/blog` durante la verificación real.
 
+## Coolify Rust — health por IP Docker
+- Un healthcheck a `localhost` dentro del contenedor no prueba el camino real de Traefik. Puede responder localmente mientras la IP Docker del contenedor se cuelga y el proxy muestra `no available server`.
+- En stacks Rust, el health válido debe probar `http://$(hostname -i):3000/...` o un probe host/proxy → IP del contenedor.
+- Si el probe host→IP falla tras un swap, la recuperación segura es recrear solo `app` con `--no-build --force-recreate --no-deps`, verificando antes que el compose mantiene `/data/uploads/{sitio}:/app/uploads`.
+- El default Docker-safe para `HOST` es `0.0.0.0`; `127.0.0.1` debe quedar solo como override local explícito.
+
 ## Rust/Axum — Timeouts HTTP obligatorios para APIs externas
 - **NUNCA crear `reqwest::Client::new()` sin `.timeout()` en código de producción.** Una API externa que se cuelga bloquea la tarea async indefinidamente. Si la tarea retiene una conexión del pool de BD (SQLx), agota el pool y congela toda la aplicación (deadlock de pool). Síntomas: proceso vivo pero 503, tcp backlog lleno, threads dormidos.
 - Usar `reqwest::Client::builder().timeout(Duration::from_secs(30)).build()` como mínimo.
