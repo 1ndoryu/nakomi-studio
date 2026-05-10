@@ -202,6 +202,21 @@ Reglas operativas obligatorias:
 - Un comando no puede bloquear el ciclo solo porque "sigue corriendo"; o produce una senal verificable, o se trata como ambiguedad a resolver con una comprobacion mas barata.
 </rule>
 
+<rule id="21.1" name="anti-stall-remote-commands">
+**Comandos remotos largos no se ejecutan como espera ciega.** Deploys, builds Docker/Rust, migraciones remotas, `ssh`, `coolify-manager-rs deploy-service`, `docker compose build`, restores y cualquier operacion que pueda tardar mas de 5 minutos deben cumplir una de estas condiciones antes de lanzarse:
+
+- Tener heartbeat/log streaming real (`--progress=plain`, logs con timestamps, salida periodica o wrapper que imprima progreso) y timeout explicito.
+- Ejecutarse en modo async/background con una senal de readiness concreta (health HTTP, contenedor healthy + probe real, puerto, archivo generado, exit code registrado).
+- Dividirse en fases cortas verificables: preflight, build, image-exists, swap, health, logs finales.
+
+Reglas anti-atasco:
+- Nunca encadenes un build remoto largo y un health final en un unico comando opaco si no hay salida intermedia fiable.
+- Si pasan 5-10 minutos sin nueva informacion util, no sigas esperando por inercia: comprueba proceso remoto, imagen creada, contenedor, logs recientes o health y decide.
+- Para recoveries `--skip-build` o `--no-build`, primero verifica que la imagen local existe; si no existe, aborta antes de recrear contenedores.
+- Si se ejecuta un binario release por path fijo (`target/release/*.exe`), verifica que el build actualizo ese mismo path. `CARGO_TARGET_DIR` puede redirigir la salida a otro directorio; usa `cargo build --release --target-dir target` o ejecuta el binario del target real, y confirma `LastWriteTime`/version/salida esperada antes de probar produccion.
+- Si una herramienta queda colgada o oculta stdout/stderr critico, arregla la herramienta en el mismo bloque o documenta la mejora pendiente; no normalices el cuelgue como parte del flujo.
+</rule>
+
 ---
 
 ## II. FLUJO DE TRABAJO (ciclo continuo, por bloque coherente)

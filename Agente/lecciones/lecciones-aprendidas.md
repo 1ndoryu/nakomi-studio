@@ -22,6 +22,11 @@
 - `2>&1 | ForEach-Object { $_.ToString() }` y luego `$LASTEXITCODE` es el patrón correcto.
 - Comandos largos o ambiguos no se deben "esperar" por intuicion: si no tienen criterio de fin claro, se ejecutan en background/async y se validan con una senal puntual (puerto, health, proceso, archivo generado, ultimas lineas del log).
 - Si `npx` o una CLI puede pedir confirmacion, usar `-y` o modo no interactivo desde el inicio; si no, el flujo parece colgado aunque en realidad esta esperando input.
+- Si se ejecuta un binario release por path fijo, validar que el build actualizo ese mismo archivo. `CARGO_TARGET_DIR` puede mandar `cargo build --release` a otro target y dejar viejo `target/release/*.exe`; usar `--target-dir target` o ejecutar el binario del target real.
+
+## Coolify Rust — recovery no-build
+- Antes de `docker compose up -d --no-build --force-recreate --no-deps app`, comprobar que la imagen del servicio existe con `docker compose config` + `docker image inspect`.
+- Si la imagen fue podada, el recovery no-build debe abortar y pedir reconstrucción. Recrear sin imagen puede eliminar el contenedor anterior y convertir una incidencia recuperable en 503.
 
 ## Node/Vite — dependencias por rama
 - Cambiar de rama no actualiza `frontend/node_modules`: Git cambia `package.json`/`package-lock.json`, pero el árbol instalado queda como estado local compartido.
