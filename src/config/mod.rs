@@ -16,6 +16,7 @@ pub struct AppConfig {
     pub host: String,
     pub port: u16,
     pub static_dir: Option<String>,
+    pub stripe_publishable_key: Option<String>,
     pub stripe_secret_key: Option<String>,
     pub stripe_webhook_secret: Option<String>,
     /* [064A-73] Orígenes permitidos para CORS (separados por coma en env).
@@ -39,6 +40,12 @@ impl AppConfig {
                 .unwrap_or_else(|_| "3000".to_string())
                 .parse()?,
             static_dir: std::env::var("STATIC_DIR").ok(),
+            /* [095A-23] La publishable key es publica y se expone tambien en runtime.
+             * Esto evita depender de que Vite reciba VITE_* durante builds remotos. */
+            stripe_publishable_key: std::env::var("VITE_STRIPE_PUBLISHABLE_KEY")
+                .or_else(|_| std::env::var("GLORY_STRIPE_PUBLISHABLE_KEY"))
+                .or_else(|_| std::env::var("STRIPE_PUBLISHABLE_KEY"))
+                .ok(),
             /* [064A-65] Admite ambas variantes: GLORY_STRIPE_* (convención del proyecto) y STRIPE_* */
             stripe_secret_key: std::env::var("GLORY_STRIPE_SECRET_KEY")
                 .or_else(|_| std::env::var("STRIPE_SECRET_KEY"))

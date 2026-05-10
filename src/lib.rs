@@ -27,6 +27,7 @@ pub struct AppState {
     pub jwt_secret: String,
     pub static_dir: Option<String>,
     pub http_client: reqwest::Client,
+    pub stripe_publishable_key: Option<String>,
     pub stripe_secret_key: Option<String>,
     pub stripe_webhook_secret: Option<String>,
     pub chat_hub: ChatHub,

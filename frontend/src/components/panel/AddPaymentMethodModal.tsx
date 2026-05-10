@@ -1,5 +1,4 @@
 import {useState} from 'react';
-import {loadStripe} from '@stripe/stripe-js';
 import {CardElement, Elements, useElements, useStripe} from '@stripe/react-stripe-js';
 
 import {
@@ -7,14 +6,11 @@ import {
     type SavedPaymentMethod,
 } from '../../api/payments';
 import {useAddPaymentMethodModal} from '../../hooks/useAddPaymentMethodModal';
+import {useStripeClient} from '../../hooks/useStripeClient';
 import {Button} from '../ui/Button';
 import {Modal, ModalBody, ModalField, ModalLabel} from '../ui/Modal';
 
 import './AddPaymentMethodModal.css';
-
-const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-    ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string)
-    : null;
 
 interface AddPaymentMethodModalProps {
     open: boolean;
@@ -24,12 +20,23 @@ interface AddPaymentMethodModalProps {
 
 export function AddPaymentMethodModal({open, onClose, onSaved}: AddPaymentMethodModalProps) {
     const {clientSecret, isLoadingIntent, loadError} = useAddPaymentMethodModal(open);
+    const {stripePromise, cargando: cargandoStripe, configurado: stripeConfigurado} = useStripeClient();
 
     if (!open) {
         return null;
     }
 
-    if (!stripePromise) {
+    if (cargandoStripe) {
+        return (
+            <Modal abierto onCerrar={onClose} className="modalMedio">
+                <ModalBody>
+                    <p className="modalTexto">Preparando formulario seguro...</p>
+                </ModalBody>
+            </Modal>
+        );
+    }
+
+    if (!stripeConfigurado || !stripePromise) {
         return (
             <Modal abierto onCerrar={onClose} className="modalMedio">
                 <ModalBody>

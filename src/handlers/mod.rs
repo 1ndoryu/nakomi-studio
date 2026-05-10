@@ -27,6 +27,7 @@ mod payments;
 mod problems;
 mod profile;
 mod projects;
+mod public_config;
 mod public_users;
 mod refunds;
 mod reviews;
@@ -132,6 +133,7 @@ impl utoipa::Modify for SecurityAddon {
         dashboard::get_dashboard,
         profile::get_profile,
         profile::upload_avatar,
+        public_config::get_public_config,
         admin_users::list_users,
         admin_users::create_user,
         admin_users::change_role,
@@ -291,6 +293,7 @@ impl utoipa::Modify for SecurityAddon {
         configuracion::ToggleRotacionRequest,
         order_lifecycle::ActivityEntry,
         profile::AvatarResponse,
+        public_config::PublicConfigResponse,
         uploads::UploadResponse,
         crate::errors::ErrorResponse,
         admin_fixtures::FixtureStatusResponse,
@@ -433,6 +436,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
             .timeout(std::time::Duration::from_secs(30))
             .build()
             .expect("HTTP client"),
+        stripe_publishable_key: config.stripe_publishable_key,
         stripe_secret_key: config.stripe_secret_key,
         stripe_webhook_secret: config.stripe_webhook_secret,
         chat_hub,
@@ -590,6 +594,7 @@ fn api_routes() -> Router<AppState> {
         .merge(refunds::routes())
         .merge(reviews::routes())
         .merge(notifications::routes())
+        .merge(public_config::routes())
         .merge(dashboard::routes())
         .merge(profile::routes())
         .merge(admin_users::routes())

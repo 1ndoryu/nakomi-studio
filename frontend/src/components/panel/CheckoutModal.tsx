@@ -6,7 +6,6 @@
  * por el flujo publico y evita generar uno duplicado al entrar a Stripe. */
 
 import { useCallback, useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
 import {
     Elements,
     PaymentElement,
@@ -15,13 +14,10 @@ import {
 } from '@stripe/react-stripe-js';
 import { apiInitiatePayment } from '../../api/payments';
 import { formatPrice } from '../../api/orders';
+import { useStripeClient } from '../../hooks/useStripeClient';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import './CheckoutModal.css';
-
-const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-    ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string)
-    : null;
 
 interface CheckoutModalProps {
     orderId: string;
@@ -39,6 +35,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
     const [clientSecret, setClientSecret] = useState<string | null>(initialClientSecret ?? null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const {stripePromise, cargando: cargandoStripe, configurado: stripeConfigurado} = useStripeClient();
 
     const iniciar = useCallback(async () => {
         if (clientSecret) {
@@ -64,12 +61,19 @@ export default function CheckoutModal(props: CheckoutModalProps) {
         }
     }, [orderId, phaseNumber]);
 
-    if (!stripePromise) {
+    if (cargandoStripe) {
+        return (
+            <Modal abierto onCerrar={onClose} className="modalCompacto">
+                <p className="checkoutMonto">Preparando Stripe...</p>
+            </Modal>
+        );
+    }
+
+    if (!stripeConfigurado || !stripePromise) {
         return (
             <Modal abierto onCerrar={onClose} className="modalCompacto">
                 <p className="checkoutError">
-                    Stripe no está configurado. Agrega
-                    VITE_STRIPE_PUBLISHABLE_KEY al .env
+                    Stripe no esta configurado en este entorno.
                 </p>
             </Modal>
         );
