@@ -112,6 +112,8 @@
 ## Herramientas operativas — demo explícito o API local real
 - Si una GUI controla infraestructura, abrirla en navegador no autoriza datos demo silenciosos. El navegador debe consumir una API local real o fallar visible; el modo demo solo debe existir con una bandera explícita.
 - Menús dentro de tablas con `overflow` deben renderizarse por portal/fixed para no quedar recortados por el scroll horizontal.
+- Si un listado base parece lento, separar el fetch estructural de probes derivados. En 105A-28 `list_sites` tardaba milisegundos; lo lento eran health-checks SSH secuenciales encadenados después del render.
+- Cachear lecturas caras en dos límites ayuda: cliente GUI para navegación entre vistas y `gui-api` para compartir resultados entre componentes/procesos web. Los refrescos manuales deben usar `force=true` y reemplazar la caché con datos frescos.
 
 ## Checkout de órdenes — IDs visuales no son contrato
 - Si el catálogo frontend usa IDs compuestos para UI/traducciones (`web-basico`, `apps-medio`) pero el backend persiste slugs canónicos (`basico`, `medio`), normalizar en el cliente API antes del POST. Un `404` en creación puede ser un `NotFound` de dominio, no una ruta faltante.
