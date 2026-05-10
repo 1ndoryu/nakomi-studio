@@ -64,6 +64,25 @@ El diseño actual de la GUI no alcanza el nivel esperado: se ve como panel técn
 ### 105A-22 — CPU/RAM por despliegue
 - Exponer métricas reales por stack desde Docker (`docker stats --no-stream`) y pintarlas en la tabla.
 
+### 105A-23 — VPS reales configuradas
+- Corregir la segunda VPS: `standby-vps2`, `173.249.50.44`, `http://173.249.50.44:8000`.
+- Evitar que la GUI use targets fake cuando se abre sin Tauri.
+
+### 105A-24 — Navegador real sin Tauri
+- Añadir `gui-api` local en Rust para que Vite consuma la misma API real que Tauri.
+- `npm run dev:web` debe levantar API local + Vite.
+- Demo solo se permite con `VITE_COOLIFY_MANAGER_DEMO=1`.
+
+### 105A-25 — Copias como tabla general
+- Sustituir la vista por sitio por una tabla global equivalente a Sitios.
+- Incluir sitio, dominio, VPS, id, tipo, estado, fecha, etiqueta y artefactos.
+
+### 105A-26 — Menús contextuales sin recorte
+- Mover los menús de acciones a portal/fixed para que no queden cortados por `panelTabla`.
+
+### 105A-27 — RAM/CPU real en todas las vistas
+- Confirmar que Dashboard y tabla de Sitios llaman API/Tauri real, no datos demo silenciosos.
+
 ## Fases
 
 ### Fase 1 — Ejecutable en este bloque
@@ -89,4 +108,5 @@ El diseño actual de la GUI no alcanza el nivel esperado: se ve como panel técn
 
 - Fase 1: completada. GUI table-first implementada, modo navegador demo activo, estado por fila, backups contextuales, `lucide-react`, vistas Salud/Auditoría retiradas y alcance Sentinel/VarSense corregido.
 - Fase 2: completada. `npm run dev` abre Tauri real, la navegación quedó en Panel/Sitios/Copias/Ajustes, hay métricas por despliegue y las acciones contextuales usan comandos reales con confirmaciones.
+- Corrección 105A-23..27: completada. El navegador pasa por `gui-api`, Copias es tabla global y los menús salen del contenedor de tabla.
 - Fase 3: pendiente por alcance multi-repo. La GUI ya usa `Button/IconButton` local como puente hacia componentes compartidos en `glory-rs`.

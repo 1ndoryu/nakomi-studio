@@ -109,6 +109,10 @@
 ## CMS público — no maquillar vacíos con demo data
 - Si una vista pública depende del CMS/API, distinguir entre “todavía no cargó” y “la API devolvió vacío”. Reutilizar fallback demo cuando el backend responde `[]` oculta desincronizaciones reales y hace que home/listados muestren contenido fantasma.
 
+## Herramientas operativas — demo explícito o API local real
+- Si una GUI controla infraestructura, abrirla en navegador no autoriza datos demo silenciosos. El navegador debe consumir una API local real o fallar visible; el modo demo solo debe existir con una bandera explícita.
+- Menús dentro de tablas con `overflow` deben renderizarse por portal/fixed para no quedar recortados por el scroll horizontal.
+
 ## Checkout de órdenes — IDs visuales no son contrato
 - Si el catálogo frontend usa IDs compuestos para UI/traducciones (`web-basico`, `apps-medio`) pero el backend persiste slugs canónicos (`basico`, `medio`), normalizar en el cliente API antes del POST. Un `404` en creación puede ser un `NotFound` de dominio, no una ruta faltante.
 - Los alias de `service_slug` también envejecen: si el backend vuelve a usar `diseno-web` como canónico y el cliente lo sigue remapeando a `diseno-de-sitios-web`, reaparece un `404` aunque el `plan_slug` ya esté bien normalizado.
