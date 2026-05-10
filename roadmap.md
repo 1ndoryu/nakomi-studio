@@ -41,4 +41,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 - 105A-35 — Implementar login/admin seguro para el portal VPS sin hardcodear credenciales.
 - 105A-36 — Endurecer seguridad operativa online: RBAC, rate limits, auditoría y límites de exposición de logs/secrets.
 - 105A-37 — Planificar y migrar progresivamente compra/gestión de VPS desde Nakomi principal hacia `vps.nakomi.studio`, reutilizando Stripe/Contabo/Coolify existentes.
-- Respecto a vps.nakomi.studio, la publicación, el acceso a la controlar la 
+- Respecto a vps.nakomi.studio, la publicación y el acceso a controlar la API de Coolify deben estar protegidos solo para el usuario admin. Tiene que ser seguro, con página de inicio, login modal y opción de cerrar sesión en el panel.
