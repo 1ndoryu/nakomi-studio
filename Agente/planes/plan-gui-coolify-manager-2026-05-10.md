@@ -40,6 +40,30 @@ El diseño actual de la GUI no alcanza el nivel esperado: se ve como panel técn
 - Trabajo grande posterior: extraer Button/Badge/Input/Table/Shell/Icon recipes de Nakomi a un paquete compartido, clonar/consumir `glory-rs` desde `coolify-manager-rs` y migrar la GUI a esos componentes.
 - No bloquear la mejora inmediata de la GUI por esta migración; diseñar la GUI usando nombres y estructura compatibles con esa futura extracción.
 
+### 105A-16 — Dev real con `npm run dev`
+- La raíz de `coolify-manager-rs` debe abrir Tauri con `npm run dev`.
+- El preview web queda separado como `npm run dev:web` para evitar confundir demo con operación real.
+
+### 105A-17 — Acciones por menú contextual
+- Las acciones por fila viven en un menú contextual único.
+- Acciones activas: abrir sitio, verificar estado, copias, registros, copia manual, reinicio y redespliegue protegido.
+
+### 105A-18 — Navegación visible y útil
+- Quitar Inventario/Operaciones.
+- Activar Panel, Sitios, Copias y Ajustes como pestañas reales.
+
+### 105A-19 — Última verificación legible
+- Reemplazar timestamps iguales por texto relativo y semántico.
+
+### 105A-20 — Español completo
+- Traducir navegación, tablas, estados, acciones y paneles.
+
+### 105A-21 — Panel VPS
+- Mostrar VPS configurados, selector de target, carga, RAM, disco, Docker, seguridad y recomendaciones.
+
+### 105A-22 — CPU/RAM por despliegue
+- Exponer métricas reales por stack desde Docker (`docker stats --no-stream`) y pintarlas en la tabla.
+
 ## Fases
 
 ### Fase 1 — Ejecutable en este bloque
@@ -64,5 +88,5 @@ El diseño actual de la GUI no alcanza el nivel esperado: se ve como panel técn
 ## Estado
 
 - Fase 1: completada. GUI table-first implementada, modo navegador demo activo, estado por fila, backups contextuales, `lucide-react`, vistas Salud/Auditoría retiradas y alcance Sentinel/VarSense corregido.
-- Fase 2: pendiente. Acciones nativas destructivas requieren comandos Tauri, confirmaciones y registro de eventos antes de activarse.
+- Fase 2: completada. `npm run dev` abre Tauri real, la navegación quedó en Panel/Sitios/Copias/Ajustes, hay métricas por despliegue y las acciones contextuales usan comandos reales con confirmaciones.
 - Fase 3: pendiente por alcance multi-repo. La GUI ya usa `Button/IconButton` local como puente hacia componentes compartidos en `glory-rs`.
