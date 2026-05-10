@@ -26,6 +26,7 @@ const NosotrosIsland = lazy(() => import('./islands/NosotrosIsland').then(m => (
 const SolucionesIsland = lazy(() => import('./islands/SolucionesIsland').then(m => ({default: m.SolucionesIsland})));
 const SolucionPlaceholderIsland = lazy(() => import('./islands/SolucionPlaceholderIsland').then(m => ({default: m.SolucionPlaceholderIsland})));
 const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
+const SolucionVpsIsland = lazy(() => import('./islands/SolucionVpsIsland').then(m => ({default: m.SolucionVpsIsland})));
 
 const UsuarioPublicoIsland = lazy(() => import('./islands/UsuarioPublicoIsland').then(m => ({default: m.UsuarioPublicoIsland})));
 /* [095A-5] Página legal requerida por el footer */
@@ -91,6 +92,18 @@ function ProyectoDetallePage() {
     );
 }
 
+function esPortalVps(): boolean {
+    return window.location.hostname.toLowerCase() === 'vps.nakomi.studio';
+}
+
+function HomePage() {
+    if (esPortalVps()) {
+        return <Suspense fallback={null}><SolucionVpsIsland /></Suspense>;
+    }
+
+    return <BienvenidaIsland />;
+}
+
 /* [074A-1] Home siempre muestra BienvenidaIsland, logueado o no.
  * Los usuarios logueados pueden navegar libremente por el sitio.
  * El panel se accede desde el header (botón "Panel"). */
@@ -102,7 +115,7 @@ function App() {
                 <ScrollToTop />
                 <NavigateRegistrar />
                 <Routes>
-                    <Route path="/" element={<BienvenidaIsland />} />
+                    <Route path="/" element={<HomePage />} />
                     <Route path="/servicios" element={<ServiciosIsland />} />
                     <Route path="/servicios/:slug" element={<Suspense fallback={null}><ServicioDetallePage /></Suspense>} />
                     <Route path="/proyectos" element={<ProyectosIsland />} />
@@ -111,7 +124,7 @@ function App() {
                     <Route path="/soluciones" element={<Suspense fallback={null}><SolucionesIsland /></Suspense>} />
                     {/* [064A-32] Hosting tiene página propia, el resto usa placeholder */}
                     <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />
-                    <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionPlaceholderIsland titulo="Servidores VPS" descripcion="Estamos preparando los planes VPS. Disponible próximamente." /></Suspense>} />
+                    <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionVpsIsland /></Suspense>} />
                     <Route path="/soluciones/:slug" element={<Suspense fallback={null}><SolucionPlaceholderIsland /></Suspense>} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
                     {/* [095A-5] Política de privacidad accesible desde el footer */}
