@@ -128,7 +128,7 @@ La GUI de `coolify-manager-rs` deja de ser solo herramienta local: debe poder pu
 
 ### 105A-43 — Landing + dashboard online
 - Crear primera pantalla real de `vps.nakomi.studio`: landing compacta + login + dashboard read-only.
-- Estado: primer corte completado. `vps.nakomi.studio/` sirve la experiencia VPS real y `/soluciones/vps` dejó de ser placeholder. Dashboard dedicado read-only queda como siguiente hardening visual.
+- Estado corregido: `/soluciones/vps` en Nakomi ya sirve la experiencia pública VPS, pero `vps.nakomi.studio` debe desplegarse desde el frontend propio de `coolify-manager-rs`. El dashboard dedicado read-only sigue pendiente en ese repo.
 
 ### 105A-44 — Auditoría y permisos write
 - Agregar tabla/eventos de auditoría.
@@ -171,8 +171,9 @@ La GUI de `coolify-manager-rs` deja de ser solo herramienta local: debe poder pu
 - Evitar que errores de favicon ralenticen el listado.
 
 ### 105A-34 — Despliegue online `vps.nakomi.studio`
-- Definir si se despliega como servicio Rust independiente en Coolify.
+- Desplegar el frontend propio de `coolify-manager-rs` como servicio separado en Coolify.
 - Dominio: `vps.nakomi.studio`.
+- No reutilizar el stack `studio` ni montarlo como `extraDomain` de `nakomi.studio`.
 - La app online debe detectar su propio deployment y esconder/limitar operaciones locales no aplicables.
 - Todo deploy/health/logs via `coolify-manager-rs`, sin SSH directo salvo emergencia documentada.
 
@@ -208,8 +209,8 @@ La GUI de `coolify-manager-rs` deja de ser solo herramienta local: debe poder pu
 - Definir bootstrap seguro del admin.
 
 ### Fase 3 — MVP online seguro
-- Primer corte online: root del subdominio sirve la experiencia VPS real y reutiliza auth/checkout/panel existentes.
-- Dashboard read-only dedicado de VPS/sitios queda pendiente como mejora incremental antes de habilitar nuevas acciones write.
+- Primer corte online: `vps.nakomi.studio` debe servir el front web de `coolify-manager-rs`, mientras Nakomi conserva `/soluciones/vps` como entrada comercial.
+- Dashboard read-only dedicado de VPS/sitios queda pendiente dentro de ese despliegue separado antes de habilitar nuevas acciones write.
 - Operaciones write detrás de permisos, confirmaciones y auditoría.
 - Deploy por Coolify con health y rollback.
 

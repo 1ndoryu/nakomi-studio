@@ -4,50 +4,46 @@
 
 `vps.nakomi.studio` debe ser el portal separado para comprar, revisar y operar VPS/infraestructura Nakomi. La web principal `nakomi.studio` conserva marketing general y enlaces; el subdominio VPS presenta la experiencia específica del producto.
 
-## Estado inicial implementado
+## Estado actual corregido
 
-- El frontend ya tiene `SolucionVpsIsland` con catálogo real desde `/api/vps/public-plans` y checkout con aprobación manual.
-- El root de `vps.nakomi.studio` se resuelve a esa experiencia VPS en la SPA.
-- `/soluciones/vps` deja de mostrar placeholder y usa la página real de VPS.
-- El panel ya incluye infraestructura admin: despliegues Coolify multi-VPS, servidores Contabo y suscripciones VPS.
-- `coolify-manager-rs` soporta `extraDomains` para enrutar subdominios extra al mismo stack Rust sin duplicar base de datos.
+- El frontend de Nakomi mantiene `/soluciones/vps` como página pública/entrada comercial.
+- `vps.nakomi.studio` no debe resolverse desde la SPA principal de Nakomi ni como `extraDomain` del stack `studio`.
+- El objetivo correcto del subdominio es el frontend propio de `coolify-manager-rs`, publicado como aplicación separada.
+- El panel/admin de Nakomi ya contiene lógica de hosting/VPS reutilizable, pero no debe apropiarse del host dedicado del portal operativo.
+- El soporte genérico de `extraDomains` en `coolify-manager-rs` sigue siendo válido para otros stacks Rust, pero no define la arquitectura de `vps.nakomi.studio`.
 
 ## Routing y deployment
 
-- Dominio principal del servicio Rust: `nakomi.studio`.
-- Dominio extra del mismo servicio: `vps.nakomi.studio`.
-- El template Rust genera routers Traefik HTTPS/HTTP adicionales por cada `extraDomains`.
-- `vps.nakomi.studio` debe apuntar por DNS a VPS1 `66.94.100.241`.
-- El deploy se hace con `coolify-manager-rs deploy-service --name studio`, que sincroniza compose con Coolify y verifica health.
+- `nakomi.studio` y `vps.nakomi.studio` son despliegues separados.
+- `nakomi.studio` sigue sirviendo la web principal y sus rutas públicas como `/soluciones/vps`.
+- `vps.nakomi.studio` debe desplegar el frontend propio de `coolify-manager-rs`, con su backend/API correspondiente o boundary seguro equivalente.
+- Queda descartado montar `vps.nakomi.studio` como `extraDomain` del servicio `studio`.
+- El deploy del subdominio debe ejecutarse sobre el repo de `coolify-manager-rs` con verificación de health específica del portal.
 
 ## Runtime frontend
 
-- `window.location.hostname === 'vps.nakomi.studio'` activa la home VPS.
-- El mismo bundle sigue sirviendo `nakomi.studio` sin cambiar la home principal.
-- API relativa: `/api/...`, por lo que el subdominio consume el mismo backend del stack.
+- El bundle principal de Nakomi no debe cambiar su home por hostname para capturar `vps.nakomi.studio`.
+- Nakomi solo enlaza al portal VPS dedicado mediante CTAs o launcher.
+- El portal de `vps.nakomi.studio` debe tener su propio runtime web y su propia política de auth/permisos.
 
-## Backend disponible
+## Integración con backend existente
 
-- `GET /api/vps/public-plans`: catálogo público.
-- `POST /api/vps/subscribe`: checkout Stripe de VPS con aprobación manual.
-- `GET /api/vps/subscriptions`: suscripciones del usuario o todas para admin/employee.
-- `POST /api/admin/vps/subscriptions/{id}/approve`: provisioning Contabo, solo admin.
-- `POST /api/admin/vps/subscriptions/{id}/reject`: rechazo y cancelación, solo admin.
-- `GET /api/hosting/deployments`: despliegues Coolify multi-VPS para admin.
-- `GET /api/hosting/vps`: inventario Contabo para admin.
+- Nakomi ya expone catálogo, checkout y operaciones VPS/hosting reutilizables para marketing y panel interno.
+- El portal dedicado podrá reutilizar esos flujos o derivarlos a un boundary propio, pero no debe depender de un alias de dominio montado sobre `studio`.
+- La separación de runtime debe venir antes de considerar el subdominio como online/cerrado.
 
 ## Seguridad operativa
 
-- No se expone `settings.json` ni secretos al navegador.
-- El subdominio comparte backend autenticado existente: JWT en endpoints de panel, roles `admin`, `employee`, `client`.
-- Las acciones de provisioning VPS siguen detrás de rutas admin.
-- El primer corte público no habilita restart/redeploy desde el portal; esas operaciones quedan en `coolify-manager-rs` o panel admin protegido.
+- El portal dedicado no debe leer `settings.json`, tokens de Coolify, claves SSH ni secretos desde frontend.
+- Si reutiliza backend de Nakomi o de `coolify-manager-rs`, debe hacerlo a través de auth fuerte y DTOs filtrados.
+- Las acciones de provisioning y operación siguen detrás de roles admin hasta que exista RBAC más fino.
+- El hecho de que exista `/soluciones/vps` en Nakomi no autoriza a servir el panel operativo desde ese mismo bundle.
 
 ## Pendientes seguros
 
-- Añadir login dedicado visual dentro de `vps.nakomi.studio` para reducir dependencia del panel general.
-- Separar más adelante roles `viewer/operator/customer` si el portal crece fuera del modelo actual.
+- Desplegar el frontend propio de `coolify-manager-rs` bajo `vps.nakomi.studio`.
+- Añadir login dedicado visual y logout dentro del portal VPS.
+- Separar roles `viewer/operator/customer` si el portal crece fuera del modelo actual.
 - Agregar auditoría específica para acciones VPS críticas con actor, target, duración y resultado.
-- Diseñar dashboard read-only compacto para clientes VPS, separado de Hosting WordPress.
-- Evaluar CSP/CORS específicos del subdominio cuando se separe en servicio dedicado.
+- Definir CSP/CORS y boundary de backend específicos del subdominio dedicado.
 

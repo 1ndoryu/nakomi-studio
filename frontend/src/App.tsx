@@ -92,15 +92,10 @@ function ProyectoDetallePage() {
     );
 }
 
-function esPortalVps(): boolean {
-    return window.location.hostname.toLowerCase() === 'vps.nakomi.studio';
-}
-
 function HomePage() {
-    if (esPortalVps()) {
-        return <Suspense fallback={null}><SolucionVpsIsland /></Suspense>;
-    }
-
+    /* [105A-34] Nakomi conserva su home principal; `vps.nakomi.studio`
+     * debe desplegarse desde el front propio de coolify-manager-rs, no
+     * reutilizando este bundle por hostname. */
     return <BienvenidaIsland />;
 }
 
