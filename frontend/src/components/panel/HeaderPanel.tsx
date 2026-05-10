@@ -1,7 +1,7 @@
 /**
  * Componente: HeaderPanel
  * Header minimalista exclusivo para el panel de usuario.
- * Solo muestra: logo, "Chat", "Inicio" (ir a landing), y foto de usuario con submenú.
+ * Solo muestra: logo, launcher de apps, notificaciones, "Inicio" y foto de usuario con submenú.
  * [044A-38 Fase 1] Logout real conectado a authStore.
  * [074A-45] "Salir" → "Inicio" navega sin desloguear. Avatar abre submenú con logout.
  * [T3-wallet-header] Añadido saldo mini junto a notificaciones. */
@@ -19,7 +19,7 @@ import {Button} from '../ui/Button';
 import {Logo} from '../ui/Logo';
 import OptimizedImage from '../ui/OptimizedImage';
 import NotificationBell from './NotificationBell';
-import ChatBell from './ChatBell';
+import {AppLauncher} from '../layout/AppLauncher';
 import './HeaderPanel.css';
 import '../../styles/header.css';
 
@@ -58,7 +58,7 @@ export const HeaderPanel: React.FC = () => {
                         <Wallet size={16} />
                         <span>{formatBalance(wallet?.balance_cents ?? 0, wallet?.currency)}</span>
                     </Button>
-                    <ChatBell />
+                    <AppLauncher />
                     <NotificationBell />
                     {/* [074A-45] Ir a inicio sin desloguear */}
                     <GloryLink to="/" className="headerPanelEnlace">

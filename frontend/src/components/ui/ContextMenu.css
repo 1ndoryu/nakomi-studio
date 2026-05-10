@@ -52,9 +52,65 @@
     background: var(--white-10);
 }
 
+.menuContextualApps .menuContextualBoton {
+    width: 32px;
+    height: 32px;
+    min-width: unset;
+    min-height: unset;
+    border-radius: var(--radius-md);
+    color: var(--text-dark);
+    background: transparent;
+}
+
+.menuContextualPanelApps {
+    min-width: 260px;
+}
+
 .menuContextualContenido {
     display: flex;
     flex-direction: column;
+}
+
+.menuContextualAppsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-xs);
+}
+
+.menuContextualAppsItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    min-width: 0;
+    min-height: 76px;
+    padding: var(--spacing-sm) var(--spacing-xs);
+    border-radius: var(--radius-md);
+    color: var(--text-dark);
+    text-decoration: none;
+    text-align: center;
+    transition: background-color var(--transicion-rapida), color var(--transicion-rapida);
+}
+
+.menuContextualAppsItem:hover {
+    background: var(--bg-item-active);
+    color: var(--brand-black);
+}
+
+.menuContextualAppsIcono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+}
+
+.menuContextualAppsNombre {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    font-weight: 500;
 }
 
 /* [064A-18] text-align:left explicito porque Button base centra texto */

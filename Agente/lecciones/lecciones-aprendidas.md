@@ -87,6 +87,7 @@
 
 ## UI del panel — bases compartidas
 - Si una variante visual ya es la buena (`hostingCardIcono` en este caso), promover ese estilo a la clase base compartida y dejar las variantes futuras como overrides mínimos con composición de clases, no como recetas duplicadas.
+- Si un `MenuContextual` necesita una composición nueva (grid de apps, launcher, etc.), agregar una variante semántica al componente base antes de pasar `triggerClassName`/`panelClassName` locales. Sentinel lo detecta como parche visual.
 
 ## Panel CMS — menus contextuales en cards
 - Si una card clickeable del CMS contiene un `MenuContextual`, no puede usar `overflow: hidden` ni depender solo de `:hover` del card para mostrar el wrapper del menú. En cards bajas o con paneles que salen del contenedor, la acción destructiva queda inaccesible aunque el endpoint responda correctamente.

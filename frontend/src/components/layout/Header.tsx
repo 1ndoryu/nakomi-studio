@@ -16,13 +16,13 @@ import {Modal} from '../ui/Modal';
 import {MenuContextual} from '../ui/ContextMenu';
 import {ENLACES_HEADER} from '../../data/navegacion';
 import {ModalAutenticacion} from './ModalAutenticacion';
-import {useChatStore} from '../../stores/chatStore';
 import {useAuthStore} from '../../stores/authStore';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {GloryLink} from '../../core/router';
 import {Logo} from '../ui/Logo';
 import OptimizedImage from '../ui/OptimizedImage';
 import {useHeader} from '../../hooks/useHeader';
+import {AppLauncher} from './AppLauncher';
 import '../../styles/header.css';
 
 /* [044A-2] Mapeo de labels estáticos (español) a claves i18n.
@@ -53,10 +53,6 @@ export const Header: React.FC = () => {
     /* Texto y destino del botón de sesión / panel */
     const textoAccion = logueado ? (enPanel ? t('nav.back') : t('nav.panel')) : null;
     const hrefAccion = logueado ? (enPanel ? '/' : '/panel/') : null;
-
-    /* [064A-5] Botón secundario: abre el chat en vez de navegar a /contacto */
-    const textoCta = logueado ? t('nav.chat') : t('nav.contact');
-    const abrirChat = useChatStore(s => s.abrir);
 
     /* [074A-22] Avatar con dropdown para cerrar sesión */
     const logout = useAuthStore(s => s.logout);
@@ -112,6 +108,7 @@ export const Header: React.FC = () => {
                             <GloryLink to={hrefAccion!} className="enlaceAcceder">
                                 {textoAccion}
                             </GloryLink>
+                            <AppLauncher />
                             {/* [074A-22] Avatar con MenuContextual para cerrar sesión */}
                             <MenuContextual
                                 abierto={perfilAbierto}
@@ -134,10 +131,6 @@ export const Header: React.FC = () => {
                             {t('nav.login')}
                         </Button>
                     )}
-                    <Button variante="primario" tamano="pequeno" className="accionHeaderPrincipal" onClick={() => abrirChat()}>
-                        {textoCta}
-                        <ChevronRight size={14} strokeWidth={3} aria-hidden="true" />
-                    </Button>
                 </div>
                 </div>
             </header>
@@ -189,15 +182,6 @@ export const Header: React.FC = () => {
                                     {t('nav.login')}
                                 </div>
                             )}
-                            <div
-                                role="button"
-                                tabIndex={0}
-                                className="menuMovilEnlace menuMovilEnlaceCta"
-                                onClick={() => { abrirChat(); cerrarMenuMovil(); }}
-                                onKeyDown={e => { if (e.key === 'Enter') { abrirChat(); cerrarMenuMovil(); } }}
-                            >
-                                {textoCta}
-                            </div>
                         </div>
                     ) : (
                         <div className="menuMovilLista">

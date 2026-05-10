@@ -278,11 +278,6 @@
     color: var(--text-primary);
 }
 
-.menuMovilEnlaceCta {
-    
-    color: var(--text-primary);
-}
-
 .menuMovilVolver {
     display: flex;
     align-items: center;
