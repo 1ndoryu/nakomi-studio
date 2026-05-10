@@ -217,6 +217,17 @@ Reglas anti-atasco:
 - Si una herramienta queda colgada o oculta stdout/stderr critico, arregla la herramienta en el mismo bloque o documenta la mejora pendiente; no normalices el cuelgue como parte del flujo.
 </rule>
 
+<rule id="21.2" name="no-terminal-probing-credit-guard">
+**Prohibido usar terminal como prueba exploratoria cuando pueda fallar por ruta, cwd, config, puerto, dependencia o modo interactivo.** Cada comando fallido consume tiempo y credito; antes de ejecutarlo debe existir una hipotesis concreta y una alta confianza de exito.
+
+Reglas obligatorias:
+- Si existe una herramienta integrada para leer, buscar, diagnosticar, editar o consultar estado, usala antes que terminal.
+- Antes de ejecutar un comando, verifica por lectura o estado local: directorio correcto, archivo/config existente, binario esperado, puerto libre si aplica, y si el comando es acotado o larga vida.
+- No ejecutes `cargo run`, servidores, watchers, deploys, builds release o CLIs con config dudosa como "smoke test". Usa binario ya construido, tests unitarios, `get_errors`, lectura de logs, o comprobaciones estaticas primero.
+- Si no puedes garantizar el preflight, no ejecutes el comando: documenta el bloqueo, ajusta el plan, o usa una comprobacion mas barata.
+- Tras un `exit code != 0`, queda prohibido reintentar variantes a ciegas. Primero identifica la causa exacta por salida, archivo, config o codigo; luego ejecuta solo una correccion justificada.
+</rule>
+
 ---
 
 ## II. FLUJO DE TRABAJO (ciclo continuo, por bloque coherente)

@@ -32,4 +32,13 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
-(sin tareas pendientes)
+- 105A-29 — Mover el selector global de VPS a la zona `logoSidebar` y usar un selector personalizado, no `<select>` nativo.
+- 105A-30 — Agregar regla en Glory Sentinel para detectar `<select>` nativos en React/TSX y recomendar el componente personalizado de Nakomi.
+- 105A-31 — Convertir `Agregar sitio` en modal funcional con validación, feedback visible y verificación real.
+- 105A-32 — Retirar `rutaPagina` de la GUI porque no aporta valor operativo y limpiar la jerarquía visual.
+- 105A-33 — Mostrar favicons online de los sitios en la tabla, con fallback seguro y sin ralentizar el listado.
+- 105A-34 — Completar publicación de `vps.nakomi.studio` vía Coolify/coolify-manager-rs con dominio extra, health y verificación del subdominio.
+- 105A-35 — Implementar login/admin seguro para el portal VPS sin hardcodear credenciales.
+- 105A-36 — Endurecer seguridad operativa online: RBAC, rate limits, auditoría y límites de exposición de logs/secrets.
+- 105A-37 — Planificar y migrar progresivamente compra/gestión de VPS desde Nakomi principal hacia `vps.nakomi.studio`, reutilizando Stripe/Contabo/Coolify existentes.
+- Respecto a vps.nakomi.studio, la publicación, el acceso a la controlar la 
