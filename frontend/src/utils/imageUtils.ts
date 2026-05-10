@@ -81,10 +81,24 @@ function isOptimizableSrc(src: string): boolean {
 
 function toProxyRelativePath(src: string): string {
     if (src.startsWith('/uploads/')) {
-        return src.replace(/^\/uploads\//, '');
+        return encodeProxyRelativePath(src.replace(/^\/uploads\//, ''));
     }
 
-    return src.replace(/^\//, '');
+    return encodeProxyRelativePath(src.replace(/^\//, ''));
+}
+
+function encodeProxyRelativePath(relativePath: string): string {
+    /* [105A-5] El srcset separa por espacios; codificamos segmentos para que assets con espacios no pierdan variantes. */
+    return relativePath
+        .split('/')
+        .map(segment => {
+            try {
+                return encodeURIComponent(decodeURIComponent(segment));
+            } catch {
+                return encodeURIComponent(segment);
+            }
+        })
+        .join('/');
 }
 
 /* Genera la URL optimizada para una imagen.

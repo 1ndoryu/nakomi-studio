@@ -57,10 +57,10 @@
     max-width: 200px;
 }
 
-/* Columna Derecha: Grid de 3 Proyectos */
+/* [105A-5] Dos columnas para que Selected Work respire más y use imágenes más grandes. */
 .showcaseGridProyectos {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--spacing-md);
     width: 100%;
 }

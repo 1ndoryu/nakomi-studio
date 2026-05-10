@@ -54,7 +54,7 @@ export const SeccionShowcase = (): JSX.Element | null => {
                             {categoria.proyectos.map(proyecto => (
                                 <a key={proyecto.id} href={proyecto.link || '#'} className="proyectoCard" onClick={e => { if (proyecto.link) spaClick(e, proyecto.link); }}>
                                     <div className="proyectoImagenWrapper">
-                                        <OptimizedImage src={proyecto.imagen} alt={proyecto.titulo} className="proyectoImagen" width={640} height={480} sizes="(min-width: 1024px) min(50vw, 640px), (min-width: 768px) 50vw, 100vw" />
+                                        <OptimizedImage src={proyecto.imagen} alt={proyecto.titulo} className="proyectoImagen" width={800} height={600} sizes="(min-width: 1024px) min(45vw, 800px), (min-width: 768px) 50vw, 100vw" quality={86} />
                                     </div>
                                     <div className="proyectoInfo">
                                         <h3 className="proyectoTitulo">
