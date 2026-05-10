@@ -38,17 +38,21 @@ export const ChatWidget: React.FC = () => {
         uploadFile,
     } = useChatWidget();
 
-    /* [064A-67→074A-18] Widget de chat oculto en /panel — el panel tiene su propia SeccionChat */
+    /* [064A-67→074A-18][095A-21] Widget oculto en /panel sin cambiar el
+     * orden de hooks. El return temprano antes de useEffect provocaba React #310
+     * al entrar/salir del panel y dejaba el root vacío hasta recargar. */
     const location = useLocation();
-    if (location.pathname.startsWith('/panel')) return null;
+    const enPanel = location.pathname.startsWith('/panel');
 
     useEffect(() => {
         /* [065A-1] El widget también se abre desde CTAs externos via store.
          * Si ya llega abierto al montar o cambia a abierto sin pasar por handleOpen,
          * igual debe iniciar el WebSocket del visitante. */
-        if (!abierto || connected || connecting) return;
+        if (enPanel || !abierto || connected || connecting) return;
         connect(undefined, storeContext);
-    }, [abierto, connected, connecting, connect, storeContext]);
+    }, [enPanel, abierto, connected, connecting, connect, storeContext]);
+
+    if (enPanel) return null;
 
     /* [064A-52] Al abrir, conectar directamente sin pedir nombre.
      * El agente IA pedirá el nombre al usuario si lo necesita.
