@@ -95,9 +95,11 @@ function ProyectoDetallePage() {
 }
 
 function HomePage() {
-    /* [125A-4] Detección de hostname: vps.nakomi.studio → portal VPS, resto → home principal.
-     * Para pruebas locales usar la ruta /portal-vps. */
-    if (window.location.hostname === 'vps.nakomi.studio') {
+    /* [125A-4] Detección de hostname: vps.nakomi.studio o 127.0.0.1 → portal VPS.
+     * localhost (sin puerto) sigue usando BienvenidaIsland (nakomi.studio dev).
+     * vite arranca en 127.0.0.1:5173 → muestra portal VPS directamente. */
+    const { hostname } = window.location;
+    if (hostname === 'vps.nakomi.studio' || hostname === '127.0.0.1') {
         return <Suspense fallback={null}><VpsPortalIsland /></Suspense>;
     }
     return <BienvenidaIsland />;

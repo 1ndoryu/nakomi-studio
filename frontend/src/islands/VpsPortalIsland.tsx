@@ -1,6 +1,7 @@
 /* [125A-4] Landing page de vps.nakomi.studio.
  * Inspirado en relace.ai: hero bold, demo terminal dark, features grid,
  * precios live desde useVpsCatalog, FAQ accordion.
+ * [125A-5] Login como modal inline usando Modal + useAutenticacion.
  * Standalone: nav y footer propios, sin LayoutPagina. */
 
 import {useState, type ElementType} from 'react';
@@ -8,7 +9,11 @@ import {Cpu, Shield, HardDrive, TerminalSquare, Activity, Server, ChevronDown} f
 import {SEOHead} from '../components/seo/SEOHead';
 import {useVpsCatalog} from '../hooks/useVpsCatalog';
 import {Button} from '../components/ui/Button';
-import {spaClick} from '../navegacionSPA';
+import {Input} from '../components/ui/Input';
+import {Modal, ModalBody} from '../components/ui/Modal';
+import {useAutenticacion} from '../hooks/useAutenticacion';
+import {useAuthStore} from '../stores/authStore';
+import {navegar} from '../navegacionSPA';
 import './VpsPortalIsland.css';
 
 interface Feature { icono: ElementType; titulo: string; desc: string; }
@@ -48,6 +53,21 @@ function scrollTo(id: string): void {
 export function VpsPortalIsland(): JSX.Element {
     const {plans} = useVpsCatalog();
     const [faqAbierto, setFaqAbierto] = useState<number | null>(null);
+    const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
+    const logueado = useAuthStore(s => s.logueado);
+
+    const auth = useAutenticacion(() => {
+        setModalLoginAbierto(false);
+        navegar('/panel');
+    });
+
+    function abrirPanelOLogin(): void {
+        if (logueado) {
+            navegar('/panel');
+        } else {
+            setModalLoginAbierto(true);
+        }
+    }
 
     const lowestPrice = plans.length
         ? formatPrice(Math.min(...plans.map(p => p.monthly_price_cents)))
@@ -81,9 +101,13 @@ export function VpsPortalIsland(): JSX.Element {
                         <button className="vpsNavLink" type="button" onClick={() => scrollTo('caracteristicas')}>Características</button>
                         <button className="vpsNavLink" type="button" onClick={() => scrollTo('precios')}>Precios</button>
                         <button className="vpsNavLink" type="button" onClick={() => scrollTo('faq')}>FAQ</button>
-                        <a className="vpsNavLink" href="/panel" onClick={(e) => spaClick(e, '/panel')}>Mi panel</a>
                     </div>
-                    <Button variante="primario" onClick={() => scrollTo('precios')}>Ver planes</Button>
+                    <div className="vpsNavAcciones">
+                        <Button variante="outline" onClick={abrirPanelOLogin}>
+                            {logueado ? 'Mi panel' : 'Iniciar sesión'}
+                        </Button>
+                        <Button variante="primario" onClick={() => scrollTo('precios')}>Ver planes</Button>
+                    </div>
                 </div>
             </nav>
 
@@ -224,11 +248,50 @@ root@nakomi-vps:~$ █`}</pre>
                     <span className="vpsFooterMarca">Nakomi VPS</span>
                     <div className="vpsFooterLinks">
                         <a href="https://nakomi.studio" className="vpsFooterLink">Nakomi Studio</a>
-                        <a href="/politica-privacidad" onClick={(e) => spaClick(e, '/politica-privacidad')} className="vpsFooterLink">Privacidad</a>
+                        <a href="/politica-privacidad" className="vpsFooterLink">Privacidad</a>
                     </div>
                     <span className="vpsFooterCopy">© {new Date().getFullYear()} Nakomi Studio</span>
                 </div>
             </footer>
+
+            <Modal abierto={modalLoginAbierto} onCerrar={() => setModalLoginAbierto(false)}>
+                <ModalBody as="form" onSubmit={auth.handleLogin}>
+                    <h3 className="modalTitulo">Acceder al panel</h3>
+                    {auth.error && <p className="vpsLoginError">{auth.error}</p>}
+                    <div className="modalCampo">
+                        <label className="modalEtiqueta" htmlFor="vps-email">Correo</label>
+                        <Input
+                            id="vps-email"
+                            type="email"
+                            autoComplete="email"
+                            placeholder="tu@email.com"
+                            value={auth.login.email}
+                            onChange={(e) => auth.actualizarLogin('email', e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="modalCampo">
+                        <label className="modalEtiqueta" htmlFor="vps-password">Contraseña</label>
+                        <Input
+                            id="vps-password"
+                            type="password"
+                            autoComplete="current-password"
+                            placeholder="••••••••"
+                            value={auth.login.password}
+                            onChange={(e) => auth.actualizarLogin('password', e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="modalAcciones">
+                        <Button type="button" variante="outline" onClick={() => setModalLoginAbierto(false)}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" variante="primario" disabled={auth.cargando}>
+                            {auth.cargando ? 'Entrando...' : 'Entrar'}
+                        </Button>
+                    </div>
+                </ModalBody>
+            </Modal>
         </div>
     );
 }

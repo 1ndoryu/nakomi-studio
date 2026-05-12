@@ -74,6 +74,23 @@
 
 .vpsNavLink:hover { opacity: 1; }
 
+.vpsNavAcciones {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+.vpsLoginError {
+    font-size: var(--text-sm);
+    color: var(--error-color);
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    background: rgba(239, 68, 68, 0.06);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(239, 68, 68, 0.18);
+}
+
 /* ─── Hero ─── */
 .vpsHero {
     padding: var(--spacing-3xl) var(--seccion-padding-x) var(--spacing-2xl);
