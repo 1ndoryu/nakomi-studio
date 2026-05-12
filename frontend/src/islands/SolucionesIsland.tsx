@@ -32,7 +32,7 @@ const SOLUCIONES: Solucion[] = [
     {
         titulo: 'Servidores VPS',
         descripcion: 'Control total sobre tu entorno de servidor. Recursos dedicados, root access y aprobación manual antes del provisioning para proyectos que necesitan potencia real.',
-        enlace: '/soluciones/vps',
+        enlace: 'https://vps.nakomi.studio',
         etiqueta: 'Desde $6.88/mes'
     },
     {

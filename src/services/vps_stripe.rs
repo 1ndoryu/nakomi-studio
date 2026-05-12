@@ -36,11 +36,11 @@ pub struct VpsStripeService;
 
 fn humanize_tier_name(tier_name: &str) -> &str {
     match tier_name {
-        "vps1" => "Cloud VPS 1",
-        "vps2" => "Cloud VPS 2",
-        "vps3" => "Cloud VPS 3",
-        "vps4" => "Cloud VPS 4",
-        _ => "VPS dedicado",
+        "vps1" => "Nakomi VPS 1",
+        "vps2" => "Nakomi VPS 2",
+        "vps3" => "Nakomi VPS 3",
+        "vps4" => "Nakomi VPS 4",
+        _ => "Nakomi VPS",
     }
 }
 

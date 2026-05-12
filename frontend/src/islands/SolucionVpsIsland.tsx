@@ -19,7 +19,7 @@ const FEATURES_FALLBACK = [
     {icono: HardDrive, titulo: 'Disco NVMe/SSD', desc: 'Espacio rápido para bases de datos, colas, workers y despliegues propios.'},
     {icono: TerminalSquare, titulo: 'Root + SSH', desc: 'Acceso completo al servidor para administrar procesos, paquetes y despliegues.'},
     {icono: Activity, titulo: 'Bootstrap inicial', desc: 'Entregamos hostname, MOTD, Docker y firewall básico ya configurados.'},
-    {icono: Server, titulo: 'Escalado claro', desc: 'Pasas de un tier a otro sin pagar un margen artificialmente inflado sobre Contabo.'},
+    {icono: Server, titulo: 'Escalado claro', desc: 'Pasas de un tier a otro cuando tus necesidades cambien, con pricing transparente y sin sorpresas.'},
 ];
 
 function formatMonthlyPrice(priceCents: number): string {
@@ -54,7 +54,7 @@ export const SolucionVpsIsland = (): JSX.Element => {
         <LayoutPagina className="hostingPaginaMain">
             <SEOHead
                 title="Servidores VPS"
-                description={`Servidores VPS con acceso root, bootstrap inicial y aprobación manual. Planes desde ${lowestPriceLabel}/mes con margen bruto objetivo del 20%.`}
+                description={`Servidores VPS dedicados con acceso root, bootstrap inicial y aprobación manual. Planes desde ${lowestPriceLabel}/mes.`}
                 path="/soluciones/vps"
             />
 
