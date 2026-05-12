@@ -27,6 +27,8 @@ const SolucionesIsland = lazy(() => import('./islands/SolucionesIsland').then(m 
 const SolucionPlaceholderIsland = lazy(() => import('./islands/SolucionPlaceholderIsland').then(m => ({default: m.SolucionPlaceholderIsland})));
 const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
 const SolucionVpsIsland = lazy(() => import('./islands/SolucionVpsIsland').then(m => ({default: m.SolucionVpsIsland})));
+/* [125A-4] Portal VPS: landing page para vps.nakomi.studio */
+const VpsPortalIsland = lazy(() => import('./islands/VpsPortalIsland').then(m => ({default: m.VpsPortalIsland})));
 
 const UsuarioPublicoIsland = lazy(() => import('./islands/UsuarioPublicoIsland').then(m => ({default: m.UsuarioPublicoIsland})));
 /* [095A-5] Página legal requerida por el footer */
@@ -93,9 +95,11 @@ function ProyectoDetallePage() {
 }
 
 function HomePage() {
-    /* [105A-34] Nakomi conserva su home principal; `vps.nakomi.studio`
-     * debe desplegarse desde el front propio de coolify-manager-rs, no
-     * reutilizando este bundle por hostname. */
+    /* [125A-4] Detección de hostname: vps.nakomi.studio → portal VPS, resto → home principal.
+     * Para pruebas locales usar la ruta /portal-vps. */
+    if (window.location.hostname === 'vps.nakomi.studio') {
+        return <Suspense fallback={null}><VpsPortalIsland /></Suspense>;
+    }
     return <BienvenidaIsland />;
 }
 
@@ -120,6 +124,8 @@ function App() {
                     {/* [064A-32] Hosting tiene página propia, el resto usa placeholder */}
                     <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />
                     <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionVpsIsland /></Suspense>} />
+                    {/* [125A-4] Ruta de desarrollo para previsualizar portal VPS localmente */}
+                    <Route path="/portal-vps" element={<Suspense fallback={null}><VpsPortalIsland /></Suspense>} />
                     <Route path="/soluciones/:slug" element={<Suspense fallback={null}><SolucionPlaceholderIsland /></Suspense>} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
                     {/* [095A-5] Política de privacidad accesible desde el footer */}
