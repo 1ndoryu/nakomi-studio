@@ -1,6 +1,7 @@
 /* sentinel-disable-file sqlx-query-sin-macro: main.rs usa queries dinámicas para
  * setup inicial (admin seeding, cleanup test data) con formatos generados en runtime. */
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use argon2::password_hash::rand_core::OsRng;
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
@@ -92,6 +93,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Servidor iniciando en {addr}");
     tracing::info!("Swagger UI disponible en http://{addr}/swagger-ui/");
 
+    spawn_http_watchdog(config.port);
+
     let app = handlers::create_app(pool, config);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     /* [074A-41] into_make_service_with_connect_info para que GovernorLayer
@@ -104,6 +107,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     Ok(())
+}
+
+fn spawn_http_watchdog(port: u16) {
+    if std::env::var("GLORY_HTTP_WATCHDOG")
+        .map(|value| value.eq_ignore_ascii_case("false") || value == "0")
+        .unwrap_or(false)
+    {
+        tracing::warn!("[watchdog] HTTP self-check desactivado por GLORY_HTTP_WATCHDOG");
+        return;
+    }
+
+    /* [135A-1] Si Hyper queda aceptando TCP pero sin responder HTTP, Docker
+     * puede dejar el contenedor unhealthy indefinidamente. Este watchdog fuerza
+     * un reinicio limpio tras fallos consecutivos de /healthz. */
+    tokio::spawn(async move {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(3))
+            .build()
+            .expect("watchdog HTTP client");
+        let url = format!("http://127.0.0.1:{port}/healthz");
+        let mut failures = 0_u8;
+
+        tokio::time::sleep(Duration::from_secs(60)).await;
+        loop {
+            let ok = match client.get(&url).send().await {
+                Ok(response) => response.status().is_success(),
+                Err(error) => {
+                    tracing::warn!("[watchdog] Health probe failed: {error}");
+                    false
+                }
+            };
+
+            if ok {
+                failures = 0;
+            } else {
+                failures = failures.saturating_add(1);
+                tracing::error!(failures, "[watchdog] HTTP health probe failed");
+                if failures >= 3 {
+                    tracing::error!("[watchdog] Reiniciando proceso por health HTTP congelado");
+                    std::process::exit(1);
+                }
+            }
+
+            tokio::time::sleep(Duration::from_secs(30)).await;
+        }
+    });
 }
 
 /* [074A-23] Limpia datos de seed legacy que ahora son manejados por fixtures.

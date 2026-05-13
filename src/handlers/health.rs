@@ -26,6 +26,12 @@ pub async fn health_check() -> Json<HealthResponse> {
     })
 }
 
+/* [135A-1] /healthz queda fuera del namespace /api para que Docker/Coolify
+ * no dependan del rate limit ni de contratos publicos de API al decidir liveness. */
+pub fn root_routes() -> Router<AppState> {
+    Router::new().route("/healthz", get(health_check))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new().route("/health", get(health_check))
 }

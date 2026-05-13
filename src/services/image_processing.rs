@@ -9,11 +9,16 @@ use image::DynamicImage;
 use image::ImageReader;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use tokio::fs;
+use tokio::sync::Semaphore;
 
 use crate::errors::AppError;
 
 const CACHE_DIR: &str = "uploads/.cache";
+const IMAGE_PROCESSING_CONCURRENCY: usize = 2;
+
+static IMAGE_PROCESSING_PERMITS: OnceLock<Semaphore> = OnceLock::new();
 
 /* Formatos de salida soportados */
 #[derive(Debug, Clone, Copy)]
@@ -213,8 +218,21 @@ pub async fn get_optimized_image(
     /* Detectar MIME del original por extensión */
     let original_mime = mime_from_extension(original_path.extension().and_then(|e| e.to_str()));
 
-    /* Procesar */
-    let (processed_bytes, content_type) = process_image(&original_bytes, original_mime, params)?;
+    /* [135A-1] Decode/resize/encode es CPU-bound. Mantenerlo fuera de los
+     * workers async evita que una pagina con muchos srcset deje el HTTP vivo
+     * pero sin responder a healthchecks. */
+    let permit = IMAGE_PROCESSING_PERMITS
+        .get_or_init(|| Semaphore::new(IMAGE_PROCESSING_CONCURRENCY))
+        .acquire()
+        .await
+        .map_err(|e| AppError::Internal(format!("Image processing semaphore closed: {e}")))?;
+    let params_for_processing = params.clone();
+    let (processed_bytes, content_type) = tokio::task::spawn_blocking(move || {
+        process_image(&original_bytes, original_mime, &params_for_processing)
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("Image processing task failed: {e}")))??;
+    drop(permit);
 
     /* Guardar en cache (best-effort, no bloquear si falla) */
     if let Some(parent) = cached.parent() {

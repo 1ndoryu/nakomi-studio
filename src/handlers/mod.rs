@@ -483,6 +483,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
     let (hsts, nosniff, frame_deny, referrer, permissions) = security_headers();
 
     Router::new()
+        .merge(health::root_routes())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .merge(seo::routes())
         /* [044A-38 Fase 5] WebSocket routes at root level (not under /api) */

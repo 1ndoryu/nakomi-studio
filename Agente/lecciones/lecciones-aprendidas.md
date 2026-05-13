@@ -78,6 +78,7 @@
 - En stacks Rust, el health válido debe probar `http://$(hostname -i):3000/...` o un probe host/proxy → IP del contenedor.
 - Si el probe host→IP falla tras un swap, la recuperación segura es recrear solo `app` con `--no-build --force-recreate --no-deps`, verificando antes que el compose mantiene `/data/uploads/{sitio}:/app/uploads`.
 - El default Docker-safe para `HOST` es `0.0.0.0`; `127.0.0.1` debe quedar solo como override local explícito.
+- En runtime slim, no asumir `awk`/utils extra en healthchecks. Si el proceso acepta TCP pero no responde HTTP, usar `/healthz` liviano, self-probe interno con reinicio y mover trabajo CPU-bound (`image` decode/resize/encode) a `spawn_blocking` con concurrencia limitada.
 
 ## Rust/Axum — Timeouts HTTP obligatorios para APIs externas
 - **NUNCA crear `reqwest::Client::new()` sin `.timeout()` en código de producción.** Una API externa que se cuelga bloquea la tarea async indefinidamente. Si la tarea retiene una conexión del pool de BD (SQLx), agota el pool y congela toda la aplicación (deadlock de pool). Síntomas: proceso vivo pero 503, tcp backlog lleno, threads dormidos.

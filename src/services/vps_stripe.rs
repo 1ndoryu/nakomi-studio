@@ -490,10 +490,10 @@ mod tests {
 
     #[test]
     fn humanize_tier_name_maps_known_slugs() {
-        assert_eq!(humanize_tier_name("vps1"), "Cloud VPS 1");
-        assert_eq!(humanize_tier_name("vps2"), "Cloud VPS 2");
-        assert_eq!(humanize_tier_name("vps3"), "Cloud VPS 3");
-        assert_eq!(humanize_tier_name("vps4"), "Cloud VPS 4");
-        assert_eq!(humanize_tier_name("otro"), "VPS dedicado");
+        assert_eq!(humanize_tier_name("vps1"), "Nakomi VPS 1");
+        assert_eq!(humanize_tier_name("vps2"), "Nakomi VPS 2");
+        assert_eq!(humanize_tier_name("vps3"), "Nakomi VPS 3");
+        assert_eq!(humanize_tier_name("vps4"), "Nakomi VPS 4");
+        assert_eq!(humanize_tier_name("otro"), "Nakomi VPS");
     }
 }
