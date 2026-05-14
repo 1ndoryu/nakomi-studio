@@ -113,3 +113,24 @@ descripcion = "Catálogo de productos con filtros avanzados y comparador."
 [[records.skills]]
 titulo = "SEO"
 descripcion = "Optimización para búsquedas de equipamiento deportivo."
+
+[[records]]
+title = "Wandori"
+slug = "wandori"
+client = "Privado"
+description = "Plataforma SaaS de gestión para restaurantes: ventas, gastos, reservas, clientes y análisis de ocupación en tiempo real."
+featured_image = "/assets/Proyectos portadas/WandoriPortada.jpg"
+status = "published"
+sort_order = 5
+categories = ["software", "web"]
+technologies = ["Rust", "TypeScript", "React", "PostgreSQL"]
+gallery = []
+links = []
+
+[[records.skills]]
+titulo = "SaaS Development"
+descripcion = "Backend Rust (Axum) con API REST y frontend React TypeScript."
+
+[[records.skills]]
+titulo = "Análisis y Reportes"
+descripcion = "Dashboard de ventas, ocupación por hora, turnos y canales de procedencia."
