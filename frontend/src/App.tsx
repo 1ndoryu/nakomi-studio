@@ -6,7 +6,7 @@
  * [154A-6] Code splitting con React.lazy para rutas pesadas (PanelIsland, AdminEditorProvider).
  * [155A-1] GoogleAuthCallback procesa el ?code= que Google devuelve tras el redirect. */
 
-import {useLayoutEffect, useEffect, lazy, Suspense} from 'react';
+import {useLayoutEffect, useEffect, useState, lazy, Suspense} from 'react';
 import {BrowserRouter, Routes, Route, useNavigate, useParams} from 'react-router-dom';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {registrarNavigate} from './navegacionSPA';
@@ -34,6 +34,7 @@ const PrivacidadIsland = lazy(() => import('./islands/PrivacidadIsland').then(m 
 
 /* [054A-5] Toast system */
 import {ToastContainer} from './components/ui/ToastContainer';
+import {useChatStore} from './stores/chatStore';
 
 /* [154A-6] Lazy load: PanelIsland importa @tiptap (~350KB), Stripe, y componentes admin pesados.
  * AdminEditorProvider importa editores inline que solo usan admins.
@@ -119,6 +120,35 @@ function HomePage() {
     return <BienvenidaIsland />;
 }
 
+function DeferredGlobalWidgets() {
+    const [ready, setReady] = useState(false);
+    const chatAbierto = useChatStore(s => s.abierto);
+
+    useEffect(() => {
+        const idleWindow = window as Window & {
+            requestIdleCallback?: (callback: () => void, options?: {timeout: number}) => number;
+            cancelIdleCallback?: (handle: number) => void;
+        };
+
+        if (idleWindow.requestIdleCallback) {
+            const idleId = idleWindow.requestIdleCallback(() => setReady(true), {timeout: 2500});
+            return () => idleWindow.cancelIdleCallback?.(idleId);
+        }
+
+        const timeoutId = window.setTimeout(() => setReady(true), 1500);
+        return () => window.clearTimeout(timeoutId);
+    }, []);
+
+    if (!ready && !chatAbierto) return null;
+
+    return (
+        <>
+            <Suspense fallback={null}><ChatWidget /></Suspense>
+            <Suspense fallback={null}><AdminEditorProvider /></Suspense>
+        </>
+    );
+}
+
 /* [074A-1] Home siempre muestra BienvenidaIsland, logueado o no.
  * Los usuarios logueados pueden navegar libremente por el sitio.
  * El panel se accede desde el header (botón "Panel"). */
@@ -150,10 +180,7 @@ function App() {
                     {/* [044A-28] Página 404 real en vez de redirigir silenciosamente al home */}
                     <Route path="*" element={<NotFoundIsland />} />
                 </Routes>
-                {/* [054A-3] Chat flotante para visitantes (se oculta en /panel) */}
-                <Suspense fallback={null}><ChatWidget /></Suspense>
-                {/* [084A-29] Editores admin accesibles desde páginas públicas */}
-                <Suspense fallback={null}><AdminEditorProvider /></Suspense>
+                <DeferredGlobalWidgets />
             </BrowserRouter>
         </QueryClientProvider>
     );

@@ -18,17 +18,16 @@ export const GaleriaHero: React.FC = () => {
 
     return (
         <div className="galeriaHeroContenedor">
-            {entradas.map(({url, proyecto}, i) => (
-                <OptimizedImage
-                    key={url}
-                    src={url}
-                    alt={proyecto.title}
-                    className={`galeriaHeroImagen ${i === indice ? 'galeriaHeroImagenActiva' : ''}`}
-                    fixedWidth={1600}
-                    quality={80}
-                    loading={i === 0 ? 'eager' : 'lazy'}
-                />
-            ))}
+            <OptimizedImage
+                key={`${actual.url}-${indice}`}
+                src={actual.url}
+                alt={actual.proyecto.title}
+                className="galeriaHeroImagen galeriaHeroImagenActiva"
+                sizes="(max-width: 768px) calc(100vw - 32px), min(100vw - 48px, 1200px)"
+                quality={72}
+                loading="eager"
+                fetchPriority="high"
+            />
 
             {entradas.length > 1 && (
                 <>
