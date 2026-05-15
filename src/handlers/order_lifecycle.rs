@@ -84,6 +84,7 @@ pub async fn switch_role(
             Ok(Json(crate::models::AuthResponse {
                 token,
                 user_id: original_admin.id,
+                email: original_admin.email.clone(),
                 role: original_admin.role,
                 effective_role: effective,
                 impersonating: false,
@@ -107,6 +108,7 @@ pub async fn switch_role(
             Ok(Json(crate::models::AuthResponse {
                 token,
                 user_id: target.id,
+                email: target.email.clone(),
                 role: target.role,
                 effective_role: target.role,
                 impersonating: true,

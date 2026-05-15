@@ -1,15 +1,16 @@
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::routing::{post, put};
+use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use validator::Validate;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    AuthResponse, LoginRequest, QuickRegisterRequest, RegisterRequest, SetPasswordRequest,
+    AuthResponse, GoogleAuthUrlResponse, GoogleLoginRequest, LoginRequest, QuickRegisterRequest,
+    RegisterRequest, SetPasswordRequest,
 };
-use crate::services::{AuditService, AuthService};
+use crate::services::{AuditService, AuthService, GoogleAuthService};
 use crate::AppState;
 
 /// Registrar nuevo usuario
@@ -86,6 +87,8 @@ pub fn routes() -> Router<AppState> {
         .route("/auth/quick-register", post(quick_register))
         .route("/auth/login", post(login))
         .route("/auth/set-password", put(set_password))
+        .route("/auth/google/url", get(google_auth_url))
+        .route("/auth/google/login", post(google_login))
 }
 
 /* [064A-3] Registro rapido: solo email, sin password.
@@ -135,4 +138,47 @@ pub async fn set_password(
 
     AuthService::set_password(&state.pool, auth.user_id, req).await?;
     Ok(StatusCode::OK)
+}
+
+/* [155A-1] Google OAuth 2.0 — flujo web.
+ * GET  /api/auth/google/url   → URL de redirección a Google.
+ * POST /api/auth/google/login → intercambia ?code= por JWT.
+ * El frontend redirige al usuario a `url`, Google vuelve con ?code= a la raíz del SPA,
+ * y el SPA detecta ese param y llama al POST. */
+
+#[utoipa::path(
+    get,
+    path = "/api/auth/google/url",
+    responses(
+        (status = 200, description = "URL de autenticación con Google", body = GoogleAuthUrlResponse),
+        (status = 500, description = "Google no configurado", body = crate::errors::ErrorResponse)
+    )
+)]
+pub async fn google_auth_url() -> Result<Json<GoogleAuthUrlResponse>, AppError> {
+    let url = GoogleAuthService::get_auth_url()?;
+    Ok(Json(GoogleAuthUrlResponse { url }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/auth/google/login",
+    request_body = GoogleLoginRequest,
+    responses(
+        (status = 200, description = "Login con Google exitoso", body = AuthResponse),
+        (status = 401, description = "Código inválido o expirado", body = crate::errors::ErrorResponse),
+        (status = 500, description = "Error interno", body = crate::errors::ErrorResponse)
+    )
+)]
+pub async fn google_login(
+    State(state): State<AppState>,
+    Json(req): Json<GoogleLoginRequest>,
+) -> Result<Json<AuthResponse>, AppError> {
+    let response = GoogleAuthService::login_or_create(
+        &state.pool,
+        &state.http_client,
+        &req.code,
+        &state.jwt_secret,
+    )
+    .await?;
+    Ok(Json(response))
 }

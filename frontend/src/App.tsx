@@ -3,9 +3,10 @@
  * Cada island se convierte en una ruta. Las páginas de detalle
  * reciben el slug del URL param y buscan datos en data/.
  * [044A-38 Fase 1] Redirige / → /panel si el usuario está logueado.
- * [154A-6] Code splitting con React.lazy para rutas pesadas (PanelIsland, AdminEditorProvider). */
+ * [154A-6] Code splitting con React.lazy para rutas pesadas (PanelIsland, AdminEditorProvider).
+ * [155A-1] GoogleAuthCallback procesa el ?code= que Google devuelve tras el redirect. */
 
-import {useLayoutEffect, lazy, Suspense} from 'react';
+import {useLayoutEffect, useEffect, lazy, Suspense} from 'react';
 import {BrowserRouter, Routes, Route, useNavigate, useParams} from 'react-router-dom';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {registrarNavigate} from './navegacionSPA';
@@ -47,6 +48,11 @@ const ChatWidget = lazy(() => import('./components/chat/ChatWidget').then(m => (
 /* Data para resolver slugs */
 import {PROYECTOS_DATA} from './data/showcase';
 
+/* [155A-1] Google OAuth — importaciones para el callback */
+import {useAuthStore} from './stores/authStore';
+import {apiGoogleLogin} from './api/auth';
+import {toast} from './stores/toastStore';
+
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -66,6 +72,37 @@ function NavigateRegistrar() {
          * caigan al fallback window.location.href y recarguen el documento completo. */
         registrarNavigate((to: string) => navigate(to));
     }, [navigate]);
+    return null;
+}
+
+/* [155A-1] Procesa el ?code= que Google devuelve tras el redirect OAuth.
+ * Debe montarse dentro de BrowserRouter para acceder a useNavigate.
+ * Elimina el code del URL antes del exchange para evitar reuso accidental. */
+function GoogleAuthCallback() {
+    const navigate = useNavigate();
+    const authLogin = useAuthStore(s => s.login);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        if (!code) return;
+
+        /* Limpiar ?code= de la URL inmediatamente (el code es de un solo uso) */
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+
+        apiGoogleLogin(code)
+            .then(resp => {
+                authLogin(resp.token, resp.user_id, resp.email, resp.role, resp.effective_role, resp.needs_password);
+                navigate('/panel');
+            })
+            .catch(() => {
+                toast.error('Error al iniciar sesión con Google. Inténtalo de nuevo.');
+            });
+    // Solo en el primer mount — no re-ejecutar si navigate/authLogin cambia referencia
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     return null;
 }
 
@@ -115,6 +152,7 @@ function App() {
             <BrowserRouter>
                 <ScrollToTop />
                 <NavigateRegistrar />
+                <GoogleAuthCallback />
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/servicios" element={<ServiciosIsland />} />

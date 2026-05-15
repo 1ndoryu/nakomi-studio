@@ -1,7 +1,8 @@
 /* [044A-13] Servicio API de autenticación.
  * Conecta con POST /api/auth/login y POST /api/auth/register del backend Rust.
  * [044A-38 Fase 1] Añadido role/effective_role en AuthResponse y switch-role endpoint.
- * [084A-1] Añadido impersonating: al switchear rol, el admin impersona un usuario real. */
+ * [084A-1] Añadido impersonating: al switchear rol, el admin impersona un usuario real.
+ * [155A-1] Añadido email en AuthResponse y endpoints Google OAuth. */
 import instance from './axios-instance';
 
 export type UserRole = 'admin' | 'employee' | 'client';
@@ -9,6 +10,7 @@ export type UserRole = 'admin' | 'employee' | 'client';
 export interface AuthResponse {
     token: string;
     user_id: string;
+    email: string;
     role: UserRole;
     effective_role: UserRole;
     impersonating: boolean;
@@ -49,6 +51,18 @@ export async function apiSwitchRole(targetRole: UserRole): Promise<AuthResponse>
  * Requiere autenticación (token JWT en header). */
 export async function apiSetPassword(password: string): Promise<void> {
     await instance.put('/api/auth/set-password', {password});
+}
+
+/* [155A-1] Google OAuth 2.0 — obtiene URL de redirección a Google */
+export async function apiGoogleLoginUrl(): Promise<{url: string}> {
+    const {data} = await instance.get<{url: string}>('/api/auth/google/url');
+    return data;
+}
+
+/* [155A-1] Google OAuth 2.0 — intercambia el `code` de Google por JWT */
+export async function apiGoogleLogin(code: string): Promise<AuthResponse> {
+    const {data} = await instance.post<AuthResponse>('/api/auth/google/login', {code});
+    return data;
 }
 
 /* [044A-46] Extrae mensaje de error legible desde respuestas del backend.

@@ -86,6 +86,7 @@ impl AuthService {
         Ok(AuthResponse {
             token,
             user_id: user.id,
+            email: user.email.clone(),
             role: user.role,
             effective_role: effective,
             impersonating: false,
@@ -133,6 +134,7 @@ impl AuthService {
         Ok(AuthResponse {
             token,
             user_id: user.id,
+            email: user.email.clone(),
             role: user.role,
             effective_role: effective,
             impersonating: false,
@@ -163,6 +165,7 @@ impl AuthService {
         Ok(AuthResponse {
             token,
             user_id: user.id,
+            email: user.email.clone(),
             role: user.role,
             effective_role: effective,
             impersonating: false,

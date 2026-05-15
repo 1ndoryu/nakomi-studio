@@ -119,15 +119,31 @@ pub struct LoginRequest {
 
 /// Response con token JWT después de autenticarse.
 /// [084A-1] `impersonating` indica si la sesión es impersonada por un admin.
+/// [155A-1] `email` incluido para que el callback de Google Auth pueda hidratarlo en el store.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AuthResponse {
     pub token: String,
     pub user_id: Uuid,
+    pub email: String,
     pub role: UserRole,
     pub effective_role: UserRole,
     pub impersonating: bool,
     /* [154A-5] true si el usuario necesita crear su propia contraseña (quick_register sin password) */
     pub needs_password: bool,
+}
+
+/* [155A-1] Modelos para Google OAuth */
+
+/// Request body para intercambiar code de Google por JWT
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct GoogleLoginRequest {
+    pub code: String,
+}
+
+/// Response con la URL de redirección a Google
+#[derive(Debug, Serialize, ToSchema)]
+pub struct GoogleAuthUrlResponse {
+    pub url: String,
 }
 
 /* [054A-1] Modelos para gestión de usuarios desde panel admin */

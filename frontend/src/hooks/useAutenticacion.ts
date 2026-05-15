@@ -3,13 +3,13 @@
  * Encapsula toda la logica de estado del modal de autenticacion.
  * Reduce useState en ModalAutenticacion de 9 a 0 (SRP).
  * [044A-13] Conectado con backend REST API (login/registro via JWT).
- * Pendiente: OAuth Google, recuperación de contraseña.
+ * [155A-1] handleGoogleLogin: redirige a Google OAuth; el callback lo procesa App.tsx.
+ * Pendiente: recuperación de contraseña.
  */
 import {useState, useCallback} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {apiLogin, apiRegister, extraerMensajeError} from '../api/auth';
+import {apiLogin, apiRegister, apiGoogleLoginUrl, extraerMensajeError} from '../api/auth';
 import {useAuthStore} from '../stores/authStore';
-import {toast} from '../stores/toastStore';
 
 export type VistaModal = 'login' | 'registro' | 'recuperar';
 
@@ -126,8 +126,19 @@ export const useAutenticacion = (onCerrar: () => void): RetornoUseAutenticacion 
         }, 500);
     }, []);
 
-    const handleGoogleLogin = useCallback(() => {
-        toast.info('Inicio de sesión con Google pendiente de configuración OAuth.');
+    /* [155A-1] Google OAuth — obtiene URL de redirección y redirige al usuario.
+     * Google devolverá al usuario a la raíz del SPA con ?code=... que se
+     * procesa en GoogleAuthCallback (App.tsx). */
+    const handleGoogleLogin = useCallback(async () => {
+        setError(null);
+        setCargando(true);
+        try {
+            const {url} = await apiGoogleLoginUrl();
+            window.location.href = url;
+        } catch (err) {
+            setError(extraerMensajeError(err));
+            setCargando(false);
+        }
     }, []);
 
     const resetRecuperacion = useCallback(() => {
