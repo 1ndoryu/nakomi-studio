@@ -105,6 +105,19 @@
     color: var(--text-primary);
 }
 
+.menuContextualAppsLogo,
+.menuContextualAppsTriggerLogo {
+    display: block;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.menuContextualAppsTriggerLogo {
+    width: 16px;
+    height: 16px;
+}
+
 .menuContextualAppsNombre {
     max-width: 100%;
     overflow-wrap: anywhere;

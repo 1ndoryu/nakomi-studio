@@ -31,7 +31,8 @@ export const SeccionHosting: React.FC = () => {
         showCreateModal,
         setShowCreateModal,
         selectedHostingId,
-        setSelectedHostingId,
+        handleSelectHosting,
+        handleVolverHosting,
         createMutation,
         statusMutation,
         updateMutation,
@@ -62,7 +63,7 @@ export const SeccionHosting: React.FC = () => {
             <HostingDetalle
                 hostingId={selectedHostingId}
                 isAdmin={isAdmin}
-                onVolver={() => setSelectedHostingId(null)}
+                onVolver={handleVolverHosting}
                 onPlanChange={(plan, domain) =>
                     updateMutation.mutate({id: selectedHostingId, req: {plan, domain}})
                 }
@@ -145,7 +146,7 @@ export const SeccionHosting: React.FC = () => {
                             key={sub.id}
                             sub={sub}
                             isAdmin={isAdmin}
-                            onSelect={() => setSelectedHostingId(sub.id)}
+                            onSelect={() => handleSelectHosting(sub.id)}
                             onStatusChange={(status) =>
                                 statusMutation.mutate({id: sub.id, status})
                             }

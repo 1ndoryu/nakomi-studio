@@ -66,12 +66,20 @@ export function useSeccionHosting() {
         if (currentSection && currentSection !== 'hosting') {
             return;
         }
-        /* [095A-2] Eliminada la guardia "!selectedHostingId && incomingHostingId" porque
-         * impedía que el botón Volver limpiara el hostingId de la URL:
-         * onVolver → setSelectedHostingId(null) → efecto se ejecuta → guardia devolvía
-         * early → URL conservaba el hostingId → segundo efecto lo releía → volvía al detalle. */
+        /* [155A-10] Mantener URL y estado sincronizados solo despues de que los handlers
+         * limpian/escriben la URL primero; evita el parpadeo detalle -> lista -> detalle. */
         syncPanelHostingInUrl(selectedHostingId);
     }, [selectedHostingId, location.search]);
+
+    const handleSelectHosting = useCallback((hostingId: string) => {
+        syncPanelHostingInUrl(hostingId);
+        setSelectedHostingId(hostingId);
+    }, []);
+
+    const handleVolverHosting = useCallback(() => {
+        syncPanelHostingInUrl(null);
+        setSelectedHostingId(null);
+    }, []);
 
     const hostingKey = ['hosting-subscriptions', effectiveRole] as const;
     const vpsKey = ['vps-subscriptions', effectiveRole] as const;
@@ -114,7 +122,8 @@ export function useSeccionHosting() {
         showCreateModal,
         setShowCreateModal,
         selectedHostingId,
-        setSelectedHostingId,
+        handleSelectHosting,
+        handleVolverHosting,
         ...mutations,
         ...vpsMutations,
     };

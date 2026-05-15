@@ -10,17 +10,9 @@ export const ENLACES_HEADER: EnlaceNavegacion[] = [
     {label: 'Servicios', href: '/servicios/'},
     {label: 'Proyectos', href: '/proyectos/'},
     {label: 'Nosotros', href: '/nosotros/'},
-    {
-        label: 'Soluciones',
-        href: '/soluciones/',
-        hasDropdown: true,
-        subEnlaces: [
-            {label: 'WordPress Hosting', href: '/soluciones/hosting/'},
-            {label: 'Servidores VPS', href: '/soluciones/vps/'}
-            /* [204A-1] VPS reactivado en navegación principal tras abrir la landing pública.
-             * Agentes de IA sigue oculto hasta tener una página comercial equivalente. */
-        ]
-    }
+    /* [155A-6] /soluciones deja de ser página navegable; quedan solo subpáginas directas. */
+    {label: 'WordPress Hosting', href: '/soluciones/hosting/'},
+    {label: 'Servidores VPS', href: '/soluciones/vps/'}
 ];
 
 /* Enlaces del Footer */

@@ -8,9 +8,11 @@ import './SeccionHero.css';
 import {useTranslation} from 'react-i18next';
 import {Button} from '../ui/Button';
 import {GaleriaHero} from './GaleriaHero';
+import {useChatStore} from '../../stores/chatStore';
 
 export const SeccionHero = (): JSX.Element => {
     const {t} = useTranslation();
+    const abrirChat = useChatStore(s => s.abrir);
 
     return (
         <section className="seccionHero">
@@ -23,7 +25,7 @@ export const SeccionHero = (): JSX.Element => {
 
                 <div className="heroDescripcion">
                     <p>{t('hero.description')}</p>
-                    <Button variante="primario" tamano="mediano" className="heroBoton">
+                    <Button variante="primario" tamano="mediano" className="heroBoton" onClick={() => abrirChat('hero:start-project')}>
                         {t('hero.cta')}
                     </Button>
                 </div>

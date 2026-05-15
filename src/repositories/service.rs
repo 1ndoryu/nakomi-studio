@@ -202,9 +202,9 @@ impl ServiceRepository {
         /* [155A-3] Runtime query: la BD local tiene checksums de migraciones obsoletos
          * y no permite regenerar cache SQLx; estos modelos ya implementan FromRow. */
         sqlx::query_as::<_, ServiceRecord>(
-            r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
+              "SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
-             FROM services WHERE is_active = true ORDER BY sort_order"#,
+               FROM services WHERE is_active = true ORDER BY sort_order",
         )
         .fetch_all(pool)
         .await
@@ -215,9 +215,9 @@ impl ServiceRepository {
         slug: &str,
     ) -> Result<Option<ServiceRecord>, sqlx::Error> {
         sqlx::query_as::<_, ServiceRecord>(
-            r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
+            "SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
-             FROM services WHERE slug = $1 AND is_active = true"#,
+             FROM services WHERE slug = $1 AND is_active = true",
         )
         .bind(slug)
         .fetch_optional(pool)
@@ -309,9 +309,9 @@ impl ServiceRepository {
     /// Lista TODOS los servicios (incluyendo inactivos/draft) para el panel admin
     pub async fn list_all_services(pool: &PgPool) -> Result<Vec<ServiceRecord>, sqlx::Error> {
         sqlx::query_as::<_, ServiceRecord>(
-            r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
+            "SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
-             FROM services ORDER BY sort_order, created_at DESC"#,
+             FROM services ORDER BY sort_order, created_at DESC",
         )
         .fetch_all(pool)
         .await
@@ -323,9 +323,9 @@ impl ServiceRepository {
         id: Uuid,
     ) -> Result<Option<ServiceRecord>, sqlx::Error> {
         sqlx::query_as::<_, ServiceRecord>(
-            r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
+            "SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
-             FROM services WHERE id = $1"#,
+             FROM services WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -338,11 +338,11 @@ impl ServiceRepository {
         params: &crate::models::CreateServiceRequest,
     ) -> Result<ServiceRecord, sqlx::Error> {
         sqlx::query_as::<_, ServiceRecord>(
-            r#"INSERT INTO services (title, slug, description, categories, base_price_cents, currency,
+            "INSERT INTO services (title, slug, description, categories, base_price_cents, currency,
              image_url, gallery, skills, content, meta_title, meta_description, status, sort_order)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              RETURNING id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
-             image_url, gallery, skills, content, meta_title, meta_description, status, updated_at"#,
+             image_url, gallery, skills, content, meta_title, meta_description, status, updated_at",
         )
         .bind(&params.title)
         .bind(&params.slug)

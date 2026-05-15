@@ -13,6 +13,7 @@ import {ModalCompra} from '../components/servicios/ModalCompra';
 import {useChatStore} from '../stores/chatStore';
 import {Button} from '../components/ui/Button';
 import {Tarjeta} from '../components/ui/Tarjeta';
+import {SolucionHeroImagen} from '../components/soluciones/SolucionHeroImagen';
 import type {PlanServicio} from '../data/planes/tipos';
 import {incluida} from '../data/planes/tipos';
 import {useHostingCatalog} from '../hooks/useHostingCatalog';
@@ -100,6 +101,12 @@ export const SolucionHostingIsland = (): JSX.Element => {
                     </div>
                 </div>
             </section>
+
+            <SolucionHeroImagen
+                src="/assets/random/85a51ba9a4233272662e744b48f97d67.jpg"
+                alt="Panel de hosting WordPress con infraestructura administrada."
+                storageKey="nakomi-hosting-hero-image"
+            />
 
             {/* Features */}
             <section className="hostingFeatures">

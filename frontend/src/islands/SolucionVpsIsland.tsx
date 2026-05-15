@@ -8,6 +8,7 @@ import {ModalCompra} from '../components/servicios/ModalCompra';
 import {useChatStore} from '../stores/chatStore';
 import {Button} from '../components/ui/Button';
 import {Tarjeta} from '../components/ui/Tarjeta';
+import {SolucionHeroImagen} from '../components/soluciones/SolucionHeroImagen';
 import {incluida, type PlanServicio} from '../data/planes/tipos';
 import {useVpsCatalog} from '../hooks/useVpsCatalog';
 import '../components/servicios/SeccionPlanesServicio.css';
@@ -77,6 +78,12 @@ export const SolucionVpsIsland = (): JSX.Element => {
                     </div>
                 </div>
             </section>
+
+            <SolucionHeroImagen
+                src="/assets/Proyectos portadas/Kamples portada.jpg"
+                alt="Infraestructura VPS dedicada para despliegues de aplicaciones."
+                storageKey="nakomi-vps-hero-image"
+            />
 
             <section className="hostingFeatures">
                 <h2 className="hostingFeaturesTitle">Qué incluye la entrega</h2>

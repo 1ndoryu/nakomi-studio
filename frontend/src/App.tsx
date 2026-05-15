@@ -24,8 +24,6 @@ import {NotFoundIsland} from './islands/NotFoundIsland';
 const ServicioIndividualIsland = lazy(() => import('./islands/ServicioIndividualIsland').then(m => ({default: m.ServicioIndividualIsland})));
 const ProyectoIndividualIsland = lazy(() => import('./islands/ProyectoIndividualIsland').then(m => ({default: m.ProyectoIndividualIsland})));
 const NosotrosIsland = lazy(() => import('./islands/NosotrosIsland').then(m => ({default: m.NosotrosIsland})));
-const SolucionesIsland = lazy(() => import('./islands/SolucionesIsland').then(m => ({default: m.SolucionesIsland})));
-const SolucionPlaceholderIsland = lazy(() => import('./islands/SolucionPlaceholderIsland').then(m => ({default: m.SolucionPlaceholderIsland})));
 const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
 const SolucionVpsIsland = lazy(() => import('./islands/SolucionVpsIsland').then(m => ({default: m.SolucionVpsIsland})));
 /* [125A-4] Portal VPS: landing page para vps.nakomi.studio */
@@ -160,13 +158,11 @@ function App() {
                     <Route path="/proyectos" element={<ProyectosIsland />} />
                     <Route path="/proyectos/:slug" element={<Suspense fallback={null}><ProyectoDetallePage /></Suspense>} />
                     <Route path="/nosotros" element={<Suspense fallback={null}><NosotrosIsland /></Suspense>} />
-                    <Route path="/soluciones" element={<Suspense fallback={null}><SolucionesIsland /></Suspense>} />
-                    {/* [064A-32] Hosting tiene página propia, el resto usa placeholder */}
+                    {/* [155A-6] /soluciones ya no es accesible; solo quedan las subpáginas reales. */}
                     <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />
                     <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionVpsIsland /></Suspense>} />
                     {/* [125A-4] Ruta de desarrollo para previsualizar portal VPS localmente */}
                     <Route path="/portal-vps" element={<Suspense fallback={null}><VpsPortalIsland /></Suspense>} />
-                    <Route path="/soluciones/:slug" element={<Suspense fallback={null}><SolucionPlaceholderIsland /></Suspense>} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
                     {/* [095A-5] Política de privacidad accesible desde el footer */}
                     <Route path="/politica-privacidad" element={<Suspense fallback={null}><PrivacidadIsland /></Suspense>} />

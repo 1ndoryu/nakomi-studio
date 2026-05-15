@@ -67,6 +67,7 @@ export const useServicios = ({initialCategory = 'todos', initialSearch = ''}: Us
     }, [categoriaActiva, busqueda, servicios]);
 
     return {
+        servicios,
         categoriaActiva,
         categoriasDisponibles,
         setCategoriaActiva,

@@ -1,0 +1,34 @@
+.solucionHeroImagenMarco {
+    width: 100vw;
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+}
+
+.solucionHeroImagenContenedor {
+    margin-top: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.solucionHeroImagen {
+    object-position: center;
+}
+
+.solucionHeroImagenAcciones {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    z-index: 12;
+}
+
+.solucionHeroImagenInput {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .solucionHeroImagenContenedor {
+        margin-top: var(--spacing-lg);
+        margin-bottom: var(--spacing-xl);
+    }
+}

@@ -145,37 +145,36 @@ impl GoogleAuthService {
                 .ok_or(AppError::NotFound("Usuario no encontrado".into()))?
         } else {
             /* 2. Buscar usuario por email o crear uno nuevo */
-            let user = match UserRepository::find_by_email(pool, &google_user.email)
+            let user = if let Some(u) = UserRepository::find_by_email(pool, &google_user.email)
                 .await
                 .map_err(|e| AppError::Internal(e.to_string()))?
             {
-                Some(u) => u,
-                None => {
-                    /* Crear usuario con contraseña ficticia (Google es el medio de auth) */
-                    let placeholder_hash =
-                        hash_password(&format!("google-{}-{}", google_user.id, Uuid::new_v4()))?;
-                    let u = UserRepository::create(
-                        pool,
-                        &google_user.email,
-                        &placeholder_hash,
-                        false,
+                u
+            } else {
+                /* Crear usuario con contraseña ficticia (Google es el medio de auth) */
+                let placeholder_hash =
+                    hash_password(&format!("google-{}-{}", google_user.id, Uuid::new_v4()))?;
+                let u = UserRepository::create(
+                    pool,
+                    &google_user.email,
+                    &placeholder_hash,
+                    false,
+                )
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+                /* Establecer display_name desde Google si está disponible */
+                if let Some(name) = &google_user.name {
+                    sqlx::query(
+                        "UPDATE users SET display_name = $2 WHERE id = $1 AND display_name IS NULL",
                     )
+                    .bind(u.id)
+                    .bind(name)
+                    .execute(pool)
                     .await
                     .map_err(|e| AppError::Internal(e.to_string()))?;
-
-                    /* Establecer display_name desde Google si está disponible */
-                    if let Some(name) = &google_user.name {
-                        sqlx::query(
-                            "UPDATE users SET display_name = $2 WHERE id = $1 AND display_name IS NULL",
-                        )
-                        .bind(u.id)
-                        .bind(name)
-                        .execute(pool)
-                        .await
-                        .map_err(|e| AppError::Internal(e.to_string()))?;
-                    }
-                    u
                 }
+                u
             };
 
             /* 3. Vincular google_id al usuario (ON CONFLICT DO NOTHING por si hay race) */
