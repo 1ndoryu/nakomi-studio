@@ -199,8 +199,9 @@ impl ServiceRepository {
     ============================================================ */
 
     pub async fn list_services(pool: &PgPool) -> Result<Vec<ServiceRecord>, sqlx::Error> {
-        sqlx::query_as!(
-            ServiceRecord,
+        /* [155A-3] Runtime query: la BD local tiene checksums de migraciones obsoletos
+         * y no permite regenerar cache SQLx; estos modelos ya implementan FromRow. */
+        sqlx::query_as::<_, ServiceRecord>(
             r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
              FROM services WHERE is_active = true ORDER BY sort_order"#,
@@ -213,13 +214,12 @@ impl ServiceRepository {
         pool: &PgPool,
         slug: &str,
     ) -> Result<Option<ServiceRecord>, sqlx::Error> {
-        sqlx::query_as!(
-            ServiceRecord,
+        sqlx::query_as::<_, ServiceRecord>(
             r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
              FROM services WHERE slug = $1 AND is_active = true"#,
-            slug,
         )
+        .bind(slug)
         .fetch_optional(pool)
         .await
     }
@@ -308,8 +308,7 @@ impl ServiceRepository {
 
     /// Lista TODOS los servicios (incluyendo inactivos/draft) para el panel admin
     pub async fn list_all_services(pool: &PgPool) -> Result<Vec<ServiceRecord>, sqlx::Error> {
-        sqlx::query_as!(
-            ServiceRecord,
+        sqlx::query_as::<_, ServiceRecord>(
             r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
              FROM services ORDER BY sort_order, created_at DESC"#,
@@ -323,13 +322,12 @@ impl ServiceRepository {
         pool: &PgPool,
         id: Uuid,
     ) -> Result<Option<ServiceRecord>, sqlx::Error> {
-        sqlx::query_as!(
-            ServiceRecord,
+        sqlx::query_as::<_, ServiceRecord>(
             r#"SELECT id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at
              FROM services WHERE id = $1"#,
-            id,
         )
+        .bind(id)
         .fetch_optional(pool)
         .await
     }
@@ -339,29 +337,30 @@ impl ServiceRepository {
         pool: &PgPool,
         params: &crate::models::CreateServiceRequest,
     ) -> Result<ServiceRecord, sqlx::Error> {
-        sqlx::query_as!(
-            ServiceRecord,
+        sqlx::query_as::<_, ServiceRecord>(
             r#"INSERT INTO services (title, slug, description, categories, base_price_cents, currency,
              image_url, gallery, skills, content, meta_title, meta_description, status, sort_order)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              RETURNING id, slug, title, description, categories, base_price_cents, currency, is_active, sort_order, created_at,
              image_url, gallery, skills, content, meta_title, meta_description, status, updated_at"#,
-            params.title,
-            params.slug,
-            params.description,
+        )
+        .bind(&params.title)
+        .bind(&params.slug)
+        .bind(params.description.as_deref())
+        .bind(
             serde_json::to_value(params.categories.clone().unwrap_or_default())
                 .unwrap_or_else(|_| serde_json::json!([])),
-            params.base_price_cents.unwrap_or(0),
-            params.currency.as_deref().unwrap_or("USD"),
-            params.image_url,
-            params.gallery.clone().unwrap_or_else(|| serde_json::json!([])),
-            params.skills.clone().unwrap_or_else(|| serde_json::json!([])),
-            params.content,
-            params.meta_title,
-            params.meta_description,
-            params.status.as_deref().unwrap_or("draft"),
-            params.sort_order.unwrap_or(0),
         )
+        .bind(params.base_price_cents.unwrap_or(0))
+        .bind(params.currency.as_deref().unwrap_or("USD"))
+        .bind(params.image_url.as_deref())
+        .bind(params.gallery.clone().unwrap_or_else(|| serde_json::json!([])))
+        .bind(params.skills.clone().unwrap_or_else(|| serde_json::json!([])))
+        .bind(params.content.as_deref())
+        .bind(params.meta_title.as_deref())
+        .bind(params.meta_description.as_deref())
+        .bind(params.status.as_deref().unwrap_or("draft"))
+        .bind(params.sort_order.unwrap_or(0))
         .fetch_one(pool)
         .await
     }
