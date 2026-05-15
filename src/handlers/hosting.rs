@@ -28,7 +28,7 @@ use crate::models::{
 };
 use crate::repositories::{CreateHostingParams, HostingRepository, ServerInfo, UserRepository};
 use crate::services::coolify::CoolifyServiceSummary;
-use crate::services::{CoolifyConfig, CoolifyService};
+use crate::services::{is_checkout_bypass_email, CoolifyConfig, CoolifyService};
 use crate::AppState;
 
 /// Deriva la URL base pública desde Origin header, env var, o fallback dev.
@@ -67,10 +67,62 @@ struct HostingPlanMarketing {
     recommended: bool,
 }
 
+fn normal_hosting_base_plan(plan: &str) -> (&str, bool) {
+    plan.strip_prefix("normal-")
+        .map_or((plan, false), |base| (base, true))
+}
+
 fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
-    match plan {
+    let (base_plan, is_normal) = normal_hosting_base_plan(plan);
+    if is_normal {
+        return match base_plan {
+            "pro" => HostingPlanMarketing {
+                label: "Hosting Profesional",
+                description: "Hosting web normal para sitios con más tráfico, archivos estáticos o frontend personalizado.",
+                features: &[
+                    "Nginx administrado",
+                    "20 GB almacenamiento SSD",
+                    "SSL gratuito",
+                    "Backups diarios",
+                    "3 dominios incluidos",
+                    "SFTP seguro",
+                    "Recursos aislados",
+                ],
+                recommended: true,
+            },
+            "ecommerce" => HostingPlanMarketing {
+                label: "Hosting E-commerce",
+                description: "Hosting web normal de mayor capacidad para catálogos, assets pesados y operaciones con más demanda.",
+                features: &[
+                    "Nginx administrado",
+                    "50 GB almacenamiento SSD",
+                    "SSL gratuito",
+                    "Backups diarios + snapshots",
+                    "5 dominios incluidos",
+                    "SFTP seguro",
+                    "Recursos ampliados",
+                ],
+                recommended: false,
+            },
+            _ => HostingPlanMarketing {
+                label: "Hosting Básico",
+                description: "Hosting web normal con Nginx, SSL, SFTP y recursos aislados para sitios sin WordPress.",
+                features: &[
+                    "Nginx administrado",
+                    "5 GB almacenamiento SSD",
+                    "SSL gratuito",
+                    "Backups semanales",
+                    "1 dominio incluido",
+                    "SFTP seguro",
+                ],
+                recommended: false,
+            },
+        };
+    }
+
+    match base_plan {
         "pro" => HostingPlanMarketing {
-            label: "Profesional",
+            label: "WordPress Profesional",
             description: "WordPress para negocios que necesitan más recursos, backups diarios y staging listo.",
             features: &[
                 "WordPress pre-instalado",
@@ -84,7 +136,7 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
             recommended: true,
         },
         "ecommerce" => HostingPlanMarketing {
-            label: "E-commerce",
+            label: "WordPress E-commerce",
             description: "WooCommerce optimizado para tiendas con más tráfico, caché agresiva y margen operativo dedicado.",
             features: &[
                 "WordPress + WooCommerce",
@@ -98,7 +150,7 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
             recommended: false,
         },
         _ => HostingPlanMarketing {
-            label: "Básico",
+            label: "WordPress Básico",
             description: "WordPress administrado para sitios livianos, landings y contenido institucional con costo controlado.",
             features: &[
                 "WordPress pre-instalado",
@@ -351,13 +403,25 @@ pub async fn subscribe_self(
         );
     }
 
+    let base_url = resolve_public_base_url(&headers);
+    if let Some(response) = complete_test_hosting_checkout(
+        &state.pool,
+        &base_url,
+        sub.clone(),
+        &client_email,
+        "self-service",
+    )
+    .await?
+    {
+        return Ok((StatusCode::CREATED, Json(response)));
+    }
+
     /* Crear Stripe Checkout Session inmediatamente */
     let stripe_key = state
         .stripe_secret_key
         .as_deref()
         .ok_or_else(|| AppError::ServiceUnavailable("Stripe no configurado".into()))?;
 
-    let base_url = resolve_public_base_url(&headers);
     let success_url =
         format!("{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}");
     let cancel_url = format!("{base_url}/panel?hosting=cancelled");
@@ -383,6 +447,42 @@ pub async fn subscribe_self(
             checkout_url,
         }),
     ))
+}
+
+async fn complete_test_hosting_checkout(
+    pool: &sqlx::PgPool,
+    base_url: &str,
+    sub: crate::models::HostingSubscription,
+    client_email: &str,
+    source: &str,
+) -> Result<Option<SelfSubscribeResponse>, AppError> {
+    if !is_checkout_bypass_email(client_email) {
+        return Ok(None);
+    }
+
+    HostingRepository::update_status(pool, sub.id, "active").await?;
+    if let Err(e) = HostingRepository::add_event(
+        pool,
+        sub.id,
+        "test_checkout_bypassed",
+        Some(serde_json::json!({"email": client_email, "source": source})),
+    )
+    .await
+    {
+        tracing::warn!("Error registrando bypass test hosting para {}: {e}", sub.id);
+    }
+    let subscription = HostingRepository::find_by_id(pool, sub.id)
+        .await?
+        .unwrap_or(sub);
+    let checkout_url = format!(
+        "{base_url}/panel?hosting=test-bypass&subscription_id={}",
+        subscription.id
+    );
+
+    Ok(Some(SelfSubscribeResponse {
+        subscription: subscription.into(),
+        checkout_url,
+    }))
 }
 
 /// Obtener suscripción por ID
@@ -756,13 +856,30 @@ pub async fn create_checkout(
         ));
     }
 
+    /* URLs de retorno (frontend SPA) */
+    let base_url = resolve_public_base_url(&headers);
+    if is_checkout_bypass_email(&sub.client_email) {
+        HostingRepository::update_status(&state.pool, sub.id, "active").await?;
+        if let Err(e) = HostingRepository::add_event(
+            &state.pool,
+            sub.id,
+            "test_checkout_bypassed",
+            Some(serde_json::json!({"email": sub.client_email, "source": "existing-subscription-checkout"})),
+        )
+        .await
+        {
+            tracing::warn!("Error registrando bypass test hosting existente para {}: {e}", sub.id);
+        }
+        return Ok(Json(serde_json::json!({
+            "checkout_url": format!("{base_url}/panel?hosting=test-bypass&subscription_id={}", sub.id)
+        })));
+    }
+
     let stripe_key = state
         .stripe_secret_key
         .as_deref()
         .ok_or_else(|| AppError::ServiceUnavailable("Stripe no configurado".into()))?;
 
-    /* URLs de retorno (frontend SPA) */
-    let base_url = resolve_public_base_url(&headers);
     let success_url =
         format!("{base_url}/panel?hosting=success&session_id={{CHECKOUT_SESSION_ID}}");
     let cancel_url = format!("{base_url}/panel?hosting=cancelled");
@@ -2061,12 +2178,39 @@ mod tests {
         };
 
         let public_plan = public_plan_from_config(config);
-        assert_eq!(public_plan.label, "Profesional");
+        assert_eq!(public_plan.label, "WordPress Profesional");
         assert!(public_plan.recommended);
         assert!(public_plan
             .features
             .iter()
             .any(|feature| feature.contains("Staging")));
+    }
+
+    #[test]
+    fn public_plan_from_config_distinguishes_normal_hosting() {
+        let config = HostingPlanConfig {
+            id: Uuid::new_v4(),
+            plan_name: "normal-pro".to_string(),
+            monthly_price_cents: 537,
+            wp_cpu_millicores: 1000,
+            wp_memory_mb: 512,
+            db_cpu_millicores: 500,
+            db_memory_mb: 512,
+            ssh_cpu_millicores: 500,
+            ssh_memory_mb: 256,
+            storage_limit_mb: 20_480,
+            bandwidth_limit_gb: 200,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let public_plan = public_plan_from_config(config);
+        assert_eq!(public_plan.label, "Hosting Profesional");
+        assert!(public_plan.recommended);
+        assert!(public_plan
+            .features
+            .iter()
+            .any(|feature| feature.contains("Nginx")));
     }
 
     /* --- calculate_uptime --- */

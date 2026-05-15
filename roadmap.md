@@ -32,6 +32,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
-- 155A-11 — Crear en producción un usuario de pruebas `test@test.com` tipo cliente con la contraseña indicada por el usuario en conversación (no versionarla en roadmap) y con una particularidad: no debe pagar nada al comprar servicios, hosting o VPS, para poder probar con exactitud qué ocurre en los tres flujos de compra.
-- 155A-12 — Preparar el agente para atender solicitudes relacionadas con VPS: debe poder ofrecer el servicio, cobrarlo y responder consultas relacionadas a VPS; revisar lo que ya existe para hosting y extenderlo a VPS.
-- 155A-13 — Separar “hosting WordPress” y “hosting normal”: crear y ejecutar un plan técnico que cubra Coolify/provisioning, catálogo, precios y panel; el cliente debe poder elegir entre hosting normal y hosting WordPress; el hosting normal debe ser 30% más caro que la referencia actual; el panel ya no debe referirse a todo como hosting WordPress sino administrar ambos tipos de hosting.
+- 155A-11 — Pendiente operativo: completar el usuario de pruebas `test@test.com` en producción con la contraseña indicada por el usuario sin pasarla por chat. Ya están implementados y sincronizados el bypass controlado `GLORY_TEST_CHECKOUT_EMAILS` y los flujos sin Stripe para servicios, hosting y VPS; falta ingresar la contraseña en la terminal segura, confirmar rol cliente y probar compras reales con esa cuenta tras deploy.

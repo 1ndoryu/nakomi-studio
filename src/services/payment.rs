@@ -73,6 +73,58 @@ impl PaymentService {
             client_secret: stripe_resp.client_secret,
             amount_cents,
             currency: order.currency,
+            bypassed: false,
+        })
+    }
+
+    /* [155A-11] Flujo de prueba sin Stripe para cuentas allowlisted.
+     * Crea el pago en BD con ID sintetico, lo marca held y ejecuta la misma maquina
+     * de estados que el webhook exitoso para que servicios/proyectos avancen igual. */
+    pub async fn initiate_bypassed_payment(
+        pool: &PgPool,
+        order_id: Uuid,
+        client_id: Option<Uuid>,
+        phase_number: Option<i32>,
+    ) -> Result<PaymentIntentResponse, AppError> {
+        let order = OrderRepository::find_order_by_id(pool, order_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Orden no encontrada".into()))?;
+
+        if let Some(cid) = client_id {
+            if order.client_id != cid {
+                return Err(AppError::Forbidden("No tienes acceso a esta orden".into()));
+            }
+        }
+
+        let (amount_cents, phase_id, description) =
+            Self::resolve_payment_amount(pool, &order, phase_number).await?;
+        let synthetic_intent_id = format!("test_bypass_{}", Uuid::new_v4());
+        let bypass_description = format!("{description} (checkout test sin cobro)");
+
+        let payment = PaymentRepository::create_payment(
+            pool,
+            CreatePaymentParams {
+                order_id,
+                phase_id,
+                amount_cents,
+                currency: &order.currency,
+                payment_mode: order.payment_mode,
+                stripe_payment_intent_id: &synthetic_intent_id,
+                description: Some(&bypass_description),
+            },
+        )
+        .await
+        .map_err(|e| AppError::Internal(format!("Error guardando pago de prueba: {e}")))?;
+
+        let held_payment = PaymentRepository::update_status_held(pool, payment.id).await?;
+        Self::handle_payment_success(pool, &held_payment).await?;
+
+        Ok(PaymentIntentResponse {
+            payment_id: held_payment.id,
+            client_secret: String::new(),
+            amount_cents,
+            currency: order.currency,
+            bypassed: true,
         })
     }
 

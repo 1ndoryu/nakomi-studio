@@ -11,6 +11,7 @@ export interface PaymentIntentResponse {
     client_secret: string;
     amount_cents: number;
     currency: string;
+    bypassed?: boolean;
 }
 
 export interface PaymentResponse {

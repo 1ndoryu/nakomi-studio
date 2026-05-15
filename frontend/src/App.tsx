@@ -25,9 +25,8 @@ const ServicioIndividualIsland = lazy(() => import('./islands/ServicioIndividual
 const ProyectoIndividualIsland = lazy(() => import('./islands/ProyectoIndividualIsland').then(m => ({default: m.ProyectoIndividualIsland})));
 const NosotrosIsland = lazy(() => import('./islands/NosotrosIsland').then(m => ({default: m.NosotrosIsland})));
 const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
+const SolucionHostingWordPressIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingWordPressIsland})));
 const SolucionVpsIsland = lazy(() => import('./islands/SolucionVpsIsland').then(m => ({default: m.SolucionVpsIsland})));
-/* [125A-4] Portal VPS: landing page para vps.nakomi.studio */
-const VpsPortalIsland = lazy(() => import('./islands/VpsPortalIsland').then(m => ({default: m.VpsPortalIsland})));
 
 const UsuarioPublicoIsland = lazy(() => import('./islands/UsuarioPublicoIsland').then(m => ({default: m.UsuarioPublicoIsland})));
 /* [095A-5] Página legal requerida por el footer */
@@ -42,9 +41,6 @@ import {ToastContainer} from './components/ui/ToastContainer';
 const PanelIsland = lazy(() => import('./islands/PanelIsland').then(m => ({default: m.PanelIsland})));
 const AdminEditorProvider = lazy(() => import('./components/AdminEditorProvider').then(m => ({default: m.AdminEditorProvider})));
 const ChatWidget = lazy(() => import('./components/chat/ChatWidget').then(m => ({default: m.ChatWidget})));
-
-/* Data para resolver slugs */
-import {PROYECTOS_DATA} from './data/showcase';
 
 /* [155A-1] Google OAuth — importaciones para el callback */
 import {useAuthStore} from './stores/authStore';
@@ -113,30 +109,13 @@ function ServicioDetallePage() {
 /* Wrapper: resuelve slug de proyecto a props */
 function ProyectoDetallePage() {
     const {slug} = useParams<{slug: string}>();
-    const proyecto = PROYECTOS_DATA.find(p => {
-        const pSlug = p.link?.split('/').filter(Boolean).pop() || '';
-        return pSlug === slug || String(p.id) === slug;
-    });
-    return (
-        <ProyectoIndividualIsland
-            titulo={proyecto?.titulo}
-            descripcion={proyecto?.descripcion}
-            cliente={proyecto?.cliente}
-            categorias={Array.isArray(proyecto?.categorias) ? proyecto.categorias.join(', ') : proyecto?.categorias}
-            imagen={proyecto?.imagen}
-            slug={slug}
-        />
-    );
+    return <ProyectoIndividualIsland slug={slug} />;
 }
 
 function HomePage() {
-    /* [125A-4] Detección de hostname: vps.nakomi.studio o 127.0.0.1 → portal VPS.
-     * localhost (sin puerto) sigue usando BienvenidaIsland (nakomi.studio dev).
-     * vite arranca en 127.0.0.1:5173 → muestra portal VPS directamente. */
-    const { hostname } = window.location;
-    if (hostname === 'vps.nakomi.studio' || hostname === '127.0.0.1') {
-        return <Suspense fallback={null}><VpsPortalIsland /></Suspense>;
-    }
+    /* [155A-15] Nakomi siempre renderiza su home principal.
+     * El portal vps.nakomi.studio pertenece a un despliegue separado de coolify-manager-rs;
+     * mezclarlo por hostname hacía que abrir 127.0.0.1 o el dominio VPS cambiara de producto. */
     return <BienvenidaIsland />;
 }
 
@@ -159,10 +138,9 @@ function App() {
                     <Route path="/proyectos/:slug" element={<Suspense fallback={null}><ProyectoDetallePage /></Suspense>} />
                     <Route path="/nosotros" element={<Suspense fallback={null}><NosotrosIsland /></Suspense>} />
                     {/* [155A-6] /soluciones ya no es accesible; solo quedan las subpáginas reales. */}
+                    <Route path="/soluciones/hosting-wordpress" element={<Suspense fallback={null}><SolucionHostingWordPressIsland /></Suspense>} />
                     <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />
                     <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionVpsIsland /></Suspense>} />
-                    {/* [125A-4] Ruta de desarrollo para previsualizar portal VPS localmente */}
-                    <Route path="/portal-vps" element={<Suspense fallback={null}><VpsPortalIsland /></Suspense>} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
                     {/* [095A-5] Política de privacidad accesible desde el footer */}
                     <Route path="/politica-privacidad" element={<Suspense fallback={null}><PrivacidadIsland /></Suspense>} />

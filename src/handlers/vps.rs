@@ -1,3 +1,6 @@
+/* sentinel-disable-file limite-lineas: controlador REST de VPS con catálogo, checkout,
+ * aprobación y provisioning en el mismo módulo legacy; extraer por subdominio queda como mejora.
+ */
 /* [164A-17] Handlers de reventa VPS.
  * Separados de hosting compartido para no mezclar inventario bruto de Contabo con ventas reales.
  * El flujo es: pending_payment -> pending_approval -> provisioning -> active / rejected. */
@@ -17,7 +20,10 @@ use crate::models::{
     VpsPlanConfig, VpsSubscriptionResponse,
 };
 use crate::repositories::{CreateVpsSubscriptionParams, UserRepository, VpsRepository};
-use crate::services::{CreateInstanceParams, EmailService, VpsCheckoutParams, VpsStripeService};
+use crate::services::{
+    is_checkout_bypass_email, CreateInstanceParams, EmailService, VpsCheckoutParams,
+    VpsStripeService,
+};
 use crate::AppState;
 
 fn resolve_public_base_url(headers: &HeaderMap) -> String {
@@ -288,12 +294,41 @@ pub async fn subscribe_self(
     )
     .await;
 
+    let base_url = resolve_public_base_url(&headers);
+    if is_checkout_bypass_email(&client_email) {
+        VpsRepository::update_status(&state.pool, subscription.id, "pending_approval").await?;
+        let _ = VpsRepository::add_event(
+            &state.pool,
+            subscription.id,
+            "test_checkout_bypassed",
+            Some(serde_json::json!({
+                "tier": req.tier,
+                "source": "self-service",
+                "by": auth.user_id.to_string(),
+            })),
+        )
+        .await;
+        let updated = VpsRepository::find_by_id(&state.pool, subscription.id)
+            .await?
+            .unwrap_or(subscription);
+        let checkout_url = format!(
+            "{base_url}/panel?vps=test-bypass&subscription_id={}",
+            updated.id
+        );
+        return Ok((
+            StatusCode::CREATED,
+            Json(SelfSubscribeVpsResponse {
+                subscription: updated.into(),
+                checkout_url,
+            }),
+        ));
+    }
+
     let stripe_key = state
         .stripe_secret_key
         .as_deref()
         .ok_or_else(|| AppError::ServiceUnavailable("Stripe no configurado".into()))?;
 
-    let base_url = resolve_public_base_url(&headers);
     let success_url = format!("{base_url}/panel?vps=success&session_id={{CHECKOUT_SESSION_ID}}");
     let cancel_url = format!("{base_url}/panel?vps=cancelled");
 

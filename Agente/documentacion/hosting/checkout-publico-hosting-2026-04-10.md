@@ -16,10 +16,25 @@ La página pública de hosting abría el mismo `ModalCompra` usado por servicios
 - Se agregó un campo opcional de dominio para enviar contexto útil al alta de la suscripción.
 - Antes de redirigir a Stripe Checkout, el flujo fija `panel-tab = hosting` para que el retorno del usuario aterrice en la sección correcta del panel.
 
+## Actualización 2026-05-15 — hosting normal vs WordPress
+
+- El catálogo público distingue dos familias: WordPress conserva los slugs `basico`, `pro`, `ecommerce`; hosting normal usa `normal-basico`, `normal-pro`, `normal-ecommerce`.
+- Los planes normales se siembran por migración con precio `CEIL(precio_wordpress * 1.30)`.
+- `/soluciones/hosting-wordpress` muestra la oferta WordPress y `/soluciones/hosting` muestra hosting normal. `/soluciones` queda fuera de las rutas SPA válidas para no crear una página intermedia.
+- El provisioning de hosting normal usa Nginx + SFTP sin base de datos, WP-CLI ni panel WordPress. El provisioning WordPress mantiene la composición WordPress/MariaDB/SFTP existente.
+- El panel usa copy genérico de “hosting” y solo muestra accesos WordPress cuando el plan no empieza por `normal-`.
+- `GLORY_TEST_CHECKOUT_EMAILS` permite cuentas de prueba con checkout bypass: hosting queda `active` sin Stripe real y redirige al panel.
+
 ## Archivos involucrados
 
 - `frontend/src/hooks/useModalCompra.ts`
 - `frontend/src/components/servicios/ModalCompra.tsx`
+- `frontend/src/islands/SolucionHostingIsland.tsx`
+- `frontend/src/hooks/useHostingCatalog.ts`
+- `src/handlers/hosting.rs`
+- `src/services/coolify.rs`
+- `src/services/test_checkout.rs`
+- `migrations/20260515010000_hosting_normal_plans.up.sql`
 
 ## Validación
 

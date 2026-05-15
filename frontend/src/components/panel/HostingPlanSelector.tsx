@@ -1,6 +1,5 @@
-/* [094A-3] Selector de planes de WordPress hosting para self-service.
- * [114A-5] Especialización WordPress.
- * Muestra 3 cards (Básico, Pro, E-commerce) con features y precio.
+/* [094A-3][155A-13] Selector de planes de hosting para self-service.
+ * Muestra planes WordPress y planes normales con features y precio.
  * Al seleccionar, opcionalmente pide dominio, y redirige a Stripe Checkout. */
 
 import React, {useState} from 'react';
@@ -39,7 +38,7 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
         const plan = plans.find(p => p.id === selectedPlan);
         return (
             <div className="planSelectorDomain">
-                <h3>Dominio para tu WordPress hosting {plan?.label}</h3>
+                <h3>Dominio para tu hosting {plan?.label}</h3>
                 <p className="planSelectorDomainHint">
                     Si ya tienes un dominio, ingrésalo abajo. Si no, puedes dejarlo vacío y configurarlo después.
                 </p>
@@ -72,7 +71,7 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
 
     return (
         <div className="planSelectorGrid">
-            <h3 className="planSelectorTitulo">Elige tu plan de WordPress hosting</h3>
+            <h3 className="planSelectorTitulo">Elige un plan de hosting</h3>
             <div className="planSelectorCards">
                 {plans.map(plan => (
                     <div
@@ -86,12 +85,14 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
                         {plan.recommended && (
                             <span className="planCardBadge">Recomendado</span>
                         )}
-                        <h4 className="planCardName">{plan.label}</h4>
-                        <div className="planCardPrice">
-                            <span className="planCardPriceAmount">
-                                ${(plan.priceCents / 100).toFixed(0)}
-                            </span>
-                            <span className="planCardPricePeriod">/mes</span>
+                        <div className="planCardInfo">
+                            <h4 className="planCardName">{plan.label}</h4>
+                            <div className="planCardPrice">
+                                <span className="planCardPriceAmount">
+                                    ${(plan.priceCents / 100).toFixed(0)}
+                                </span>
+                                <span className="planCardPricePeriod">/mes</span>
+                            </div>
                         </div>
                         <ul className="planCardFeatures">
                             {plan.features.map(f => (
@@ -101,13 +102,15 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
                                 </li>
                             ))}
                         </ul>
-                        <Button
-                            type="button"
-                            variante={plan.id === 'pro' ? 'primario' : 'secundario'}
-                            className="planCardBtn"
-                        >
-                            Seleccionar
-                        </Button>
+                        <div className="planCardAction">
+                            <Button
+                                type="button"
+                                variante={plan.id === 'pro' ? 'primario' : 'secundario'}
+                                className="planCardBtn botonPequeno"
+                            >
+                                Seleccionar
+                            </Button>
+                        </div>
                     </div>
                 ))}
             </div>

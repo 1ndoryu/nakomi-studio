@@ -101,7 +101,7 @@ export const SeccionHosting: React.FC = () => {
                         onClick={() => setShowCreateModal(true)}
                         type="button"
                     >
-                        <Plus size={16} /> Contratar WordPress Hosting
+                        <Plus size={16} /> Contratar hosting
                     </Button>
                 )}
             </div>
@@ -132,7 +132,7 @@ export const SeccionHosting: React.FC = () => {
             {subscriptions.length === 0 ? (
                 <div className="hostingVacio">
                     <Server size={48} strokeWidth={1.2} />
-                    <p>Sin suscripciones de WordPress hosting</p>
+                    <p>Sin suscripciones de hosting</p>
                 </div>
             ) : listaActual.length === 0 ? (
                 <div className="hostingVacio">

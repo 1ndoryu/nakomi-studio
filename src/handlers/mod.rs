@@ -573,6 +573,7 @@ fn spa_shell_routes() -> Router<AppState> {
         .route("/proyectos", get(spa_index))
         .route("/proyectos/:slug", get(spa_index))
         .route("/nosotros", get(spa_index))
+        .route("/soluciones/hosting-wordpress", get(spa_index))
         .route("/soluciones/hosting", get(spa_index))
         .route("/soluciones/vps", get(spa_index))
         .route("/portal-vps", get(spa_index))

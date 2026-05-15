@@ -12,7 +12,6 @@ import {SeccionHeader} from '../ui/SeccionHeader';
 import OptimizedImage from '../ui/OptimizedImage';
 import {apiListPublicProjects, type AdminProject} from '../../api/admin-projects';
 import type {Proyecto, EnlaceProyecto} from '../../types/contenido';
-import {PROYECTOS_DATA} from '../../data/showcase';
 import './SeccionProyectosRelacionados.css';
 
 /* [074A-12] Convierte AdminProject (API) → Proyecto (frontend) */
@@ -60,9 +59,9 @@ export const SeccionProyectosRelacionados: React.FC<SeccionProyectosRelacionados
     });
 
     const relacionados = useMemo(() => {
-        const todos: Proyecto[] = apiData && apiData.length > 0
-            ? apiData.map(convertirProyecto)
-            : PROYECTOS_DATA;
+        /* [155A-16] Relacionados solo usan CMS público.
+         * Caer a PROYECTOS_DATA durante el fetch hacía aparecer proyectos viejos por un instante. */
+        const todos: Proyecto[] = apiData ? apiData.map(convertirProyecto) : [];
 
         const categoriasArray = categorias.split(',').map(c => c.trim().toLowerCase());
 

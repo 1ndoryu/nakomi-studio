@@ -154,7 +154,8 @@ export function TabDominio({domainInfo, subscriptionId}: {
 }
 
 /* ── Tab: Acceso SSH/SFTP ────────────────── */
-/* [094A-5] Para hostings Docker (Coolify): muestra panel WP admin + credenciales SFTP reales.
+/* [094A-5][155A-13] Para hostings Docker (Coolify): muestra panel WP admin solo en WordPress
+ * y URL del sitio + credenciales SFTP en hosting normal.
  * [104A-18] Las credenciales SFTP (user/password/port) se generan al provisionar y se muestran aquí.
  * La contraseña se puede mostrar/ocultar con toggle para seguridad básica en pantallas compartidas. */
 export function TabAcceso({sshInfo, sub}: {
@@ -163,7 +164,12 @@ export function TabAcceso({sshInfo, sub}: {
 }) {
     const [showPassword, setShowPassword] = useState(false);
     const isDockerHosting = sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip;
-    const wpAdminUrl = isDockerHosting
+    const isNormalHosting = sub.plan.startsWith('normal-');
+    const servicePrefix = isNormalHosting ? 'site' : 'wordpress';
+    const siteUrl = isDockerHosting
+        ? `http://${servicePrefix}-${sub.server_uuid}.${sub.server_ip}.sslip.io`
+        : null;
+    const wpAdminUrl = isDockerHosting && !isNormalHosting
         ? `http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io/wp-admin`
         : null;
     const hasSftp = isDockerHosting && sub.sftp_user && sub.sftp_password && sub.sftp_port;
@@ -171,23 +177,27 @@ export function TabAcceso({sshInfo, sub}: {
     if (isDockerHosting) {
         return (
             <div className="hostingDetalleSection">
-                <h3 className="hostingDetalleSectionTitle">Panel de administración</h3>
+                <h3 className="hostingDetalleSectionTitle">{isNormalHosting ? 'Sitio publicado' : 'Panel de administración'}</h3>
                 <div className="hostingDetalleInfoGrid">
-                    <InfoRow label="WordPress admin" value={wpAdminUrl!} copyable link={wpAdminUrl!} />
+                    {isNormalHosting ? (
+                        <InfoRow label="URL del sitio" value={siteUrl!} copyable link={siteUrl!} />
+                    ) : (
+                        <InfoRow label="WordPress admin" value={wpAdminUrl!} copyable link={wpAdminUrl!} />
+                    )}
                 </div>
                 <div className="hostingDetalleAcciones">
-                    <a href={wpAdminUrl!} target="_blank" rel="noopener noreferrer" className="hostingDetalleAccionLink">
+                    <a href={(isNormalHosting ? siteUrl : wpAdminUrl)!} target="_blank" rel="noopener noreferrer" className="hostingDetalleAccionLink">
                         <Button type="button" variante="primario" tamano="pequeno">
-                            <ExternalLink size={14} /> Abrir panel WordPress
+                            <ExternalLink size={14} /> {isNormalHosting ? 'Abrir sitio' : 'Abrir panel WordPress'}
                         </Button>
                     </a>
                 </div>
 
-                <h3 className="hostingDetalleSectionTitle">Acceso SSH / SFTP</h3>
+                <h3 className="hostingDetalleSectionTitle">Acceso SFTP</h3>
                 {hasSftp ? (
                     <>
                         <p className="hostingDetalleSectionDesc">
-                            Usa estas credenciales con cualquier cliente SSH/SFTP (FileZilla, Cyberduck, terminal) para acceder a los archivos de tu sitio o ejecutar comandos.
+                            Usa estas credenciales con cualquier cliente SFTP (FileZilla, Cyberduck, terminal) para acceder a los archivos de tu sitio.
                         </p>
                         <div className="hostingDetalleInfoGrid">
                             <InfoRow label="Host" value={sub.server_ip!} copyable />

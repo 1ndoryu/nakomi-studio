@@ -33,7 +33,6 @@ const NAV_KEYS: Record<string, string> = {
     'Proyectos': 'nav.projects',
     'Nosotros': 'nav.about',
     'Soluciones': 'nav.solutions',
-    'WordPress Hosting': 'nav.hosting',
 };
 
 export const Header: React.FC = () => {
@@ -81,14 +80,23 @@ export const Header: React.FC = () => {
 
                 {/* [064A-61] Navegación desktop: solo visible en desktop */}
                 <nav className="navegacionPrincipal" aria-label={t('accessibility.main_nav')}>
-                    {ENLACES_HEADER.map(link => (
+                    {ENLACES_HEADER.map(link => {
+                        const label = t(NAV_KEYS[link.label] || link.label);
+                        return (
                         <div key={link.label} className="enlaceNavegacionWrapper" ref={link.hasDropdown ? dropdownRef : undefined} onMouseEnter={() => (link.hasDropdown ? setDropdownAbierto(link.label) : null)} onMouseLeave={() => setDropdownAbierto(null)}>
-                            <GloryLink to={link.href} className="enlaceNavegacion" aria-expanded={link.hasDropdown ? dropdownAbierto === link.label : undefined} aria-haspopup={link.hasDropdown ? 'true' : undefined} onKeyDown={link.hasDropdown ? e => handleKeyDownDropdown(e, link.label) : undefined}>
-                                {t(NAV_KEYS[link.label] || link.label)}
-                                {link.hasDropdown && <ChevronDown size={14} className="iconoDesplegable" aria-hidden="true" />}
-                            </GloryLink>
+                            {link.href ? (
+                                <GloryLink to={link.href} className="enlaceNavegacion" aria-expanded={link.hasDropdown ? dropdownAbierto === link.label : undefined} aria-haspopup={link.hasDropdown ? 'true' : undefined} onKeyDown={link.hasDropdown ? e => handleKeyDownDropdown(e, link.label) : undefined}>
+                                    {label}
+                                    {link.hasDropdown && <ChevronDown size={14} className="iconoDesplegable" aria-hidden="true" />}
+                                </GloryLink>
+                            ) : (
+                                <Button variante="texto" tamano="mediano" type="button" className="enlaceNavegacion enlaceNavegacionBoton" aria-expanded={link.hasDropdown ? dropdownAbierto === link.label : undefined} aria-haspopup={link.hasDropdown ? 'true' : undefined} onKeyDown={link.hasDropdown ? e => handleKeyDownDropdown(e, link.label) : undefined} onFocus={() => setDropdownAbierto(link.label)}>
+                                    {label}
+                                    <ChevronDown size={14} className="iconoDesplegable" aria-hidden="true" />
+                                </Button>
+                            )}
                             {link.hasDropdown && link.subEnlaces && dropdownAbierto === link.label && (
-                                <div className="subMenuDesplegable" role="menu" aria-label={`${t('accessibility.main_nav')}: ${t(NAV_KEYS[link.label] || link.label)}`}>
+                                <div className="subMenuDesplegable" role="menu" aria-label={`${t('accessibility.main_nav')}: ${label}`}>
                                     {link.subEnlaces.map(sub => (
                                         <GloryLink key={sub.label} to={sub.href} className="subMenuEnlace" role="menuitem" tabIndex={0} onKeyDown={handleKeyDownSubmenu}>
                                             {t(NAV_KEYS[sub.label] || sub.label)}
@@ -97,7 +105,7 @@ export const Header: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                    ))}
+                    );})}
                 </nav>
 
                 {/* [064A-61] accionCabecera: oculto en mobile via CSS */}
@@ -157,7 +165,7 @@ export const Header: React.FC = () => {
                                         <ChevronRight size={16} aria-hidden="true" />
                                     </div>
                                 ) : (
-                                    <GloryLink key={link.label} to={link.href} className="menuMovilEnlace" onClick={cerrarMenuMovil}>
+                                    <GloryLink key={link.label} to={link.href!} className="menuMovilEnlace" onClick={cerrarMenuMovil}>
                                         {t(NAV_KEYS[link.label] || link.label)}
                                     </GloryLink>
                                 )

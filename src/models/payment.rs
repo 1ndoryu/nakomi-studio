@@ -52,6 +52,7 @@ pub struct PaymentIntentResponse {
     pub client_secret: String,
     pub amount_cents: i32,
     pub currency: String,
+    pub bypassed: bool,
 }
 
 /* Response para historial de pagos */

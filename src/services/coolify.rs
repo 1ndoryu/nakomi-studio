@@ -3,7 +3,7 @@
  * disperse llamadas HTTP y parsing de la API en varios handlers.
  */
 /* [104A-42] Servicio de provisioning Coolify para hosting administrado.
- * [154A-11] Cambiado de WordPress+MariaDB a Nginx puro vía docker_compose_raw.
+ * [155A-13] Soporta hosting WordPress legacy y hosting normal con Nginx + SFTP.
  * Lee configuración desde variables de entorno COOLIFY_*.
  * Idempotencia: el service_name incluye el UUID del hosting para evitar duplicados.
  * Diseño no-fatal: los errores de provisioning se loguean pero no bloquean el pago. */
@@ -136,7 +136,7 @@ pub struct CoolifyProvisionResult {
     pub domain: String,
     /// IP del servidor VPS (vendrá del `CoolifyConfig`)
     pub server_ip: String,
-    /// Usuario SFTP generado para acceso a archivos `WordPress`
+    /// Usuario SFTP generado para acceso a archivos del sitio
     pub sftp_user: String,
     /// Contraseña SFTP generada aleatoriamente
     pub sftp_password: String,
@@ -262,12 +262,30 @@ fn service_matches_target(service: &CoolifyServiceSummary, config: &CoolifyConfi
     matches_server && matches_project
 }
 
-/* [164A-6] Genera el compose YAML para un hosting WordPress + MariaDB + SSH/SFTP.
+fn is_normal_hosting_plan(plan_name: &str) -> bool {
+    plan_name.starts_with("normal-")
+}
+
+/* [164A-6][155A-13] Genera el compose YAML para hosting administrado.
+ * Los slugs `normal-*` usan Nginx + SFTP; los slugs legacy usan WordPress + MariaDB + SSH/SFTP.
  * [164A-16] Hardening: imágenes pineadas, network isolation, cap_drop ALL,
  * no-new-privileges, pids_limit, WP file editing deshabilitado.
  * [174A-17] Plan ecommerce incluye sidecar de backup automático (3 daily + 2 weekly).
  * [114A-3] Límites de CPU/RAM dinámicos desde HostingPlanConfig (admin-configurable). */
 fn build_hosting_compose(
+    sftp_user: &str,
+    sftp_password: &str,
+    sftp_port: i32,
+    config: &HostingPlanConfig,
+) -> String {
+    if is_normal_hosting_plan(&config.plan_name) {
+        return build_normal_hosting_compose(sftp_user, sftp_password, sftp_port, config);
+    }
+
+    build_wordpress_hosting_compose(sftp_user, sftp_password, sftp_port, config)
+}
+
+fn build_wordpress_hosting_compose(
     sftp_user: &str,
     sftp_password: &str,
     sftp_port: i32,
@@ -295,6 +313,24 @@ fn build_hosting_compose(
     format!("services:\n{wp_db}{ssh}{backup}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n{backup_vol}")
 }
 
+fn build_normal_hosting_compose(
+    sftp_user: &str,
+    sftp_password: &str,
+    sftp_port: i32,
+    config: &HostingPlanConfig,
+) -> String {
+    let site_cpu = millicores_to_cpu(config.wp_cpu_millicores);
+    let site_mem = format!("{}M", config.wp_memory_mb);
+    let ssh_cpu = millicores_to_cpu(config.ssh_cpu_millicores);
+    let ssh_mem = format!("{}M", config.ssh_memory_mb);
+    let site = build_compose_static_site(&site_cpu, &site_mem);
+    let ssh = build_compose_static_ssh(sftp_user, sftp_password, sftp_port, &ssh_cpu, &ssh_mem);
+
+    format!(
+        "services:\n{site}{ssh}\nnetworks:\n  frontend_net:\n  ssh_net:\nvolumes:\n  site-data:\n"
+    )
+}
+
 /* [114A-3] Convierte millicores a string de CPU para Docker Compose (ej: 1000 → "1.00") */
 #[allow(clippy::cast_precision_loss)]
 fn millicores_to_cpu(millicores: i32) -> String {
@@ -304,6 +340,44 @@ fn millicores_to_cpu(millicores: i32) -> String {
 /* [114A-3] Límites dinámicos por plan. WP reserva 25% de su límite, DB reserva 25% también. */
 fn build_compose_wp_db(wp_cpu: &str, wp_mem: &str, db_cpu: &str, db_mem: &str) -> String {
     format!("  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n")
+}
+
+/* [155A-13] Servicio web para hosting normal: Nginx sirve el volumen editable por SFTP. */
+fn build_compose_static_site(site_cpu: &str, site_mem: &str) -> String {
+    format!(
+        r#"  site:
+        image: 'nginx:1.27-alpine'
+        environment:
+            - SERVICE_FQDN_SITE=
+        command:
+            - sh
+            - -c
+            - 'mkdir -p /usr/share/nginx/html; test -f /usr/share/nginx/html/index.html || printf "%s\n" "<h1>Hosting activo</h1>" > /usr/share/nginx/html/index.html; chown -R nginx:nginx /usr/share/nginx/html; nginx -g "daemon off;"'
+        volumes:
+            - 'site-data:/usr/share/nginx/html'
+        restart: unless-stopped
+        networks:
+            - frontend_net
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - SETUID
+            - SETGID
+            - DAC_OVERRIDE
+            - NET_BIND_SERVICE
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 160
+        deploy:
+            resources:
+                limits:
+                    cpus: '{site_cpu}'
+                    memory: {site_mem}
+                reservations:
+                    memory: 64M
+"#
+    )
 }
 
 /* [114A-3] SSH container con wp-cli vía dockerfile_inline + hardening sshd.
@@ -372,6 +446,57 @@ fn build_compose_ssh(
           memory: {ssh_mem}\n\
         reservations:\n\
           memory: 64M\n")
+}
+
+/* [155A-13] SSH/SFTP para hosting normal sin PHP/WP-CLI ni red backend. */
+fn build_compose_static_ssh(
+    sftp_user: &str,
+    sftp_password: &str,
+    sftp_port: i32,
+    ssh_cpu: &str,
+    ssh_mem: &str,
+) -> String {
+    format!("\
+    ssh:\n\
+        build:\n\
+            dockerfile_inline: |\n\
+                FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190\n\
+                RUN apk add --no-cache bash coreutils\n\
+                RUN mkdir -p /custom-cont-init.d && \\\n+            echo '#!/bin/bash' > /custom-cont-init.d/10-harden-ssh && \\\n+            echo 'grep -q \"AllowTcpForwarding no\" /config/sshd/sshd_config 2>/dev/null || {{' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '  echo \"AllowTcpForwarding no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '  echo \"X11Forwarding no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '  echo \"PermitTunnel no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '  echo \"GatewayPorts no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '}}' >> /custom-cont-init.d/10-harden-ssh && \\\n+            chmod +x /custom-cont-init.d/10-harden-ssh\n\
+        environment:\n\
+            - PUID=101\n\
+            - PGID=101\n\
+            - TZ=UTC\n\
+            - USER_NAME={sftp_user}\n\
+            - USER_PASSWORD={sftp_password}\n\
+            - PASSWORD_ACCESS=true\n\
+            - SUDO_ACCESS=false\n\
+            - LOG_STDOUT=true\n\
+        volumes:\n\
+            - 'site-data:/home/{sftp_user}/html'\n\
+        ports:\n\
+            - '{sftp_port}:2222'\n\
+        restart: unless-stopped\n\
+        networks:\n\
+            - ssh_net\n\
+        cap_drop:\n\
+            - ALL\n\
+        cap_add:\n\
+            - CHOWN\n\
+            - SETUID\n\
+            - SETGID\n\
+            - DAC_OVERRIDE\n\
+            - NET_BIND_SERVICE\n\
+        security_opt:\n\
+            - no-new-privileges:true\n\
+        pids_limit: 100\n\
+        deploy:\n\
+            resources:\n\
+                limits:\n\
+                    cpus: '{ssh_cpu}'\n\
+                    memory: {ssh_mem}\n\
+                reservations:\n\
+                    memory: 64M\n")
 }
 
 /* [174A-17] Sidecar de backup automático para plan ecommerce.
@@ -1031,6 +1156,22 @@ mod tests {
     }
 
     #[test]
+    fn normal_hosting_compose_uses_nginx_without_database() {
+        let config = test_plan_config("normal-basico");
+        let compose = build_hosting_compose("testuser", "testpass", 10001, &config);
+
+        assert!(
+            compose.contains("site:"),
+            "Debe contener servicio web normal"
+        );
+        assert!(compose.contains("nginx:1.27-alpine"), "Debe usar Nginx");
+        assert!(compose.contains("SERVICE_FQDN_SITE"));
+        assert!(!compose.contains("wordpress:"), "No debe crear WordPress");
+        assert!(!compose.contains("mariadb:"), "No debe crear base de datos");
+        assert!(compose.contains("site-data:/home/testuser/html"));
+    }
+
+    #[test]
     fn compose_contains_required_networks() {
         let config = test_plan_config("basico");
         let compose = build_hosting_compose("testuser", "testpass", 10001, &config);
@@ -1262,6 +1403,16 @@ mod tests {
             !compose.contains("frontend_net"),
             "SSH no debe estar en frontend_net"
         );
+    }
+
+    #[test]
+    fn normal_compose_ssh_avoids_backend_network() {
+        let config = test_plan_config("normal-pro");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        assert!(compose.contains("ssh_net"));
+        assert!(!compose.contains("backend_net"));
+        assert!(!compose.contains("WP-CLI"));
     }
 
     /* --- CoolifyConfig::from_env --- */

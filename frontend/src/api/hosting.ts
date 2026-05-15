@@ -200,6 +200,9 @@ export const HOSTING_PLAN_LABELS: Record<string, string> = {
     basico: 'Básico',
     pro: 'Profesional',
     ecommerce: 'E-commerce',
+    'normal-basico': 'Hosting Básico',
+    'normal-pro': 'Hosting Profesional',
+    'normal-ecommerce': 'Hosting E-commerce',
     custom: 'Custom',
 };
 
@@ -276,6 +279,31 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         storageMb: 51200,
         description: 'WooCommerce optimizado para tiendas online con más tráfico y caché avanzada.',
         features: ['WordPress + WooCommerce', '50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'WP-CLI vía SSH', 'Backups diarios', 'Caché avanzada'],
+    },
+    {
+        id: 'normal-basico',
+        label: 'Hosting Básico',
+        priceCents: 323,
+        storageMb: 5120,
+        description: 'Hosting web normal con Nginx, SSL, SFTP y recursos aislados para sitios sin WordPress.',
+        features: ['Nginx administrado', '5 GB almacenamiento', 'SSL gratuito', '1 dominio', 'SFTP seguro'],
+    },
+    {
+        id: 'normal-pro',
+        label: 'Hosting Profesional',
+        priceCents: 537,
+        storageMb: 20480,
+        description: 'Hosting web normal para sitios con más tráfico, archivos estáticos o frontend personalizado.',
+        features: ['Nginx administrado', '20 GB almacenamiento', 'SSL gratuito', '3 dominios', 'SFTP seguro', 'Backups diarios'],
+        recommended: true,
+    },
+    {
+        id: 'normal-ecommerce',
+        label: 'Hosting E-commerce',
+        priceCents: 805,
+        storageMb: 51200,
+        description: 'Hosting web normal de mayor capacidad para catálogos, assets pesados y operaciones con más demanda.',
+        features: ['Nginx administrado', '50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'SFTP seguro', 'Backups diarios', 'Recursos ampliados'],
     },
 ];
 

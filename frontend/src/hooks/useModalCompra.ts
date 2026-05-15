@@ -136,6 +136,10 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
                     phase_number: paymentMode === 'phased' ? 1 : undefined,
                 });
                 localStorage.setItem(PANEL_TAB_KEY, 'proyectos');
+                if (paymentIntent.bypassed || !paymentIntent.client_secret) {
+                    navegarAlPanelPendiente();
+                    return;
+                }
                 setCheckoutPendiente({
                     clientSecret: paymentIntent.client_secret,
                     orderId: orden.id,

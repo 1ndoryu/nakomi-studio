@@ -10,7 +10,7 @@ export interface SubEnlace {
 
 export interface EnlaceNavegacion {
     label: string;
-    href: string;
+    href?: string;
     hasDropdown?: boolean;
     subEnlaces?: SubEnlace[];
 }

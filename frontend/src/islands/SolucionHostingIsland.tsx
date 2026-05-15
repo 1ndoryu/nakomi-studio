@@ -1,4 +1,4 @@
-/* [064A-32] Página de WordPress Hosting.
+/* [064A-32] Página de hosting.
  * [084A-20] CTA de planes ahora abre ModalCompra en vez de chat.
  * [114A-5] Especialización WordPress: branding, features WP-CLI, WooCommerce.
  * "Conversar" sigue abriendo el chat. */
@@ -20,13 +20,24 @@ import {useHostingCatalog} from '../hooks/useHostingCatalog';
 import '../components/servicios/SeccionPlanesServicio.css';
 import './SolucionHostingIsland.css';
 
-const FEATURES_FALLBACK = [
+type HostingSolutionKind = 'normal' | 'wordpress';
+
+const WORDPRESS_FEATURES_FALLBACK = [
     {icono: Zap, titulo: 'WordPress Optimizado', desc: 'Servidores SSD configurados específicamente para WordPress con caché y PHP optimizado.'},
     {icono: Shield, titulo: 'Seguridad WordPress', desc: 'SSL gratuito, firewall, backups automáticos, hardening SSH y monitoreo 24/7.'},
     {icono: Clock, titulo: '99.9% Uptime', desc: 'Infraestructura redundante con failover automático para máxima disponibilidad.'},
     {icono: Globe, titulo: 'CDN Global', desc: 'Red de distribución de contenido para velocidad óptima desde cualquier ubicación.'},
     {icono: Server, titulo: 'WordPress Administrado', desc: 'Actualizaciones de WordPress, plugins, parches de seguridad y optimizaciones sin que toques un servidor.'},
     {icono: Headphones, titulo: 'WP-CLI & Soporte', desc: 'Acceso SSH con WP-CLI incluido y equipo técnico experto en WordPress.'},
+];
+
+const NORMAL_FEATURES_FALLBACK = [
+    {icono: Zap, titulo: 'Nginx optimizado', desc: 'Servidor web administrado para sitios estaticos, frontends y proyectos sin CMS pesado.'},
+    {icono: Shield, titulo: 'Seguridad incluida', desc: 'SSL gratuito, aislamiento por servicio, hardening SSH/SFTP y controles de acceso.'},
+    {icono: Clock, titulo: '99.9% Uptime', desc: 'Infraestructura preparada para disponibilidad estable y monitoreo operativo.'},
+    {icono: Globe, titulo: 'Dominios y SSL', desc: 'Dominios propios con certificados automaticos y configuracion limpia de DNS.'},
+    {icono: Server, titulo: 'SFTP administrado', desc: 'Sube archivos del sitio por SFTP sin administrar servidores ni contenedores.'},
+    {icono: Headphones, titulo: 'Soporte tecnico', desc: 'Ayuda para publicar, diagnosticar DNS y mantener el sitio operativo.'},
 ];
 
 /* [064A-64] Features del hosting traducidos via content.solutions.hosting.
@@ -38,11 +49,27 @@ function formatMonthlyPrice(priceCents: number): string {
     return `$${(priceCents / 100).toFixed(priceCents % 100 === 0 ? 0 : 2)}`;
 }
 
-export const SolucionHostingIsland = (): JSX.Element => {
+function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Element {
     const {t} = useTranslation();
     const abrirChat = useChatStore(s => s.abrir);
-    const {plans} = useHostingCatalog();
+    const isWordPress = kind === 'wordpress';
+    const {plans} = useHostingCatalog(isWordPress ? 'wordpress' : 'normal');
     const [planSeleccionado, setPlanSeleccionado] = useState<PlanServicio | null>(null);
+
+    const chatContext = isWordPress ? 'page:hosting-wordpress' : 'page:hosting';
+    const seoTitle = isWordPress ? 'Hosting WordPress' : 'Hosting';
+    const seoPath = isWordPress ? '/soluciones/hosting-wordpress' : '/soluciones/hosting';
+    const heroEtiqueta = isWordPress ? t('content.solutions.hosting.titulo', 'Hosting WordPress') : 'Hosting';
+    const heroTitulo = isWordPress ? t('hosting_page.hero_title', 'WordPress que escala contigo') : 'Hosting normal para sitios ligeros y frontends';
+    const heroDesc = isWordPress
+        ? t('hosting_page.hero_desc', 'Olvídate de la administración de servidores. WordPress pre-instalado, WP-CLI, backups automáticos y rendimiento optimizado.')
+        : 'Nginx administrado, SSL, SFTP y recursos aislados para publicar sitios sin WordPress ni base de datos.';
+    const plansTitle = isWordPress ? t('hosting_page.plans_title', 'Planes de Hosting WordPress') : 'Planes de hosting';
+    const plansSubtitle = isWordPress ? t('hosting_page.plans_subtitle', 'Elige el plan que mejor se adapte a tu proyecto') : 'Elige hosting normal cuando quieres publicar sin WordPress.';
+    const featureTitle = isWordPress ? t('hosting_page.features_title', 'Todo Incluido') : 'Todo lo necesario para publicar';
+    const featureSubtitle = isWordPress
+        ? t('hosting_page.features_subtitle', 'Cada plan incluye las herramientas esenciales para mantener tu sitio rápido y seguro.')
+        : 'Cada plan incluye servidor web, SSL, SFTP y soporte operativo sin que administres contenedores.';
 
     const planCards: PlanServicio[] = plans.map(plan => ({
         id: `hosting-${plan.id}`,
@@ -63,31 +90,35 @@ export const SolucionHostingIsland = (): JSX.Element => {
     }, Number.POSITIVE_INFINITY);
     const lowestHostingPriceLabel = Number.isFinite(lowestHostingPrice)
         ? `$${lowestHostingPrice.toFixed(lowestHostingPrice % 1 === 0 ? 0 : 2)}/mes`
-        : '$2.48/mes';
+        : isWordPress ? '$2.48/mes' : '$3.23/mes';
 
-    const features = FEATURE_KEYS.map((key, i) => ({
-        icono: FEATURE_ICONS[i],
-        titulo: t(`content.solutions.hosting.features.${key}.titulo`, FEATURES_FALLBACK[i].titulo),
-        desc: t(`content.solutions.hosting.features.${key}.desc`, FEATURES_FALLBACK[i].desc),
-    }));
+    const features = isWordPress
+        ? FEATURE_KEYS.map((key, i) => ({
+            icono: FEATURE_ICONS[i],
+            titulo: t(`content.solutions.hosting.features.${key}.titulo`, WORDPRESS_FEATURES_FALLBACK[i].titulo),
+            desc: t(`content.solutions.hosting.features.${key}.desc`, WORDPRESS_FEATURES_FALLBACK[i].desc),
+        }))
+        : NORMAL_FEATURES_FALLBACK;
 
     return (
         <LayoutPagina className="hostingPaginaMain">
             <SEOHead
-                title="WordPress Hosting"
-                description={`WordPress hosting optimizado con WP-CLI, backups automáticos y soporte experto. Planes desde ${lowestHostingPriceLabel} con SSL, WordPress pre-instalado y acceso SSH.`}
-                path="/soluciones/hosting"
+                title={seoTitle}
+                description={isWordPress
+                    ? `WordPress hosting optimizado con WP-CLI, backups automáticos y soporte experto. Planes desde ${lowestHostingPriceLabel} con SSL, WordPress pre-instalado y acceso SSH.`
+                    : `Hosting normal administrado con Nginx, SSL y SFTP. Planes desde ${lowestHostingPriceLabel} para sitios sin WordPress.`}
+                path={seoPath}
             />
 
             {/* Hero */}
             <section className="hostingHero">
                 <div className="hostingHeroContenido">
-                    <span className="hostingHeroEtiqueta">{t('content.solutions.hosting.titulo', 'WordPress Hosting')}</span>
+                    <span className="hostingHeroEtiqueta">{heroEtiqueta}</span>
                     <h1 className="hostingHeroTitulo">
-                        {t('hosting_page.hero_title', 'WordPress que escala contigo')}
+                        {heroTitulo}
                     </h1>
                     <p className="hostingHeroDesc">
-                        {t('hosting_page.hero_desc', 'Olvídate de la administración de servidores. WordPress pre-instalado, WP-CLI, backups automáticos y rendimiento optimizado.')}
+                        {heroDesc}
                     </p>
                     <div className="hostingHeroBotones">
                         <Button variante="primario" onClick={() => {
@@ -95,7 +126,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
                         }}>
                             {t('hosting_page.view_plans', 'Ver Planes')}
                         </Button>
-                        <Button variante="outline" onClick={() => abrirChat('page:hosting')}>
+                        <Button variante="outline" onClick={() => abrirChat(chatContext)}>
                             {t('plans.chat_with_us', 'Conversar')}
                         </Button>
                     </div>
@@ -104,15 +135,15 @@ export const SolucionHostingIsland = (): JSX.Element => {
 
             <SolucionHeroImagen
                 src="/assets/random/85a51ba9a4233272662e744b48f97d67.jpg"
-                alt="Panel de hosting WordPress con infraestructura administrada."
-                storageKey="nakomi-hosting-hero-image"
+                alt={isWordPress ? 'Panel de hosting WordPress con infraestructura administrada.' : 'Panel de hosting con infraestructura administrada.'}
+                storageKey={isWordPress ? 'nakomi-hosting-wordpress-hero-image' : 'nakomi-hosting-hero-image'}
             />
 
             {/* Features */}
             <section className="hostingFeatures">
-                <h2 className="hostingFeaturesTitle">{t('hosting_page.features_title', 'Todo Incluido')}</h2>
+                <h2 className="hostingFeaturesTitle">{featureTitle}</h2>
                 <p className="hostingFeaturesSubtitle">
-                    {t('hosting_page.features_subtitle', 'Cada plan incluye las herramientas esenciales para mantener tu sitio rápido y seguro.')}
+                    {featureSubtitle}
                 </p>
                 <div className="hostingFeaturesGrid">
                     {features.map((f) => (
@@ -131,8 +162,8 @@ export const SolucionHostingIsland = (): JSX.Element => {
             <section id="planesHosting" className="planesSeccion">
                 <div className="planesContenedor">
                     <div className="planesCabecera">
-                        <h2 className="planesTitulo">{t('hosting_page.plans_title', 'Planes de WordPress Hosting')}</h2>
-                        <p className="planesSubtitulo">{t('hosting_page.plans_subtitle', 'Elige el plan que mejor se adapte a tu proyecto')}</p>
+                        <h2 className="planesTitulo">{plansTitle}</h2>
+                        <p className="planesSubtitulo">{plansSubtitle}</p>
                     </div>
                     <div className="planesGrid">
                         {planCards.map(plan => (
@@ -173,7 +204,7 @@ export const SolucionHostingIsland = (): JSX.Element => {
                                     >
                                         {t(`content.plans.${plan.id}.cta`, plan.ctaTexto)}
                                     </Button>
-                                    <Button variante="texto" className="tarjetaPlanConversar" onClick={() => abrirChat('page:hosting')}>
+                                    <Button variante="texto" className="tarjetaPlanConversar" onClick={() => abrirChat(chatContext)}>
                                         {t('plans.chat_with_us', 'Conversar')}
                                     </Button>
                                 </div>
@@ -196,4 +227,8 @@ export const SolucionHostingIsland = (): JSX.Element => {
             )}
         </LayoutPagina>
     );
-};
+}
+
+export const SolucionHostingIsland = (): JSX.Element => <SolucionHostingContenido kind="normal" />;
+
+export const SolucionHostingWordPressIsland = (): JSX.Element => <SolucionHostingContenido kind="wordpress" />;

@@ -3,16 +3,29 @@
  * Header, Footer, filtros: toda la estructura de links del sitio.
  */
 import {EnlaceNavegacion, EnlaceFooter, FiltroCategoria} from '../types/navegacion';
+import {SERVICIOS_DATA} from './servicios';
 
 /* Enlaces del Header - Navegación principal del sitio */
 export const ENLACES_HEADER: EnlaceNavegacion[] = [
     {label: 'Inicio', href: '/'},
-    {label: 'Servicios', href: '/servicios/'},
+    {
+        label: 'Servicios',
+        href: '/servicios/',
+        hasDropdown: true,
+        subEnlaces: SERVICIOS_DATA.map(servicio => ({label: servicio.titulo, href: servicio.link})),
+    },
     {label: 'Proyectos', href: '/proyectos/'},
     {label: 'Nosotros', href: '/nosotros/'},
-    /* [155A-6] /soluciones deja de ser página navegable; quedan solo subpáginas directas. */
-    {label: 'WordPress Hosting', href: '/soluciones/hosting/'},
-    {label: 'Servidores VPS', href: '/soluciones/vps/'}
+    /* [155A-14] Soluciones vuelve como agrupador contextual sin ruta propia. */
+    {
+        label: 'Soluciones',
+        hasDropdown: true,
+        subEnlaces: [
+            {label: 'Hosting WordPress', href: '/soluciones/hosting-wordpress/'},
+            {label: 'Hosting', href: '/soluciones/hosting/'},
+            {label: 'VPS', href: '/soluciones/vps/'},
+        ],
+    },
 ];
 
 /* Enlaces del Footer */

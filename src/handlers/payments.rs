@@ -18,7 +18,8 @@ use crate::models::{
 };
 use crate::repositories::{OrderRepository, PaymentRepository, UserRepository};
 use crate::services::{
-    AuditService, EmailService, HostingStripeService, PaymentService, VpsStripeService,
+    is_checkout_bypass_email, AuditService, EmailService, HostingStripeService, PaymentService,
+    VpsStripeService,
 };
 use crate::AppState;
 
@@ -44,11 +45,6 @@ pub async fn initiate_payment(
 ) -> Result<Json<PaymentIntentResponse>, AppError> {
     auth.require_role(&[UserRole::Client, UserRole::Admin])?;
 
-    let stripe_key = state
-        .stripe_secret_key
-        .as_ref()
-        .ok_or_else(|| AppError::Internal("Stripe no está configurado".into()))?;
-
     /* [064A-65] Admin puede pagar cualquier orden (testing/soporte).
      * Para clientes, el servicio verifica ownership por client_id. */
     let caller_id = if auth.role == UserRole::Admin {
@@ -68,6 +64,22 @@ pub async fn initiate_payment(
             None
         }
     };
+
+    if user_email.as_deref().is_some_and(is_checkout_bypass_email) {
+        let result = PaymentService::initiate_bypassed_payment(
+            &state.pool,
+            order_id,
+            caller_id,
+            req.phase_number,
+        )
+        .await?;
+        return Ok(Json(result));
+    }
+
+    let stripe_key = state
+        .stripe_secret_key
+        .as_ref()
+        .ok_or_else(|| AppError::Internal("Stripe no está configurado".into()))?;
 
     let result = PaymentService::initiate_payment(
         &state.pool,

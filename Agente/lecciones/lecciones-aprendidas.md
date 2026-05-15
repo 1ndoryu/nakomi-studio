@@ -72,6 +72,7 @@
 - coolify-manager.exe `deploy --name` es para WordPress themes, no para apps Rust. Usar API directa.
 - coolify-manager.exe `restart` no siempre reinicia los contenedores de apps Docker Compose; `redeploy` (API) es más fiable para forzar recreación.
 - En `studio` (nakomi.studio), los endpoints admin firmados por JWT usan el env runtime `SERVICE_PASSWORD_64_JWTSECRET`; `JWT_SECRET` listado en Coolify no autenticó `/api/admin/blog` durante la verificación real.
+- Si el backend introduce una env runtime nueva en stacks Rust, agregarla el mismo bloque al allowlist de `coolify-manager-rs sync-env`; si no, `--only` la reporta como bloqueada/ausente y producción queda sin el comportamiento aunque el código compile.
 
 ## Coolify Rust — health por IP Docker
 - Un healthcheck a `localhost` dentro del contenedor no prueba el camino real de Traefik. Puede responder localmente mientras la IP Docker del contenedor se cuelga y el proxy muestra `no available server`.
@@ -115,6 +116,7 @@
 
 ## CMS público — no maquillar vacíos con demo data
 - Si una vista pública depende del CMS/API, distinguir entre “todavía no cargó” y “la API devolvió vacío”. Reutilizar fallback demo cuando el backend responde `[]` oculta desincronizaciones reales y hace que home/listados muestren contenido fantasma.
+- El router tampoco debe pasar data estática legacy a detalles CMS como placeholder inicial. Aunque la API reemplace el contenido rápido, el usuario percibe un flash de proyecto/servicio viejo; usar loading/404 hasta tener el recurso real.
 
 ## Herramientas operativas — demo explícito o API local real
 - Si una GUI controla infraestructura, abrirla en navegador no autoriza datos demo silenciosos. El navegador debe consumir una API local real o fallar visible; el modo demo solo debe existir con una bandera explícita.

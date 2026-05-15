@@ -65,10 +65,7 @@ impl GoogleAuthService {
     }
 
     /// Intercambia un `code` de Google por datos de usuario.
-    pub async fn get_user_from_code(
-        http: &Client,
-        code: &str,
-    ) -> Result<GoogleUserInfo, AppError> {
+    pub async fn get_user_from_code(http: &Client, code: &str) -> Result<GoogleUserInfo, AppError> {
         let client_id = Self::client_id()?;
         let client_secret = Self::client_secret()?;
         let redirect_uri = Self::redirect_uri()?;
@@ -129,13 +126,12 @@ impl GoogleAuthService {
         let google_user = Self::get_user_from_code(http, code).await?;
 
         /* 1. ¿google_id ya vinculado a un usuario? */
-        let existing_user_id: Option<Uuid> = sqlx::query_scalar(
-            "SELECT user_id FROM user_google_accounts WHERE google_id = $1",
-        )
-        .bind(&google_user.id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+        let existing_user_id: Option<Uuid> =
+            sqlx::query_scalar("SELECT user_id FROM user_google_accounts WHERE google_id = $1")
+                .bind(&google_user.id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
 
         let user = if let Some(uid) = existing_user_id {
             /* Cuenta Google ya vinculada → cargar usuario */
@@ -154,14 +150,9 @@ impl GoogleAuthService {
                 /* Crear usuario con contraseña ficticia (Google es el medio de auth) */
                 let placeholder_hash =
                     hash_password(&format!("google-{}-{}", google_user.id, Uuid::new_v4()))?;
-                let u = UserRepository::create(
-                    pool,
-                    &google_user.email,
-                    &placeholder_hash,
-                    false,
-                )
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
+                let u = UserRepository::create(pool, &google_user.email, &placeholder_hash, false)
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
 
                 /* Establecer display_name desde Google si está disponible */
                 if let Some(name) = &google_user.name {

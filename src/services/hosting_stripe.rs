@@ -36,13 +36,28 @@ pub struct CheckoutParams<'a> {
 
 pub struct HostingStripeService;
 
-fn humanize_plan_name(plan: &str) -> &str {
-    match plan {
+fn humanize_plan_name(plan: &str) -> &'static str {
+    match plan.strip_prefix("normal-").unwrap_or(plan) {
         "basico" => "Basico",
         "pro" => "Pro",
         "ecommerce" => "E-commerce",
         _ => "Personalizado",
     }
+}
+
+fn hosting_product_copy(plan: &str) -> (String, String) {
+    let plan_name = humanize_plan_name(plan);
+    if plan.starts_with("normal-") {
+        return (
+            format!("Hosting {plan_name}"),
+            format!("Plan {plan_name} de hosting normal administrado"),
+        );
+    }
+
+    (
+        format!("Hosting WordPress {plan_name}"),
+        format!("Plan {plan_name} de hosting WordPress administrado"),
+    )
 }
 
 impl HostingStripeService {
@@ -55,7 +70,7 @@ impl HostingStripeService {
             ));
         }
 
-        let plan_name = humanize_plan_name(params.plan);
+        let (product_name, product_description) = hosting_product_copy(params.plan);
 
         let form = vec![
             ("mode", "subscription".to_string()),
@@ -66,11 +81,11 @@ impl HostingStripeService {
             ),
             (
                 "line_items[0][price_data][product_data][name]",
-                format!("WordPress Hosting {plan_name}"),
+                product_name,
             ),
             (
                 "line_items[0][price_data][product_data][description]",
-                format!("Plan {plan_name} de hosting WordPress administrado"),
+                product_description,
             ),
             (
                 "line_items[0][price_data][recurring][interval]",
@@ -515,6 +530,18 @@ mod tests {
         assert_eq!(humanize_plan_name("basico"), "Basico");
         assert_eq!(humanize_plan_name("pro"), "Pro");
         assert_eq!(humanize_plan_name("ecommerce"), "E-commerce");
+        assert_eq!(humanize_plan_name("normal-pro"), "Pro");
         assert_eq!(humanize_plan_name("custom"), "Personalizado");
+    }
+
+    #[test]
+    fn hosting_product_copy_distinguishes_normal_hosting() {
+        let (normal_name, normal_desc) = hosting_product_copy("normal-basico");
+        assert_eq!(normal_name, "Hosting Basico");
+        assert!(normal_desc.contains("hosting normal"));
+
+        let (wordpress_name, wordpress_desc) = hosting_product_copy("basico");
+        assert_eq!(wordpress_name, "Hosting WordPress Basico");
+        assert!(wordpress_desc.contains("hosting WordPress"));
     }
 }

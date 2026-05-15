@@ -140,15 +140,15 @@ export function HostingCard({
                                 {sub.domain}
                             </span>
                         )}
-                        {/* Enlace rápido al WordPress real — solo para hostings provisionados por nuestro sistema */}
+                        {/* [155A-13] Enlace rápido al sitio real — WordPress usa `wordpress`, hosting normal usa `site`. */}
                         {(sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip && sub.status === 'active') && (
                             <a
-                                href={`http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io`}
+                                href={`http://${sub.plan.startsWith('normal-') ? 'site' : 'wordpress'}-${sub.server_uuid}.${sub.server_ip}.sslip.io`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="hostingCardSiteLink"
                                 onClick={e => e.stopPropagation()}
-                                title="Abrir WordPress"
+                                title="Abrir sitio"
                             >
                                 <ExternalLink size={13} /> Ver sitio
                             </a>

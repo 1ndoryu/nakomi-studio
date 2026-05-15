@@ -33,11 +33,11 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
     startLoading?: boolean;
 }) {
     const sitioUrl = sub.domain ? `https://${sub.domain}` : null;
-    /* URL real del WordPress: solo para hostings provisionados por nuestro sistema (coolify_site_name empieza con 'hosting-').
-     * Los fixtures demo tienen server_ip pero no son WordPress reales. */
+    /* [155A-13] URL real del sitio: WordPress usa servicio `wordpress`, hosting normal usa `site`. */
     const isRealProvisioned = sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip;
+    const servicePrefix = sub.plan.startsWith('normal-') ? 'site' : 'wordpress';
     const coolifyUrl = isRealProvisioned
-        ? `http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io`
+        ? `http://${servicePrefix}-${sub.server_uuid}.${sub.server_ip}.sslip.io`
         : null;
     /* [154A-11] Provisioning disponible para admin cuando el hosting está pendiente */
     const canProvision = isAdmin && (sub.status === 'pending' || sub.status === 'provisioning') && onProvision;
@@ -87,14 +87,14 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
                         {provisionLoading ? (
                             <><Loader size={14} className="hostingSpinner" /> Provisionando…</>
                         ) : (
-                            <><Server size={14} /> Provisionar WordPress</>
+                            <><Server size={14} /> Provisionar hosting</>
                         )}
                     </Button>
                 )}
                 {coolifyUrl && (
                     <a href={coolifyUrl} target="_blank" rel="noopener noreferrer" className="hostingDetalleAccionLink">
                         <Button type="button" variante="primario" tamano="pequeno">
-                            <ExternalLink size={14} /> Abrir WordPress
+                            <ExternalLink size={14} /> Abrir sitio
                         </Button>
                     </a>
                 )}

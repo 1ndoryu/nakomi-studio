@@ -92,9 +92,8 @@ pub use team_member::{
 };
 pub use user::{
     AdminCreateUserRequest, AdminUserItem, AuthResponse, ChangeRoleRequest, ChangeStatusRequest,
-    GoogleAuthUrlResponse, GoogleLoginRequest, LoginRequest, PaginatedUsers,
-    QuickRegisterRequest, RegisterRequest, SetPasswordRequest, UpdateProfileRequest, User,
-    UserResponse, UserRole,
+    GoogleAuthUrlResponse, GoogleLoginRequest, LoginRequest, PaginatedUsers, QuickRegisterRequest,
+    RegisterRequest, SetPasswordRequest, UpdateProfileRequest, User, UserResponse, UserRole,
 };
 pub use vps::{
     PublicVpsPlan, RejectVpsRequest, SelfSubscribeVpsRequest, SelfSubscribeVpsResponse, VpsEvent,

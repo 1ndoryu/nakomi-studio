@@ -23,6 +23,7 @@
 ## Runtime frontend
 
 - El bundle principal de Nakomi no debe cambiar su home por hostname para capturar `vps.nakomi.studio`.
+- Desde 2026-05-15, `nakomi.studio` tampoco conserva fallback local `/portal-vps` ni render por `127.0.0.1`; cualquier portal VPS debe salir del despliegue separado.
 - Nakomi solo enlaza al portal VPS dedicado mediante CTAs o launcher.
 - El portal de `vps.nakomi.studio` debe tener su propio runtime web y su propia política de auth/permisos.
 
@@ -31,6 +32,14 @@
 - Nakomi ya expone catálogo, checkout y operaciones VPS/hosting reutilizables para marketing y panel interno.
 - El portal dedicado podrá reutilizar esos flujos o derivarlos a un boundary propio, pero no debe depender de un alias de dominio montado sobre `studio`.
 - La separación de runtime debe venir antes de considerar el subdominio como online/cerrado.
+
+## Actualización 2026-05-15 — venta VPS desde agente
+
+- El agente de cuenta puede listar planes VPS, listar VPS del cliente y crear checkout de VPS con tools backend (`list_vps_plans`, `list_my_vps`, `create_vps_checkout`).
+- El prompt obliga a confirmar tier antes de cobrar y comunica que la solicitud queda en revisión cuando el plan requiere aprobación.
+- Las cuentas incluidas en `GLORY_TEST_CHECKOUT_EMAILS` no pasan por Stripe real: la suscripción VPS queda `pending_approval` y registra evento `test_checkout_bypassed`.
+- La ruta pública `/soluciones/vps` se mantiene en Nakomi como entrada comercial; el portal dedicado `vps.nakomi.studio` sigue siendo un despliegue separado pendiente.
+- Las acciones de provisioning y operación crítica continúan fuera del alcance del agente cliente; el agente vende/consulta, no ejecuta infraestructura privilegiada.
 
 ## Seguridad operativa
 

@@ -12,9 +12,9 @@ import {SeccionHeroProyecto} from '../components/proyectos/SeccionHeroProyecto';
 import {SeccionGaleriaProyecto} from '../components/proyectos/SeccionGaleriaProyecto';
 import {SeccionProyectosRelacionados} from '../components/proyectos/SeccionProyectosRelacionados';
 import {SeccionContacto} from '../components/home/SeccionContacto';
-import {PROYECTOS_DATA} from '../data/showcase';
 import type {EnlaceProyecto, GaleriaImagen} from '../types/contenido';
 import {apiGetProjectBySlug, type AdminProject} from '../api/admin-projects';
+import {NotFoundIsland} from './NotFoundIsland';
 
 interface ProyectoIndividualIslandProps {
     titulo?: string;
@@ -57,33 +57,55 @@ function convertirDesdeApi(p: AdminProject): ProyectoDetalle {
 }
 
 export const ProyectoIndividualIsland = ({titulo = 'Proyecto', descripcion = '', cliente = '', categorias = '', imagen = '', slug = ''}: ProyectoIndividualIslandProps): JSX.Element => {
-    /* Fallback estático */
-    const fallback = PROYECTOS_DATA.find(p => p.titulo.toLowerCase() === titulo.toLowerCase() || String(p.id) === slug);
-
-    const [detalle, setDetalle] = useState<ProyectoDetalle>({
-        titulo,
-        descripcion: descripcion || fallback?.descripcion || '',
-        cliente: cliente || fallback?.cliente || '',
-        categorias: categorias || (Array.isArray(fallback?.categorias) ? fallback.categorias.join(', ') : fallback?.categorias || ''),
-        imagenPortada: imagen || fallback?.imagen || '',
-        galeria: fallback?.galeria || [],
-        tecnologias: fallback?.tecnologias || [],
-        enlaces: fallback?.enlaces || [],
-    });
+    const [detalle, setDetalle] = useState<ProyectoDetalle | null>(() => (
+        slug
+            ? null
+            : {
+                titulo,
+                descripcion,
+                cliente,
+                categorias,
+                imagenPortada: imagen,
+                galeria: [],
+                tecnologias: [],
+                enlaces: [],
+            }
+    ));
+    const [apiError, setApiError] = useState(false);
 
     useEffect(() => {
         const controller = new AbortController();
         if (slug) {
+            /* [155A-16] No mostrar PROYECTOS_DATA legacy mientras llega CMS.
+             * Ese fallback producía un flash de contenido viejo antes de hidratar el detalle real. */
+            setDetalle(null);
+            setApiError(false);
             apiGetProjectBySlug(slug)
                 .then(data => {
                     if (!controller.signal.aborted) {
                         setDetalle(convertirDesdeApi(data));
                     }
                 })
-                .catch(() => { /* mantiene fallback estático */ });
+                .catch(() => {
+                    if (!controller.signal.aborted) {
+                        setApiError(true);
+                    }
+                });
         }
         return () => controller.abort();
     }, [slug]);
+
+    if (slug && apiError) {
+        return <NotFoundIsland />;
+    }
+
+    if (!detalle) {
+        return (
+            <LayoutPagina className="proyectoIndividualMain" id="paginaProyecto">
+                <p>Cargando...</p>
+            </LayoutPagina>
+        );
+    }
 
     return (
         <LayoutPagina className="proyectoIndividualMain" id="paginaProyecto">

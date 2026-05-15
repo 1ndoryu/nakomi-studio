@@ -2,8 +2,8 @@
  * El archivo concentra múltiples tool definitions y su dispatcher para preservar la
  * interfaz del chatbot mientras se separa por dominio.
  */
-/* sentinel-disable-file sqlx-query-sin-macro: servicio legacy de tools IA.
- * Usa algunas queries runtime intencionalmente para no depender de caché offline.
+/* sentinel-disable-file sqlx-query-sin-macro sqlx-query-as-sin-macro: servicio legacy de tools IA.
+ * Usa algunas queries runtime intencionalmente para no depender de caché offline en consultas dinámicas por rol.
  */
 /* [T-2] Herramientas de IA para el chatbot (tool use / function calling).
  * Define las tools que la IA puede invocar y ejecuta las llamadas.
@@ -17,11 +17,18 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::models::{HostingPlanConfig, HostingSubscription, SelfSubscribeRequest, UserRole};
-use crate::repositories::{
-    ChatRepository, CreateHostingParams, HostingRepository, ProblemRepository, UserRepository,
+use crate::models::{
+    HostingPlanConfig, HostingSubscription, SelfSubscribeRequest, SelfSubscribeVpsRequest,
+    UserRole, VpsPlanConfig, VpsSubscription,
 };
-use crate::services::{CheckoutParams, HostingStripeService};
+use crate::repositories::{
+    ChatRepository, CreateHostingParams, CreateVpsSubscriptionParams, HostingRepository,
+    ProblemRepository, UserRepository, VpsRepository,
+};
+use crate::services::{
+    checkout_bypass_is_configured, is_checkout_bypass_email, CheckoutParams, HostingStripeService,
+    VpsCheckoutParams, VpsStripeService,
+};
 
 /* Resultado de ejecutar una tool: JSON para la IA y opcionalmente un
  * mensaje rico para mostrar en el chat del visitante. */
@@ -89,6 +96,7 @@ pub fn tool_definitions() -> Value {
     let mut tools = service_tool_defs();
     if let Some(arr) = tools.as_array_mut() {
         arr.extend(hosting_tool_defs().as_array().cloned().unwrap_or_default());
+        arr.extend(vps_tool_defs().as_array().cloned().unwrap_or_default());
         arr.extend(visitor_tool_defs().as_array().cloned().unwrap_or_default());
         /* [T-9] Tools para clientes registrados */
         arr.extend(
@@ -101,6 +109,45 @@ pub fn tool_definitions() -> Value {
     tools
 }
 
+/* [155A-12] Tools de VPS: asesoría de catálogo, consulta de VPS del cliente y checkout mensual.
+ * No aprovisionan ni aprueban: la aprobación manual sigue protegida en el panel/admin. */
+fn vps_tool_defs() -> Value {
+    json!([
+        {
+            "type": "function",
+            "function": {
+                "name": "list_vps_plans",
+                "description": "Lista planes reales de VPS desde la configuración de la base de datos. Úsalo para asesorar precios, CPU, RAM, disco, región y diferencias antes de recomendar un VPS.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_my_vps",
+                "description": "Lista las solicitudes y suscripciones VPS del cliente registrado, con tier, hostname, estado, IP y eventos recientes. Úsalo cuando pregunte por su VPS o quiera gestionarlo.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "create_vps_checkout",
+                "description": "Crea una solicitud VPS pending_payment y un checkout mensual real de Stripe. Úsalo solo cuando un cliente registrado confirme que quiere contratar un tier concreto. Si el cliente no está registrado, la tool indicará que debe iniciar sesión.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tier": { "type": "string", "description": "Slug del tier VPS, por ejemplo vps1, vps2 o vps3" },
+                        "hostname": { "type": "string", "description": "Hostname opcional solicitado por el cliente" },
+                        "notes": { "type": "string", "description": "Uso previsto, stack o notas operativas del cliente" }
+                    },
+                    "required": ["tier"]
+                }
+            }
+        }
+    ])
+}
+
 /* [095A-8] Tools de hosting: asesoría con catálogo real, consulta de hostings del cliente
  * y checkout mensual Stripe. No ejecutan provisioning/restart/stop: eso sigue siendo admin-only. */
 fn hosting_tool_defs() -> Value {
@@ -109,7 +156,7 @@ fn hosting_tool_defs() -> Value {
             "type": "function",
             "function": {
                 "name": "list_hosting_plans",
-                "description": "Lista planes reales de WordPress hosting desde la configuración de la base de datos. Úsalo para asesorar precios, recursos y diferencias antes de recomendar un plan.",
+                "description": "Lista planes reales de hosting normal y hosting WordPress desde la configuración de la base de datos. Úsalo para asesorar precios, recursos y diferencias antes de recomendar un plan.",
                 "parameters": { "type": "object", "properties": {} }
             }
         },
@@ -125,7 +172,7 @@ fn hosting_tool_defs() -> Value {
             "type": "function",
             "function": {
                 "name": "create_hosting_checkout",
-                "description": "Crea una suscripción pending de WordPress hosting y un checkout mensual real de Stripe. Úsalo solo cuando un cliente registrado confirme que quiere contratar un plan concreto. Si el cliente no está registrado, la tool indicará que debe iniciar sesión.",
+                "description": "Crea una suscripción pending de hosting y un checkout mensual real de Stripe. Úsalo solo cuando un cliente registrado confirme que quiere contratar un plan concreto. Si el cliente no está registrado, la tool indicará que debe iniciar sesión.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -229,6 +276,9 @@ pub async fn execute_tool(
         "list_hosting_plans" => exec_list_hosting_plans(ctx.pool).await,
         "list_my_hostings" => exec_list_my_hostings(ctx.pool, ctx.auth).await,
         "create_hosting_checkout" => exec_create_hosting_checkout(&ctx, arguments).await,
+        "list_vps_plans" => exec_list_vps_plans(ctx.pool).await,
+        "list_my_vps" => exec_list_my_vps(ctx.pool, ctx.auth).await,
+        "create_vps_checkout" => exec_create_vps_checkout(&ctx, arguments).await,
         "list_my_orders" => exec_list_my_orders(ctx.pool, ctx.auth).await,
         "list_my_payments" => exec_list_my_payments(ctx.pool, ctx.auth).await,
         "list_my_reports" => exec_list_my_reports(ctx.pool, ctx.auth).await,
@@ -397,9 +447,9 @@ async fn exec_create_hosting_checkout(
     let Ok(auth) = require_auth(ctx.auth) else {
         return hosting_requires_login();
     };
-    let Some(stripe_key) = ctx.stripe_key else {
+    if ctx.stripe_key.is_none() && !checkout_bypass_is_configured() {
         return tool_error("Stripe no configurado para checkout de hosting");
-    };
+    }
 
     let req = match parse_hosting_checkout_request(args) {
         Ok(req) => req,
@@ -426,6 +476,17 @@ async fn exec_create_hosting_checkout(
         Ok(sub) => sub,
         Err(result) => return result,
     };
+    if is_checkout_bypass_email(&client_email) {
+        return match activate_chat_hosting_bypass(ctx.pool, &sub, auth.user_id).await {
+            Ok(updated) => hosting_bypass_success(&updated),
+            Err(result) => result,
+        };
+    }
+
+    let Some(stripe_key) = ctx.stripe_key else {
+        return tool_error("Stripe no configurado para checkout de hosting");
+    };
+
     let checkout_url =
         match create_chat_hosting_checkout_url(ctx.http_client, stripe_key, &sub, &client_email)
             .await
@@ -435,6 +496,36 @@ async fn exec_create_hosting_checkout(
         };
 
     hosting_checkout_success(&sub, &checkout_url)
+}
+
+async fn activate_chat_hosting_bypass(
+    pool: &PgPool,
+    sub: &HostingSubscription,
+    user_id: Uuid,
+) -> Result<HostingSubscription, ToolExecResult> {
+    HostingRepository::update_status(pool, sub.id, "active")
+        .await
+        .map_err(|e| {
+            tracing::error!(hosting_id = %sub.id, "Error activando hosting test desde chatbot: {e}");
+            tool_error("No se pudo activar el hosting de prueba")
+        })?;
+    if let Err(e) = HostingRepository::add_event(
+        pool,
+        sub.id,
+        "test_checkout_bypassed",
+        Some(json!({"by": user_id.to_string(), "source": "chatbot-hosting"})),
+    )
+    .await
+    {
+        tracing::warn!(hosting_id = %sub.id, "Error registrando bypass hosting chatbot: {e}");
+    }
+    HostingRepository::find_by_id(pool, sub.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(hosting_id = %sub.id, "Error recargando hosting test chatbot: {e}");
+            tool_error("No se pudo consultar el hosting creado")
+        })?
+        .ok_or_else(|| tool_error("Hosting creado no encontrado"))
 }
 
 fn tool_error(message: &str) -> ToolExecResult {
@@ -567,7 +658,12 @@ async fn create_chat_hosting_checkout_url(
 }
 
 fn hosting_checkout_success(sub: &HostingSubscription, checkout_url: &str) -> ToolExecResult {
-    let description = format!("Suscripción mensual WordPress Hosting {}", sub.plan);
+    let product_name = if sub.plan.starts_with("normal-") {
+        "Hosting"
+    } else {
+        "Hosting WordPress"
+    };
+    let description = format!("Suscripción mensual {product_name} {}", sub.plan);
     ToolExecResult {
         tool_result_json: json!({
             "status": "ok",
@@ -586,7 +682,7 @@ fn hosting_checkout_success(sub: &HostingSubscription, checkout_url: &str) -> To
             ),
             message_type: "invoice".to_string(),
             metadata: json!({
-                "title": "Hosting WordPress",
+                "title": product_name,
                 "payment_url": checkout_url,
                 "amount_cents": sub.monthly_price_cents,
                 "currency": "usd",
@@ -598,6 +694,346 @@ fn hosting_checkout_success(sub: &HostingSubscription, checkout_url: &str) -> To
             }),
         }),
     }
+}
+
+fn hosting_bypass_success(sub: &HostingSubscription) -> ToolExecResult {
+    tool_json(json!({
+        "status": "ok",
+        "hosting_subscription_id": sub.id,
+        "plan": sub.plan,
+        "domain": sub.domain,
+        "amount_cents": sub.monthly_price_cents,
+        "bypassed": true,
+        "message": "Suscripción de hosting creada para cuenta test sin cobro real. Indica al cliente que ya puede revisarla en su panel."
+    }))
+}
+
+async fn exec_list_vps_plans(pool: &PgPool) -> ToolExecResult {
+    match VpsRepository::list_plan_configs(pool).await {
+        Ok(plans) => tool_json(json!({
+            "status": "ok",
+            "plans": plans.iter().map(vps_plan_json).collect::<Vec<_>>(),
+        })),
+        Err(e) => {
+            tracing::error!("Error listando planes VPS para AI tool: {e}");
+            tool_status("error", "No se pudieron listar los planes VPS")
+        }
+    }
+}
+
+fn vps_plan_json(plan: &VpsPlanConfig) -> Value {
+    json!({
+        "tier": plan.tier_name,
+        "display_name": plan.display_name,
+        "description": plan.description,
+        "monthly_price_cents": plan.monthly_price_cents,
+        "cpu_cores": plan.cpu_cores,
+        "ram_mb": plan.ram_mb,
+        "disk_mb": plan.disk_mb,
+        "region": plan.region,
+        "approval_required": plan.approval_required,
+    })
+}
+
+async fn exec_list_my_vps(pool: &PgPool, auth: Option<ToolAuthContext>) -> ToolExecResult {
+    let auth = match require_auth(auth) {
+        Ok(auth) => auth,
+        Err(result) => return result,
+    };
+
+    match VpsRepository::list_by_user_id(pool, auth.user_id).await {
+        Ok(subscriptions) => {
+            let subscriptions = with_vps_events(pool, subscriptions).await;
+            tool_json(json!({
+                "status": "ok",
+                "scope": auth.effective_role.to_string(),
+                "vps": subscriptions,
+            }))
+        }
+        Err(e) => {
+            tracing::error!(
+                user_id = %auth.user_id,
+                effective_role = %auth.effective_role,
+                "Error listando VPS del usuario: {e}"
+            );
+            tool_status("error", "No se pudieron consultar tus VPS")
+        }
+    }
+}
+
+async fn with_vps_events(pool: &PgPool, subscriptions: Vec<VpsSubscription>) -> Vec<Value> {
+    let mut result = Vec::with_capacity(subscriptions.len());
+    for subscription in subscriptions {
+        let events = match VpsRepository::list_events(pool, subscription.id, 5).await {
+            Ok(events) => events,
+            Err(e) => {
+                tracing::warn!(vps_id = %subscription.id, "Error listando eventos VPS para AI tool: {e}");
+                Vec::new()
+            }
+        }
+        .into_iter()
+        .map(|event| {
+            json!({
+                "event_type": event.event_type,
+                "details": event.details,
+                "created_at": event.created_at,
+            })
+        })
+        .collect::<Vec<_>>();
+        result.push(json!({
+            "id": subscription.id,
+            "tier": subscription.tier_name,
+            "hostname": subscription.requested_hostname,
+            "status": subscription.status,
+            "monthly_price_cents": subscription.monthly_price_cents,
+            "contabo_instance_id": subscription.contabo_instance_id,
+            "provisioning_ip": subscription.provisioning_ip,
+            "access_username": subscription.access_username,
+            "client_notes": subscription.client_notes,
+            "events": events,
+        }));
+    }
+    result
+}
+
+async fn exec_create_vps_checkout(ctx: &ToolExecutionContext<'_>, args: &Value) -> ToolExecResult {
+    let Ok(auth) = require_auth(ctx.auth) else {
+        return requires_login(
+            "Para contratar VPS y generar checkout mensual debes iniciar sesión o crear una cuenta.",
+        );
+    };
+    if ctx.stripe_key.is_none() && !checkout_bypass_is_configured() {
+        return tool_error("Stripe no configurado para checkout de VPS");
+    }
+
+    let req = match parse_vps_checkout_request(args) {
+        Ok(req) => req,
+        Err(result) => return result,
+    };
+    let plan_config = match fetch_vps_plan_config(ctx.pool, &req.tier).await {
+        Ok(config) => config,
+        Err(result) => return result,
+    };
+    let (client_name, client_email) = match fetch_hosting_client(ctx.pool, auth.user_id).await {
+        Ok(client) => client,
+        Err(result) => return result,
+    };
+    let subscription = match create_chat_vps_subscription(
+        ctx.pool,
+        auth.user_id,
+        &req,
+        &plan_config,
+        &client_name,
+        &client_email,
+    )
+    .await
+    {
+        Ok(subscription) => subscription,
+        Err(result) => return result,
+    };
+
+    if is_checkout_bypass_email(&client_email) {
+        return match activate_chat_vps_bypass(ctx.pool, &subscription, auth.user_id).await {
+            Ok(updated) => vps_bypass_success(&updated),
+            Err(result) => result,
+        };
+    }
+
+    let Some(stripe_key) = ctx.stripe_key else {
+        return tool_error("Stripe no configurado para checkout de VPS");
+    };
+
+    let checkout_url = match create_chat_vps_checkout_url(
+        ctx.http_client,
+        stripe_key,
+        &subscription,
+        &client_email,
+    )
+    .await
+    {
+        Ok(url) => url,
+        Err(result) => return result,
+    };
+
+    vps_checkout_success(&subscription, &checkout_url)
+}
+
+fn parse_vps_checkout_request(args: &Value) -> Result<SelfSubscribeVpsRequest, ToolExecResult> {
+    let hostname = args["hostname"]
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string);
+    let notes = args["notes"]
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string);
+    let req = SelfSubscribeVpsRequest {
+        tier: args["tier"].as_str().unwrap_or("").trim().to_string(),
+        hostname,
+        notes,
+    };
+    req.validate()
+        .map(|()| req)
+        .map_err(|e| tool_error(&format!("Datos de VPS inválidos: {e}")))
+}
+
+async fn fetch_vps_plan_config(pool: &PgPool, tier: &str) -> Result<VpsPlanConfig, ToolExecResult> {
+    match VpsRepository::get_plan_config(pool, tier).await {
+        Ok(Some(config)) if config.is_active => Ok(config),
+        Ok(_) => Err(tool_error(&format!("Tier VPS inválido: {tier}"))),
+        Err(e) => {
+            tracing::error!("Error consultando tier VPS {tier}: {e}");
+            Err(tool_error("No se pudo consultar el plan VPS"))
+        }
+    }
+}
+
+async fn create_chat_vps_subscription(
+    pool: &PgPool,
+    user_id: Uuid,
+    req: &SelfSubscribeVpsRequest,
+    plan_config: &VpsPlanConfig,
+    client_name: &str,
+    client_email: &str,
+) -> Result<VpsSubscription, ToolExecResult> {
+    let subscription = VpsRepository::create(
+        pool,
+        CreateVpsSubscriptionParams {
+            user_id: Some(user_id),
+            client_name,
+            client_email,
+            tier_name: &req.tier,
+            requested_hostname: req.hostname.as_deref(),
+            client_notes: req.notes.as_deref(),
+            monthly_price_cents: plan_config.monthly_price_cents,
+        },
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Error creando suscripción VPS desde chatbot: {e}");
+        tool_error("No se pudo crear la solicitud VPS")
+    })?;
+    record_chat_vps_event(pool, subscription.id, user_id, &req.tier).await;
+    Ok(subscription)
+}
+
+async fn record_chat_vps_event(pool: &PgPool, subscription_id: Uuid, user_id: Uuid, tier: &str) {
+    if let Err(e) = VpsRepository::add_event(
+        pool,
+        subscription_id,
+        "created",
+        Some(json!({"tier": tier, "by": user_id.to_string(), "source": "chatbot-vps"})),
+    )
+    .await
+    {
+        tracing::warn!(vps_id = %subscription_id, "Error registrando evento chatbot-vps: {e}");
+    }
+}
+
+async fn activate_chat_vps_bypass(
+    pool: &PgPool,
+    subscription: &VpsSubscription,
+    user_id: Uuid,
+) -> Result<VpsSubscription, ToolExecResult> {
+    VpsRepository::update_status(pool, subscription.id, "pending_approval")
+        .await
+        .map_err(|e| {
+            tracing::error!(vps_id = %subscription.id, "Error activando bypass VPS desde chatbot: {e}");
+            tool_error("No se pudo registrar el VPS de prueba")
+        })?;
+    if let Err(e) = VpsRepository::add_event(
+        pool,
+        subscription.id,
+        "test_checkout_bypassed",
+        Some(json!({"by": user_id.to_string(), "source": "chatbot-vps"})),
+    )
+    .await
+    {
+        tracing::warn!(vps_id = %subscription.id, "Error registrando bypass VPS chatbot: {e}");
+    }
+    VpsRepository::find_by_id(pool, subscription.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(vps_id = %subscription.id, "Error recargando VPS test chatbot: {e}");
+            tool_error("No se pudo consultar el VPS creado")
+        })?
+        .ok_or_else(|| tool_error("VPS creado no encontrado"))
+}
+
+async fn create_chat_vps_checkout_url(
+    http_client: &reqwest::Client,
+    stripe_key: &str,
+    subscription: &VpsSubscription,
+    client_email: &str,
+) -> Result<String, ToolExecResult> {
+    let base_url = chat_public_base_url();
+    let success_url = format!("{base_url}/panel?vps=success&session_id={{CHECKOUT_SESSION_ID}}");
+    let cancel_url = format!("{base_url}/panel?vps=cancelled");
+    VpsStripeService::create_checkout_session(&VpsCheckoutParams {
+        http_client,
+        stripe_key,
+        subscription_id: subscription.id,
+        tier_name: &subscription.tier_name,
+        amount_cents: subscription.monthly_price_cents,
+        customer_email: client_email,
+        success_url: &success_url,
+        cancel_url: &cancel_url,
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!(
+            vps_id = %subscription.id,
+            "Error creando checkout VPS desde chatbot: {e}"
+        );
+        tool_error("No se pudo crear el checkout de VPS")
+    })
+}
+
+fn vps_checkout_success(subscription: &VpsSubscription, checkout_url: &str) -> ToolExecResult {
+    ToolExecResult {
+        tool_result_json: json!({
+            "status": "ok",
+            "vps_subscription_id": subscription.id,
+            "tier": subscription.tier_name,
+            "hostname": subscription.requested_hostname,
+            "amount_cents": subscription.monthly_price_cents,
+            "message": "Checkout mensual de VPS creado. El cliente verá una tarjeta visual con botón de pago. NO repitas el link en texto."
+        })
+        .to_string(),
+        rich_message: Some(RichMessage {
+            content: format!(
+                "VPS {} — ${:.2} USD/mes",
+                subscription.tier_name,
+                f64::from(subscription.monthly_price_cents) / 100.0
+            ),
+            message_type: "invoice".to_string(),
+            metadata: json!({
+                "title": "VPS",
+                "payment_url": checkout_url,
+                "amount_cents": subscription.monthly_price_cents,
+                "currency": "usd",
+                "status": "open",
+                "description": format!("Suscripción mensual VPS {}", subscription.tier_name),
+                "vps_subscription_id": subscription.id,
+                "tier": subscription.tier_name,
+                "hostname": subscription.requested_hostname,
+            }),
+        }),
+    }
+}
+
+fn vps_bypass_success(subscription: &VpsSubscription) -> ToolExecResult {
+    tool_json(json!({
+        "status": "ok",
+        "vps_subscription_id": subscription.id,
+        "tier": subscription.tier_name,
+        "hostname": subscription.requested_hostname,
+        "amount_cents": subscription.monthly_price_cents,
+        "bypassed": true,
+        "message": "Solicitud VPS creada para cuenta test sin cobro real. Queda pendiente de aprobación manual como si el pago ya hubiera sido confirmado."
+    }))
 }
 
 #[derive(sqlx::FromRow)]
@@ -1767,17 +2203,18 @@ mod tests {
     }
 
     #[test]
-    fn tool_definitions_has_thirteen_tools() {
+    fn tool_definitions_has_sixteen_tools() {
         let defs = tool_definitions();
         let arr = defs.as_array().unwrap();
         /* 2 service (create_invoice, request_human_assistance)
          * + 3 hosting (list_hosting_plans, list_my_hostings, create_hosting_checkout)
+         * + 3 VPS (list_vps_plans, list_my_vps, create_vps_checkout)
          * + 2 visitor (capture_email, save_client_info)
-         * + 6 registered/account = 13 */
+         * + 6 registered/account = 16 */
         assert_eq!(
             arr.len(),
-            13,
-            "Se esperan 13 tools, encontradas {}",
+            16,
+            "Se esperan 16 tools, encontradas {}",
             arr.len()
         );
     }
@@ -1822,6 +2259,9 @@ mod tests {
         assert!(names.contains(&"list_hosting_plans"));
         assert!(names.contains(&"list_my_hostings"));
         assert!(names.contains(&"create_hosting_checkout"));
+        assert!(names.contains(&"list_vps_plans"));
+        assert!(names.contains(&"list_my_vps"));
+        assert!(names.contains(&"create_vps_checkout"));
         assert!(names.contains(&"request_human_assistance"));
         assert!(names.contains(&"capture_email"));
         assert!(names.contains(&"save_client_info"));
@@ -1933,6 +2373,28 @@ mod tests {
         assert!(parsed["message"]
             .as_str()
             .is_some_and(|error| error.contains("Stripe")));
+        assert!(result.rich_message.is_none());
+    }
+
+    #[tokio::test]
+    async fn create_vps_checkout_requires_login() {
+        let pool = PgPool::connect_lazy("postgres://invalid@localhost/test").unwrap();
+        let http = reqwest::Client::new();
+        let result = execute_tool(
+            ToolExecutionContext {
+                pool: &pool,
+                http_client: &http,
+                stripe_key: Some("sk_test_fake"),
+                visitor_id: None,
+                auth: None,
+                session_id: uuid::Uuid::nil(),
+            },
+            "create_vps_checkout",
+            &json!({"tier": "vps1"}),
+        )
+        .await;
+        let parsed: Value = serde_json::from_str(&result.tool_result_json).unwrap();
+        assert_eq!(parsed["status"], "requires_login");
         assert!(result.rich_message.is_none());
     }
 
