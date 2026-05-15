@@ -39,7 +39,11 @@ mod vps;
 mod wallet;
 
 use argon2::PasswordHasher;
-use axum::http::{HeaderName, HeaderValue, Method};
+use axum::body::Body;
+use axum::extract::State;
+use axum::http::{header, HeaderName, HeaderValue, Method, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
 use axum::Router;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::compression::CompressionLayer;
@@ -502,6 +506,7 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
                 .service(ServeDir::new("uploads")),
         )
         .nest("/api", api_routes())
+        .merge(spa_shell_routes())
         .layer(TraceLayer::new_for_http())
         /* [154A-6] Compresión HTTP gzip+brotli — reduce transferencia ~70% */
         .layer(CompressionLayer::new())
@@ -557,6 +562,43 @@ pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Route
             ))
     } else {
         router
+    }
+}
+
+fn spa_shell_routes() -> Router<AppState> {
+    Router::new()
+        .route("/", get(spa_index))
+        .route("/servicios", get(spa_index))
+        .route("/servicios/:slug", get(spa_index))
+        .route("/proyectos", get(spa_index))
+        .route("/proyectos/:slug", get(spa_index))
+        .route("/nosotros", get(spa_index))
+        .route("/soluciones/hosting", get(spa_index))
+        .route("/soluciones/vps", get(spa_index))
+        .route("/portal-vps", get(spa_index))
+        .route("/politica-privacidad", get(spa_index))
+        .route("/usuario/:username", get(spa_index))
+        .route("/panel", get(spa_index))
+        .route("/panel/chat", get(spa_index))
+}
+
+async fn spa_index(State(state): State<AppState>) -> Response {
+    let Some(static_dir) = state.static_dir.as_deref() else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+
+    let index_path = format!("{static_dir}/index.html");
+    match tokio::fs::read(index_path).await {
+        Ok(bytes) => Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .header(header::CACHE_CONTROL, "no-cache")
+            .body(Body::from(bytes))
+            .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response()),
+        Err(error) => {
+            tracing::error!(%error, static_dir, "No se pudo leer index.html para SPA");
+            StatusCode::NOT_FOUND.into_response()
+        }
     }
 }
 

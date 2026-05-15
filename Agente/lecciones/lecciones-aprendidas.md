@@ -86,6 +86,11 @@
 - Para cadenas de retry (Groq 3 keys × 3 modelos + Gemini 6 modelos = 24 intentos), agregar timeout global con `tokio::time::timeout(Duration::from_secs(90), ...)` además del per-request timeout.
 - [124A-1] Este bug causó un 503 en producción ~1h después de deploy. Los logs no mostraron crash porque no hubo panic — el pool simplemente se agotó en silencio.
 
+## Rust/Axum — SPA fallback con status correcto
+- `ServeDir::not_found_service(ServeFile::new(index.html))` puede devolver el HTML correcto del SPA con status HTTP 404 en rutas directas como `/servicios` o `/soluciones/hosting`.
+- Para rutas React válidas que deben indexarse o validarse por HTTP, montar rutas Axum explícitas que sirvan `index.html` con status 200. Dejar rutas eliminadas intencionalmente fuera de esa lista para conservar 404 real.
+- Después de un deploy SPA, validar códigos HTTP con `curl`, no solo render visual en navegador.
+
 ## UI del panel — bases compartidas
 - Si una variante visual ya es la buena (`hostingCardIcono` en este caso), promover ese estilo a la clase base compartida y dejar las variantes futuras como overrides mínimos con composición de clases, no como recetas duplicadas.
 - Si un `MenuContextual` necesita una composición nueva (grid de apps, launcher, etc.), agregar una variante semántica al componente base antes de pasar `triggerClassName`/`panelClassName` locales. Sentinel lo detecta como parche visual.
