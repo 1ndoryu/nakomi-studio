@@ -50,7 +50,7 @@ fn hosting_product_copy(plan: &str) -> (String, String) {
     if plan.starts_with("normal-") {
         return (
             format!("Hosting {plan_name}"),
-            format!("Plan {plan_name} de hosting normal administrado"),
+            format!("Plan {plan_name} de hosting administrado para sitios a medida y frontends"),
         );
     }
 
@@ -538,7 +538,7 @@ mod tests {
     fn hosting_product_copy_distinguishes_normal_hosting() {
         let (normal_name, normal_desc) = hosting_product_copy("normal-basico");
         assert_eq!(normal_name, "Hosting Basico");
-        assert!(normal_desc.contains("hosting normal"));
+        assert!(normal_desc.contains("sitios a medida"));
 
         let (wordpress_name, wordpress_desc) = hosting_product_copy("basico");
         assert_eq!(wordpress_name, "Hosting WordPress Basico");

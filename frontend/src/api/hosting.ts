@@ -285,7 +285,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         label: 'Hosting Básico',
         priceCents: 323,
         storageMb: 5120,
-        description: 'Hosting web normal con Nginx, SSL, SFTP y recursos aislados para sitios sin WordPress.',
+        description: 'Hosting administrado con Nginx, SSL y SFTP para landings, sitios corporativos y proyectos sin WordPress.',
         features: ['Nginx administrado', '5 GB almacenamiento', 'SSL gratuito', '1 dominio', 'SFTP seguro'],
     },
     {
@@ -293,7 +293,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         label: 'Hosting Profesional',
         priceCents: 537,
         storageMb: 20480,
-        description: 'Hosting web normal para sitios con más tráfico, archivos estáticos o frontend personalizado.',
+        description: 'Hosting administrado para sitios con más tráfico, frontends personalizados y despliegues con mayor exigencia operativa.',
         features: ['Nginx administrado', '20 GB almacenamiento', 'SSL gratuito', '3 dominios', 'SFTP seguro', 'Backups diarios'],
         recommended: true,
     },
@@ -302,7 +302,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         label: 'Hosting E-commerce',
         priceCents: 805,
         storageMb: 51200,
-        description: 'Hosting web normal de mayor capacidad para catálogos, assets pesados y operaciones con más demanda.',
+        description: 'Hosting administrado de mayor capacidad para catálogos amplios, assets pesados y operaciones con más demanda.',
         features: ['Nginx administrado', '50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'SFTP seguro', 'Backups diarios', 'Recursos ampliados'],
     },
 ];

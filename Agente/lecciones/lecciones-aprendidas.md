@@ -111,6 +111,10 @@
 - Cuando el objetivo es una URL exacta de optimización (`w=1200&q=80`) para controlar peso en un bloque hero/carrusel, el cálculo responsive por ancho medido + DPR puede seguir sobredescargando.
 - En esos casos conviene un modo explícito sin `srcSet` responsive y con ancho fijo de proxy, en vez de pelear contra buckets automáticos.
 
+## Navegación pública — una sola fuente para catálogos vivos
+- Si una página pública (`/servicios`, `/proyectos`, etc.) consume un catálogo vivo desde API/CMS, el header y cualquier submenú que liste esos items debe usar la misma fuente.
+- Mantener un dataset estático paralelo solo para navegación termina desalineando títulos, slugs y rutas aunque la página principal ya esté correcta.
+
 ## Admin deletes — dependencias reales
 - Si una entidad admin pide “eliminar” pero tiene FKs sin cascade repartidas en varias tablas, no implementar hard delete ciego. Primero exponer al panel un preflight de dependencias con mensaje explícito y usar suspensión como fallback operativo.
 

@@ -60,12 +60,14 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
     const seoTitle = isWordPress ? 'Hosting WordPress' : 'Hosting';
     const seoPath = isWordPress ? '/soluciones/hosting-wordpress' : '/soluciones/hosting';
     const heroEtiqueta = isWordPress ? t('content.solutions.hosting.titulo', 'Hosting WordPress') : 'Hosting';
-    const heroTitulo = isWordPress ? t('hosting_page.hero_title', 'WordPress que escala contigo') : 'Hosting normal para sitios ligeros y frontends';
+    /* [155A-20] El hosting sin WordPress se presenta por caso de uso real.
+     * Evita el término ambiguo "normal" y deja claro que es para sitios a medida. */
+    const heroTitulo = isWordPress ? t('hosting_page.hero_title', 'WordPress que escala contigo') : 'Hosting administrado para sitios a medida y frontends';
     const heroDesc = isWordPress
         ? t('hosting_page.hero_desc', 'Olvídate de la administración de servidores. WordPress pre-instalado, WP-CLI, backups automáticos y rendimiento optimizado.')
-        : 'Nginx administrado, SSL, SFTP y recursos aislados para publicar sitios sin WordPress ni base de datos.';
+        : 'Infraestructura Nginx administrada con SSL, SFTP y recursos aislados para publicar landings, sitios corporativos y frontends sin encargarte del servidor.';
     const plansTitle = isWordPress ? t('hosting_page.plans_title', 'Planes de Hosting WordPress') : 'Planes de hosting';
-    const plansSubtitle = isWordPress ? t('hosting_page.plans_subtitle', 'Elige el plan que mejor se adapte a tu proyecto') : 'Elige hosting normal cuando quieres publicar sin WordPress.';
+    const plansSubtitle = isWordPress ? t('hosting_page.plans_subtitle', 'Elige el plan que mejor se adapte a tu proyecto') : 'Elige esta opción si tu proyecto no necesita WordPress y quieres una infraestructura simple, segura y mantenida por nosotros.';
     const featureTitle = isWordPress ? t('hosting_page.features_title', 'Todo Incluido') : 'Todo lo necesario para publicar';
     const featureSubtitle = isWordPress
         ? t('hosting_page.features_subtitle', 'Cada plan incluye las herramientas esenciales para mantener tu sitio rápido y seguro.')
@@ -106,7 +108,7 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
                 title={seoTitle}
                 description={isWordPress
                     ? `WordPress hosting optimizado con WP-CLI, backups automáticos y soporte experto. Planes desde ${lowestHostingPriceLabel} con SSL, WordPress pre-instalado y acceso SSH.`
-                    : `Hosting normal administrado con Nginx, SSL y SFTP. Planes desde ${lowestHostingPriceLabel} para sitios sin WordPress.`}
+                    : `Hosting administrado con Nginx, SSL y SFTP. Planes desde ${lowestHostingPriceLabel} para sitios corporativos, landings y frontends sin WordPress.`}
                 path={seoPath}
             />
 

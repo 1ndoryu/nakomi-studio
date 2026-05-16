@@ -5,7 +5,8 @@
 - `/soluciones` y `/soluciones/` no son paginas navegables; deben resolver a 404.
 - Las paginas validas son `/soluciones/hosting-wordpress`, `/soluciones/hosting` y `/soluciones/vps`.
 - La navegacion principal agrupa Soluciones como menu contextual sin `href` propio.
-- Servicios tambien usa menu contextual para exponer nombres de servicios sin cargar una pagina intermedia.
+- El submenu de Servicios en header se alimenta del catalogo publico real para mantener nombres y slugs sincronizados con `/servicios`.
+- La pagina `/servicios` ya no renderiza un menu contextual interno adicional; el filtro y el grid son la unica navegacion dentro de la vista.
 - Las imagenes hero de Hosting/VPS usan el mismo ancho, padding y ratio visual que `galeriaHeroContenedor` de home.
 - El boton admin de tres puntos permite cambiar la imagen de forma local como placeholder hasta conectar persistencia CMS/backend.
 

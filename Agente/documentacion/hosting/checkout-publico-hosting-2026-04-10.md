@@ -22,6 +22,7 @@ La página pública de hosting abría el mismo `ModalCompra` usado por servicios
 - Los planes normales se siembran por migración con precio `CEIL(precio_wordpress * 1.30)`.
 - `/soluciones/hosting-wordpress` muestra la oferta WordPress y `/soluciones/hosting` muestra hosting normal. `/soluciones` queda fuera de las rutas SPA válidas para no crear una página intermedia.
 - El provisioning de hosting normal usa Nginx + SFTP sin base de datos, WP-CLI ni panel WordPress. El provisioning WordPress mantiene la composición WordPress/MariaDB/SFTP existente.
+- El copy público evita el término visible “hosting normal”: comercialmente se presenta como hosting administrado para sitios a medida, landings y frontends, aunque los slugs `normal-*` se conservan por compatibilidad técnica.
 - El panel usa copy genérico de “hosting” y solo muestra accesos WordPress cuando el plan no empieza por `normal-`.
 - `GLORY_TEST_CHECKOUT_EMAILS` permite cuentas de prueba con checkout bypass: hosting queda `active` sin Stripe real y redirige al panel.
 

@@ -9,12 +9,14 @@
  * [064A-61] Menú móvil rediseñado: overlay modal centrado, soporte submenús,
  * botón volver, acciones inline. accionCabecera oculto en mobile via CSS. */
 import React, {useState} from 'react';
+import {useQuery} from '@tanstack/react-query';
 import {useTranslation} from 'react-i18next';
 import {ChevronDown, ChevronRight, ArrowLeft, Menu, X, LogOut} from 'lucide-react';
 import {Button} from '../ui/Button';
 import {Modal} from '../ui/Modal';
 import {MenuContextual} from '../ui/ContextMenu';
 import {ENLACES_HEADER} from '../../data/navegacion';
+import {apiListPublicServices} from '../../api/admin-services';
 import {ModalAutenticacion} from './ModalAutenticacion';
 import {useAuthStore} from '../../stores/authStore';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
@@ -37,6 +39,12 @@ const NAV_KEYS: Record<string, string> = {
 
 export const Header: React.FC = () => {
     const {t} = useTranslation();
+    const {data: serviciosPublicos} = useQuery({
+        queryKey: ['public-services', 'header-menu'],
+        queryFn: apiListPublicServices,
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
     const {
         dropdownAbierto, setDropdownAbierto,
         modalAbierto, setModalAbierto,
@@ -57,10 +65,33 @@ export const Header: React.FC = () => {
     const logout = useAuthStore(s => s.logout);
     const {avatarUrl} = useCurrentProfile();
     const [perfilAbierto, setPerfilAbierto] = useState(false);
+    /* [155A-19] El submenú de Servicios debe reflejar el catálogo público real.
+     * Gotcha: el header no debe usar títulos/slugs estáticos si la página /servicios
+     * consume la API pública, o se desalinean nombres y enlaces. */
+    const enlacesHeader = React.useMemo(
+        () => ENLACES_HEADER.map(link => {
+            if (link.label !== 'Servicios' || !serviciosPublicos?.length) {
+                return link;
+            }
+
+            return {
+                ...link,
+                subEnlaces: serviciosPublicos.map(servicio => ({
+                    label: servicio.title,
+                    href: `/servicios/${servicio.slug}`,
+                })),
+            };
+        }),
+        [serviciosPublicos]
+    );
+    const resolveNavLabel = (label: string) => {
+        const key = NAV_KEYS[label];
+        return key ? t(key) : label;
+    };
 
     /* [064A-61] Enlace con submenú actualmente abierto en el menú móvil */
     const enlaceSubMenuActivo = subMenuMovil
-        ? ENLACES_HEADER.find(l => l.label === subMenuMovil)
+        ? enlacesHeader.find(l => l.label === subMenuMovil)
         : null;
 
     return (
@@ -80,8 +111,8 @@ export const Header: React.FC = () => {
 
                 {/* [064A-61] Navegación desktop: solo visible en desktop */}
                 <nav className="navegacionPrincipal" aria-label={t('accessibility.main_nav')}>
-                    {ENLACES_HEADER.map(link => {
-                        const label = t(NAV_KEYS[link.label] || link.label);
+                    {enlacesHeader.map(link => {
+                        const label = resolveNavLabel(link.label);
                         return (
                         <div key={link.label} className="enlaceNavegacionWrapper" ref={link.hasDropdown ? dropdownRef : undefined} onMouseEnter={() => (link.hasDropdown ? setDropdownAbierto(link.label) : null)} onMouseLeave={() => setDropdownAbierto(null)}>
                             {link.href ? (
@@ -99,7 +130,7 @@ export const Header: React.FC = () => {
                                 <div className="subMenuDesplegable" role="menu" aria-label={`${t('accessibility.main_nav')}: ${label}`}>
                                     {link.subEnlaces.map(sub => (
                                         <GloryLink key={sub.label} to={sub.href} className="subMenuEnlace" role="menuitem" tabIndex={0} onKeyDown={handleKeyDownSubmenu}>
-                                            {t(NAV_KEYS[sub.label] || sub.label)}
+                                            {resolveNavLabel(sub.label)}
                                         </GloryLink>
                                     ))}
                                 </div>
@@ -151,7 +182,7 @@ export const Header: React.FC = () => {
                     {/* Vista principal o submenú */}
                     {!subMenuMovil ? (
                         <div className="menuMovilLista">
-                            {ENLACES_HEADER.map(link => (
+                            {enlacesHeader.map(link => (
                                 link.hasDropdown && link.subEnlaces ? (
                                     <div
                                         key={link.label}
@@ -161,12 +192,12 @@ export const Header: React.FC = () => {
                                         onClick={() => setSubMenuMovil(link.label)}
                                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSubMenuMovil(link.label); }}
                                     >
-                                        {t(NAV_KEYS[link.label] || link.label)}
+                                        {resolveNavLabel(link.label)}
                                         <ChevronRight size={16} aria-hidden="true" />
                                     </div>
                                 ) : (
                                     <GloryLink key={link.label} to={link.href!} className="menuMovilEnlace" onClick={cerrarMenuMovil}>
-                                        {t(NAV_KEYS[link.label] || link.label)}
+                                        {resolveNavLabel(link.label)}
                                     </GloryLink>
                                 )
                             ))}
@@ -204,7 +235,7 @@ export const Header: React.FC = () => {
                             </div>
                             {enlaceSubMenuActivo?.subEnlaces?.map(sub => (
                                 <GloryLink key={sub.label} to={sub.href} className="menuMovilEnlace" onClick={cerrarMenuMovil}>
-                                    {t(NAV_KEYS[sub.label] || sub.label)}
+                                    {resolveNavLabel(sub.label)}
                                 </GloryLink>
                             ))}
                         </div>

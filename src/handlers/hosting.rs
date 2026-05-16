@@ -75,10 +75,13 @@ fn normal_hosting_base_plan(plan: &str) -> (&str, bool) {
 fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
     let (base_plan, is_normal) = normal_hosting_base_plan(plan);
     if is_normal {
+        /* [155A-20] El catálogo público evita "hosting normal" y describe el caso de uso.
+         * Mantiene los slugs `normal-*` por compatibilidad, pero el copy visible habla de
+         * hosting administrado para sitios a medida, landings y frontends. */
         return match base_plan {
             "pro" => HostingPlanMarketing {
                 label: "Hosting Profesional",
-                description: "Hosting web normal para sitios con más tráfico, archivos estáticos o frontend personalizado.",
+                description: "Hosting administrado para sitios con más tráfico, frontends personalizados y despliegues con mayor exigencia operativa.",
                 features: &[
                     "Nginx administrado",
                     "20 GB almacenamiento SSD",
@@ -92,7 +95,7 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
             },
             "ecommerce" => HostingPlanMarketing {
                 label: "Hosting E-commerce",
-                description: "Hosting web normal de mayor capacidad para catálogos, assets pesados y operaciones con más demanda.",
+                description: "Hosting administrado de mayor capacidad para catálogos amplios, assets pesados y operaciones con más demanda.",
                 features: &[
                     "Nginx administrado",
                     "50 GB almacenamiento SSD",
@@ -106,7 +109,7 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
             },
             _ => HostingPlanMarketing {
                 label: "Hosting Básico",
-                description: "Hosting web normal con Nginx, SSL, SFTP y recursos aislados para sitios sin WordPress.",
+                description: "Hosting administrado con Nginx, SSL y SFTP para landings, sitios corporativos y proyectos sin WordPress.",
                 features: &[
                     "Nginx administrado",
                     "5 GB almacenamiento SSD",
