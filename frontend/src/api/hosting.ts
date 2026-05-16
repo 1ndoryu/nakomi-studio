@@ -382,6 +382,11 @@ export async function apiListVps2Deployments(): Promise<CoolifyDeployment[]> {
     return data;
 }
 
+/* [165A-4] Elimina un despliegue huérfano real desde Coolify para limpiar el panel. */
+export async function apiDeleteVps2Deployment(uuid: string): Promise<void> {
+    await axiosInstance.delete(`/api/hosting/deployments/${encodeURIComponent(uuid)}`);
+}
+
 export interface VpsSummary {
     instance_id: number;
     name: string;

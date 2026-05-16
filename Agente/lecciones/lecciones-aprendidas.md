@@ -258,6 +258,10 @@
 - Cuando el formulario ya tiene en memoria el conjunto completo de slugs, conviene hacer preflight local antes del submit. El servidor sigue siendo la verdad final, pero el usuario recibe feedback inmediato y se evita un roundtrip inutil para conflictos obvios.
 
 ## CMS de servicios - guardar servicio y planes en dos pasos exige preflight
+
+## Coolify huérfanos - borrar por UUID no alcanza
+- Si un panel lista despliegues "huérfanos" cruzando Coolify contra BD, el borrado no puede validar solo `server_uuid`. Algunas filas legacy siguen vinculadas por `coolify_site_name`, y tratarlas como huérfanas rompe la coherencia entre panel e infraestructura.
+- Antes de borrar un stack desde Coolify, cruzar siempre por UUID y por nombre de servicio; si cualquiera coincide con una suscripción real, devolver conflicto y forzar el flujo de eliminación desde la suscripción.
 - Si el editor primero guarda el servicio y despues hace `PUT /plans`, cualquier validacion tardia de planes produce sensacion de guardado parcial. Antes del primer request hay que validar los invariantes minimos del segundo paso con el mismo contrato del backend.
 - En este slice, los invariantes minimos que no deben salir del cliente son: slug y nombre obligatorios por plan, slug unico dentro del servicio, al menos una fase por plan y titulo obligatorio por fase.
 

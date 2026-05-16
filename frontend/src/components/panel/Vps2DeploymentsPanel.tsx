@@ -3,10 +3,10 @@
  * suscripción del panel para evitar otra falsa equivalencia entre VPS y deployment. */
 
 import React, {useState} from 'react';
-import {Activity, ExternalLink, Globe, Link2, PlusCircle, Server, ShieldAlert} from 'lucide-react';
+import {Activity, ExternalLink, Globe, Link2, PlusCircle, Server, ShieldAlert, Trash2} from 'lucide-react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import type {CoolifyDeployment} from '../../api/hosting';
-import {apiCreateHostingSubscription} from '../../api/hosting';
+import {apiCreateHostingSubscription, apiDeleteVps2Deployment} from '../../api/hosting';
 import {useVps2DeploymentsPanel} from '../../hooks/useVps2DeploymentsPanel';
 import {CreateHostingForm} from './HostingCreateForm';
 import {Modal} from '../ui/Modal';
@@ -64,8 +64,9 @@ function resolveSubscriptionLabel(deployment: CoolifyDeployment): string {
 function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
     const isLinked = Boolean(deployment.linked_subscription_id);
     const fqdn = deployment.fqdn?.trim() || null;
-    /* [304A-3] Crea suscripción directamente desde el card sin depender del hook complejo */
+    /* [165A-4] Crea y limpia huérfanos directamente desde el card para evitar drift manual. */
     const [showCreateForm, setShowCreateForm] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const queryClient = useQueryClient();
     const createMutation = useMutation({
         mutationFn: apiCreateHostingSubscription,
@@ -75,8 +76,29 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
             void queryClient.invalidateQueries({queryKey: ['vps2-deployments']});
             setShowCreateForm(false);
         },
-        onError: () => toast.error('Error al crear la suscripción'),
+        onError: error => toast.error(getPanelErrorMessage(error)),
     });
+    const deleteMutation = useMutation({
+        mutationFn: (uuid: string) => apiDeleteVps2Deployment(uuid),
+        onSuccess: () => {
+            toast.success('Despliegue eliminado de Coolify');
+            void queryClient.invalidateQueries({queryKey: ['vps2-deployments']});
+            setShowDeleteConfirm(false);
+        },
+        onError: error => toast.error(getPanelErrorMessage(error)),
+    });
+
+    const closeCreateForm = () => {
+        if (!createMutation.isPending) {
+            setShowCreateForm(false);
+        }
+    };
+
+    const closeDeleteConfirm = () => {
+        if (!deleteMutation.isPending) {
+            setShowDeleteConfirm(false);
+        }
+    };
 
     return (
         <article className="vpsCard">
@@ -148,28 +170,69 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
                         ? 'Despliegue real detectado y vinculado a una suscripción del panel.'
                         : 'Despliegue real detectado en Coolify sin vínculo con una suscripción del panel.'}
                 </p>
-                {/* [304A-3] Botón para vincular despliegue huérfano creando una suscripción */}
                 {!isLinked && (
-                    <Button
-                        variante="secundario"
-                        tamano="pequeno"
-                        className="vpsOrphanLinkBtn"
-                        onClick={() => setShowCreateForm(true)}
-                        type="button"
-                    >
-                        <PlusCircle size={14} />
-                        Crear suscripción vinculada
-                    </Button>
+                    <div className="vpsOrphanActions">
+                        <Button
+                            variante="secundario"
+                            tamano="pequeno"
+                            className="vpsOrphanLinkBtn"
+                            onClick={() => setShowCreateForm(true)}
+                            type="button"
+                            disabled={deleteMutation.isPending}
+                        >
+                            <PlusCircle size={14} />
+                            Crear suscripción vinculada
+                        </Button>
+                        <Button
+                            variante="outline"
+                            tamano="pequeno"
+                            className="vpsOrphanDeleteBtn"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            type="button"
+                            disabled={createMutation.isPending}
+                        >
+                            <Trash2 size={14} />
+                            Eliminar despliegue
+                        </Button>
+                    </div>
                 )}
             </div>
 
-            {/* [304A-3] Modal para crear suscripción desde despliegue huérfano */}
-            <Modal abierto={showCreateForm} onCerrar={() => setShowCreateForm(false)}>
+            <Modal abierto={showCreateForm} onCerrar={closeCreateForm}>
                 <CreateHostingForm
                     initialCoolifyName={deployment.name}
                     submitting={createMutation.isPending}
                     onSubmit={req => createMutation.mutate(req)}
                 />
+            </Modal>
+
+            <Modal abierto={showDeleteConfirm} onCerrar={closeDeleteConfirm}>
+                <h3 className="modalTitulo">Eliminar despliegue huérfano</h3>
+                <p className="modalTexto">
+                    Se eliminará {deployment.name} de Coolify junto con sus volúmenes y red del stack.
+                    Úsalo solo cuando confirmes que este UUID no corresponde a ninguna suscripción del panel.
+                </p>
+                <p className="modalTexto vpsDeleteConfirmMeta">UUID: {deployment.uuid}</p>
+                <div className="modalAcciones">
+                    <Button
+                        variante="secundario"
+                        tamano="pequeno"
+                        onClick={closeDeleteConfirm}
+                        disabled={deleteMutation.isPending}
+                        type="button"
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        variante="primario"
+                        tamano="pequeno"
+                        onClick={() => deleteMutation.mutate(deployment.uuid)}
+                        disabled={deleteMutation.isPending}
+                        type="button"
+                    >
+                        {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar de Coolify'}
+                    </Button>
+                </div>
             </Modal>
         </article>
     );

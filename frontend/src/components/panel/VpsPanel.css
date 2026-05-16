@@ -174,8 +174,24 @@
 .vpsOrphanLinkBtn {
     background: var(--color-warning-text);
     color: var(--brand-white);
-    margin-left: auto;
     white-space: nowrap;
+}
+
+.vpsOrphanActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-left: auto;
+    justify-content: flex-end;
+}
+
+.vpsOrphanDeleteBtn {
+    white-space: nowrap;
+}
+
+.vpsDeleteConfirmMeta {
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
 }
 
 /* [304A-3] Contenedor del formulario de creación inline bajo la card huérfana */

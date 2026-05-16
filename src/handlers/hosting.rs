@@ -1294,6 +1294,119 @@ pub async fn list_vps2_deployments(
     Ok(Json(deployments))
 }
 
+/* [165A-4] Permite limpiar despliegues huérfanos desde el panel admin.
+ * Solo borra stacks sin vínculo en BD para evitar desalinear suscripciones reales. */
+#[utoipa::path(
+    delete,
+    path = "/api/hosting/deployments/{deployment_uuid}",
+    params(("deployment_uuid" = String, Path, description = "UUID del despliegue en Coolify")),
+    responses(
+        (status = 204, description = "Despliegue eliminado"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "Despliegue no encontrado"),
+        (status = 409, description = "El despliegue ya está vinculado a una suscripción"),
+        (status = 503, description = "Coolify no configurado o no disponible"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn delete_deployment(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(deployment_uuid): Path<String>,
+) -> Result<StatusCode, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    if state.coolify_config.is_none() && state.coolify_config_vps1.is_none() {
+        return Err(AppError::ServiceUnavailable(
+            "Coolify no está configurado para eliminar despliegues".into(),
+        ));
+    }
+
+    let subscriptions = HostingRepository::list_all(&state.pool).await?;
+    let mut lookup_failed = false;
+    let mut target_config: Option<&CoolifyConfig> = None;
+    let mut target_name: Option<String> = None;
+
+    if let Some(cfg) = state.coolify_config_vps1.as_ref() {
+        match CoolifyService::list_services(&state.http_client, cfg).await {
+            Ok(services) => {
+                if let Some(service) = services.into_iter().find(|service| service.uuid == deployment_uuid) {
+                    target_name = Some(service.name);
+                    target_config = Some(cfg);
+                }
+            }
+            Err(error) => {
+                lookup_failed = true;
+                tracing::warn!(
+                    "[deployments] Error buscando despliegue {} en VPS Principal: {}",
+                    deployment_uuid,
+                    error
+                );
+            }
+        }
+    }
+
+    if target_config.is_none() {
+        if let Some(cfg) = state.coolify_config.as_ref() {
+            match CoolifyService::list_services(&state.http_client, cfg).await {
+                Ok(services) => {
+                    if let Some(service) = services.into_iter().find(|service| service.uuid == deployment_uuid) {
+                        target_name = Some(service.name);
+                        target_config = Some(cfg);
+                    }
+                }
+                Err(error) => {
+                    lookup_failed = true;
+                    tracing::warn!(
+                        "[deployments] Error buscando despliegue {} en VPS2: {}",
+                        deployment_uuid,
+                        error
+                    );
+                }
+            }
+        }
+    }
+
+    let target_config = match target_config {
+        Some(config) => config,
+        None if lookup_failed => {
+            return Err(AppError::ServiceUnavailable(
+                "No se pudo consultar Coolify para ubicar el despliegue".into(),
+            ));
+        }
+        None => {
+            return Err(AppError::NotFound(
+                "Despliegue no encontrado en Coolify".into(),
+            ));
+        }
+    };
+
+    let target_name = target_name.expect("deployment name must exist when config is found");
+
+    let linked_subscription = subscriptions.iter().find(|subscription| {
+        subscription.server_uuid.as_deref() == Some(deployment_uuid.as_str())
+            || subscription.coolify_site_name.as_deref() == Some(target_name.as_str())
+    });
+
+    if let Some(subscription) = linked_subscription {
+        return Err(AppError::Conflict(format!(
+            "El despliegue {} ya está vinculado a la suscripción {}. Elimínalo desde la suscripción para no dejar datos huérfanos.",
+            target_name,
+            subscription.id
+        )));
+    }
+
+    CoolifyService::delete_service(&state.http_client, target_config, &deployment_uuid, true).await?;
+    tracing::info!(
+        "[deployments] Despliegue huérfano {} ({}) eliminado desde el panel admin.",
+        target_name,
+        deployment_uuid
+    );
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /* ============================================================
 VPS STATS — Proxy a Contabo API (solo admin)
 [084A-24] Permite al panel admin ver estado real de las VPS
@@ -2134,6 +2247,10 @@ pub fn hosting_routes() -> Router<AppState> {
         )
         /* [164A-19] Despliegues reales de Coolify en VPS2 */
         .route("/hosting/deployments", get(list_vps2_deployments))
+        .route(
+            "/hosting/deployments/:deployment_uuid",
+            axum::routing::delete(delete_deployment),
+        )
         /* [084A-24] VPS stats: proxy a Contabo API */
         .route("/hosting/vps", get(list_vps))
         .route("/hosting/vps/:instance_id", get(get_vps))

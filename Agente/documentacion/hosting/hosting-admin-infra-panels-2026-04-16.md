@@ -25,6 +25,13 @@ Contabo responde la capa de proveedor (qué VPS existen). Coolify responde la ca
 - Cada card indica si el despliegue está vinculado a una suscripción del panel o si quedó huérfano.
 - La vista previa de Contabo sigue disponible, pero ya no sustituye la visibilidad de deployments reales.
 
+## Actualización 2026-05-16
+
+- Los despliegues huérfanos ahora exponen una acción explícita de limpieza real desde el panel admin.
+- El flujo nuevo llama `DELETE /api/hosting/deployments/:deployment_uuid` y elimina el stack en Coolify con `delete_volumes=true`.
+- El backend rechaza el borrado si detecta una suscripción vinculada por `server_uuid` o por `coolify_site_name`; esto cubre vínculos legacy que todavía no tienen `server_uuid` persistido.
+- El panel pide confirmación antes de borrar y refresca el listado de huérfanos al completar la limpieza.
+
 ## Validación
 
 - `cargo check`
@@ -40,3 +47,5 @@ Contabo responde la capa de proveedor (qué VPS existen). Coolify responde la ca
 ## Nota operativa
 
 Al arrancar el backend local siguen apareciendo errores preexistentes de fixtures (`orders`, `order_delegations`, `order_phases`, `order_payments`, `order_refunds`). No bloquearon esta tarea ni el endpoint nuevo, pero siguen siendo deuda real del entorno local.
+
+La validación de esta mejora fue no destructiva en local: compilación Rust, `self-check` y build completo del frontend. No se ejecutó un borrado real contra producción durante esta tarea para evitar eliminar infraestructura existente solo como smoke test.
