@@ -1,7 +1,7 @@
 # Plan: Seguridad Integral del Servicio de Hosting
 
-> **Fecha:** 2026-04-11 (actualizado)
-> **Estado:** Casi completo — 10/11 áreas resueltas. Pendiente: DNS ownership (4.1), Monitoreo (5.x)
+> **Fecha:** 2026-05-16 (actualizado)
+> **Estado:** Casi completo — 10/11 áreas resueltas. Pendiente: DNS ownership (4.1), Monitoreo (5.x), revisión periódica SSH/SFTP (165A-18)
 > **Prioridad:** Crítica — varias vulnerabilidades de nivel alto detectadas
 > **Contexto:** Auditoría de seguridad del servicio de hosting WordPress administrado (Coolify + Docker Compose)
 
@@ -22,6 +22,15 @@
 | DNS/Domain          | 🟡 Medio   | Sin validación de ownership de dominios custom — PENDIENTE       |
 | API authorization   | ✅ Resuelto | Role-based + rate limit subscribe 3/hr + checkout 5/hr (114A-1) |
 | Security headers    | ✅ Resuelto | HSTS + nosniff + DENY + referrer-policy + permissions (164A-16) |
+
+---
+
+## Seguimiento 165A-18 — Revisión de conexiones y seguridad
+
+- **Conectividad SFTP/SSH:** puerto público validado por TCP en VPS2; handshake SSH alcanza autenticación y no muestra timeout/refused. No se usó contraseña en comandos.
+- **WordPress admin:** `/wp-admin/` responde 200, muestra login, no muestra wizard de instalación ni 404.
+- **Pendiente seguro:** prueba de autenticación completa solo con secreto introducido manualmente por el usuario o tras rotar credenciales; no registrar passwords en terminales ni planes.
+- **Revisión siguiente:** confirmar `MaxAuthTries 3`, logging de accesos SSH/SFTP, alertas por intentos fallidos, soporte de llave pública por hosting y rotación inmediata si una credencial queda expuesta en soporte o capturas.
 
 ---
 

@@ -1,7 +1,7 @@
 /* [094A-8] Estadísticas de recursos de hosting.
  * Consume el endpoint /api/hosting/subscriptions/:id/stats para datos reales.
  * Uptime se calcula desde el historial de eventos del backend.
- * Storage/bandwidth muestran límites; uso real requiere monitoreo futuro (Coolify). */
+ * [165A-17] La UI ya no promociona límite de ancho de banda en recursos/planes. */
 
 import {useQuery} from '@tanstack/react-query';
 import type {CSSProperties} from 'react';
@@ -108,13 +108,6 @@ export function HostingStats({sub}: {sub: HostingSubscription}) {
                 used={stats.storage_used_mb}
                 total={stats.storage_limit_mb}
                 unit="MB"
-                unavailable={!stats.monitoring_available}
-            />
-            <ResourceBar
-                label="Ancho de banda"
-                used={stats.bandwidth_used_gb}
-                total={stats.bandwidth_limit_gb}
-                unit="GB"
                 unavailable={!stats.monitoring_available}
             />
             <div className="hostingStatUptime">

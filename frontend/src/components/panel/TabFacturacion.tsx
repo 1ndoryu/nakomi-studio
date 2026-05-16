@@ -19,7 +19,10 @@ export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
     onPlanChange?: (plan: string, domain?: string) => void;
     planChangeLoading?: boolean;
 }) {
-    const {plans} = useHostingCatalog();
+    /* [165A-17] Facturacion solo ofrece cambios dentro de la misma familia de hosting.
+     * Gotcha: useHostingCatalog() sin filtro mezcla WordPress y hosting normal. */
+    const catalogKind = sub.plan.startsWith('normal-') ? 'normal' : 'wordpress';
+    const {plans} = useHostingCatalog(catalogKind);
     const [showPlanChange, setShowPlanChange] = useState(false);
     const currentPlanInfo = plans.find(p => p.id === sub.plan);
     const otherPlans = plans.filter(p => p.id !== sub.plan);

@@ -159,9 +159,9 @@ export function HostingDetalle({
                             variante="outline"
                             tamano="pequeno"
                             className="hostingDetalleSoporte"
+                            /* [165A-20] Soporte abre el ChatWidget contextual sin sacar al usuario del detalle. */
                             onClick={() => {
                                 useChatStore.getState().abrir(`hosting:${sub.id}`);
-                                window.dispatchEvent(new CustomEvent('panel-cambiar-tab', {detail: 'mensajes'}));
                             }}
                         >
                             <MessageSquare size={14} /> Soporte

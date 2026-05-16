@@ -226,7 +226,6 @@ export function DnsManager({subscriptionId}: Props) {
                                     type="button"
                                     variante="texto"
                                     tamano="pequeno"
-                                    className="dnsActionBtn"
                                     title="Editar"
                                     onClick={() => startEdit(record)}
                                 >
@@ -236,7 +235,6 @@ export function DnsManager({subscriptionId}: Props) {
                                     type="button"
                                     variante="texto"
                                     tamano="pequeno"
-                                    className="dnsActionBtn dnsActionBtn--delete"
                                     title="Eliminar"
                                     onClick={() => { if (record.recordId != null) deleteMutation.mutate(record.recordId); }}
                                     disabled={deleteMutation.isPending}

@@ -36,6 +36,10 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
     const sitioUrl = sub.domain ? `https://${sub.domain}` : null;
     const coolifyUrl = getProvisionedHostingSiteUrl(sub);
     const isRealProvisioned = coolifyUrl !== null;
+    /* [165A-19] Las acciones reflejan el estado operativo: si ya esta activo,
+     * no se muestra Iniciar para evitar acciones contradictorias. */
+    const isServiceActive = isRealProvisioned && sub.status === 'active';
+    const isServiceStopped = isRealProvisioned && sub.status === 'suspended';
     /* [154A-11] Provisioning disponible para admin cuando el hosting está pendiente */
     const canProvision = isAdmin && (sub.status === 'pending' || sub.status === 'provisioning') && onProvision;
 
@@ -73,6 +77,11 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
                 )}
             </div>
             <div className="hostingDetalleAcciones">
+                {isRealProvisioned && (
+                    <span className={`hostingStatus ${sub.status === 'active' ? 'hostingStatus--active' : sub.status === 'suspended' ? 'hostingStatus--suspended' : ''}`}>
+                        Servicio {HOSTING_STATUS_LABELS[sub.status]?.toLowerCase() ?? sub.status}
+                    </span>
+                )}
                 {canProvision && (
                     <Button
                         type="button"
@@ -103,21 +112,23 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
                     </a>
                 )}
                 {/* [154A-9] Botones de control de servicio — solo para hostings provisionados */}
-                {isRealProvisioned && sub.status === 'active' && (
+                {isServiceActive && (
                     <>
-                        <Button type="button" variante="outline" tamano="pequeno"
+                        {onRestart && <Button type="button" variante="outline" tamano="pequeno"
                             onClick={onRestart} disabled={restartLoading || stopLoading || startLoading}>
                             {restartLoading ? <Loader size={14} className="hostingSpinner" /> : <RefreshCw size={14} />} Reiniciar
-                        </Button>
-                        <Button type="button" variante="outline" tamano="pequeno"
+                        </Button>}
+                        {onStop && <Button type="button" variante="outline" tamano="pequeno"
                             onClick={onStop} disabled={stopLoading || restartLoading || startLoading}>
                             {stopLoading ? <Loader size={14} className="hostingSpinner" /> : <Square size={14} />} Detener
-                        </Button>
-                        <Button type="button" variante="outline" tamano="pequeno"
-                            onClick={onStart} disabled={startLoading || restartLoading || stopLoading}>
-                            {startLoading ? <Loader size={14} className="hostingSpinner" /> : <Play size={14} />} Iniciar
-                        </Button>
+                        </Button>}
                     </>
+                )}
+                {isServiceStopped && onStart && (
+                    <Button type="button" variante="outline" tamano="pequeno"
+                        onClick={onStart} disabled={startLoading || restartLoading || stopLoading}>
+                        {startLoading ? <Loader size={14} className="hostingSpinner" /> : <Play size={14} />} Iniciar
+                    </Button>
                 )}
             </div>
         </div>

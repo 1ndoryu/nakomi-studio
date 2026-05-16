@@ -91,19 +91,6 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
                 </div>
             )}
 
-            <h4 className="hostingDetalleSubTitle">Nameservers (alternativa)</h4>
-            <p className="hostingDetalleSectionDesc">
-                Si prefieres usar nameservers en lugar de registros A:
-            </p>
-            <div className="hostingDetalleNameservers">
-                {domainInfo.nameservers.map(ns => (
-                    <div key={ns} className="hostingDetalleNameserver">
-                        <code>{ns}</code>
-                        <CopyButton text={ns} />
-                    </div>
-                ))}
-            </div>
-
             <p className="hostingDetalleDnsPropagation">
                 Los cambios DNS pueden tardar entre 15 minutos y 48 horas en propagarse globalmente.
             </p>

@@ -1,7 +1,7 @@
 # Plan: SSH/SFTP Seguro por Despliegue de Hosting
 
 > Creado: 2026-04-16
-> Estado: **Casi completo** — Fases 2, 3 y 4 completadas. Pendiente solo: Fase 1 (verificación VFS disco — ops en VPS2).
+> Estado: **Casi completo** — Fases 2, 3 y 4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops en VPS2) y hardening operativo 165A-18.
 > Contexto: Cada hosting usa `linuxserver/openssh-server` con SSH+SFTP. Recursos configurables por plan desde BD. Refresh endpoint disponible para migrar existentes.
 
 ---
@@ -21,6 +21,14 @@ Dar a cada cliente de hosting acceso SSH shell + SFTP enjaulado en su volumen Wo
 - **backend_net**: SSH container en backend_net para wp-cli → MariaDB
 - **Panel recursos**: Pendiente (Fase 3)
 - **Disk quota**: Pendiente (requiere verificación VFS en VPS2)
+
+### Verificación 165A-18 — hosting vendido
+
+- TCP al puerto SFTP/SSH asignado en VPS2: OK.
+- Handshake SSH con `BatchMode=yes`: OK hasta autenticación (`publickey,password,keyboard-interactive`), sin timeout/refused y sin usar contraseña en logs.
+- `/wp-admin/`: HTTP 200 tras redirect normal, contiene login, no contiene wizard de instalación ni 404.
+- No se ejecutó login con password porque requiere secreto; si el password se compartió en soporte o screenshot, rotar credenciales antes de considerarlo válido a largo plazo.
+- Próxima revisión de seguridad: auditar `sshd_config` generado por compose, `MaxAuthTries`, `PasswordAuthentication`, logs, fail2ban/equivalente, soporte de llaves SSH y alertas por abuso.
 
 ---
 

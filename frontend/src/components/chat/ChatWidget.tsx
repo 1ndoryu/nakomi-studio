@@ -48,12 +48,13 @@ export const ChatWidget: React.FC = () => {
     useEffect(() => {
         /* [065A-1] El widget también se abre desde CTAs externos via store.
          * Si ya llega abierto al montar o cambia a abierto sin pasar por handleOpen,
-         * igual debe iniciar el WebSocket del visitante. */
-        if (enPanel || !abierto || connected || connecting) return;
+         * igual debe iniciar el WebSocket del visitante.
+         * [165A-20] En /panel no hay burbuja, pero un CTA explicito puede abrir el panel. */
+        if (!abierto || connected || connecting) return;
         connect(undefined, storeContext);
-    }, [enPanel, abierto, connected, connecting, connect, storeContext]);
+    }, [abierto, connected, connecting, connect, storeContext]);
 
-    if (enPanel) return null;
+    if (enPanel && !abierto) return null;
 
     /* [064A-52] Al abrir, conectar directamente sin pedir nombre.
      * El agente IA pedirá el nombre al usuario si lo necesita.
@@ -92,17 +93,19 @@ export const ChatWidget: React.FC = () => {
 
     return (
         <>
-            <Button
-                variante="texto"
-                tamano="pequeno"
-                className={`chatWidgetBubble ${abierto ? 'chatWidgetBubbleOculta' : ''}`}
-                onClick={handleOpen}
-                aria-label="Abrir chat"
-                type="button"
-            >
-                <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetBubbleAvatar" loading="lazy" />
-                <span className="chatWidgetBubbleTexto">Chat</span>
-            </Button>
+            {!enPanel && (
+                <Button
+                    variante="texto"
+                    tamano="pequeno"
+                    className={`chatWidgetBubble ${abierto ? 'chatWidgetBubbleOculta' : ''}`}
+                    onClick={handleOpen}
+                    aria-label="Abrir chat"
+                    type="button"
+                >
+                    <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetBubbleAvatar" loading="lazy" />
+                    <span className="chatWidgetBubbleTexto">Chat</span>
+                </Button>
+            )}
 
             <div className={`chatWidgetPanel ${abierto ? 'chatWidgetPanelAbierto' : ''}`}>
                 <Button
