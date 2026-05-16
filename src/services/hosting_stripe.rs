@@ -135,6 +135,8 @@ async fn record_auto_provision_success(
             "service_uuid": result.service_uuid,
             "domain": result.domain,
             "server_ip": result.server_ip,
+            "wordpress_ready": result.wordpress_ready,
+            "wordpress_install_error": result.wordpress_install_error,
             "source": activation_source,
         })),
     )
@@ -198,6 +200,8 @@ impl HostingStripeService {
                 &service_name,
                 sftp_port,
                 &plan_config,
+                &subscription.client_name,
+                &subscription.client_email,
             )
             .await
             {

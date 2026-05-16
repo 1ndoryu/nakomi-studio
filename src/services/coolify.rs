@@ -14,6 +14,7 @@ use rand::Rng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tokio::time::{sleep, Duration};
 use tracing;
 
 use crate::errors::AppError;
@@ -143,6 +144,10 @@ pub struct CoolifyProvisionResult {
     pub sftp_password: String,
     /// Puerto del host mapeado al contenedor SFTP (único por hosting)
     pub sftp_port: i32,
+    /// true si el stack `WordPress` quedó instalado y listo para el primer login.
+    pub wordpress_ready: bool,
+    /// Error no-fatal del instalador de `WordPress`, si la automatización no completó.
+    pub wordpress_install_error: Option<String>,
 }
 
 pub struct HostingComposeUpdate<'a> {
@@ -341,14 +346,20 @@ fn hosting_route_hosts(
     hosts
 }
 
-fn build_traefik_labels(route_hosts: &[String]) -> String {
+/* [165A-13] Las labels Traefik deben alinearse con las claves del servicio.
+ * El compose estático usa 8/12 espacios y el de WordPress 4/6; si se reutiliza
+ * una indentación fija, YAML queda inválido y Coolify deja el stack en `exited`. */
+fn build_traefik_labels(route_hosts: &[String], property_indent: usize, item_indent: usize) -> String {
     if route_hosts.is_empty() {
         return String::new();
     }
 
+    let property_prefix = " ".repeat(property_indent);
+    let item_prefix = " ".repeat(item_indent);
+
     let mut lines = vec![
-        "        labels:".to_string(),
-        "            - 'traefik.enable=true'".to_string(),
+        format!("{property_prefix}labels:"),
+        format!("{item_prefix}- 'traefik.enable=true'"),
     ];
 
     for host in route_hosts {
@@ -363,31 +374,31 @@ fn build_traefik_labels(route_hosts: &[String]) -> String {
         }
 
         lines.push(format!(
-            "            - 'traefik.http.services.{slug}-svc.loadbalancer.server.port=80'"
+            "{item_prefix}- 'traefik.http.services.{slug}-svc.loadbalancer.server.port=80'"
         ));
         lines.push(format!(
-            "            - 'traefik.http.routers.{slug}-http.rule=Host(`{cleaned_host}`)'"
+            "{item_prefix}- 'traefik.http.routers.{slug}-http.rule=Host(`{cleaned_host}`)'"
         ));
         lines.push(format!(
-            "            - 'traefik.http.routers.{slug}-http.entrypoints=http'"
+            "{item_prefix}- 'traefik.http.routers.{slug}-http.entrypoints=http'"
         ));
         lines.push(format!(
-            "            - 'traefik.http.routers.{slug}-http.service={slug}-svc'"
+            "{item_prefix}- 'traefik.http.routers.{slug}-http.service={slug}-svc'"
         ));
         lines.push(format!(
-            "            - 'traefik.http.routers.{slug}-https.rule=Host(`{cleaned_host}`)'"
+            "{item_prefix}- 'traefik.http.routers.{slug}-https.rule=Host(`{cleaned_host}`)'"
         ));
         lines.push(format!(
-            "            - 'traefik.http.routers.{slug}-https.entrypoints=https'"
+            "{item_prefix}- 'traefik.http.routers.{slug}-https.entrypoints=https'"
         ));
         lines.push(format!(
-            "            - 'traefik.http.routers.{slug}-https.tls=true'"
+            "{item_prefix}- 'traefik.http.routers.{slug}-https.tls=true'"
         ));
         lines.push(format!(
-            "            - 'traefik.http.routers.{slug}-https.tls.certresolver=letsencrypt'"
+            "{item_prefix}- 'traefik.http.routers.{slug}-https.tls.certresolver=letsencrypt'"
         ));
         lines.push(format!(
-            "            - 'traefik.http.routers.{slug}-https.service={slug}-svc'"
+            "{item_prefix}- 'traefik.http.routers.{slug}-https.service={slug}-svc'"
         ));
     }
 
@@ -410,6 +421,254 @@ fn generate_sftp_credentials() -> (String, String) {
     (format!("wp_{sftp_user}"), sftp_password)
 }
 
+const WORDPRESS_INSTALL_POLL_ATTEMPTS: usize = 30;
+const WORDPRESS_INSTALL_POLL_DELAY: Duration = Duration::from_secs(4);
+
+fn build_wordpress_site_title(client_name: &str, service_name: &str) -> String {
+    let trimmed = client_name.trim();
+    if trimmed.is_empty() {
+        return format!("Sitio {service_name}");
+    }
+
+    trimmed.chars().take(80).collect()
+}
+
+fn wordpress_install_form_is_ready(body: &str) -> bool {
+    body.contains("install.php?step=2")
+        && body.contains("name=\"weblog_title\"")
+        && body.contains("name=\"user_name\"")
+        && body.contains("name=\"admin_password\"")
+}
+
+async fn install_wordpress_instance(
+    http_client: &Client,
+    bootstrap_url: &str,
+    service_name: &str,
+    client_name: &str,
+    client_email: &str,
+    admin_username: &str,
+    admin_password: &str,
+) -> Result<(), String> {
+    let install_step_one_url = format!("{bootstrap_url}/wp-admin/install.php?step=1");
+    let install_step_two_url = format!("{bootstrap_url}/wp-admin/install.php?step=2");
+    let login_url = format!("{bootstrap_url}/wp-login.php");
+    let mut last_observation = "sin respuesta".to_string();
+
+    for attempt in 0..WORDPRESS_INSTALL_POLL_ATTEMPTS {
+        let response = http_client
+            .get(&install_step_one_url)
+            .send()
+            .await
+            .map_err(|error| format!("GET install.php?step=1 falló: {error}"))?;
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .map_err(|error| format!("Leyendo install.php?step=1 falló: {error}"))?;
+
+        if status.is_success() && wordpress_install_form_is_ready(&body) {
+            last_observation = format!("install.php listo en intento {}", attempt + 1);
+            break;
+        }
+
+        last_observation = format!(
+            "intento {}: status={} ready={}",
+            attempt + 1,
+            status,
+            wordpress_install_form_is_ready(&body)
+        );
+
+        if attempt + 1 == WORDPRESS_INSTALL_POLL_ATTEMPTS {
+            return Err(format!(
+                "WordPress no mostró el formulario de instalación en {install_step_one_url} ({last_observation})"
+            ));
+        }
+
+        sleep(WORDPRESS_INSTALL_POLL_DELAY).await;
+    }
+
+    let form = vec![
+        (
+            "weblog_title".to_string(),
+            build_wordpress_site_title(client_name, service_name),
+        ),
+        ("user_name".to_string(), admin_username.to_string()),
+        ("admin_password".to_string(), admin_password.to_string()),
+        ("admin_password2".to_string(), admin_password.to_string()),
+        ("admin_email".to_string(), client_email.to_string()),
+        ("language".to_string(), String::new()),
+        ("Submit".to_string(), "Install WordPress".to_string()),
+    ];
+
+    let response = http_client
+        .post(&install_step_two_url)
+        .form(&form)
+        .send()
+        .await
+        .map_err(|error| format!("POST install.php?step=2 falló: {error}"))?;
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|error| format!("Leyendo install.php?step=2 falló: {error}"))?;
+
+    if !status.is_success() {
+        return Err(format!("WordPress respondió {status} al instalar en {install_step_two_url}"));
+    }
+
+    if wordpress_install_form_is_ready(&body) {
+        return Err("WordPress devolvió de nuevo el formulario de instalación".to_string());
+    }
+
+    if body.contains("wp-login.php")
+        || body.contains("Success")
+        || body.contains("success")
+        || body.to_ascii_lowercase().contains("already installed")
+    {
+        return Ok(());
+    }
+
+    let login_response = http_client
+        .get(&login_url)
+        .send()
+        .await
+        .map_err(|error| format!("GET wp-login.php falló tras instalar: {error}"))?;
+
+    if login_response.status().is_success() {
+        return Ok(());
+    }
+
+    Err(format!(
+        "WordPress no confirmó la instalación automática ({last_observation})"
+    ))
+}
+
+async fn create_hosting_service(
+    http_client: &Client,
+    config: &CoolifyConfig,
+    service_name: &str,
+    compose_b64: String,
+) -> Result<CreateServiceResponse, AppError> {
+    let create_body = CreateServiceBody {
+        name: service_name,
+        project_uuid: &config.project_uuid,
+        environment_name: "production",
+        server_uuid: &config.server_uuid,
+        docker_compose_raw: compose_b64,
+        instant_deploy: true,
+    };
+
+    let create_url = format!("{}/api/v1/services", config.base_url);
+    let create_resp = http_client
+        .post(&create_url)
+        .bearer_auth(&config.api_token)
+        .json(&create_body)
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Coolify create service request failed: {e}")))?;
+
+    if !create_resp.status().is_success() {
+        let status = create_resp.status();
+        let body = create_resp.text().await.unwrap_or_default();
+        tracing::error!(
+            "[Coolify] Error creando servicio '{}': {} — {}",
+            service_name,
+            status,
+            body
+        );
+        return Err(AppError::Internal(format!(
+            "Coolify create service failed: {status} — {body}"
+        )));
+    }
+
+    create_resp
+        .json()
+        .await
+        .map_err(|e| AppError::Internal(format!("Coolify create service parse error: {e}")))
+}
+
+async fn start_hosting_service(
+    http_client: &Client,
+    config: &CoolifyConfig,
+    service_name: &str,
+    service_uuid: &str,
+) -> Result<(), AppError> {
+    let start_url = format!("{}/api/v1/services/{}/start", config.base_url, service_uuid);
+    let start_resp = http_client
+        .post(&start_url)
+        .bearer_auth(&config.api_token)
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Coolify start service request failed: {e}")))?;
+
+    if start_resp.status().is_success() {
+        tracing::info!("[Coolify] Servicio '{}' iniciado correctamente.", service_name);
+        return Ok(());
+    }
+
+    let status = start_resp.status();
+    let body = start_resp.text().await.unwrap_or_default();
+    tracing::warn!(
+        "[Coolify] Error iniciando servicio '{}' (uuid={}): {} — {}. Servicio creado pero no iniciado.",
+        service_name,
+        service_uuid,
+        status,
+        body
+    );
+
+    Ok(())
+}
+
+struct WordpressInstallContext<'a> {
+    service_name: &'a str,
+    service_uuid: &'a str,
+    plan_name: &'a str,
+    client_name: &'a str,
+    client_email: &'a str,
+    admin_username: &'a str,
+    admin_password: &'a str,
+}
+
+async fn finalize_wordpress_install(
+    http_client: &Client,
+    domain: &str,
+    install_context: WordpressInstallContext<'_>,
+) -> (bool, Option<String>) {
+    /* [165A-13][165A-14] "WordPress preinstalado" solo es cierto si el wizard de
+     * `install.php` queda resuelto. Dejamos la instalación automática separada del alta
+     * del servicio para que el provisioning siga siendo legible y el panel pueda auditar
+     * `wordpress_ready` sin ocultar un fallo parcial de bootstrap. */
+    if is_normal_hosting_plan(install_context.plan_name) {
+        return (true, None);
+    }
+
+    if let Err(error) = install_wordpress_instance(
+        http_client,
+        domain,
+        install_context.service_name,
+        install_context.client_name,
+        install_context.client_email,
+        install_context.admin_username,
+        install_context.admin_password,
+    )
+    .await
+    {
+        tracing::warn!(
+            "[Coolify] WordPress quedó levantado pero sin instalación automática para '{}' (uuid={}): {}",
+            install_context.service_name,
+            install_context.service_uuid,
+            error
+        );
+        return (false, Some(error));
+    }
+
+    tracing::info!(
+        "[Coolify] WordPress instalado automáticamente para '{}' usando las credenciales iniciales del hosting.",
+        install_context.service_name
+    );
+    (true, None)
+}
+
 /* [114A-3] Límites dinámicos por plan. WP reserva 25% de su límite, DB reserva 25% también. */
 fn build_compose_wp_db(
     wp_cpu: &str,
@@ -418,7 +677,7 @@ fn build_compose_wp_db(
     db_mem: &str,
     route_hosts: &[String],
 ) -> String {
-        let traefik_labels = build_traefik_labels(route_hosts);
+    let traefik_labels = build_traefik_labels(route_hosts, 4, 6);
         format!(
                 "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
         )
@@ -426,7 +685,7 @@ fn build_compose_wp_db(
 
 /* [155A-13] Servicio web para hosting normal: Nginx sirve el volumen editable por SFTP. */
 fn build_compose_static_site(site_cpu: &str, site_mem: &str, route_hosts: &[String]) -> String {
-        let traefik_labels = build_traefik_labels(route_hosts);
+    let traefik_labels = build_traefik_labels(route_hosts, 8, 12);
         format!(
                 r#"  site:
         image: 'nginx:1.27-alpine'
@@ -771,9 +1030,10 @@ impl CoolifyService {
         service_name: &str,
         sftp_port: i32,
         plan_config: &HostingPlanConfig,
+        client_name: &str,
+        client_email: &str,
     ) -> Result<CoolifyProvisionResult, AppError> {
         let (sftp_user, sftp_password) = generate_sftp_credentials();
-
         let bootstrap_domain = hosting_bootstrap_host(
             &plan_config.plan_name,
             service_name,
@@ -790,45 +1050,7 @@ impl CoolifyService {
         );
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose_yaml);
 
-        /* Paso 1: Crear el servicio */
-        let create_body = CreateServiceBody {
-            name: service_name,
-            project_uuid: &config.project_uuid,
-            environment_name: "production",
-            server_uuid: &config.server_uuid,
-            docker_compose_raw: compose_b64,
-            instant_deploy: true,
-        };
-
-        let create_url = format!("{}/api/v1/services", config.base_url);
-        let create_resp = http_client
-            .post(&create_url)
-            .bearer_auth(&config.api_token)
-            .json(&create_body)
-            .send()
-            .await
-            .map_err(|e| {
-                AppError::Internal(format!("Coolify create service request failed: {e}"))
-            })?;
-
-        if !create_resp.status().is_success() {
-            let status = create_resp.status();
-            let body = create_resp.text().await.unwrap_or_default();
-            tracing::error!(
-                "[Coolify] Error creando servicio '{}': {} — {}",
-                service_name,
-                status,
-                body
-            );
-            return Err(AppError::Internal(format!(
-                "Coolify create service failed: {status} — {body}"
-            )));
-        }
-
-        let created: CreateServiceResponse = create_resp
-            .json()
-            .await
-            .map_err(|e| AppError::Internal(format!("Coolify create service parse error: {e}")))?;
+        let created = create_hosting_service(http_client, config, service_name, compose_b64).await?;
 
         let coolify_domain = created.domains.into_iter().next();
         let domain = format!("http://{bootstrap_domain}");
@@ -840,36 +1062,21 @@ impl CoolifyService {
             domain,
             coolify_domain
         );
-
-        /* Paso 2: Arrancar el servicio */
-        let start_url = format!("{}/api/v1/services/{}/start", config.base_url, created.uuid);
-        let start_resp = http_client
-            .post(&start_url)
-            .bearer_auth(&config.api_token)
-            .send()
-            .await
-            .map_err(|e| {
-                AppError::Internal(format!("Coolify start service request failed: {e}"))
-            })?;
-
-        if start_resp.status().is_success() {
-            tracing::info!(
-                "[Coolify] Servicio '{}' iniciado correctamente.",
-                service_name
-            );
-        } else {
-            let status = start_resp.status();
-            let body = start_resp.text().await.unwrap_or_default();
-            /* No-fatal: el servicio fue creado, aunque no pudo iniciarse automáticamente.
-             * El admin puede iniciarlo manualmente desde el panel. */
-            tracing::warn!(
-                "[Coolify] Error iniciando servicio '{}' (uuid={}): {} — {}. Servicio creado pero no iniciado.",
+        start_hosting_service(http_client, config, service_name, &created.uuid).await?;
+        let (wordpress_ready, wordpress_install_error) = finalize_wordpress_install(
+            http_client,
+            &domain,
+            WordpressInstallContext {
                 service_name,
-                created.uuid,
-                status,
-                body
-            );
-        }
+                service_uuid: &created.uuid,
+                plan_name: &plan_config.plan_name,
+                client_name,
+                client_email,
+                admin_username: &sftp_user,
+                admin_password: &sftp_password,
+            },
+        )
+        .await;
 
         Ok(CoolifyProvisionResult {
             service_uuid: created.uuid,
@@ -878,6 +1085,8 @@ impl CoolifyService {
             sftp_user,
             sftp_password,
             sftp_port,
+            wordpress_ready,
+            wordpress_install_error,
         })
     }
 
@@ -1346,6 +1555,36 @@ mod tests {
         assert_eq!(name.len(), 16); /* "hosting-" (8) + 8 chars UUID */
     }
 
+    #[test]
+    fn wordpress_site_title_prefers_client_name() {
+        assert_eq!(
+            build_wordpress_site_title("Mi Sitio", "hosting-abcdef01"),
+            "Mi Sitio"
+        );
+    }
+
+    #[test]
+    fn wordpress_site_title_falls_back_to_service_name() {
+        assert_eq!(
+            build_wordpress_site_title("   ", "hosting-abcdef01"),
+            "Sitio hosting-abcdef01"
+        );
+    }
+
+    #[test]
+    fn wordpress_install_form_detection_requires_step_two_form() {
+        let html = r#"
+            <form method="post" action="install.php?step=2">
+                <input type="text" name="weblog_title" />
+                <input type="text" name="user_name" />
+                <input type="password" name="admin_password" />
+            </form>
+        "#;
+
+        assert!(wordpress_install_form_is_ready(html));
+        assert!(!wordpress_install_form_is_ready("<html>login</html>"));
+    }
+
     /* --- build_hosting_compose (estructura general) --- */
 
     #[test]
@@ -1395,6 +1634,20 @@ mod tests {
 
         assert!(compose.contains("site-hosting-6d746a75.173.249.50.44.sslip.io"));
         assert!(compose.contains("traefik.http.routers.site-hosting-6d746a75-173-249-50-44-sslip-io-http.rule"));
+
+        let wp_config = test_plan_config("basico");
+        let wp_compose = build_hosting_compose_for_service(
+            "hosting-de17015b",
+            "173.249.50.44",
+            None,
+            "testuser",
+            "testpass",
+            10001,
+            &wp_config,
+        );
+
+        assert!(wp_compose.contains("wordpress-hosting-de17015b.173.249.50.44.sslip.io"));
+        assert!(wp_compose.contains("traefik.http.routers.wordpress-hosting-de17015b-173-249-50-44-sslip-io-http.rule"));
     }
 
     #[test]
@@ -1556,6 +1809,35 @@ mod tests {
         let compose = build_hosting_compose("user", "pass", 10001, &config);
 
         serde_yaml::from_str::<YamlValue>(&compose).expect("normal compose debe parsear");
+    }
+
+    #[test]
+    fn compose_for_service_yaml_parses_with_bootstrap_routes() {
+        let wp_config = test_plan_config("basico");
+        let wp_compose = build_hosting_compose_for_service(
+            "hosting-de17015b",
+            "173.249.50.44",
+            None,
+            "user",
+            "pass",
+            12132,
+            &wp_config,
+        );
+        let normal_config = test_plan_config("normal-basico");
+        let normal_compose = build_hosting_compose_for_service(
+            "hosting-de17015b",
+            "173.249.50.44",
+            None,
+            "user",
+            "pass",
+            12132,
+            &normal_config,
+        );
+
+        serde_yaml::from_str::<YamlValue>(&wp_compose)
+            .expect("wordpress compose con bootstrap route debe parsear");
+        serde_yaml::from_str::<YamlValue>(&normal_compose)
+            .expect("normal compose con bootstrap route debe parsear");
     }
 
     #[test]

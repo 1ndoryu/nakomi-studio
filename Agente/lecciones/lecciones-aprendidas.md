@@ -5,6 +5,11 @@
 - El host bootstrap debe derivarse del nombre persistido del servicio (`coolify_site_name`) y el compose debe generar labels Traefik explícitas; si no, el panel puede mostrar una URL válida en apariencia que responde `404 page not found`.
 - Los hostings provisionados antes del cambio necesitan refresh para heredar las nuevas labels, aunque el código ya esté corregido.
 
+## Hosting WordPress — preinstalado significa cerrar el wizard
+- Que el contenedor WordPress responda 200 o muestre `/wp-admin/install.php` no alcanza para vender "WordPress preinstalado". El provisioning debe completar el wizard y verificar que `wp-login.php` ya responde como login real.
+- Si el auto-install falla pero el stack existe, no ocultarlo como éxito completo: registrar `wordpress_ready` + `wordpress_install_error` permite distinguir entre infraestructura levantada y bootstrap funcional.
+- Cuando una función de provisioning mezcla create/start con bootstrap HTTP posterior, el primer endurecimiento debe ser extraer helpers privados antes de seguir agregando lógica; así se evita romper la regla de 100 líneas justo en el path crítico.
+
 ## Hosting Coolify — compose de rescate para hosting administrado
 - En stacks compose creados por Coolify, no mezclar `pids_limit` propio con `deploy.resources.limits.pids` inyectado por la plataforma. Docker Compose aborta con `can't set distinct values on 'pids_limit' and 'deploy.resources.limits.pids'` y el servicio queda `exited` aunque la API de creación haya respondido éxito.
 - Las imágenes pineadas en `dockerfile_inline` también vencen: `lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190` ya no existe. Para sidecars SSH/SFTP, validar periódicamente la tag real del registry o el provisioning fallará durante el build aunque el YAML sea correcto.

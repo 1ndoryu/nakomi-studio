@@ -26,10 +26,18 @@ Los hostings compose creados en Coolify dependían del FQDN implícito que devol
 - Al levantar un servicio manualmente desde el compose on-disk, Coolify no vuelve a cablear automáticamente el proxy. Si la URL pública queda en timeout pero el contenedor responde 200 internamente, conectar `coolify-proxy` a la red `caddy_ingress_network` indicada por las labels del servicio (`docker network connect {stack_uuid} coolify-proxy`).
 - El rescate dejó operativo el hosting normal ya comprado, pero la expectativa del usuario era WordPress. Por eso el CTA del panel se redirigió desde la landing genérica a `/soluciones/hosting-wordpress/` para futuras compras.
 
+## Actualización 165A-13+165A-14: WordPress realmente preinstalado
+
+- El incidente siguiente mostró una segunda brecha: aunque el compose y la URL bootstrap ya funcionaban, el producto seguía entregando solo el wizard de WordPress. Eso no cumple la promesa comercial de "WordPress preinstalado".
+- El provisioning ahora espera el formulario real de `wp-admin/install.php?step=1` y completa `install.php?step=2` con el nombre del cliente, su email y las credenciales iniciales del hosting. Si el wizard no confirma el login final, el alta del stack queda como creada pero `wordpress_ready = false` y `wordpress_install_error` se expone en eventos para auditoría.
+- La tab Acceso del panel muestra esas credenciales iniciales de WordPress reutilizando las del SFTP para que soporte y cliente tengan una ruta consistente de bootstrap hasta que el usuario cambie la contraseña desde el propio WordPress.
+- El helper de auto-install quedó separado del create/start de Coolify para mantener `provision_hosting()` por debajo del límite de líneas del proyecto y evitar que el endurecimiento vuelva a caer en un bloque monolítico difícil de validar.
+
 ## Verificación
 
 - `npm run self-check -- -TareaId 165A-5+165A-6+165A-7+165A-8+165A-9+165A-10+165A-11`
 - `cargo test` con nuevas pruebas sobre labels Traefik y dominio custom en `src/services/coolify.rs`
 - `cargo test services::coolify::tests --lib`
 - `npm --prefix frontend run type-check`
+- `cargo check`
 - Probes reales a `site-hosting-2dad31af.173.249.50.44.sslip.io` y `173.249.50.44:12132` tras el rescate operativo

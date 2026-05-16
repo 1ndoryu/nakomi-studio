@@ -202,6 +202,23 @@ export function TabAcceso({sshInfo, sub}: {
                     </a>
                 </div>
 
+                {!isNormalHosting && hasSftp && (
+                    <>
+                        <h3 className="hostingDetalleSectionTitle">Credenciales iniciales de WordPress</h3>
+                        <p className="hostingDetalleSectionDesc">
+                            El hosting WordPress se instala automáticamente usando el mismo usuario y contraseña iniciales del acceso SFTP. Después del primer acceso puedes cambiar la contraseña desde WordPress.
+                        </p>
+                        <div className="hostingDetalleInfoGrid">
+                            <InfoRow label="Usuario WordPress" value={sub.sftp_user!} copyable />
+                            <InfoRow
+                                label="Contraseña inicial"
+                                value={showPassword ? sub.sftp_password! : '••••••••••••••••'}
+                                copyable={showPassword}
+                            />
+                        </div>
+                    </>
+                )}
+
                 <h3 className="hostingDetalleSectionTitle">Acceso SFTP</h3>
                 {hasSftp ? (
                     <>

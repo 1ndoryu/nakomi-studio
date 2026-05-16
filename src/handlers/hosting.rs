@@ -1579,6 +1579,8 @@ pub async fn provision_subscription(
         &service_name,
         sftp_port,
         &plan_config,
+        &sub.client_name,
+        &sub.client_email,
     )
     .await
     {
@@ -1621,6 +1623,8 @@ pub async fn provision_subscription(
             "domain": result.domain,
             "server_ip": result.server_ip,
             "service_name": service_name,
+            "wordpress_ready": result.wordpress_ready,
+            "wordpress_install_error": result.wordpress_install_error,
             "by": auth.user_id.to_string(),
         })),
     )
