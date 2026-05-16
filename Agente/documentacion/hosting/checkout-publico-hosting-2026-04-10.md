@@ -34,6 +34,13 @@ La página pública de hosting abría el mismo `ModalCompra` usado por servicios
 - El `POST /api/v1/services` ahora incluye `instant_deploy: true`, alineado con el manager. Además, si Coolify vuelve a fallar, el backend preserva el body de la respuesta dentro del error para que `coolify_provision_failed` no quede reducido a un `500` opaco.
 - Con esto, el siguiente refresh del panel/detalle del hosting test vuelve a intentar el provisioning con el contrato correcto hacia Coolify.
 
+## Actualización 2026-05-16 — compose SSH válido para Coolify
+
+- El siguiente bloqueo real apareció ya con el body preservado: Coolify no podía parsear el compose cerca de `FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190`, dentro del servicio SSH/SFTP.
+- El problema estaba en la generación del YAML para `dockerfile_inline`: los builders de SSH se reescribieron con literales multi-línea más claros y consistentes, y el builder estático además quedó saneado de texto basura de diff que habría roto el hosting normal.
+- El backend ahora tiene pruebas que parsean el compose completo con `serde_yaml` para ambos caminos (`basico` y `normal-basico`), de modo que un YAML inválido falla en CI/local antes de llegar a producción.
+- Con este cambio, el provisioning vuelve a depender de la respuesta real de Coolify y ya no de un compose roto generado por el backend.
+
 ## Archivos involucrados
 
 - `frontend/src/hooks/useModalCompra.ts`

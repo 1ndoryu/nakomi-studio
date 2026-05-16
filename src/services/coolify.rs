@@ -71,9 +71,8 @@ impl CoolifyConfig {
         })
     }
 
-    /* [VPS1-support] Carga config desde env vars con prefijo arbitrario.
-     * Permite tener múltiples instancias Coolify: "COOLIFY_" (VPS2), "COOLIFY_VPS1_" (VPS1).
-     * Gotcha: el prefijo debe incluir el guion bajo final, ej: "COOLIFY_VPS1_". */
+    /* [VPS1-support] Carga config desde env vars con prefijo arbitrario
+     * (`COOLIFY_VPS1_`, `COOLIFY_VPS2_`, etc.) para permitir varios destinos. */
     #[must_use]
     pub fn from_env_with_prefix(prefix: &str) -> Option<Self> {
         let base_url = std::env::var(format!("{prefix}BASE_URL")).ok()?;
@@ -268,6 +267,55 @@ fn is_normal_hosting_plan(plan_name: &str) -> bool {
     plan_name.starts_with("normal-")
 }
 
+fn millicores_to_cpu(millicores: i32) -> String {
+        format!("{:.2}", f64::from(millicores) / 1000.0)
+}
+
+/* [114A-3] Límites dinámicos por plan. WP reserva 25% de su límite, DB reserva 25% también. */
+fn build_compose_wp_db(wp_cpu: &str, wp_mem: &str, db_cpu: &str, db_mem: &str) -> String {
+        format!(
+                "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
+        )
+}
+
+/* [155A-13] Servicio web para hosting normal: Nginx sirve el volumen editable por SFTP. */
+fn build_compose_static_site(site_cpu: &str, site_mem: &str) -> String {
+        format!(
+                r#"  site:
+        image: 'nginx:1.27-alpine'
+        environment:
+            - SERVICE_FQDN_SITE=
+        command:
+            - sh
+            - -c
+            - 'mkdir -p /usr/share/nginx/html; test -f /usr/share/nginx/html/index.html || printf "%s\n" "<h1>Hosting activo</h1>" > /usr/share/nginx/html/index.html; chown -R nginx:nginx /usr/share/nginx/html; nginx -g "daemon off;"'
+        volumes:
+            - 'site-data:/usr/share/nginx/html'
+        restart: unless-stopped
+        networks:
+            - frontend_net
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - SETUID
+            - SETGID
+            - DAC_OVERRIDE
+            - NET_BIND_SERVICE
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 160
+        deploy:
+            resources:
+                limits:
+                    cpus: '{site_cpu}'
+                    memory: {site_mem}
+                reservations:
+                    memory: 64M
+"#
+        )
+}
+
 /* [164A-6][155A-13] Genera el compose YAML para hosting administrado.
  * Los slugs `normal-*` usan Nginx + SFTP; los slugs legacy usan WordPress + MariaDB + SSH/SFTP.
  * [164A-16] Hardening: imágenes pineadas, network isolation, cap_drop ALL,
@@ -333,55 +381,6 @@ fn build_normal_hosting_compose(
     )
 }
 
-/* [114A-3] Convierte millicores a string de CPU para Docker Compose (ej: 1000 → "1.00") */
-#[allow(clippy::cast_precision_loss)]
-fn millicores_to_cpu(millicores: i32) -> String {
-    format!("{:.2}", f64::from(millicores) / 1000.0)
-}
-
-/* [114A-3] Límites dinámicos por plan. WP reserva 25% de su límite, DB reserva 25% también. */
-fn build_compose_wp_db(wp_cpu: &str, wp_mem: &str, db_cpu: &str, db_mem: &str) -> String {
-    format!("  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n")
-}
-
-/* [155A-13] Servicio web para hosting normal: Nginx sirve el volumen editable por SFTP. */
-fn build_compose_static_site(site_cpu: &str, site_mem: &str) -> String {
-    format!(
-        r#"  site:
-        image: 'nginx:1.27-alpine'
-        environment:
-            - SERVICE_FQDN_SITE=
-        command:
-            - sh
-            - -c
-            - 'mkdir -p /usr/share/nginx/html; test -f /usr/share/nginx/html/index.html || printf "%s\n" "<h1>Hosting activo</h1>" > /usr/share/nginx/html/index.html; chown -R nginx:nginx /usr/share/nginx/html; nginx -g "daemon off;"'
-        volumes:
-            - 'site-data:/usr/share/nginx/html'
-        restart: unless-stopped
-        networks:
-            - frontend_net
-        cap_drop:
-            - ALL
-        cap_add:
-            - CHOWN
-            - SETUID
-            - SETGID
-            - DAC_OVERRIDE
-            - NET_BIND_SERVICE
-        security_opt:
-            - no-new-privileges:true
-        pids_limit: 160
-        deploy:
-            resources:
-                limits:
-                    cpus: '{site_cpu}'
-                    memory: {site_mem}
-                reservations:
-                    memory: 64M
-"#
-    )
-}
-
 /* [114A-3] SSH container con wp-cli vía dockerfile_inline + hardening sshd.
  * - PHP + wp-cli instalados para gestión WordPress vía shell.
  * - backend_net añadida para que wp-cli pueda conectar a MariaDB.
@@ -395,59 +394,61 @@ fn build_compose_ssh(
     ssh_cpu: &str,
     ssh_mem: &str,
 ) -> String {
-    format!("\
-  ssh:\n\
-    build:\n\
-      dockerfile_inline: |\n\
-        FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190\n\
-        RUN apk add --no-cache php83-cli php83-phar php83-json php83-mbstring php83-curl php83-mysqli php83-xml php83-tokenizer bash coreutils \\\n\
-            && ln -sf /usr/bin/php83 /usr/bin/php \\\n\
-            && curl -sSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /usr/local/bin/wp \\\n\
-            && chmod +x /usr/local/bin/wp\n\
-        RUN mkdir -p /custom-cont-init.d && \\\n\
-            echo '#!/bin/bash' > /custom-cont-init.d/10-harden-ssh && \\\n\
-            echo 'grep -q \"AllowTcpForwarding no\" /config/sshd/sshd_config 2>/dev/null || {{' >> /custom-cont-init.d/10-harden-ssh && \\\n\
-            echo '  echo \"AllowTcpForwarding no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n\
-            echo '  echo \"X11Forwarding no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n\
-            echo '  echo \"PermitTunnel no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n\
-            echo '  echo \"GatewayPorts no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n\
-            echo '}}' >> /custom-cont-init.d/10-harden-ssh && \\\n\
-            chmod +x /custom-cont-init.d/10-harden-ssh\n\
-    environment:\n\
-      - PUID=33\n\
-      - PGID=33\n\
-      - TZ=UTC\n\
-      - USER_NAME={sftp_user}\n\
-      - USER_PASSWORD={sftp_password}\n\
-      - PASSWORD_ACCESS=true\n\
-      - SUDO_ACCESS=false\n\
-      - LOG_STDOUT=true\n\
-    volumes:\n\
-      - 'wordpress-data:/home/{sftp_user}/html'\n\
-    ports:\n\
-      - '{sftp_port}:2222'\n\
-    restart: unless-stopped\n\
-    networks:\n\
-      - ssh_net\n\
-      - backend_net\n\
-    cap_drop:\n\
-      - ALL\n\
-    cap_add:\n\
-      - CHOWN\n\
-      - SETUID\n\
-      - SETGID\n\
-      - DAC_OVERRIDE\n\
-      - NET_BIND_SERVICE\n\
-    security_opt:\n\
-      - no-new-privileges:true\n\
-    pids_limit: 100\n\
-    deploy:\n\
-      resources:\n\
-        limits:\n\
-          cpus: '{ssh_cpu}'\n\
-          memory: {ssh_mem}\n\
-        reservations:\n\
-          memory: 64M\n")
+        format!(
+            r#"  ssh:
+        build:
+            dockerfile_inline: |
+                FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190
+                RUN apk add --no-cache php83-cli php83-phar php83-json php83-mbstring php83-curl php83-mysqli php83-xml php83-tokenizer bash coreutils \
+                        && ln -sf /usr/bin/php83 /usr/bin/php \
+                        && curl -sSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /usr/local/bin/wp \
+                        && chmod +x /usr/local/bin/wp
+                RUN mkdir -p /custom-cont-init.d && \
+                        echo '#!/bin/bash' > /custom-cont-init.d/10-harden-ssh && \
+                        echo 'grep -q "AllowTcpForwarding no" /config/sshd/sshd_config 2>/dev/null || {{' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '  echo "AllowTcpForwarding no" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '  echo "X11Forwarding no" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '  echo "PermitTunnel no" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '  echo "GatewayPorts no" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '}}' >> /custom-cont-init.d/10-harden-ssh && \
+                        chmod +x /custom-cont-init.d/10-harden-ssh
+        environment:
+            - PUID=33
+            - PGID=33
+            - TZ=UTC
+            - USER_NAME={sftp_user}
+            - USER_PASSWORD={sftp_password}
+            - PASSWORD_ACCESS=true
+            - SUDO_ACCESS=false
+            - LOG_STDOUT=true
+        volumes:
+            - 'wordpress-data:/home/{sftp_user}/html'
+        ports:
+            - '{sftp_port}:2222'
+        restart: unless-stopped
+        networks:
+            - ssh_net
+            - backend_net
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - SETUID
+            - SETGID
+            - DAC_OVERRIDE
+            - NET_BIND_SERVICE
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 100
+        deploy:
+            resources:
+                limits:
+                    cpus: '{ssh_cpu}'
+                    memory: {ssh_mem}
+                reservations:
+                    memory: 64M
+"#
+        )
 }
 
 /* [155A-13] SSH/SFTP para hosting normal sin PHP/WP-CLI ni red backend. */
@@ -458,47 +459,57 @@ fn build_compose_static_ssh(
     ssh_cpu: &str,
     ssh_mem: &str,
 ) -> String {
-    format!("\
-    ssh:\n\
-        build:\n\
-            dockerfile_inline: |\n\
-                FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190\n\
-                RUN apk add --no-cache bash coreutils\n\
-                RUN mkdir -p /custom-cont-init.d && \\\n+            echo '#!/bin/bash' > /custom-cont-init.d/10-harden-ssh && \\\n+            echo 'grep -q \"AllowTcpForwarding no\" /config/sshd/sshd_config 2>/dev/null || {{' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '  echo \"AllowTcpForwarding no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '  echo \"X11Forwarding no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '  echo \"PermitTunnel no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '  echo \"GatewayPorts no\" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \\\n+            echo '}}' >> /custom-cont-init.d/10-harden-ssh && \\\n+            chmod +x /custom-cont-init.d/10-harden-ssh\n\
-        environment:\n\
-            - PUID=101\n\
-            - PGID=101\n\
-            - TZ=UTC\n\
-            - USER_NAME={sftp_user}\n\
-            - USER_PASSWORD={sftp_password}\n\
-            - PASSWORD_ACCESS=true\n\
-            - SUDO_ACCESS=false\n\
-            - LOG_STDOUT=true\n\
-        volumes:\n\
-            - 'site-data:/home/{sftp_user}/html'\n\
-        ports:\n\
-            - '{sftp_port}:2222'\n\
-        restart: unless-stopped\n\
-        networks:\n\
-            - ssh_net\n\
-        cap_drop:\n\
-            - ALL\n\
-        cap_add:\n\
-            - CHOWN\n\
-            - SETUID\n\
-            - SETGID\n\
-            - DAC_OVERRIDE\n\
-            - NET_BIND_SERVICE\n\
-        security_opt:\n\
-            - no-new-privileges:true\n\
-        pids_limit: 100\n\
-        deploy:\n\
-            resources:\n\
-                limits:\n\
-                    cpus: '{ssh_cpu}'\n\
-                    memory: {ssh_mem}\n\
-                reservations:\n\
-                    memory: 64M\n")
+        format!(
+            r#"  ssh:
+        build:
+            dockerfile_inline: |
+                FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190
+                RUN apk add --no-cache bash coreutils
+                RUN mkdir -p /custom-cont-init.d && \
+                        echo '#!/bin/bash' > /custom-cont-init.d/10-harden-ssh && \
+                        echo 'grep -q "AllowTcpForwarding no" /config/sshd/sshd_config 2>/dev/null || {{' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '  echo "AllowTcpForwarding no" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '  echo "X11Forwarding no" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '  echo "PermitTunnel no" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '  echo "GatewayPorts no" >> /config/sshd/sshd_config' >> /custom-cont-init.d/10-harden-ssh && \
+                        echo '}}' >> /custom-cont-init.d/10-harden-ssh && \
+                        chmod +x /custom-cont-init.d/10-harden-ssh
+        environment:
+            - PUID=101
+            - PGID=101
+            - TZ=UTC
+            - USER_NAME={sftp_user}
+            - USER_PASSWORD={sftp_password}
+            - PASSWORD_ACCESS=true
+            - SUDO_ACCESS=false
+            - LOG_STDOUT=true
+        volumes:
+            - 'site-data:/home/{sftp_user}/html'
+        ports:
+            - '{sftp_port}:2222'
+        restart: unless-stopped
+        networks:
+            - ssh_net
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - SETUID
+            - SETGID
+            - DAC_OVERRIDE
+            - NET_BIND_SERVICE
+        security_opt:
+            - no-new-privileges:true
+        pids_limit: 100
+        deploy:
+            resources:
+                limits:
+                    cpus: '{ssh_cpu}'
+                    memory: {ssh_mem}
+                reservations:
+                    memory: 64M
+"#
+        )
 }
 
 /* [174A-17] Sidecar de backup automático para plan ecommerce.
@@ -985,6 +996,7 @@ mod tests {
     use super::*;
     use chrono::Utc;
     use serde_json::json;
+    use serde_yaml::Value as YamlValue;
     use uuid::Uuid;
 
     fn test_plan_config(plan_name: &str) -> HostingPlanConfig {
@@ -1281,6 +1293,22 @@ mod tests {
         assert!(compose.contains("X11Forwarding no"));
         assert!(compose.contains("PermitTunnel no"));
         assert!(compose.contains("GatewayPorts no"));
+    }
+
+    #[test]
+    fn compose_wordpress_yaml_parses() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        serde_yaml::from_str::<YamlValue>(&compose).expect("wordpress compose debe parsear");
+    }
+
+    #[test]
+    fn compose_normal_yaml_parses() {
+        let config = test_plan_config("normal-basico");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        serde_yaml::from_str::<YamlValue>(&compose).expect("normal compose debe parsear");
     }
 
     #[test]

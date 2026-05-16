@@ -31,6 +31,7 @@
 - Si la imagen fue podada, el recovery no-build debe abortar y pedir reconstrucción. Recrear sin imagen puede eliminar el contenedor anterior y convertir una incidencia recuperable en 503.
 - Si `sync-env` dice que Coolify tiene una env pero `printenv` no la ve dentro de `app`, revisar el `docker-compose.yml` efectivo en `/data/coolify/services/{uuid}`. En stacks Rust, `deploy-service` recrea desde ese archivo local y debe inyectar ahí las envs runtime antes del swap.
 - Para `POST /api/v1/services` de stacks compose, el payload debe incluir `instant_deploy: true` si el cliente operativo ya lo usa. Sin ese flag, Coolify puede responder `500 Internal Server Error` aunque el compose sea válido, y el error queda engañosamente asociado al provisioning en lugar del contrato HTTP.
+- Si el compose se genera por concatenación/manual string building y contiene `dockerfile_inline`, no alcanza con tests de `contains(...)`: hay que parsear el YAML completo en tests (`serde_yaml`) o un bloque mal indentado llega a producción y Coolify revienta con un `Unable to parse at line ...` opaco.
 
 ## Checkout de prueba — no mezclar escrow real con bypass
 - Los pagos sintéticos `test_bypass_*` no deben mostrarse como “retenidos” al usuario ni intentar capturarse contra Stripe al completar la orden. El backend debe exponer `bypassed` en el historial y la UI debe etiquetarlos como `Sin cobro`.

@@ -32,5 +32,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
+- Hosting test/WordPress: corregir el compose del servicio SSH para que Coolify parsee `dockerfile_inline` sin 500 y revalidar en produccion que nuevas suscripciones queden con `server_uuid`, `server_ip`, `sftp_user` y `sftp_port`.
 - El boton de hostingAcciones de contratar hosting que ya no abra un modal sinoque rediriga a https://nakomi.studio/soluciones/hosting/
 - el diseño de las notifaciones esta mal, el texto se ve centrado
