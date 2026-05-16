@@ -11,9 +11,12 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::models::{CreateNotification, NOTIF_HOSTING_CANCELLED, NOTIF_HOSTING_SUSPENDED};
+use crate::models::{
+    CreateNotification, HostingPlanConfig, HostingSubscription, NOTIF_HOSTING_CANCELLED,
+    NOTIF_HOSTING_SUSPENDED,
+};
 use crate::repositories::{HostingRepository, NotificationRepository, ServerInfo};
-use crate::services::coolify::{CoolifyConfig, CoolifyService};
+use crate::services::coolify::{CoolifyConfig, CoolifyProvisionResult, CoolifyService};
 
 /* Respuesta mínima de Stripe Checkout Session */
 #[derive(Debug, Deserialize)]
@@ -60,7 +63,182 @@ fn hosting_product_copy(plan: &str) -> (String, String) {
     )
 }
 
+async fn load_auto_provision_request(
+    pool: &PgPool,
+    subscription: &HostingSubscription,
+    activation_source: &str,
+) -> Option<(String, i32, HostingPlanConfig)> {
+    let hosting_id = subscription.id;
+    let service_name = CoolifyService::service_name_for(&hosting_id);
+    let sftp_port = match HostingRepository::find_available_sftp_port(pool).await {
+        Ok(port) => port,
+        Err(error) => {
+            tracing::warn!(
+                "No se pudo generar puerto SFTP para {hosting_id} ({activation_source}): {error}"
+            );
+            return None;
+        }
+    };
+
+    let plan_config = match HostingRepository::get_plan_config(pool, &subscription.plan).await {
+        Ok(Some(config)) => config,
+        Ok(None) => {
+            tracing::warn!(
+                "Plan config '{}' no encontrado para hosting {hosting_id} ({activation_source})",
+                subscription.plan
+            );
+            return None;
+        }
+        Err(error) => {
+            tracing::warn!(
+                "Error obteniendo plan config para {hosting_id} ({activation_source}): {error}"
+            );
+            return None;
+        }
+    };
+
+    Some((service_name, sftp_port, plan_config))
+}
+
+async fn record_auto_provision_success(
+    pool: &PgPool,
+    hosting_id: Uuid,
+    service_name: &str,
+    activation_source: &str,
+    result: &CoolifyProvisionResult,
+) {
+    if let Err(error) = HostingRepository::update_server_info(
+        pool,
+        hosting_id,
+        &ServerInfo {
+            coolify_site_name: service_name,
+            server_uuid: &result.service_uuid,
+            server_ip: &result.server_ip,
+            sftp_user: &result.sftp_user,
+            sftp_password: &result.sftp_password,
+            sftp_port: result.sftp_port,
+        },
+    )
+    .await
+    {
+        tracing::warn!(
+            "Error guardando server_info para hosting {} ({}): {error}",
+            hosting_id,
+            activation_source
+        );
+    }
+    if let Err(error) = HostingRepository::add_event(
+        pool,
+        hosting_id,
+        "coolify_provisioned",
+        Some(serde_json::json!({
+            "service_uuid": result.service_uuid,
+            "domain": result.domain,
+            "server_ip": result.server_ip,
+            "source": activation_source,
+        })),
+    )
+    .await
+    {
+        tracing::warn!(
+            "Error registrando evento coolify_provisioned para {} ({}): {error}",
+            hosting_id,
+            activation_source
+        );
+    }
+}
+
+async fn record_auto_provision_failure(
+    pool: &PgPool,
+    hosting_id: Uuid,
+    activation_source: &str,
+    error: &AppError,
+) {
+    if let Err(event_error) = HostingRepository::add_event(
+        pool,
+        hosting_id,
+        "coolify_provision_failed",
+        Some(serde_json::json!({
+            "error": error.to_string(),
+            "source": activation_source,
+        })),
+    )
+    .await
+    {
+        tracing::warn!(
+            "Error registrando evento coolify_provision_failed para {} ({}): {event_error}",
+            hosting_id,
+            activation_source
+        );
+    }
+}
+
 impl HostingStripeService {
+    /* [165A-1] El checkout bypass de cuentas de prueba debe provisionar igual que el
+     * webhook real de Stripe; si no, la suscripción queda `active` pero sin SSH/SFTP. */
+    pub async fn try_auto_provision_subscription(
+        pool: &PgPool,
+        http_client: &Client,
+        coolify_config: Option<&CoolifyConfig>,
+        subscription: &HostingSubscription,
+        activation_source: &str,
+    ) {
+        let hosting_id = subscription.id;
+
+        if let Some(config) = coolify_config {
+            let Some((service_name, sftp_port, plan_config)) =
+                load_auto_provision_request(pool, subscription, activation_source).await
+            else {
+                return;
+            };
+
+            match CoolifyService::provision_hosting(
+                http_client,
+                config,
+                &service_name,
+                sftp_port,
+                &plan_config,
+            )
+            .await
+            {
+                Ok(result) => {
+                    tracing::info!(
+                        "Hosting {} provisionado en Coolify via {}: uuid={}, domain={}, ip={}",
+                        hosting_id,
+                        activation_source,
+                        result.service_uuid,
+                        result.domain,
+                        result.server_ip
+                    );
+                    record_auto_provision_success(
+                        pool,
+                        hosting_id,
+                        &service_name,
+                        activation_source,
+                        &result,
+                    )
+                    .await;
+                }
+                Err(error) => {
+                    tracing::warn!(
+                        "Coolify provisioning falló para hosting {} via {} (error: {}). Requiere setup manual.",
+                        hosting_id,
+                        activation_source,
+                        error
+                    );
+                    record_auto_provision_failure(pool, hosting_id, activation_source, &error)
+                        .await;
+                }
+            }
+        } else {
+            tracing::warn!(
+                "Coolify no configurado — hosting {} activado sin provisioning automático (source={}).",
+                hosting_id,
+                activation_source
+            );
+        }
+    }
+
     /// Crea una Stripe Checkout Session para suscripción de hosting.
     /// Retorna la URL a la que redirigir al cliente.
     pub async fn create_checkout_session(params: &CheckoutParams<'_>) -> Result<String, AppError> {
@@ -221,114 +399,14 @@ impl HostingStripeService {
         HostingRepository::set_stripe_subscription_id(pool, hosting_id, stripe_sub_id).await?;
         HostingRepository::update_status(pool, hosting_id, "active").await?;
 
-        /* [104A-42] Provisioning real en Coolify — no-fatal: si falla, el pago ya fue aceptado.
-         * El admin puede provisionar manualmente desde el panel de Coolify.
-         * service_name usa los 8 primeros chars del UUID para idempotencia.
-         * [164A-16] Puerto SFTP generado con verificación de unicidad en BD. */
-        if let Some(config) = coolify_config {
-            let service_name = CoolifyService::service_name_for(&hosting_id);
-            let sftp_port = match HostingRepository::find_available_sftp_port(pool).await {
-                Ok(p) => p,
-                Err(e) => {
-                    tracing::warn!("No se pudo generar puerto SFTP para {hosting_id}: {e}");
-                    return Ok(true);
-                }
-            };
-            /* [114A-3] Obtener config del plan para límites dinámicos */
-            let plan_config = match HostingRepository::get_plan_config(pool, &existing.plan).await {
-                Ok(Some(cfg)) => cfg,
-                Ok(None) => {
-                    tracing::warn!(
-                        "Plan config '{}' no encontrado para hosting {hosting_id}",
-                        existing.plan
-                    );
-                    return Ok(true);
-                }
-                Err(e) => {
-                    tracing::warn!("Error obteniendo plan config para {hosting_id}: {e}");
-                    return Ok(true);
-                }
-            };
-            match CoolifyService::provision_hosting(
-                http_client,
-                config,
-                &service_name,
-                sftp_port,
-                &plan_config,
-            )
-            .await
-            {
-                Ok(result) => {
-                    tracing::info!(
-                        "Hosting {} provisionado en Coolify: uuid={}, domain={}, ip={}",
-                        hosting_id,
-                        result.service_uuid,
-                        result.domain,
-                        result.server_ip
-                    );
-                    if let Err(e) = HostingRepository::update_server_info(
-                        pool,
-                        hosting_id,
-                        &ServerInfo {
-                            coolify_site_name: &service_name,
-                            server_uuid: &result.service_uuid,
-                            server_ip: &result.server_ip,
-                            sftp_user: &result.sftp_user,
-                            sftp_password: &result.sftp_password,
-                            sftp_port: result.sftp_port,
-                        },
-                    )
-                    .await
-                    {
-                        tracing::warn!(
-                            "Error guardando server_info para hosting {}: {e}",
-                            hosting_id
-                        );
-                    }
-                    if let Err(e) = HostingRepository::add_event(
-                        pool,
-                        hosting_id,
-                        "coolify_provisioned",
-                        Some(serde_json::json!({
-                            "service_uuid": result.service_uuid,
-                            "domain": result.domain,
-                            "server_ip": result.server_ip,
-                        })),
-                    )
-                    .await
-                    {
-                        tracing::warn!(
-                            "Error registrando evento coolify_provisioned para {}: {e}",
-                            hosting_id
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Coolify provisioning falló para hosting {} (error: {e}). Requiere setup manual.",
-                        hosting_id
-                    );
-                    if let Err(ev_err) = HostingRepository::add_event(
-                        pool,
-                        hosting_id,
-                        "coolify_provision_failed",
-                        Some(serde_json::json!({"error": e.to_string()})),
-                    )
-                    .await
-                    {
-                        tracing::warn!(
-                            "Error registrando evento coolify_provision_failed para {}: {ev_err}",
-                            hosting_id
-                        );
-                    }
-                }
-            }
-        } else {
-            tracing::warn!(
-                "Coolify no configurado — hosting {} activado sin provisioning automático.",
-                hosting_id
-            );
-        }
+        Self::try_auto_provision_subscription(
+            pool,
+            http_client,
+            coolify_config,
+            &existing,
+            "stripe_checkout_completed",
+        )
+        .await;
 
         /* [094A-9] Log de errores en evento, no silenciar */
         if let Err(e) = HostingRepository::add_event(

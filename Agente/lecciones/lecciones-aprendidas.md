@@ -33,6 +33,7 @@
 
 ## Checkout de prueba — no mezclar escrow real con bypass
 - Los pagos sintéticos `test_bypass_*` no deben mostrarse como “retenidos” al usuario ni intentar capturarse contra Stripe al completar la orden. El backend debe exponer `bypassed` en el historial y la UI debe etiquetarlos como `Sin cobro`.
+- Si un checkout bypass salta Stripe pero el flujo real dispara side-effects críticos (provisioning, activación de infraestructura, emails), el bypass debe reutilizar ese mismo helper. Si no, la cuenta de prueba queda “activa” en BD pero sin recursos reales.
 
 ## Chatbot — salida y adjuntos
 - El prompt no basta para evitar Markdown visible: limpiar la respuesta al boundary antes de persistir/enviar evita `**Texto**`, headers o listas cuando el modelo se sale del estilo de chat.

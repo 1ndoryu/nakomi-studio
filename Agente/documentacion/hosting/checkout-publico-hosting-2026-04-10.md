@@ -24,7 +24,8 @@ La página pública de hosting abría el mismo `ModalCompra` usado por servicios
 - El provisioning de hosting normal usa Nginx + SFTP sin base de datos, WP-CLI ni panel WordPress. El provisioning WordPress mantiene la composición WordPress/MariaDB/SFTP existente.
 - El copy público evita el término visible “hosting normal”: comercialmente se presenta como hosting administrado para sitios a medida, landings y frontends, aunque los slugs `normal-*` se conservan por compatibilidad técnica.
 - El panel usa copy genérico de “hosting” y solo muestra accesos WordPress cuando el plan no empieza por `normal-`.
-- `GLORY_TEST_CHECKOUT_EMAILS` permite cuentas de prueba con checkout bypass: hosting queda `active` sin Stripe real y redirige al panel.
+- `GLORY_TEST_CHECKOUT_EMAILS` permite cuentas de prueba con checkout bypass: hosting queda `active` sin Stripe real, pero desde `165A-1` además reutiliza el mismo provisioning automático en Coolify que el webhook real de Stripe.
+- Los hostings de prueba que habían quedado `active` antes de `165A-1` pero sin `server_uuid`/SSH se autoreparan al volver a cargar el panel del usuario test: `list_subscriptions` y `get_subscription` intentan el provisioning una vez para esas suscripciones huérfanas allowlisted.
 
 ## Archivos involucrados
 
@@ -41,6 +42,7 @@ La página pública de hosting abría el mismo `ModalCompra` usado por servicios
 
 - `npm --prefix frontend run type-check`
 - `npm --prefix frontend run build`
+- `npm run self-check -- -TareaId 165A-1`
 
 ## Pendiente relacionado
 

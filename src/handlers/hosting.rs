@@ -28,7 +28,9 @@ use crate::models::{
 };
 use crate::repositories::{CreateHostingParams, HostingRepository, ServerInfo, UserRepository};
 use crate::services::coolify::CoolifyServiceSummary;
-use crate::services::{is_checkout_bypass_email, CoolifyConfig, CoolifyService};
+use crate::services::{
+    is_checkout_bypass_email, CoolifyConfig, CoolifyService, HostingStripeService,
+};
 use crate::AppState;
 
 /// Deriva la URL base pública desde Origin header, env var, o fallback dev.
@@ -253,10 +255,19 @@ pub async fn list_subscriptions(
         if auth.effective_role == UserRole::Admin || auth.effective_role == UserRole::Employee {
             subs.into_iter().map(Into::into).collect()
         } else {
-            subs.into_iter()
-                .filter(|s| s.user_id == Some(auth.user_id))
-                .map(Into::into)
-                .collect()
+            let mut repaired = Vec::new();
+            for sub in subs.into_iter().filter(|s| s.user_id == Some(auth.user_id)) {
+                repaired.push(
+                    maybe_backfill_test_hosting_access(
+                        &state,
+                        sub,
+                        "test_checkout_backfill_list",
+                    )
+                    .await?
+                    .into(),
+                );
+            }
+            repaired
         };
     Ok(Json(filtered))
 }
@@ -409,6 +420,8 @@ pub async fn subscribe_self(
     let base_url = resolve_public_base_url(&headers);
     if let Some(response) = complete_test_hosting_checkout(
         &state.pool,
+        &state.http_client,
+        state.coolify_config.as_ref(),
         &base_url,
         sub.clone(),
         &client_email,
@@ -454,6 +467,8 @@ pub async fn subscribe_self(
 
 async fn complete_test_hosting_checkout(
     pool: &sqlx::PgPool,
+    http_client: &reqwest::Client,
+    coolify_config: Option<&CoolifyConfig>,
     base_url: &str,
     sub: crate::models::HostingSubscription,
     client_email: &str,
@@ -474,6 +489,16 @@ async fn complete_test_hosting_checkout(
     {
         tracing::warn!("Error registrando bypass test hosting para {}: {e}", sub.id);
     }
+
+    HostingStripeService::try_auto_provision_subscription(
+        pool,
+        http_client,
+        coolify_config,
+        &sub,
+        "test_checkout_bypassed",
+    )
+    .await;
+
     let subscription = HostingRepository::find_by_id(pool, sub.id)
         .await?
         .unwrap_or(sub);
@@ -486,6 +511,32 @@ async fn complete_test_hosting_checkout(
         subscription: subscription.into(),
         checkout_url,
     }))
+}
+
+/* [165A-1] Los hostings de prueba creados antes del fix quedaron `active` pero sin
+ * `server_uuid` ni credenciales SFTP. Cuando el cliente test vuelve al panel,
+ * intentamos provisionarlos una sola vez usando el mismo flujo automático. */
+async fn maybe_backfill_test_hosting_access(
+    state: &AppState,
+    sub: crate::models::HostingSubscription,
+    source: &str,
+) -> Result<crate::models::HostingSubscription, AppError> {
+    if sub.status != "active" || sub.server_uuid.is_some() || !is_checkout_bypass_email(&sub.client_email) {
+        return Ok(sub);
+    }
+
+    HostingStripeService::try_auto_provision_subscription(
+        &state.pool,
+        &state.http_client,
+        state.coolify_config.as_ref(),
+        &sub,
+        source,
+    )
+    .await;
+
+    Ok(HostingRepository::find_by_id(&state.pool, sub.id)
+        .await?
+        .unwrap_or(sub))
 }
 
 /// Obtener suscripción por ID
@@ -513,6 +564,8 @@ pub async fn get_subscription(
     if auth.effective_role == UserRole::Client && sub.user_id != Some(auth.user_id) {
         return Err(AppError::Forbidden("Sin permisos".into()));
     }
+
+    let sub = maybe_backfill_test_hosting_access(&state, sub, "test_checkout_backfill_detail").await?;
 
     Ok(Json(sub.into()))
 }
