@@ -420,7 +420,7 @@ fn build_compose_wp_db(
 ) -> String {
         let traefik_labels = build_traefik_labels(route_hosts);
         format!(
-                "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
+                "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
         )
 }
 
@@ -451,7 +451,6 @@ fn build_compose_static_site(site_cpu: &str, site_mem: &str, route_hosts: &[Stri
             - NET_BIND_SERVICE
         security_opt:
             - no-new-privileges:true
-        pids_limit: 160
         deploy:
             resources:
                 limits:
@@ -466,7 +465,11 @@ fn build_compose_static_site(site_cpu: &str, site_mem: &str, route_hosts: &[Stri
 /* [164A-6][155A-13] Genera el compose YAML para hosting administrado.
  * Los slugs `normal-*` usan Nginx + SFTP; los slugs legacy usan WordPress + MariaDB + SSH/SFTP.
  * [164A-16] Hardening: imágenes pineadas, network isolation, cap_drop ALL,
- * no-new-privileges, pids_limit, WP file editing deshabilitado.
+ * no-new-privileges y WP file editing deshabilitado.
+ * [165A-12] NO incluir `pids_limit` en el compose: Coolify inyecta
+ * `deploy.resources.limits.pids` y Compose rechaza ambas definiciones juntas.
+ * [165A-12] El sidecar SSH debe usar una tag existente de linuxserver
+ * (`version-9.9_p2-r0`): la tag legacy `9.9_p2-r0-ls190` ya no resuelve en lscr.io.
  * [174A-17] Plan ecommerce incluye sidecar de backup automático (3 daily + 2 weekly).
  * [114A-3] Límites de CPU/RAM dinámicos desde HostingPlanConfig (admin-configurable). */
 #[cfg(test)]
@@ -571,7 +574,7 @@ fn build_compose_ssh(
             r#"  ssh:
         build:
             dockerfile_inline: |
-                FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190
+                FROM lscr.io/linuxserver/openssh-server:version-9.9_p2-r0
                 RUN apk add --no-cache php83-cli php83-phar php83-json php83-mbstring php83-curl php83-mysqli php83-xml php83-tokenizer bash coreutils \
                         && ln -sf /usr/bin/php83 /usr/bin/php \
                         && curl -sSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /usr/local/bin/wp \
@@ -612,7 +615,6 @@ fn build_compose_ssh(
             - NET_BIND_SERVICE
         security_opt:
             - no-new-privileges:true
-        pids_limit: 100
         deploy:
             resources:
                 limits:
@@ -636,7 +638,7 @@ fn build_compose_static_ssh(
             r#"  ssh:
         build:
             dockerfile_inline: |
-                FROM lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190
+                FROM lscr.io/linuxserver/openssh-server:version-9.9_p2-r0
                 RUN apk add --no-cache bash coreutils
                 RUN mkdir -p /custom-cont-init.d && \
                         echo '#!/bin/bash' > /custom-cont-init.d/10-harden-ssh && \
@@ -673,7 +675,6 @@ fn build_compose_static_ssh(
             - NET_BIND_SERVICE
         security_opt:
             - no-new-privileges:true
-        pids_limit: 100
         deploy:
             resources:
                 limits:
@@ -691,7 +692,7 @@ fn build_compose_static_ssh(
  * Sleep inicial de 60s da tiempo a MariaDB para arrancar completamente.
  * Solo se incluye en compose cuando plan == "ecommerce". */
 fn build_compose_backup() -> String {
-    "  backup:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_PWD=SERVICE_PASSWORD_DB\n    command:\n      - sh\n      - -c\n      - 'sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); mysqldump -h mariadb -u wordpress wordpress > /backups/daily_$$DT.sql 2>&1; tar czf /backups/daily_wp_$$DT.tar.gz -C /wp-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_$$DT.sql /backups/weekly_$$DT.sql; cp /backups/daily_wp_$$DT.tar.gz /backups/weekly_wp_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done'\n    volumes:\n      - 'wordpress-data:/wp-html:ro'\n      - 'backup-data:/backups'\n    networks:\n      - backend_net\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 50\n    deploy:\n      resources:\n        limits:\n          cpus: '0.25'\n          memory: 256M\n        reservations:\n          memory: 64M\n".to_string()
+    "  backup:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_PWD=SERVICE_PASSWORD_DB\n    command:\n      - sh\n      - -c\n      - 'sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); mysqldump -h mariadb -u wordpress wordpress > /backups/daily_$$DT.sql 2>&1; tar czf /backups/daily_wp_$$DT.tar.gz -C /wp-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_$$DT.sql /backups/weekly_$$DT.sql; cp /backups/daily_wp_$$DT.tar.gz /backups/weekly_wp_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done'\n    volumes:\n      - 'wordpress-data:/wp-html:ro'\n      - 'backup-data:/backups'\n    networks:\n      - backend_net\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '0.25'\n          memory: 256M\n        reservations:\n          memory: 64M\n".to_string()
 }
 
 impl CoolifyService {
@@ -1480,10 +1481,37 @@ mod tests {
             "wp, mariadb y ssh deben tener no-new-privileges: {nnp_count}"
         );
 
-        /* pids_limit */
-        assert!(compose.contains("pids_limit: 200"), "WordPress pids_limit");
-        assert!(compose.contains("pids_limit: 150"), "MariaDB pids_limit");
-        assert!(compose.contains("pids_limit: 100"), "SSH pids_limit");
+        assert!(
+            !compose.contains("pids_limit:"),
+            "Coolify inyecta deploy.resources.limits.pids; no debemos duplicarlo"
+        );
+    }
+
+    #[test]
+    fn compose_avoids_pids_limit_conflict_with_coolify() {
+        let wp_config = test_plan_config("basico");
+        let wp_compose = build_hosting_compose_for_service(
+            "hosting-2dad31af",
+            "173.249.50.44",
+            None,
+            "user",
+            "pass",
+            12132,
+            &wp_config,
+        );
+        let normal_config = test_plan_config("normal-basico");
+        let normal_compose = build_hosting_compose_for_service(
+            "hosting-2dad31af",
+            "173.249.50.44",
+            None,
+            "user",
+            "pass",
+            12132,
+            &normal_config,
+        );
+
+        assert!(!wp_compose.contains("pids_limit:"));
+        assert!(!normal_compose.contains("pids_limit:"));
     }
 
     #[test]
@@ -1503,6 +1531,15 @@ mod tests {
         assert!(compose.contains("X11Forwarding no"));
         assert!(compose.contains("PermitTunnel no"));
         assert!(compose.contains("GatewayPorts no"));
+    }
+
+    #[test]
+    fn compose_ssh_uses_existing_linuxserver_tag() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
+        assert!(compose.contains("lscr.io/linuxserver/openssh-server:version-9.9_p2-r0"));
+        assert!(!compose.contains("9.9_p2-r0-ls190"));
     }
 
     #[test]

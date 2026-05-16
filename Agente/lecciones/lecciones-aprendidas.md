@@ -5,6 +5,11 @@
 - El host bootstrap debe derivarse del nombre persistido del servicio (`coolify_site_name`) y el compose debe generar labels Traefik explícitas; si no, el panel puede mostrar una URL válida en apariencia que responde `404 page not found`.
 - Los hostings provisionados antes del cambio necesitan refresh para heredar las nuevas labels, aunque el código ya esté corregido.
 
+## Hosting Coolify — compose de rescate para hosting administrado
+- En stacks compose creados por Coolify, no mezclar `pids_limit` propio con `deploy.resources.limits.pids` inyectado por la plataforma. Docker Compose aborta con `can't set distinct values on 'pids_limit' and 'deploy.resources.limits.pids'` y el servicio queda `exited` aunque la API de creación haya respondido éxito.
+- Las imágenes pineadas en `dockerfile_inline` también vencen: `lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190` ya no existe. Para sidecars SSH/SFTP, validar periódicamente la tag real del registry o el provisioning fallará durante el build aunque el YAML sea correcto.
+- Si rescatas un servicio con `docker compose up -d` directo en `/data/coolify/services/{uuid}`, el contenedor puede quedar sano pero la URL pública en timeout. Antes de culpar a Traefik/Caddy, inspeccionar `caddy_ingress_network` en las labels y conectar `coolify-proxy` a esa red si el proxy no quedó cableado por Coolify.
+
 ## Rust — Tests con env vars
 - `std::env::set_var` / `remove_var` NO son thread-safe. Rust ejecuta tests en paralelo.
 - Tests que modifican las mismas env vars compiten entre sí y fallan intermitentemente.

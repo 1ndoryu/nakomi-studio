@@ -19,7 +19,17 @@ Los hostings compose creados en Coolify dependían del FQDN implícito que devol
 - El dominio real sigue dependiendo de que el cliente apunte DNS al `server_ip` correcto.
 - El host bootstrap queda disponible como fallback técnico aunque el dominio final todavía no propague.
 
+## Incidente 165A-12: recompra caída en provisioning manualmente rescatado
+
+- El hosting recomprado `hosting-2dad31af` no estaba roto por la URL bootstrap sino por dos fallos del compose generado: `pids_limit` entraba en conflicto con `deploy.resources.limits.pids` inyectado por Coolify y el Dockerfile inline del sidecar SSH seguía pineado a `lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190`, una tag ya retirada.
+- Para rescatar el stack ya creado sin esperar una nueva provisión hubo que editar el `docker-compose.yml` on-disk en `/data/coolify/services/{uuid}`: quitar `pids_limit`, cambiar la tag a `version-9.9_p2-r0` y volver a ejecutar `docker compose up -d`.
+- Al levantar un servicio manualmente desde el compose on-disk, Coolify no vuelve a cablear automáticamente el proxy. Si la URL pública queda en timeout pero el contenedor responde 200 internamente, conectar `coolify-proxy` a la red `caddy_ingress_network` indicada por las labels del servicio (`docker network connect {stack_uuid} coolify-proxy`).
+- El rescate dejó operativo el hosting normal ya comprado, pero la expectativa del usuario era WordPress. Por eso el CTA del panel se redirigió desde la landing genérica a `/soluciones/hosting-wordpress/` para futuras compras.
+
 ## Verificación
 
 - `npm run self-check -- -TareaId 165A-5+165A-6+165A-7+165A-8+165A-9+165A-10+165A-11`
 - `cargo test` con nuevas pruebas sobre labels Traefik y dominio custom en `src/services/coolify.rs`
+- `cargo test services::coolify::tests --lib`
+- `npm --prefix frontend run type-check`
+- Probes reales a `site-hosting-2dad31af.173.249.50.44.sslip.io` y `173.249.50.44:12132` tras el rescate operativo

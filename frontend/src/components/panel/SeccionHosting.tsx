@@ -98,7 +98,7 @@ export const SeccionHosting: React.FC = () => {
                         variante="primario"
                         tamano="pequeno"
                         className="hostingBtnCrear"
-                        onClick={() => window.location.assign('https://nakomi.studio/soluciones/hosting/')}
+                        onClick={() => window.location.assign('https://nakomi.studio/soluciones/hosting-wordpress/')}
                         type="button"
                     >
                         <Plus size={16} /> Contratar hosting
