@@ -201,8 +201,8 @@ export async function apiDeleteOrderPhase(orderId: string, phaseNumber: number):
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
     /* [104A-29] pending_payment ya no se usa en órdenes nuevas — legacy label */
-    pending_payment: 'Pago retenido',
-    payment_held: 'Pago retenido',
+    pending_payment: 'Pendiente de pago',
+    payment_held: 'Pendiente de pago',
     awaiting_assignment: 'Sin asignar',
     in_progress: 'En progreso',
     under_review: 'En revisión',

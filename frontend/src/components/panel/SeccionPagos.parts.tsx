@@ -8,6 +8,18 @@ import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_CLASS, type PaymentResponse } fro
 import { PAYMENT_MODE_LABELS, formatPrice, type OrderResponse } from '../../api/orders';
 import { getServiceImage } from '../../utils/serviceImages';
 
+function paymentStatusLabel(payment: PaymentResponse): string {
+    return payment.bypassed ? 'Sin cobro' : PAYMENT_STATUS_LABELS[payment.status];
+}
+
+function paymentStatusClass(payment: PaymentResponse): string {
+    return payment.bypassed ? PAYMENT_STATUS_CLASS.released : PAYMENT_STATUS_CLASS[payment.status];
+}
+
+function paymentAmountLabel(payment: PaymentResponse): string {
+    return payment.bypassed ? 'Sin cobro' : formatPrice(payment.amount_cents, payment.currency);
+}
+
 export function PagoResumenCard({ order, onOpen }: { order: OrderResponse; onOpen: () => void }) {
     return (
         <Button
@@ -61,12 +73,12 @@ export function FacturaLinea({ payment }: { payment: PaymentResponse }) {
                 </span>
             </div>
             <div className="pagosFacturaLineaEstado">
-                <span className={`pagoEstadoBadge ${PAYMENT_STATUS_CLASS[payment.status]}`}>
-                    {PAYMENT_STATUS_LABELS[payment.status]}
+                <span className={`pagoEstadoBadge ${paymentStatusClass(payment)}`}>
+                    {paymentStatusLabel(payment)}
                 </span>
             </div>
             <strong className="pagosFacturaLineaMonto">
-                {formatPrice(payment.amount_cents, payment.currency)}
+                {paymentAmountLabel(payment)}
             </strong>
         </div>
     );

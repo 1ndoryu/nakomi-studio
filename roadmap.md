@@ -32,4 +32,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
-- 155A-11 — Pendiente operativo: completar el usuario de pruebas `test@test.com` en producción con la contraseña indicada por el usuario sin pasarla por chat. Ya están implementados y sincronizados el bypass controlado `GLORY_TEST_CHECKOUT_EMAILS` y los flujos sin Stripe para servicios, hosting y VPS; falta ingresar la contraseña en la terminal segura, confirmar rol cliente y probar compras reales con esa cuenta tras deploy.
+(sin tareas pendientes)

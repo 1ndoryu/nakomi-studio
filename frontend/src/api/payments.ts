@@ -23,6 +23,7 @@ export interface PaymentResponse {
     status: PaymentStatus;
     payment_mode: PaymentMode;
     description: string | null;
+    bypassed: boolean;
     created_at: string;
 }
 

@@ -66,5 +66,6 @@ pub struct PaymentResponse {
     pub status: PaymentStatus,
     pub payment_mode: PaymentMode,
     pub description: Option<String>,
+    pub bypassed: bool,
     pub created_at: DateTime<Utc>,
 }

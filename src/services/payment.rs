@@ -182,6 +182,12 @@ impl PaymentService {
         let held = PaymentRepository::find_held_for_order(pool, order_id).await?;
         for payment in held {
             if let Some(ref pi_id) = payment.stripe_payment_intent_id {
+                /* [155A-11] Los pagos de prueba usan intents sinteticos: avanzan la orden
+                 * sin cobro real y no deben capturarse contra Stripe al completar. */
+                if Self::is_test_bypass_intent(pi_id) {
+                    PaymentRepository::update_status_released(pool, payment.id).await?;
+                    continue;
+                }
                 Self::capture_stripe_intent(http_client, stripe_key, pi_id).await?;
                 PaymentRepository::update_status_released(pool, payment.id).await?;
             }
@@ -200,6 +206,10 @@ impl PaymentService {
         Ok(payments
             .into_iter()
             .map(|p| {
+                let bypassed = p
+                    .stripe_payment_intent_id
+                    .as_deref()
+                    .is_some_and(Self::is_test_bypass_intent);
                 let phase_number = p.phase_id.and_then(|pid| {
                     phases
                         .iter()
@@ -215,6 +225,7 @@ impl PaymentService {
                     status: p.status,
                     payment_mode: p.payment_mode,
                     description: p.description,
+                    bypassed,
                     created_at: p.created_at,
                 }
             })
@@ -574,6 +585,10 @@ impl PaymentService {
             ),
             _ => AppError::BadRequest("Servicio de pagos no disponible temporalmente".into()),
         }
+    }
+
+    fn is_test_bypass_intent(intent_id: &str) -> bool {
+        intent_id.starts_with("test_bypass_")
     }
 }
 

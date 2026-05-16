@@ -28,6 +28,21 @@ sed -i "s|'[^']*:/app/uploads'|'/data/uploads/{site}:/app/uploads'|g" docker-com
 - `redeploy.rs` — después de que Coolify escribe compose (post start_service)
 - `restart_site.rs` — después del restart API (solo para templates Rust)
 
+## Env runtime en compose efectivo
+
+Coolify puede tener una variable sincronizada en `/api/v1/services/{uuid}/envs` pero no reflejarla en el `docker-compose.yml` que queda en `/data/coolify/services/{uuid}`. En stacks Rust, `coolify-manager-rs deploy-service` no depende solo del raw de Coolify: hace el swap con `docker compose up` sobre ese archivo efectivo.
+
+Desde `155A-11`, `deploy-service` también lee las envs runtime de Coolify e inserta en el `environment:` de `app` las claves faltantes antes de recrear el contenedor. Esto evita que `sync-env` reporte “sincronizado” mientras el runtime sigue sin ver variables como `GLORY_TEST_CHECKOUT_EMAILS`.
+
+### Señal de diagnóstico
+
+```bash
+coolify-manager.exe sync-env --name studio --direction diff --only GLORY_TEST_CHECKOUT_EMAILS
+coolify-manager.exe exec --name studio --target app --command 'printenv GLORY_TEST_CHECKOUT_EMAILS'
+```
+
+Si el primero dice sincronizado y el segundo falla, el problema está en el compose efectivo del servidor, no en el `.env` local.
+
 ### Qué NO cubre:
 - **Restart desde Coolify UI** — Si alguien reinicia directamente desde la UI de Coolify, el compose se reescribirá con named volumes. El próximo deploy desde coolify-manager-rs lo corregirá automáticamente.
 - **Recomendación:** SIEMPRE usar coolify-manager-rs para operaciones, nunca la UI de Coolify directamente.

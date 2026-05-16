@@ -29,3 +29,9 @@
 
 - SQLx offline: preferir migraciones que agreguen filas y runtime queries solo donde el dominio ya las usa.
 - El usuario test requiere password indicada por el usuario; si no esta disponible tras compaction, debe ingresarla directamente en terminal, nunca en chat.
+
+## Estado final
+
+- Completado en el bloque `155A-11`.
+- Servicios y VPS quedaron validados sin Stripe en produccion.
+- Hosting comparte el mismo bypass runtime; el reintento directo quedo bloqueado temporalmente por rate limit 429.
