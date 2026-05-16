@@ -40,6 +40,7 @@ La página pública de hosting abría el mismo `ModalCompra` usado por servicios
 - El problema estaba en la generación del YAML para `dockerfile_inline`: los builders de SSH se reescribieron con literales multi-línea más claros y consistentes, y el builder estático además quedó saneado de texto basura de diff que habría roto el hosting normal.
 - El backend ahora tiene pruebas que parsean el compose completo con `serde_yaml` para ambos caminos (`basico` y `normal-basico`), de modo que un YAML inválido falla en CI/local antes de llegar a producción.
 - Con este cambio, el provisioning vuelve a depender de la respuesta real de Coolify y ya no de un compose roto generado por el backend.
+- Verificación real en producción: `POST /api/hosting/subscribe` para `test@test.com` devolvió `201` con la suscripción `87052c71-2dcb-42bf-86ad-4fd7b46638a6` ya provisionada (`server_uuid = ugje5wfljvs6llpw3w2pqh6u`, `server_ip = 173.249.50.44`, `sftp_user = wp_afb12mdbvi`, `sftp_port = 17770`). En el mismo chequeo quedaron reparadas dos suscripciones de prueba previas que seguían activas pero sin infraestructura visible.
 
 ## Archivos involucrados
 
