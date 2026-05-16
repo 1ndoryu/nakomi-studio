@@ -89,7 +89,7 @@ export const HostingPlanSelector: React.FC<HostingPlanSelectorProps> = ({
                             <h4 className="planCardName">{plan.label}</h4>
                             <div className="planCardPrice">
                                 <span className="planCardPriceAmount">
-                                    ${(plan.priceCents / 100).toFixed(0)}
+                                    ${(plan.priceCents / 100).toFixed(2)}
                                 </span>
                                 <span className="planCardPricePeriod">/mes</span>
                             </div>

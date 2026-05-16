@@ -9,6 +9,7 @@ import {
     HOSTING_PLAN_LABELS,
     HOSTING_STATUS_LABELS,
     HOSTING_STATUS_CLASS,
+    getProvisionedHostingSiteUrl,
     type HostingSubscription,
     type UpdateHostingRequest,
 } from '../../api/hosting';
@@ -61,6 +62,7 @@ export function HostingCard({
         handleEditSubmit,
         handleAssignSubmit,
     } = useHostingCard({ sub, onUpdate, onAssign });
+    const siteUrl = getProvisionedHostingSiteUrl(sub);
 
     /* [084A-13] Context menu simplificado: "Cambiar estado" abre modal,
      * ya no lista cada status individualmente en el menú. */
@@ -141,9 +143,9 @@ export function HostingCard({
                             </span>
                         )}
                         {/* [155A-13] Enlace rápido al sitio real — WordPress usa `wordpress`, hosting normal usa `site`. */}
-                        {(sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip && sub.status === 'active') && (
+                        {siteUrl && sub.status === 'active' && (
                             <a
-                                href={`http://${sub.plan.startsWith('normal-') ? 'site' : 'wordpress'}-${sub.server_uuid}.${sub.server_ip}.sslip.io`}
+                                href={siteUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="hostingCardSiteLink"

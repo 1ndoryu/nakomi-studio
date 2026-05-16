@@ -27,7 +27,7 @@ use crate::models::{
     UpdatePlanConfigRequest, UserRole,
 };
 use crate::repositories::{CreateHostingParams, HostingRepository, ServerInfo, UserRepository};
-use crate::services::coolify::CoolifyServiceSummary;
+use crate::services::coolify::{CoolifyServiceSummary, HostingComposeUpdate};
 use crate::services::{
     is_checkout_bypass_email, CoolifyConfig, CoolifyService, HostingStripeService,
 };
@@ -89,7 +89,6 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                     "20 GB almacenamiento SSD",
                     "SSL gratuito",
                     "Backups diarios",
-                    "3 dominios incluidos",
                     "SFTP seguro",
                     "Recursos aislados",
                 ],
@@ -103,7 +102,6 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                     "50 GB almacenamiento SSD",
                     "SSL gratuito",
                     "Backups diarios + snapshots",
-                    "5 dominios incluidos",
                     "SFTP seguro",
                     "Recursos ampliados",
                 ],
@@ -117,7 +115,6 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                     "5 GB almacenamiento SSD",
                     "SSL gratuito",
                     "Backups semanales",
-                    "1 dominio incluido",
                     "SFTP seguro",
                 ],
                 recommended: false,
@@ -134,7 +131,6 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                 "20 GB almacenamiento SSD",
                 "SSL gratuito",
                 "Backups diarios",
-                "3 dominios incluidos",
                 "WP-CLI vía SSH",
                 "Staging environment",
             ],
@@ -148,7 +144,6 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                 "50 GB almacenamiento SSD",
                 "SSL gratuito",
                 "Backups diarios + snapshots",
-                "5 dominios incluidos",
                 "WP-CLI vía SSH",
                 "Caché avanzada WordPress",
             ],
@@ -162,7 +157,6 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                 "5 GB almacenamiento SSD",
                 "SSL gratuito",
                 "Backups semanales",
-                "1 dominio incluido",
                 "WP-CLI vía SSH",
             ],
             recommended: false,
@@ -740,23 +734,63 @@ pub async fn update_subscription(
         tracing::warn!("Error registrando evento updated para {id}: {e}");
     }
 
-    /* [154A-4] Si el dominio cambió y hay servicio Coolify, actualizar FQDN.
-     * No bloquea el update si falla — se registra como warning. */
+    /* [165A-10] Si el dominio cambió y hay servicio Coolify, regeneramos el compose
+     * con labels Traefik explícitas para que el preview sslip.io y el dominio real
+     * compartan el mismo router estable. Si falta contexto, caemos al PATCH legacy. */
     if let Some(ref new_domain) = req.domain {
         let domain_changed = sub.domain.as_deref() != Some(new_domain.as_str());
         if domain_changed && !new_domain.is_empty() {
-            if let (Some(ref server_uuid), Some(ref config)) =
-                (&sub.server_uuid, &state.coolify_config)
-            {
-                if let Err(e) = CoolifyService::update_service_domain(
+            let mut compose_synced = false;
+
+            if let (
+                Some(ref server_uuid),
+                Some(ref service_name),
+                Some(ref sftp_user),
+                Some(ref sftp_password),
+                Some(sftp_port),
+                Some(ref config),
+            ) = (
+                &sub.server_uuid,
+                &sub.coolify_site_name,
+                &sub.sftp_user,
+                &sub.sftp_password,
+                sub.sftp_port,
+                &state.coolify_config,
+            ) {
+                match CoolifyService::update_compose_and_restart(
                     &state.http_client,
                     config,
-                    server_uuid,
-                    new_domain,
+                    HostingComposeUpdate {
+                        service_uuid: server_uuid,
+                        service_name,
+                        custom_domain: Some(new_domain.as_str()),
+                        sftp_user,
+                        sftp_password,
+                        sftp_port,
+                        plan_config: &plan_config,
+                    },
                 )
                 .await
                 {
-                    tracing::warn!("Coolify FQDN update fallo para {id}: {e}");
+                    Ok(()) => compose_synced = true,
+                    Err(e) => tracing::warn!("Coolify compose update fallo para {id}: {e}"),
+                }
+            }
+
+            if !compose_synced {
+                if let (Some(ref server_uuid), Some(ref config)) =
+                    (&sub.server_uuid, &state.coolify_config)
+                {
+                    if let Err(e) = CoolifyService::update_service_domain(
+                        &state.http_client,
+                        config,
+                        server_uuid,
+                        new_domain,
+                    )
+                    .await
+                    {
+                        tracing::warn!("Coolify FQDN update fallo para {id}: {e}");
+                    }
                 }
             }
         }
@@ -1710,6 +1744,9 @@ pub async fn rotate_credentials(
     let sftp_port = sub.sftp_port.ok_or_else(|| {
         AppError::Internal("SFTP port ausente en suscripción provisionada".into())
     })?;
+    let service_name = sub.coolify_site_name.as_ref().ok_or_else(|| {
+        AppError::Internal("Nombre de servicio Coolify ausente en suscripción provisionada".into())
+    })?;
 
     let config = state
         .coolify_config
@@ -1737,11 +1774,15 @@ pub async fn rotate_credentials(
     CoolifyService::update_compose_and_restart(
         &state.http_client,
         config,
-        server_uuid,
-        sftp_user,
-        &new_password,
-        sftp_port,
-        &plan_config,
+        HostingComposeUpdate {
+            service_uuid: server_uuid,
+            service_name,
+            custom_domain: sub.domain.as_deref(),
+            sftp_user,
+            sftp_password: &new_password,
+            sftp_port,
+            plan_config: &plan_config,
+        },
     )
     .await?;
 
@@ -1871,6 +1912,9 @@ pub async fn refresh_hosting(
     let sftp_port = sub.sftp_port.ok_or_else(|| {
         AppError::Internal("SFTP port ausente en suscripción provisionada".into())
     })?;
+    let service_name = sub.coolify_site_name.as_ref().ok_or_else(|| {
+        AppError::Internal("Nombre de servicio Coolify ausente en suscripción provisionada".into())
+    })?;
 
     let coolify = state
         .coolify_config
@@ -1886,11 +1930,15 @@ pub async fn refresh_hosting(
     CoolifyService::update_compose_and_restart(
         &state.http_client,
         coolify,
-        server_uuid,
-        sftp_user,
-        sftp_password,
-        sftp_port,
-        &plan_config,
+        HostingComposeUpdate {
+            service_uuid: server_uuid,
+            service_name,
+            custom_domain: sub.domain.as_deref(),
+            sftp_user,
+            sftp_password,
+            sftp_port,
+            plan_config: &plan_config,
+        },
     )
     .await?;
 

@@ -11,6 +11,9 @@ import {Button} from '../ui/Button';
 
 type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscription']>;
 
+/* [165A-5] La facturación del panel debe reflejar el mismo precio exacto del catálogo.
+ * Redondear a enteros ocultaba los centavos y generaba desalineación visual. */
+
 export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
     sub: Subscription;
     onPlanChange?: (plan: string, domain?: string) => void;
@@ -37,7 +40,7 @@ export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
                         {HOSTING_PLAN_LABELS[sub.plan] || sub.plan}
                     </span>
                     <span className="hostingDetallePlanPrecio">
-                        ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
+                        ${(sub.monthly_price_cents / 100).toFixed(2)}/mes
                     </span>
                 </div>
                 <div className="hostingDetallePlanFeatures">
@@ -83,7 +86,7 @@ export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
                                         </span>
                                     </div>
                                     <span className="hostingDetallePlanPrecio">
-                                        ${(plan.priceCents / 100).toFixed(0)}/mes
+                                        ${(plan.priceCents / 100).toFixed(2)}/mes
                                     </span>
                                     {/* [084A-45] Beneficios como lista */}
                                     <ul className="hostingDetallePlanFeaturesList">

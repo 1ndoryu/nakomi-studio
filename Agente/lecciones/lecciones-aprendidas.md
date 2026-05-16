@@ -1,5 +1,10 @@
 # Lecciones Aprendidas
 
+## Hosting Coolify — bootstrap route estable
+- En hostings compose de Coolify, el preview `sslip.io` no debe depender del FQDN implícito ni del `server_uuid` expuesto al frontend.
+- El host bootstrap debe derivarse del nombre persistido del servicio (`coolify_site_name`) y el compose debe generar labels Traefik explícitas; si no, el panel puede mostrar una URL válida en apariencia que responde `404 page not found`.
+- Los hostings provisionados antes del cambio necesitan refresh para heredar las nuevas labels, aunque el código ya esté corregido.
+
 ## Rust — Tests con env vars
 - `std::env::set_var` / `remove_var` NO son thread-safe. Rust ejecuta tests en paralelo.
 - Tests que modifican las mismas env vars compiten entre sí y fallan intermitentemente.

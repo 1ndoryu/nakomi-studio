@@ -4,10 +4,15 @@
 import {useState} from 'react';
 import {Shield, Terminal, ExternalLink, Loader, CheckCircle, XCircle, AlertCircle} from 'lucide-react';
 import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
-import {apiDnsCheck} from '../../api/hosting';
+import {
+    apiDnsCheck,
+    getProvisionedHostingAdminUrl,
+    getProvisionedHostingSiteUrl,
+} from '../../api/hosting';
 import type {DnsCheckResult} from '../../api/hosting';
 import {Button} from '../ui/Button';
 import {CopyButton, InfoRow} from './HostingDetalle';
+import {HostingDomainSelfServiceForm} from './HostingDomainSelfServiceForm';
 import {DnsManager} from './DnsManager';
 
 type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscription']>;
@@ -15,7 +20,8 @@ type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscripti
 /* ── Tab: Dominio & SSL ──────────────────── */
 /* [094A-4] Instrucciones DNS claras: registros A/CNAME, propagación, SSL auto.
  * [154A-16] Verificación DNS interactiva: resuelve dominio y compara con server_ip. */
-export function TabDominio({domainInfo, subscriptionId}: {
+export function TabDominio({sub, domainInfo, subscriptionId}: {
+    sub: Subscription;
     domainInfo: ReturnType<typeof useHostingDetalle>['domainInfo'];
     subscriptionId: string;
 }) {
@@ -33,6 +39,7 @@ export function TabDominio({domainInfo, subscriptionId}: {
             setChecking(false);
         }
     };
+
     return (
         <div className="hostingDetalleSection">
             <h3 className="hostingDetalleSectionTitle">Dominio</h3>
@@ -47,9 +54,16 @@ export function TabDominio({domainInfo, subscriptionId}: {
                 </div>
             ) : (
                 <p className="hostingDetalleNoDomain">
-                    No hay dominio configurado. Contacta soporte para configurar tu dominio.
+                    Aún no hay un dominio conectado. Puedes configurarlo tú mismo desde aquí.
                 </p>
             )}
+
+            <HostingDomainSelfServiceForm
+                sub={sub}
+                subscriptionId={subscriptionId}
+                currentDomain={domainInfo.domain}
+                serverIp={domainInfo.serverIp}
+            />
 
             <h3 className="hostingDetalleSectionTitle">Configuración DNS</h3>
             <p className="hostingDetalleSectionDesc">
@@ -163,15 +177,10 @@ export function TabAcceso({sshInfo, sub}: {
     sub: Subscription;
 }) {
     const [showPassword, setShowPassword] = useState(false);
-    const isDockerHosting = sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip;
     const isNormalHosting = sub.plan.startsWith('normal-');
-    const servicePrefix = isNormalHosting ? 'site' : 'wordpress';
-    const siteUrl = isDockerHosting
-        ? `http://${servicePrefix}-${sub.server_uuid}.${sub.server_ip}.sslip.io`
-        : null;
-    const wpAdminUrl = isDockerHosting && !isNormalHosting
-        ? `http://wordpress-${sub.server_uuid}.${sub.server_ip}.sslip.io/wp-admin`
-        : null;
+    const siteUrl = getProvisionedHostingSiteUrl(sub);
+    const wpAdminUrl = getProvisionedHostingAdminUrl(sub);
+    const isDockerHosting = siteUrl !== null;
     const hasSftp = isDockerHosting && sub.sftp_user && sub.sftp_password && sub.sftp_port;
 
     if (isDockerHosting) {

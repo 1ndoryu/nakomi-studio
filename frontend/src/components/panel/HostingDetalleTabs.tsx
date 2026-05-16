@@ -11,6 +11,7 @@ import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
 import {
     HOSTING_PLAN_LABELS,
     HOSTING_STATUS_LABELS,
+    getProvisionedHostingSiteUrl,
 } from '../../api/hosting';
 import {Button} from '../ui/Button';
 import {HostingStats} from './HostingStats';
@@ -33,12 +34,8 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
     startLoading?: boolean;
 }) {
     const sitioUrl = sub.domain ? `https://${sub.domain}` : null;
-    /* [155A-13] URL real del sitio: WordPress usa servicio `wordpress`, hosting normal usa `site`. */
-    const isRealProvisioned = sub.coolify_site_name?.startsWith('hosting-') && sub.server_uuid && sub.server_ip;
-    const servicePrefix = sub.plan.startsWith('normal-') ? 'site' : 'wordpress';
-    const coolifyUrl = isRealProvisioned
-        ? `http://${servicePrefix}-${sub.server_uuid}.${sub.server_ip}.sslip.io`
-        : null;
+    const coolifyUrl = getProvisionedHostingSiteUrl(sub);
+    const isRealProvisioned = coolifyUrl !== null;
     /* [154A-11] Provisioning disponible para admin cuando el hosting está pendiente */
     const canProvision = isAdmin && (sub.status === 'pending' || sub.status === 'provisioning') && onProvision;
 
@@ -48,7 +45,7 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
             <div className="hostingDetalleInfoGrid">
                 <InfoRow label="Plan" value={HOSTING_PLAN_LABELS[sub.plan] || sub.plan} />
                 <InfoRow label="Estado" value={HOSTING_STATUS_LABELS[sub.status] || sub.status} />
-                <InfoRow label="Precio" value={`$${(sub.monthly_price_cents / 100).toFixed(0)}/mes`} />
+                <InfoRow label="Precio" value={`$${(sub.monthly_price_cents / 100).toFixed(2)}/mes`} />
                 <InfoRow label="Almacenamiento" value={`${(sub.storage_limit_mb / 1024).toFixed(0)} GB`} />
                 {sub.domain && (
                     <InfoRow label="Dominio" value={sub.domain} copyable link={sitioUrl ?? undefined} />

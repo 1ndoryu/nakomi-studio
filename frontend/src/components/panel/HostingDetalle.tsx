@@ -150,7 +150,7 @@ export function HostingDetalle({
                             {HOSTING_STATUS_LABELS[sub.status] || sub.status}
                         </span>
                         <span className="hostingDetalleHeaderPlan">
-                            {HOSTING_PLAN_LABELS[sub.plan] || sub.plan} · ${(sub.monthly_price_cents / 100).toFixed(0)}/mes
+                            {HOSTING_PLAN_LABELS[sub.plan] || sub.plan} · ${(sub.monthly_price_cents / 100).toFixed(2)}/mes
                         </span>
                         {/* [094A-7] Contactar soporte: abre el chat con contexto del hosting
                          * [084A-28] Pasa hosting:{id} como contexto para que la IA sepa de qué hosting se trata */}
@@ -201,7 +201,7 @@ export function HostingDetalle({
                     />
                 )}
                 {tabActiva === 'recursos' && <TabRecursos sub={sub} />}
-                {tabActiva === 'dominio' && <TabDominio domainInfo={domainInfo} subscriptionId={sub.id} />}
+                {tabActiva === 'dominio' && <TabDominio sub={sub} domainInfo={domainInfo} subscriptionId={sub.id} />}
                 {tabActiva === 'acceso' && <TabAcceso sshInfo={sshInfo} sub={sub} />}
                 {tabActiva === 'facturacion' && (
                     <TabFacturacion

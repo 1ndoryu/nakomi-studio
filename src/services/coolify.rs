@@ -145,6 +145,16 @@ pub struct CoolifyProvisionResult {
     pub sftp_port: i32,
 }
 
+pub struct HostingComposeUpdate<'a> {
+    pub service_uuid: &'a str,
+    pub service_name: &'a str,
+    pub custom_domain: Option<&'a str>,
+    pub sftp_user: &'a str,
+    pub sftp_password: &'a str,
+    pub sftp_port: i32,
+    pub plan_config: &'a HostingPlanConfig,
+}
+
 /* [164A-19] Resumen de servicios reales devueltos por Coolify.
  * Se usa para poblar el panel admin con despliegues de la VPS2, no con la lista
  * de instancias del proveedor. Los campos opcionales vienen de la API y no siempre
@@ -271,15 +281,152 @@ fn millicores_to_cpu(millicores: i32) -> String {
         format!("{:.2}", f64::from(millicores) / 1000.0)
 }
 
+fn clean_route_host(value: &str) -> String {
+    value
+        .trim()
+        .trim_start_matches("http://")
+        .trim_start_matches("https://")
+        .trim_end_matches('/')
+        .split('/')
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase()
+}
+
+fn route_host_slug(host: &str) -> String {
+    let slug = clean_route_host(host)
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+
+    slug
+        .split('-')
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+fn hosting_bootstrap_host(plan_name: &str, service_name: &str, server_ip: &str) -> String {
+    let service_prefix = if is_normal_hosting_plan(plan_name) {
+        "site"
+    } else {
+        "wordpress"
+    };
+
+    format!("{service_prefix}-{service_name}.{server_ip}.sslip.io")
+}
+
+fn hosting_route_hosts(
+    plan_name: &str,
+    service_name: &str,
+    server_ip: &str,
+    custom_domain: Option<&str>,
+) -> Vec<String> {
+    let mut hosts = vec![hosting_bootstrap_host(plan_name, service_name, server_ip)];
+
+    if let Some(domain) = custom_domain {
+        let cleaned = clean_route_host(domain);
+        if !cleaned.is_empty() && !hosts.iter().any(|host| host == &cleaned) {
+            hosts.push(cleaned);
+        }
+    }
+
+    hosts
+}
+
+fn build_traefik_labels(route_hosts: &[String]) -> String {
+    if route_hosts.is_empty() {
+        return String::new();
+    }
+
+    let mut lines = vec![
+        "        labels:".to_string(),
+        "            - 'traefik.enable=true'".to_string(),
+    ];
+
+    for host in route_hosts {
+        let cleaned_host = clean_route_host(host);
+        if cleaned_host.is_empty() {
+            continue;
+        }
+
+        let slug = route_host_slug(&cleaned_host);
+        if slug.is_empty() {
+            continue;
+        }
+
+        lines.push(format!(
+            "            - 'traefik.http.services.{slug}-svc.loadbalancer.server.port=80'"
+        ));
+        lines.push(format!(
+            "            - 'traefik.http.routers.{slug}-http.rule=Host(`{cleaned_host}`)'"
+        ));
+        lines.push(format!(
+            "            - 'traefik.http.routers.{slug}-http.entrypoints=http'"
+        ));
+        lines.push(format!(
+            "            - 'traefik.http.routers.{slug}-http.service={slug}-svc'"
+        ));
+        lines.push(format!(
+            "            - 'traefik.http.routers.{slug}-https.rule=Host(`{cleaned_host}`)'"
+        ));
+        lines.push(format!(
+            "            - 'traefik.http.routers.{slug}-https.entrypoints=https'"
+        ));
+        lines.push(format!(
+            "            - 'traefik.http.routers.{slug}-https.tls=true'"
+        ));
+        lines.push(format!(
+            "            - 'traefik.http.routers.{slug}-https.tls.certresolver=letsencrypt'"
+        ));
+        lines.push(format!(
+            "            - 'traefik.http.routers.{slug}-https.service={slug}-svc'"
+        ));
+    }
+
+    format!("{}\n", lines.join("\n"))
+}
+
+fn generate_sftp_credentials() -> (String, String) {
+    let sftp_user: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(10)
+        .map(char::from)
+        .collect::<String>()
+        .to_lowercase();
+    let sftp_password: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(20)
+        .map(char::from)
+        .collect();
+
+    (format!("wp_{sftp_user}"), sftp_password)
+}
+
 /* [114A-3] Límites dinámicos por plan. WP reserva 25% de su límite, DB reserva 25% también. */
-fn build_compose_wp_db(wp_cpu: &str, wp_mem: &str, db_cpu: &str, db_mem: &str) -> String {
+fn build_compose_wp_db(
+    wp_cpu: &str,
+    wp_mem: &str,
+    db_cpu: &str,
+    db_mem: &str,
+    route_hosts: &[String],
+) -> String {
+        let traefik_labels = build_traefik_labels(route_hosts);
         format!(
-                "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
+                "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 200\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    pids_limit: 150\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
         )
 }
 
 /* [155A-13] Servicio web para hosting normal: Nginx sirve el volumen editable por SFTP. */
-fn build_compose_static_site(site_cpu: &str, site_mem: &str) -> String {
+fn build_compose_static_site(site_cpu: &str, site_mem: &str, route_hosts: &[String]) -> String {
+        let traefik_labels = build_traefik_labels(route_hosts);
         format!(
                 r#"  site:
         image: 'nginx:1.27-alpine'
@@ -294,7 +441,7 @@ fn build_compose_static_site(site_cpu: &str, site_mem: &str) -> String {
         restart: unless-stopped
         networks:
             - frontend_net
-        cap_drop:
+{traefik_labels}        cap_drop:
             - ALL
         cap_add:
             - CHOWN
@@ -322,20 +469,45 @@ fn build_compose_static_site(site_cpu: &str, site_mem: &str) -> String {
  * no-new-privileges, pids_limit, WP file editing deshabilitado.
  * [174A-17] Plan ecommerce incluye sidecar de backup automático (3 daily + 2 weekly).
  * [114A-3] Límites de CPU/RAM dinámicos desde HostingPlanConfig (admin-configurable). */
+#[cfg(test)]
 fn build_hosting_compose(
     sftp_user: &str,
     sftp_password: &str,
     sftp_port: i32,
     config: &HostingPlanConfig,
 ) -> String {
+    build_hosting_compose_with_routes(&[], sftp_user, sftp_password, sftp_port, config)
+}
+
+fn build_hosting_compose_for_service(
+    service_name: &str,
+    server_ip: &str,
+    custom_domain: Option<&str>,
+    sftp_user: &str,
+    sftp_password: &str,
+    sftp_port: i32,
+    config: &HostingPlanConfig,
+) -> String {
+    let route_hosts = hosting_route_hosts(&config.plan_name, service_name, server_ip, custom_domain);
+    build_hosting_compose_with_routes(&route_hosts, sftp_user, sftp_password, sftp_port, config)
+}
+
+fn build_hosting_compose_with_routes(
+    route_hosts: &[String],
+    sftp_user: &str,
+    sftp_password: &str,
+    sftp_port: i32,
+    config: &HostingPlanConfig,
+) -> String {
     if is_normal_hosting_plan(&config.plan_name) {
-        return build_normal_hosting_compose(sftp_user, sftp_password, sftp_port, config);
+        return build_normal_hosting_compose(route_hosts, sftp_user, sftp_password, sftp_port, config);
     }
 
-    build_wordpress_hosting_compose(sftp_user, sftp_password, sftp_port, config)
+    build_wordpress_hosting_compose(route_hosts, sftp_user, sftp_password, sftp_port, config)
 }
 
 fn build_wordpress_hosting_compose(
+    route_hosts: &[String],
     sftp_user: &str,
     sftp_password: &str,
     sftp_port: i32,
@@ -348,7 +520,7 @@ fn build_wordpress_hosting_compose(
     let ssh_cpu = millicores_to_cpu(config.ssh_cpu_millicores);
     let ssh_mem = format!("{}M", config.ssh_memory_mb);
 
-    let wp_db = build_compose_wp_db(&wp_cpu, &wp_mem, &db_cpu, &db_mem);
+    let wp_db = build_compose_wp_db(&wp_cpu, &wp_mem, &db_cpu, &db_mem, route_hosts);
     let ssh = build_compose_ssh(sftp_user, sftp_password, sftp_port, &ssh_cpu, &ssh_mem);
     let backup = if config.plan_name == "ecommerce" {
         build_compose_backup()
@@ -364,6 +536,7 @@ fn build_wordpress_hosting_compose(
 }
 
 fn build_normal_hosting_compose(
+    route_hosts: &[String],
     sftp_user: &str,
     sftp_password: &str,
     sftp_port: i32,
@@ -373,7 +546,7 @@ fn build_normal_hosting_compose(
     let site_mem = format!("{}M", config.wp_memory_mb);
     let ssh_cpu = millicores_to_cpu(config.ssh_cpu_millicores);
     let ssh_mem = format!("{}M", config.ssh_memory_mb);
-    let site = build_compose_static_site(&site_cpu, &site_mem);
+    let site = build_compose_static_site(&site_cpu, &site_mem, route_hosts);
     let ssh = build_compose_static_ssh(sftp_user, sftp_password, sftp_port, &ssh_cpu, &ssh_mem);
 
     format!(
@@ -598,22 +771,22 @@ impl CoolifyService {
         sftp_port: i32,
         plan_config: &HostingPlanConfig,
     ) -> Result<CoolifyProvisionResult, AppError> {
-        /* Generar credenciales SSH/SFTP únicas para este hosting */
-        let sftp_user: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(10)
-            .map(char::from)
-            .collect::<String>()
-            .to_lowercase();
-        let sftp_user = format!("wp_{sftp_user}");
-        let sftp_password: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(20)
-            .map(char::from)
-            .collect();
+        let (sftp_user, sftp_password) = generate_sftp_credentials();
 
-        let compose_yaml =
-            build_hosting_compose(&sftp_user, &sftp_password, sftp_port, plan_config);
+        let bootstrap_domain = hosting_bootstrap_host(
+            &plan_config.plan_name,
+            service_name,
+            &config.server_ip,
+        );
+        let compose_yaml = build_hosting_compose_for_service(
+            service_name,
+            &config.server_ip,
+            None,
+            &sftp_user,
+            &sftp_password,
+            sftp_port,
+            plan_config,
+        );
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose_yaml);
 
         /* Paso 1: Crear el servicio */
@@ -656,17 +829,15 @@ impl CoolifyService {
             .await
             .map_err(|e| AppError::Internal(format!("Coolify create service parse error: {e}")))?;
 
-        /* Extraer dominio asignado */
-        let domain =
-            created.domains.into_iter().next().unwrap_or_else(|| {
-                format!("http://{}.{}.sslip.io", service_name, config.server_ip)
-            });
+        let coolify_domain = created.domains.into_iter().next();
+        let domain = format!("http://{bootstrap_domain}");
 
         tracing::info!(
-            "[Coolify] Servicio '{}' creado: uuid={}, domain={}",
+            "[Coolify] Servicio '{}' creado: uuid={}, bootstrap_domain={}, coolify_domain={:?}",
             service_name,
             created.uuid,
-            domain
+            domain,
+            coolify_domain
         );
 
         /* Paso 2: Arrancar el servicio */
@@ -804,17 +975,21 @@ impl CoolifyService {
     pub async fn update_compose_and_restart(
         http_client: &Client,
         config: &CoolifyConfig,
-        service_uuid: &str,
-        sftp_user: &str,
-        sftp_password: &str,
-        sftp_port: i32,
-        plan_config: &HostingPlanConfig,
+        update: HostingComposeUpdate<'_>,
     ) -> Result<(), AppError> {
-        let compose = build_hosting_compose(sftp_user, sftp_password, sftp_port, plan_config);
+        let compose = build_hosting_compose_for_service(
+            update.service_name,
+            &config.server_ip,
+            update.custom_domain,
+            update.sftp_user,
+            update.sftp_password,
+            update.sftp_port,
+            update.plan_config,
+        );
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose);
 
         /* PATCH: actualizar docker_compose_raw en Coolify */
-        let patch_url = format!("{}/api/v1/services/{}", config.base_url, service_uuid);
+        let patch_url = format!("{}/api/v1/services/{}", config.base_url, update.service_uuid);
         let patch_resp = http_client
             .patch(&patch_url)
             .bearer_auth(&config.api_token)
@@ -832,16 +1007,16 @@ impl CoolifyService {
         }
 
         /* Restart: stop + start para aplicar nuevo compose */
-        let stop_url = format!("{}/api/v1/services/{}/stop", config.base_url, service_uuid);
+        let stop_url = format!("{}/api/v1/services/{}/stop", config.base_url, update.service_uuid);
         if let Err(e) = http_client
             .post(&stop_url)
             .bearer_auth(&config.api_token)
             .send()
             .await
         {
-            tracing::warn!("[Coolify] Error deteniendo servicio {service_uuid}: {e}");
+            tracing::warn!("[Coolify] Error deteniendo servicio {}: {e}", update.service_uuid);
         }
-        let start_url = format!("{}/api/v1/services/{}/start", config.base_url, service_uuid);
+        let start_url = format!("{}/api/v1/services/{}/start", config.base_url, update.service_uuid);
         let start_resp = http_client
             .post(&start_url)
             .bearer_auth(&config.api_token)
@@ -852,12 +1027,13 @@ impl CoolifyService {
         if start_resp.status().is_success() {
             tracing::info!(
                 "[Coolify] Servicio {} reiniciado con credenciales actualizadas.",
-                service_uuid
+                update.service_uuid
             );
         } else {
             let status = start_resp.status();
             tracing::warn!(
-                "[Coolify] Compose actualizado pero restart falló para {service_uuid}: {status}"
+                "[Coolify] Compose actualizado pero restart falló para {}: {status}",
+                update.service_uuid
             );
         }
 
@@ -1204,6 +1380,40 @@ mod tests {
     }
 
     #[test]
+    fn compose_for_service_adds_bootstrap_route_labels() {
+        let config = test_plan_config("normal-basico");
+        let compose = build_hosting_compose_for_service(
+            "hosting-6d746a75",
+            "173.249.50.44",
+            None,
+            "testuser",
+            "testpass",
+            10001,
+            &config,
+        );
+
+        assert!(compose.contains("site-hosting-6d746a75.173.249.50.44.sslip.io"));
+        assert!(compose.contains("traefik.http.routers.site-hosting-6d746a75-173-249-50-44-sslip-io-http.rule"));
+    }
+
+    #[test]
+    fn compose_for_service_keeps_custom_domain_route() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose_for_service(
+            "hosting-6d746a75",
+            "173.249.50.44",
+            Some("cliente.example.com"),
+            "testuser",
+            "testpass",
+            10001,
+            &config,
+        );
+
+        assert!(compose.contains("Host(`cliente.example.com`)"));
+        assert!(compose.contains("traefik.http.routers.cliente-example-com-https.rule"));
+    }
+
+    #[test]
     fn compose_contains_required_networks() {
         let config = test_plan_config("basico");
         let compose = build_hosting_compose("testuser", "testpass", 10001, &config);
@@ -1418,7 +1628,7 @@ mod tests {
 
     #[test]
     fn compose_wordpress_connects_to_frontend_and_backend() {
-        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M");
+        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M", &[]);
 
         /* WordPress debe estar en frontend (sirve tráfico) y backend (habla con DB) */
         assert!(compose.contains("frontend_net"));
@@ -1427,7 +1637,7 @@ mod tests {
 
     #[test]
     fn compose_mariadb_only_on_backend() {
-        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M");
+        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M", &[]);
 
         /* MariaDB aparece como servicio "  mariadb:\n". Su sección debe contener
          * backend_net pero NO frontend_net. Extraer desde la definición del servicio. */

@@ -32,5 +32,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
-- El boton de hostingAcciones de contratar hosting que ya no abra un modal sinoque rediriga a https://nakomi.studio/soluciones/hosting/
-- el diseño de las notifaciones esta mal, el texto se ve centrado
+- (sin tareas pendientes)

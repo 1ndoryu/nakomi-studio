@@ -261,7 +261,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 248,
         storageMb: 5120,
         description: 'WordPress administrado para sitios livianos y landings con costo controlado.',
-        features: ['WordPress pre-instalado', '5 GB almacenamiento', 'SSL gratuito', '1 dominio', 'WP-CLI vía SSH'],
+        features: ['WordPress pre-instalado', '5 GB almacenamiento', 'SSL gratuito', 'WP-CLI vía SSH'],
     },
     {
         id: 'pro',
@@ -269,7 +269,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 413,
         storageMb: 20480,
         description: 'WordPress para negocios que necesitan más recursos y staging listo.',
-        features: ['WordPress pre-instalado', '20 GB almacenamiento', 'SSL gratuito', '3 dominios', 'WP-CLI vía SSH', 'Backups diarios'],
+        features: ['WordPress pre-instalado', '20 GB almacenamiento', 'SSL gratuito', 'WP-CLI vía SSH', 'Backups diarios'],
         recommended: true,
     },
     {
@@ -278,7 +278,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 619,
         storageMb: 51200,
         description: 'WooCommerce optimizado para tiendas online con más tráfico y caché avanzada.',
-        features: ['WordPress + WooCommerce', '50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'WP-CLI vía SSH', 'Backups diarios', 'Caché avanzada'],
+        features: ['WordPress + WooCommerce', '50 GB almacenamiento', 'SSL gratuito', 'WP-CLI vía SSH', 'Backups diarios', 'Caché avanzada'],
     },
     {
         id: 'normal-basico',
@@ -286,7 +286,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 323,
         storageMb: 5120,
         description: 'Hosting administrado con Nginx, SSL y SFTP para landings, sitios corporativos y proyectos sin WordPress.',
-        features: ['Nginx administrado', '5 GB almacenamiento', 'SSL gratuito', '1 dominio', 'SFTP seguro'],
+        features: ['Nginx administrado', '5 GB almacenamiento', 'SSL gratuito', 'SFTP seguro'],
     },
     {
         id: 'normal-pro',
@@ -294,7 +294,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 537,
         storageMb: 20480,
         description: 'Hosting administrado para sitios con más tráfico, frontends personalizados y despliegues con mayor exigencia operativa.',
-        features: ['Nginx administrado', '20 GB almacenamiento', 'SSL gratuito', '3 dominios', 'SFTP seguro', 'Backups diarios'],
+        features: ['Nginx administrado', '20 GB almacenamiento', 'SSL gratuito', 'SFTP seguro', 'Backups diarios'],
         recommended: true,
     },
     {
@@ -303,9 +303,33 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 805,
         storageMb: 51200,
         description: 'Hosting administrado de mayor capacidad para catálogos amplios, assets pesados y operaciones con más demanda.',
-        features: ['Nginx administrado', '50 GB almacenamiento', 'SSL gratuito', '5 dominios', 'SFTP seguro', 'Backups diarios', 'Recursos ampliados'],
+        features: ['Nginx administrado', '50 GB almacenamiento', 'SSL gratuito', 'SFTP seguro', 'Backups diarios', 'Recursos ampliados'],
     },
 ];
+
+/* [165A-10] La URL bootstrap del hosting debe derivarse del nombre del servicio
+ * persistido en la suscripción, no del UUID interno de Coolify. */
+export function getProvisionedHostingSiteUrl(
+    sub: Pick<HostingSubscription, 'plan' | 'coolify_site_name' | 'server_ip'>,
+): string | null {
+    if (!sub.coolify_site_name || !sub.server_ip || !sub.coolify_site_name.startsWith('hosting-')) {
+        return null;
+    }
+
+    const servicePrefix = sub.plan.startsWith('normal-') ? 'site' : 'wordpress';
+    return `http://${servicePrefix}-${sub.coolify_site_name}.${sub.server_ip}.sslip.io`;
+}
+
+export function getProvisionedHostingAdminUrl(
+    sub: Pick<HostingSubscription, 'plan' | 'coolify_site_name' | 'server_ip'>,
+): string | null {
+    if (sub.plan.startsWith('normal-')) {
+        return null;
+    }
+
+    const siteUrl = getProvisionedHostingSiteUrl(sub);
+    return siteUrl ? `${siteUrl}/wp-admin` : null;
+}
 
 /* [154A-9] Control de servicio: restart / stop / start */
 export async function apiRestartHosting(id: string): Promise<void> {

@@ -72,11 +72,12 @@
 .toastMensaje {
     flex: 1;
     line-height: 1.4;
+    text-align: left;
 }
 
 .toastCerrar {
     flex-shrink: 0;
-    padding: 4px;
+    padding: var(--spacing-2xs);
     border: none;
     background: transparent;
     color: inherit;
