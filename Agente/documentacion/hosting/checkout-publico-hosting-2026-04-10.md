@@ -27,6 +27,13 @@ La página pública de hosting abría el mismo `ModalCompra` usado por servicios
 - `GLORY_TEST_CHECKOUT_EMAILS` permite cuentas de prueba con checkout bypass: hosting queda `active` sin Stripe real, pero desde `165A-1` además reutiliza el mismo provisioning automático en Coolify que el webhook real de Stripe.
 - Los hostings de prueba que habían quedado `active` antes de `165A-1` pero sin `server_uuid`/SSH se autoreparan al volver a cargar el panel del usuario test: `list_subscriptions` y `get_subscription` intentan el provisioning una vez para esas suscripciones huérfanas allowlisted.
 
+## Actualización 2026-05-16 — contrato de create service con Coolify
+
+- El bypass y el backfill sí estaban disparando el provisioning, pero Coolify devolvía `500 Internal Server Error` al crear el servicio, así que la suscripción seguía `active` sin `server_uuid` ni credenciales SSH/SFTP.
+- La causa real no era el frontend ni el gating por email: el cliente Rust de `src/services/coolify.rs` estaba creando stacks compose con un payload incompleto respecto al cliente operativo de `coolify-manager-rs`.
+- El `POST /api/v1/services` ahora incluye `instant_deploy: true`, alineado con el manager. Además, si Coolify vuelve a fallar, el backend preserva el body de la respuesta dentro del error para que `coolify_provision_failed` no quede reducido a un `500` opaco.
+- Con esto, el siguiente refresh del panel/detalle del hosting test vuelve a intentar el provisioning con el contrato correcto hacia Coolify.
+
 ## Archivos involucrados
 
 - `frontend/src/hooks/useModalCompra.ts`

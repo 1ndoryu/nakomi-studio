@@ -110,7 +110,8 @@ impl CoolifyConfig {
 TIPOS DE API
 ============================================================ */
 
-/// Body de la llamada POST /api/v1/services (`docker_compose_raw` en base64)
+/// Body de la llamada POST /api/v1/services (`docker_compose_raw` en base64).
+/// `instant_deploy` evita un 500 opaco en Coolify al crear stacks compose.
 #[derive(Debug, Serialize)]
 struct CreateServiceBody<'a> {
     name: &'a str,
@@ -118,6 +119,7 @@ struct CreateServiceBody<'a> {
     environment_name: &'static str,
     server_uuid: &'a str,
     docker_compose_raw: String,
+    instant_deploy: bool,
 }
 
 /// Respuesta de POST /api/v1/services (solo campos que usamos)
@@ -610,6 +612,7 @@ impl CoolifyService {
             environment_name: "production",
             server_uuid: &config.server_uuid,
             docker_compose_raw: compose_b64,
+            instant_deploy: true,
         };
 
         let create_url = format!("{}/api/v1/services", config.base_url);
@@ -633,7 +636,7 @@ impl CoolifyService {
                 body
             );
             return Err(AppError::Internal(format!(
-                "Coolify create service failed: {status}"
+                "Coolify create service failed: {status} — {body}"
             )));
         }
 
@@ -1044,6 +1047,23 @@ mod tests {
         assert_eq!(service.server_name.as_deref(), Some("vps2"));
         assert_eq!(service.project_uuid.as_deref(), Some("project-1"));
         assert_eq!(service.environment_name.as_deref(), Some("production"));
+    }
+
+    #[test]
+    fn create_service_body_enables_instant_deploy() {
+        let body = CreateServiceBody {
+            name: "hosting-abcdef01",
+            project_uuid: "project-1",
+            environment_name: "production",
+            server_uuid: "srv-1",
+            docker_compose_raw: "ZHVtbXk=".to_string(),
+            instant_deploy: true,
+        };
+
+        let payload = serde_json::to_value(&body).expect("serialize create body");
+
+        assert_eq!(payload["instant_deploy"], Value::Bool(true));
+        assert_eq!(payload["environment_name"], Value::String("production".to_string()));
     }
 
     #[test]
