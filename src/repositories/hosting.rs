@@ -3,6 +3,7 @@
  * Queries verificadas con sqlx offline. */
 
 use rand::Rng;
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -31,10 +32,23 @@ pub struct CreateHostingParams<'a> {
     pub client_email: &'a str,
     pub plan: &'a str,
     pub domain: Option<&'a str>,
+    pub domain_verification_status: &'a str,
+    pub domain_verification_token: Option<&'a str>,
+    pub domain_verified_at: Option<DateTime<Utc>>,
     /* [304A-3] Permite vincular a despliegue Coolify existente al crear suscripción */
     pub coolify_site_name: Option<&'a str>,
     pub monthly_price_cents: i32,
     pub storage_limit_mb: i32,
+}
+
+pub struct UpdateHostingParams<'a> {
+    pub plan: &'a str,
+    pub domain: Option<&'a str>,
+    pub monthly_price_cents: i32,
+    pub storage_limit_mb: i32,
+    pub domain_verification_status: &'a str,
+    pub domain_verification_token: Option<&'a str>,
+    pub domain_verified_at: Option<DateTime<Utc>>,
 }
 
 impl HostingRepository {
@@ -42,6 +56,7 @@ impl HostingRepository {
         let rows = sqlx::query_as!(
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
+                    domain_verification_status, domain_verification_token, domain_verified_at,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
                     server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
@@ -61,6 +76,7 @@ impl HostingRepository {
         let rows = sqlx::query_as!(
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
+                    domain_verification_status, domain_verification_token, domain_verified_at,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
                     server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
@@ -81,6 +97,7 @@ impl HostingRepository {
         let row = sqlx::query_as!(
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
+                    domain_verification_status, domain_verification_token, domain_verified_at,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
                     server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
@@ -99,9 +116,14 @@ impl HostingRepository {
     ) -> Result<HostingSubscription, AppError> {
         let row = sqlx::query_as!(
             HostingSubscription,
-            "INSERT INTO hosting_subscriptions (user_id, client_name, client_email, plan, domain, coolify_site_name, monthly_price_cents, storage_limit_mb)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            "INSERT INTO hosting_subscriptions (
+                user_id, client_name, client_email, plan, domain,
+                domain_verification_status, domain_verification_token, domain_verified_at,
+                coolify_site_name, monthly_price_cents, storage_limit_mb
+             )
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING id, user_id, client_name, client_email, plan, domain,
+                       domain_verification_status, domain_verification_token, domain_verified_at,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
                        server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
@@ -110,6 +132,9 @@ impl HostingRepository {
             params.client_email,
             params.plan,
             params.domain,
+            params.domain_verification_status,
+            params.domain_verification_token,
+            params.domain_verified_at,
             params.coolify_site_name,
             params.monthly_price_cents,
             params.storage_limit_mb
@@ -134,24 +159,32 @@ impl HostingRepository {
     pub async fn update(
         pool: &PgPool,
         id: Uuid,
-        plan: &str,
-        domain: Option<&str>,
-        monthly_price_cents: i32,
-        storage_limit_mb: i32,
+        params: UpdateHostingParams<'_>,
     ) -> Result<HostingSubscription, AppError> {
         let row = sqlx::query_as!(
             HostingSubscription,
             "UPDATE hosting_subscriptions
-             SET plan = $1, domain = $2, monthly_price_cents = $3, storage_limit_mb = $4, updated_at = NOW()
-             WHERE id = $5
+             SET plan = $1,
+                 domain = $2,
+                 monthly_price_cents = $3,
+                 storage_limit_mb = $4,
+                 domain_verification_status = $5,
+                 domain_verification_token = $6,
+                 domain_verified_at = $7,
+                 updated_at = NOW()
+             WHERE id = $8
              RETURNING id, user_id, client_name, client_email, plan, domain,
+                       domain_verification_status, domain_verification_token, domain_verified_at,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
                        server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
-            plan,
-            domain,
-            monthly_price_cents,
-            storage_limit_mb,
+            params.plan,
+            params.domain,
+            params.monthly_price_cents,
+            params.storage_limit_mb,
+            params.domain_verification_status,
+            params.domain_verification_token,
+            params.domain_verified_at,
             id
         )
         .fetch_one(pool)
@@ -215,6 +248,7 @@ impl HostingRepository {
         let row = sqlx::query_as!(
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
+                    domain_verification_status, domain_verification_token, domain_verified_at,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
                     server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
@@ -240,6 +274,7 @@ impl HostingRepository {
              SET user_id = $1, updated_at = NOW()
              WHERE id = $2
              RETURNING id, user_id, client_name, client_email, plan, domain,
+                       domain_verification_status, domain_verification_token, domain_verified_at,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
                        server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
@@ -331,6 +366,36 @@ impl HostingRepository {
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    pub async fn update_domain_verification(
+        pool: &PgPool,
+        id: Uuid,
+        status: &str,
+        token: Option<&str>,
+        verified_at: Option<DateTime<Utc>>,
+    ) -> Result<HostingSubscription, AppError> {
+        let row = sqlx::query_as!(
+            HostingSubscription,
+            "UPDATE hosting_subscriptions
+             SET domain_verification_status = $1,
+                 domain_verification_token = $2,
+                 domain_verified_at = $3,
+                 updated_at = NOW()
+             WHERE id = $4
+             RETURNING id, user_id, client_name, client_email, plan, domain,
+                       domain_verification_status, domain_verification_token, domain_verified_at,
+                       coolify_site_name, status, stripe_subscription_id,
+                       monthly_price_cents, storage_limit_mb,
+                       server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
+            status,
+            token,
+            verified_at,
+            id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
     }
 
     /* [114A-3] Obtener configuración de recursos para un plan específico */

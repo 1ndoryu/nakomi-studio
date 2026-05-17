@@ -592,6 +592,22 @@ async fn create_chat_hosting_subscription(
     client_name: &str,
     client_email: &str,
 ) -> Result<HostingSubscription, ToolExecResult> {
+    let requested_domain = req
+        .domain
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_ascii_lowercase);
+    let domain_verification_status = if requested_domain.is_some() {
+        "pending_verification".to_string()
+    } else {
+        "none".to_string()
+    };
+    let domain_verification_token = requested_domain.as_ref().map(|_| {
+        format!("nakomi-verification={}", Uuid::new_v4().simple())
+            .to_ascii_lowercase()
+    });
+
     let sub = HostingRepository::create(
         pool,
         CreateHostingParams {
@@ -599,7 +615,10 @@ async fn create_chat_hosting_subscription(
             client_name,
             client_email,
             plan: &req.plan,
-            domain: req.domain.as_deref(),
+            domain: requested_domain.as_deref(),
+            domain_verification_status: &domain_verification_status,
+            domain_verification_token: domain_verification_token.as_deref(),
+            domain_verified_at: None,
             coolify_site_name: None,
             monthly_price_cents: plan_config.monthly_price_cents,
             storage_limit_mb: plan_config.storage_limit_mb,

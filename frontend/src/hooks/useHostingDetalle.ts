@@ -26,6 +26,10 @@ interface DomainInfo {
     sslStatus: 'active' | 'pending' | 'none';
     sslProvider: string;
     serverIp: string | null;
+    domainVerificationStatus: 'none' | 'pending_verification' | 'verified' | 'active';
+    domainVerificationToken: string | null;
+    domainVerifiedAt: string | null;
+    txtHostname: string | null;
 }
 
 export function useHostingDetalle(hostingId: string) {
@@ -63,12 +67,17 @@ export function useHostingDetalle(hostingId: string) {
         const domain = subscription?.domain ?? null;
         /* IP proviene del backend tras provisioning en Coolify */
         const serverIp = subscription?.server_ip ?? null;
+        const domainVerificationStatus = subscription?.domain_verification_status ?? 'none';
         return {
             domain,
             nameservers: ['ns1.contabo.net', 'ns2.contabo.net', 'ns3.contabo.net'],
-            sslStatus: domain ? 'active' : 'none',
+            sslStatus: domain ? (domainVerificationStatus === 'active' ? 'active' : 'pending') : 'none',
             sslProvider: 'Let\'s Encrypt (automático vía Coolify)',
             serverIp,
+            domainVerificationStatus,
+            domainVerificationToken: subscription?.domain_verification_token ?? null,
+            domainVerifiedAt: subscription?.domain_verified_at ?? null,
+            txtHostname: domain ? `_nakomi-verify.${domain}` : null,
         };
     }, [subscription]);
 

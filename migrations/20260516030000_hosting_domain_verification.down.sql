@@ -1,0 +1,4 @@
+ALTER TABLE hosting_subscriptions
+DROP COLUMN domain_verified_at,
+DROP COLUMN domain_verification_token,
+DROP COLUMN domain_verification_status;

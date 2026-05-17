@@ -29,7 +29,7 @@ pub use dashboard::DashboardRepository;
 pub use delegation::{DelegationRepository, EmployeeListItemRow};
 pub use deliverable::{CreateDeliverableParams, DeliverableRepository};
 pub use fixture::{FixtureRepository, FixtureTableStat};
-pub use hosting::{CreateHostingParams, HostingRepository, ServerInfo};
+pub use hosting::{CreateHostingParams, HostingRepository, ServerInfo, UpdateHostingParams};
 pub use note::NoteRepository;
 pub use notification::NotificationRepository;
 pub use order::{CreateOrderParams, CreatePhaseParams, OrderRepository};

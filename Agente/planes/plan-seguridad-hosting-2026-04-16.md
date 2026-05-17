@@ -1,7 +1,7 @@
 # Plan: Seguridad Integral del Servicio de Hosting
 
 > **Fecha:** 2026-05-16 (actualizado)
-> **Estado:** Casi completo — 10/11 áreas resueltas. Pendiente: DNS ownership (4.1), Monitoreo (5.x), revisión periódica SSH/SFTP (165A-18)
+> **Estado:** Operativo con backlog residual — 11/11 áreas originales resueltas. Pendiente: Monitoreo (5.x), endurecimiento operativo SSH/SFTP y revisión periódica (165A-18)
 > **Prioridad:** Crítica — varias vulnerabilidades de nivel alto detectadas
 > **Contexto:** Auditoría de seguridad del servicio de hosting WordPress administrado (Coolify + Docker Compose)
 
@@ -19,7 +19,7 @@
 | Port collisions     | ✅ Resuelto | UNIQUE constraint + retry loop 10000-49151 (164A-16)            |
 | WordPress hardening | ✅ Resuelto | Imágenes pineadas, DISALLOW_FILE_EDIT (164A-16)                 |
 | DB isolation        | ✅ Resuelto | MariaDB en backend_net internal only (164A-16)                   |
-| DNS/Domain          | 🟡 Medio   | Sin validación de ownership de dominios custom — PENDIENTE       |
+| DNS/Domain          | ✅ Resuelto | TXT ownership + estados pending/verified/active + routing diferido (165A-21) |
 | API authorization   | ✅ Resuelto | Role-based + rate limit subscribe 3/hr + checkout 5/hr (114A-1) |
 | Security headers    | ✅ Resuelto | HSTS + nosniff + DENY + referrer-policy + permissions (164A-16) |
 
@@ -136,17 +136,17 @@
 **Problema:** Clientes pueden asignar dominios custom sin verificar ownership.
 **Solución:**
 
-- [ ] Al asignar dominio custom: generar token TXT único (`_nakomi-verify.domain.com`)
-- [ ] Endpoint: `POST /api/hosting/{id}/verify-domain` — chequear DNS TXT
-- [ ] Status de dominio: `pending_verification` → `verified` → `active`
-- [ ] No activar Traefik routing hasta verificación completa
-- [ ] Auto-SSL solo para dominios verificados
+- [x] Al asignar dominio custom: generar token TXT único (`_nakomi-verify.domain.com`)
+- [x] Endpoint: `POST /api/hosting/{id}/verify-domain` — chequear DNS TXT
+- [x] Status de dominio: `pending_verification` → `verified` → `active`
+- [x] No activar Traefik routing hasta verificación completa
+- [x] Auto-SSL solo para dominios verificados
 
 ### 4.2 Rate limiting en API
 
-- [ ] Rate limit en `POST /api/hosting/subscribe`: max 3 por usuario por hora
-- [ ] Rate limit en `POST /api/hosting/checkout`: max 5 por usuario por hora
-- [ ] Rate limit global por IP: tower-governor o middleware custom
+- [x] Rate limit en `POST /api/hosting/subscribe`: max 3 por usuario por hora
+- [x] Rate limit en `POST /api/hosting/checkout`: max 5 por usuario por hora
+- [x] Rate limit global por IP: tower-governor o middleware custom
 - [ ] SFTP login: fail2ban dentro del container SSH (o `MaxAuthTries 3` en sshd_config)
 
 ### 4.3 HTTPS enforcement
@@ -177,10 +177,10 @@
 
 ## Priorización de implementación
 
-1. **Immediato** (próxima sesión): 1.1 (secrets audit) + 3.1 (port collision UNIQUE constraint)
-2. **Corto plazo**: 1.2 (backups) + 2.1 (network isolation) + 3.3 (WP hardening)
-3. **Medio plazo**: 2.2 (container hardening) + 2.3 (credential rotation) + 4.1 (domain verification)
-4. **Largo plazo**: 3.2 (resource refinement) + 4.2 (rate limiting) + 5.x (monitoring)
+1. **Immediato**: 5.1 (logging de seguridad) + revisión SSH/SFTP real sin exponer secretos (165A-18)
+2. **Corto plazo**: 5.2 (health monitoring por hosting) + 2.3 (SSH key auth / política de rotación)
+3. **Medio plazo**: 3.2 (resource refinement) + fail2ban/`MaxAuthTries 3` en SSH
+4. **Largo plazo**: 4.3 (validación operacional completa de HTTPS custom) + alertas automáticas
 
 ---
 

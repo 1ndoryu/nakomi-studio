@@ -12,6 +12,7 @@ use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::get;
 use axum::{Json, Router};
+use chrono::Utc;
 use rand::Rng;
 use std::collections::HashMap;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
@@ -26,7 +27,9 @@ use crate::models::{
     SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
     UpdatePlanConfigRequest, UserRole,
 };
-use crate::repositories::{CreateHostingParams, HostingRepository, ServerInfo, UserRepository};
+use crate::repositories::{
+    CreateHostingParams, HostingRepository, ServerInfo, UpdateHostingParams, UserRepository,
+};
 use crate::services::coolify::{CoolifyServiceSummary, HostingComposeUpdate};
 use crate::services::{
     is_checkout_bypass_email, CoolifyConfig, CoolifyService, HostingStripeService,
@@ -67,6 +70,238 @@ struct HostingPlanMarketing {
     description: &'static str,
     features: &'static [&'static str],
     recommended: bool,
+}
+
+/* [165A-21] Los dominios custom ya no se activan en Coolify en cuanto se guardan.
+ * Ahora quedan en pending_verification hasta que el usuario publique el TXT de ownership,
+ * y solo entonces propagamos la ruta/SSL al compose del hosting.
+ * Gotcha: si el cliente cambia un dominio ya activo, primero retiramos la ruta anterior.
+ * Pendiente: validar el flujo completo con un dominio real en staging/producción controlada. */
+const DOMAIN_STATUS_NONE: &str = "none";
+const DOMAIN_STATUS_PENDING: &str = "pending_verification";
+const DOMAIN_STATUS_VERIFIED: &str = "verified";
+const DOMAIN_STATUS_ACTIVE: &str = "active";
+
+fn normalize_domain(domain: Option<&str>) -> Option<String> {
+    domain
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_ascii_lowercase)
+}
+
+fn generate_domain_verification_token() -> String {
+    let token: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(24)
+        .map(char::from)
+        .collect();
+    format!("nakomi-verification={}", token.to_ascii_lowercase())
+}
+
+fn build_domain_verification_state(
+    domain: Option<&str>,
+) -> (String, Option<String>, Option<chrono::DateTime<chrono::Utc>>) {
+    if domain.is_some() {
+        (
+            DOMAIN_STATUS_PENDING.to_string(),
+            Some(generate_domain_verification_token()),
+            None,
+        )
+    } else {
+        (DOMAIN_STATUS_NONE.to_string(), None, None)
+    }
+}
+
+fn domain_verification_txt_host(domain: &str) -> String {
+    format!("_nakomi-verify.{domain}")
+}
+
+fn domain_ready_for_route(sub: &crate::models::HostingSubscription) -> Option<&str> {
+    let routable = sub.domain_verification_status == DOMAIN_STATUS_VERIFIED
+        || sub.domain_verification_status == DOMAIN_STATUS_ACTIVE;
+    if !routable {
+        return None;
+    }
+    sub.domain.as_deref().filter(|domain| !domain.is_empty())
+}
+
+fn active_custom_domain(sub: &crate::models::HostingSubscription) -> Option<&str> {
+    if sub.domain_verification_status != DOMAIN_STATUS_ACTIVE {
+        return None;
+    }
+    sub.domain.as_deref().filter(|domain| !domain.is_empty())
+}
+
+async fn lookup_txt_records(record_name: &str) -> Result<Vec<String>, String> {
+    let resolver = hickory_resolver::TokioAsyncResolver::tokio_from_system_conf()
+        .map_err(|error| format!("No se pudo inicializar el resolver DNS: {error}"))?;
+    let lookup = resolver
+        .txt_lookup(record_name)
+        .await
+        .map_err(|error| format!("No se pudo consultar el registro TXT: {error}"))?;
+
+    let mut values = lookup
+        .iter()
+        .map(|txt| {
+            let value = txt
+                .txt_data()
+                .iter()
+                .map(|chunk| String::from_utf8_lossy(chunk).into_owned())
+                .collect::<String>();
+            value.trim().to_string()
+        })
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+    values.sort();
+    values.dedup();
+    Ok(values)
+}
+
+async fn sync_custom_domain_route(
+    http_client: &reqwest::Client,
+    config: &CoolifyConfig,
+    update: HostingComposeUpdate<'_>,
+) -> Result<(), AppError> {
+    CoolifyService::update_compose_and_restart(http_client, config, update).await
+}
+
+fn compose_update_from_subscription<'a>(
+    sub: &'a crate::models::HostingSubscription,
+    custom_domain: Option<&'a str>,
+    plan_config: &'a HostingPlanConfig,
+) -> Option<HostingComposeUpdate<'a>> {
+    Some(HostingComposeUpdate {
+        service_uuid: sub.server_uuid.as_deref()?,
+        service_name: sub.coolify_site_name.as_deref()?,
+        custom_domain,
+        sftp_user: sub.sftp_user.as_deref()?,
+        sftp_password: sub.sftp_password.as_deref()?,
+        sftp_port: sub.sftp_port?,
+        plan_config,
+    })
+}
+
+struct DomainVerificationResponse<'a> {
+    verified: bool,
+    applied: bool,
+    status: &'a str,
+    domain: &'a str,
+    txt_host: &'a str,
+    txt_value: Option<&'a str>,
+    txt_records: &'a [String],
+    message: &'a str,
+}
+
+struct DomainActivation<'a> {
+    subscription_id: Uuid,
+    token: Option<&'a str>,
+    verified_at: Option<chrono::DateTime<chrono::Utc>>,
+    update: HostingComposeUpdate<'a>,
+}
+
+fn domain_verification_response(payload: &DomainVerificationResponse<'_>) -> serde_json::Value {
+    serde_json::json!({
+        "verified": payload.verified,
+        "applied": payload.applied,
+        "status": payload.status,
+        "domain": payload.domain,
+        "txt_host": payload.txt_host,
+        "txt_value": payload.txt_value,
+        "txt_records": payload.txt_records,
+        "message": payload.message,
+    })
+}
+
+async fn resolve_domain_activation(
+    state: &AppState,
+    subscription_id: Uuid,
+    sub: &crate::models::HostingSubscription,
+    domain: &str,
+    expected_token: &str,
+    verified_at: chrono::DateTime<chrono::Utc>,
+) -> Result<(bool, &'static str, String), AppError> {
+    let pending_message =
+        "Dominio verificado. Se activará automáticamente en el siguiente provisioning o refresh.";
+    let active_message =
+        "Dominio verificado y activado en el hosting. El SSL podrá emitirse cuando los registros A apunten al servidor.";
+    let fallback_message =
+        "Dominio verificado, pero la activación en hosting quedó pendiente. Usa refresh cuando el servicio esté listo.";
+
+    let Some(plan_config) = HostingRepository::get_plan_config(&state.pool, &sub.plan).await? else {
+        return Ok((false, DOMAIN_STATUS_VERIFIED, pending_message.to_string()));
+    };
+    let Some(update) = compose_update_from_subscription(sub, Some(domain), &plan_config) else {
+        return Ok((false, DOMAIN_STATUS_VERIFIED, pending_message.to_string()));
+    };
+
+    let applied = activate_domain_route(
+        state,
+        DomainActivation {
+            subscription_id,
+            token: Some(expected_token),
+            verified_at: Some(verified_at),
+            update,
+        },
+    )
+    .await;
+
+    if applied {
+        Ok((true, DOMAIN_STATUS_ACTIVE, active_message.to_string()))
+    } else {
+        Ok((false, DOMAIN_STATUS_VERIFIED, fallback_message.to_string()))
+    }
+}
+
+async fn mark_domain_active(
+    state: &AppState,
+    subscription_id: Uuid,
+    token: Option<&str>,
+    verified_at: Option<chrono::DateTime<chrono::Utc>>,
+) {
+    if let Err(error) = HostingRepository::update_domain_verification(
+        &state.pool,
+        subscription_id,
+        DOMAIN_STATUS_ACTIVE,
+        token,
+        Some(verified_at.unwrap_or_else(Utc::now)),
+    )
+    .await
+    {
+        tracing::warn!(
+            "No se pudo marcar dominio activo para {subscription_id}: {error}"
+        );
+    }
+}
+
+async fn activate_domain_route(state: &AppState, activation: DomainActivation<'_>) -> bool {
+    let Some(custom_domain) = activation.update.custom_domain else {
+        return false;
+    };
+    let Some(config) = state.coolify_config.as_ref() else {
+        return false;
+    };
+
+    match sync_custom_domain_route(&state.http_client, config, activation.update).await {
+        Ok(()) => {
+            mark_domain_active(
+                state,
+                activation.subscription_id,
+                activation.token,
+                activation.verified_at,
+            )
+            .await;
+            true
+        }
+        Err(error) => {
+            tracing::warn!(
+                "No se pudo activar el dominio '{}' para {}: {}",
+                custom_domain,
+                activation.subscription_id,
+                error,
+            );
+            false
+        }
+    }
 }
 
 fn normal_hosting_base_plan(plan: &str) -> (&str, bool) {
@@ -298,6 +533,12 @@ pub async fn create_subscription(
         })?;
     let price = plan_config.monthly_price_cents;
     let storage = plan_config.storage_limit_mb;
+    let requested_domain = normalize_domain(req.domain.as_deref());
+    let (
+        domain_verification_status,
+        domain_verification_token,
+        domain_verified_at,
+    ) = build_domain_verification_state(requested_domain.as_deref());
 
     let sub = HostingRepository::create(
         &state.pool,
@@ -306,7 +547,10 @@ pub async fn create_subscription(
             client_name: &req.client_name,
             client_email: &req.client_email,
             plan: &req.plan,
-            domain: req.domain.as_deref(),
+            domain: requested_domain.as_deref(),
+            domain_verification_status: &domain_verification_status,
+            domain_verification_token: domain_verification_token.as_deref(),
+            domain_verified_at,
             /* [304A-3] Admin puede vincular a un despliegue Coolify existente */
             coolify_site_name: req.coolify_site_name.as_deref(),
             monthly_price_cents: price,
@@ -375,6 +619,12 @@ pub async fn subscribe_self(
 
     let client_name = user.display_name.unwrap_or_else(|| user.email.clone());
     let client_email = user.email;
+    let requested_domain = normalize_domain(req.domain.as_deref());
+    let (
+        domain_verification_status,
+        domain_verification_token,
+        domain_verified_at,
+    ) = build_domain_verification_state(requested_domain.as_deref());
 
     /* Crear la suscripción en estado pending */
     let sub = HostingRepository::create(
@@ -384,7 +634,10 @@ pub async fn subscribe_self(
             client_name: &client_name,
             client_email: &client_email,
             plan: &req.plan,
-            domain: req.domain.as_deref(),
+            domain: requested_domain.as_deref(),
+            domain_verification_status: &domain_verification_status,
+            domain_verification_token: domain_verification_token.as_deref(),
+            domain_verified_at,
             coolify_site_name: None,
             monthly_price_cents: price,
             storage_limit_mb: storage,
@@ -708,13 +961,45 @@ pub async fn update_subscription(
             ))
         })?;
 
+    let requested_domain = normalize_domain(req.domain.as_deref());
+    let current_domain = normalize_domain(sub.domain.as_deref());
+    let domain_changed = requested_domain != current_domain;
+
+    if domain_changed && active_custom_domain(&sub).is_some() {
+        if let (Some(config), Some(update)) = (
+            state.coolify_config.as_ref(),
+            compose_update_from_subscription(&sub, None, &plan_config),
+        ) {
+            sync_custom_domain_route(&state.http_client, config, update).await?;
+        }
+    }
+
+    let (
+        next_domain_verification_status,
+        next_domain_verification_token,
+        next_domain_verified_at,
+    ) = if domain_changed {
+        build_domain_verification_state(requested_domain.as_deref())
+    } else {
+        (
+            sub.domain_verification_status.clone(),
+            sub.domain_verification_token.clone(),
+            sub.domain_verified_at,
+        )
+    };
+
     let updated = HostingRepository::update(
         &state.pool,
         id,
-        &req.plan,
-        req.domain.as_deref(),
-        plan_config.monthly_price_cents,
-        plan_config.storage_limit_mb,
+        UpdateHostingParams {
+            plan: &req.plan,
+            domain: requested_domain.as_deref(),
+            monthly_price_cents: plan_config.monthly_price_cents,
+            storage_limit_mb: plan_config.storage_limit_mb,
+            domain_verification_status: &next_domain_verification_status,
+            domain_verification_token: next_domain_verification_token.as_deref(),
+            domain_verified_at: next_domain_verified_at,
+        },
     )
     .await?;
 
@@ -725,75 +1010,14 @@ pub async fn update_subscription(
         "updated",
         Some(serde_json::json!({
             "plan": req.plan,
-            "domain": req.domain,
+            "domain": requested_domain,
+            "domain_verification_status": updated.domain_verification_status,
             "by": auth.user_id.to_string()
         })),
     )
     .await
     {
         tracing::warn!("Error registrando evento updated para {id}: {e}");
-    }
-
-    /* [165A-10] Si el dominio cambió y hay servicio Coolify, regeneramos el compose
-     * con labels Traefik explícitas para que el preview sslip.io y el dominio real
-     * compartan el mismo router estable. Si falta contexto, caemos al PATCH legacy. */
-    if let Some(ref new_domain) = req.domain {
-        let domain_changed = sub.domain.as_deref() != Some(new_domain.as_str());
-        if domain_changed && !new_domain.is_empty() {
-            let mut compose_synced = false;
-
-            if let (
-                Some(ref server_uuid),
-                Some(ref service_name),
-                Some(ref sftp_user),
-                Some(ref sftp_password),
-                Some(sftp_port),
-                Some(ref config),
-            ) = (
-                &sub.server_uuid,
-                &sub.coolify_site_name,
-                &sub.sftp_user,
-                &sub.sftp_password,
-                sub.sftp_port,
-                &state.coolify_config,
-            ) {
-                match CoolifyService::update_compose_and_restart(
-                    &state.http_client,
-                    config,
-                    HostingComposeUpdate {
-                        service_uuid: server_uuid,
-                        service_name,
-                        custom_domain: Some(new_domain.as_str()),
-                        sftp_user,
-                        sftp_password,
-                        sftp_port,
-                        plan_config: &plan_config,
-                    },
-                )
-                .await
-                {
-                    Ok(()) => compose_synced = true,
-                    Err(e) => tracing::warn!("Coolify compose update fallo para {id}: {e}"),
-                }
-            }
-
-            if !compose_synced {
-                if let (Some(ref server_uuid), Some(ref config)) =
-                    (&sub.server_uuid, &state.coolify_config)
-                {
-                    if let Err(e) = CoolifyService::update_service_domain(
-                        &state.http_client,
-                        config,
-                        server_uuid,
-                        new_domain,
-                    )
-                    .await
-                    {
-                        tracing::warn!("Coolify FQDN update fallo para {id}: {e}");
-                    }
-                }
-            }
-        }
     }
 
     Ok(Json(updated.into()))
@@ -1610,6 +1834,27 @@ pub async fn provision_subscription(
     )
     .await?;
 
+    if let Some(custom_domain) = domain_ready_for_route(&sub) {
+        let _ = activate_domain_route(
+            &state,
+            DomainActivation {
+                subscription_id: id,
+                token: sub.domain_verification_token.as_deref(),
+                verified_at: sub.domain_verified_at,
+                update: HostingComposeUpdate {
+                    service_uuid: &result.service_uuid,
+                    service_name: &service_name,
+                    custom_domain: Some(custom_domain),
+                    sftp_user: &result.sftp_user,
+                    sftp_password: &result.sftp_password,
+                    sftp_port: result.sftp_port,
+                    plan_config: &plan_config,
+                },
+            },
+        )
+        .await;
+    }
+
     /* Activar la suscripción */
     HostingRepository::update_status(&state.pool, id, "active").await?;
 
@@ -1711,6 +1956,125 @@ async fn dns_check(
     })))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/verify-domain",
+    params(("id" = Uuid, Path, description = "ID suscripción")),
+    responses(
+        (status = 200, description = "Resultado verificación ownership", body = serde_json::Value),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub async fn verify_domain(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    if auth.effective_role != UserRole::Admin && sub.user_id != Some(auth.user_id) {
+        return Err(AppError::Forbidden("Sin permisos".into()));
+    }
+
+    let domain = sub
+        .domain
+        .as_deref()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| AppError::Validation("No hay dominio configurado para verificar".into()))?;
+    let txt_host = domain_verification_txt_host(domain);
+
+    if sub.domain_verification_status == DOMAIN_STATUS_ACTIVE {
+        return Ok(Json(domain_verification_response(&DomainVerificationResponse {
+            verified: true,
+            applied: true,
+            status: DOMAIN_STATUS_ACTIVE,
+            domain,
+            txt_host: &txt_host,
+            txt_value: sub.domain_verification_token.as_deref(),
+            txt_records: &[],
+            message: "El dominio ya está verificado y activo en el hosting.",
+        })));
+    }
+
+    let expected_token = sub
+        .domain_verification_token
+        .as_deref()
+        .ok_or_else(|| AppError::Validation("No hay un token de verificación pendiente para este dominio".into()))?;
+    let txt_records = match lookup_txt_records(&txt_host).await {
+        Ok(records) => records,
+        Err(error) => {
+            return Ok(Json(domain_verification_response(&DomainVerificationResponse {
+                verified: false,
+                applied: false,
+                status: &sub.domain_verification_status,
+                domain,
+                txt_host: &txt_host,
+                txt_value: Some(expected_token),
+                txt_records: &[],
+                message: &error,
+            })));
+        }
+    };
+
+    let verified = txt_records.iter().any(|value| value == expected_token);
+    if !verified {
+        return Ok(Json(domain_verification_response(&DomainVerificationResponse {
+            verified: false,
+            applied: false,
+            status: &sub.domain_verification_status,
+            domain,
+            txt_host: &txt_host,
+            txt_value: Some(expected_token),
+            txt_records: &txt_records,
+            message: "El TXT todavía no coincide con el token esperado. Revisa el registro y espera la propagación.",
+        })));
+    }
+
+    let verified_at = Utc::now();
+    let (applied, next_status, message) =
+        resolve_domain_activation(&state, id, &sub, domain, expected_token, verified_at).await?;
+
+    let updated = HostingRepository::update_domain_verification(
+        &state.pool,
+        id,
+        next_status,
+        Some(expected_token),
+        Some(verified_at),
+    )
+    .await?;
+
+    if let Err(error) = HostingRepository::add_event(
+        &state.pool,
+        id,
+        "domain_verified",
+        Some(serde_json::json!({
+            "domain": domain,
+            "txt_host": txt_host,
+            "applied": applied,
+            "status": updated.domain_verification_status,
+            "by": auth.user_id.to_string(),
+        })),
+    )
+    .await
+    {
+        tracing::warn!("Error registrando evento domain_verified para {id}: {error}");
+    }
+
+    Ok(Json(domain_verification_response(&DomainVerificationResponse {
+        verified: true,
+        applied,
+        status: &updated.domain_verification_status,
+        domain,
+        txt_host: &txt_host,
+        txt_value: Some(expected_token),
+        txt_records: &txt_records,
+        message: &message,
+    })))
+}
+
 /* [114A-1] Rotación de credenciales SFTP: genera nueva contraseña, actualiza BD y
  * compose en Coolify, reinicia servicio SSH para que tome efecto.
  * Solo admin. El hosting debe estar provisionado (server_uuid presente). */
@@ -1781,7 +2145,7 @@ pub async fn rotate_credentials(
         HostingComposeUpdate {
             service_uuid: server_uuid,
             service_name,
-            custom_domain: sub.domain.as_deref(),
+            custom_domain: domain_ready_for_route(&sub),
             sftp_user,
             sftp_password: &new_password,
             sftp_port,
@@ -1789,6 +2153,17 @@ pub async fn rotate_credentials(
         },
     )
     .await?;
+
+    if sub.domain_verification_status == DOMAIN_STATUS_VERIFIED {
+        let _ = HostingRepository::update_domain_verification(
+            &state.pool,
+            id,
+            DOMAIN_STATUS_ACTIVE,
+            sub.domain_verification_token.as_deref(),
+            Some(sub.domain_verified_at.unwrap_or_else(Utc::now)),
+        )
+        .await;
+    }
 
     if let Err(e) = HostingRepository::add_event(
         &state.pool,
@@ -1937,7 +2312,7 @@ pub async fn refresh_hosting(
         HostingComposeUpdate {
             service_uuid: server_uuid,
             service_name,
-            custom_domain: sub.domain.as_deref(),
+            custom_domain: domain_ready_for_route(&sub),
             sftp_user,
             sftp_password,
             sftp_port,
@@ -1945,6 +2320,17 @@ pub async fn refresh_hosting(
         },
     )
     .await?;
+
+    if sub.domain_verification_status == DOMAIN_STATUS_VERIFIED {
+        let _ = HostingRepository::update_domain_verification(
+            &state.pool,
+            id,
+            DOMAIN_STATUS_ACTIVE,
+            sub.domain_verification_token.as_deref(),
+            Some(sub.domain_verified_at.unwrap_or_else(Utc::now)),
+        )
+        .await;
+    }
 
     if let Err(e) = HostingRepository::add_event(
         &state.pool,
@@ -2125,6 +2511,12 @@ pub async fn admin_test_subscribe(
     let user = UserRepository::find_by_id(&state.pool, auth.user_id)
         .await?
         .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+    let requested_domain = normalize_domain(req.domain.as_deref());
+    let (
+        domain_verification_status,
+        domain_verification_token,
+        domain_verified_at,
+    ) = build_domain_verification_state(requested_domain.as_deref());
 
     let sub = HostingRepository::create(
         &state.pool,
@@ -2133,7 +2525,10 @@ pub async fn admin_test_subscribe(
             client_name: &user.display_name.unwrap_or_else(|| user.email.clone()),
             client_email: &user.email,
             plan: &req.plan,
-            domain: req.domain.as_deref(),
+            domain: requested_domain.as_deref(),
+            domain_verification_status: &domain_verification_status,
+            domain_verification_token: domain_verification_token.as_deref(),
+            domain_verified_at,
             coolify_site_name: None,
             monthly_price_cents: plan_config.monthly_price_cents,
             storage_limit_mb: plan_config.storage_limit_mb,
@@ -2316,6 +2711,10 @@ pub fn hosting_routes() -> Router<AppState> {
             "/hosting/subscriptions/:id/rotate-credentials",
             axum::routing::post(rotate_credentials),
         )
+        .route(
+            "/hosting/subscriptions/:id/verify-domain",
+            axum::routing::post(verify_domain),
+        )
         /* [154A-16] Verificación DNS de un dominio */
         .route("/hosting/subscriptions/:id/dns-check", get(dns_check))
         /* [114A-3] Plan configs: admin gestiona precios y límites de recursos */
@@ -2382,6 +2781,20 @@ mod tests {
             }
             other => panic!("unexpected error variant: {other:?}"),
         }
+    }
+
+    #[test]
+    fn build_domain_verification_state_creates_pending_token_for_domain() {
+        let (status, token, verified_at) = build_domain_verification_state(Some("example.com"));
+
+        assert_eq!(status, DOMAIN_STATUS_PENDING);
+        assert!(token.as_deref().is_some_and(|value| value.starts_with("nakomi-verification=")));
+        assert!(verified_at.is_none());
+    }
+
+    #[test]
+    fn domain_verification_txt_host_uses_expected_prefix() {
+        assert_eq!(domain_verification_txt_host("example.com"), "_nakomi-verify.example.com");
     }
 
     #[test]

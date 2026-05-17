@@ -2,14 +2,17 @@
  * Contiene: TabDominio (DNS, SSL, verificación) y TabAcceso (SSH/SFTP, WP admin). */
 
 import {useState} from 'react';
+import {useQueryClient} from '@tanstack/react-query';
 import {Shield, Terminal, ExternalLink, Loader, CheckCircle, XCircle, AlertCircle} from 'lucide-react';
 import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
 import {
     apiDnsCheck,
+    apiVerifyHostingDomain,
     getProvisionedHostingAdminUrl,
     getProvisionedHostingSiteUrl,
 } from '../../api/hosting';
-import type {DnsCheckResult} from '../../api/hosting';
+import type {DnsCheckResult, VerifyDomainResult} from '../../api/hosting';
+import {toast} from '../../stores/toastStore';
 import {Button} from '../ui/Button';
 import {CopyButton, InfoRow} from './HostingDetalle';
 import {HostingDomainSelfServiceForm} from './HostingDomainSelfServiceForm';
@@ -27,6 +30,10 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
 }) {
     const [dnsResult, setDnsResult] = useState<DnsCheckResult | null>(null);
     const [checking, setChecking] = useState(false);
+    const [verifyResult, setVerifyResult] = useState<VerifyDomainResult | null>(null);
+    const [verifying, setVerifying] = useState(false);
+    const queryClient = useQueryClient();
+    const previewUrl = getProvisionedHostingSiteUrl(sub);
 
     const handleDnsCheck = async () => {
         setChecking(true);
@@ -40,6 +47,28 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
         }
     };
 
+    const handleDomainVerify = async () => {
+        setVerifying(true);
+        try {
+            const result = await apiVerifyHostingDomain(subscriptionId);
+            setVerifyResult(result);
+            if (result.verified) {
+                await Promise.all([
+                    queryClient.invalidateQueries({queryKey: ['hosting-subscription', subscriptionId]}),
+                    queryClient.invalidateQueries({queryKey: ['hosting-subscriptions']}),
+                ]);
+                toast.success(result.message);
+            } else {
+                toast.error(result.message);
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'No se pudo verificar el dominio';
+            toast.error(message);
+        } finally {
+            setVerifying(false);
+        }
+    };
+
     return (
         <div className="hostingDetalleSection">
             <h3 className="hostingDetalleSectionTitle">Dominio</h3>
@@ -47,10 +76,24 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
                 <div className="hostingDetalleInfoGrid">
                     <InfoRow label="Dominio principal" value={domainInfo.domain} copyable />
                     <InfoRow
-                        label="Sitio"
-                        value={`https://${domainInfo.domain}`}
-                        link={`https://${domainInfo.domain}`}
+                        label="Estado del dominio"
+                        value={
+                            domainInfo.domainVerificationStatus === 'active'
+                                ? 'Activo en hosting'
+                                : domainInfo.domainVerificationStatus === 'verified'
+                                    ? 'Verificado pendiente de activación'
+                                    : 'Pendiente de verificación TXT'
+                        }
                     />
+                    {domainInfo.domainVerificationStatus === 'active' ? (
+                        <InfoRow
+                            label="Sitio"
+                            value={`https://${domainInfo.domain}`}
+                            link={`https://${domainInfo.domain}`}
+                        />
+                    ) : previewUrl ? (
+                        <InfoRow label="Preview temporal" value={previewUrl} link={previewUrl} />
+                    ) : null}
                 </div>
             ) : (
                 <p className="hostingDetalleNoDomain">
@@ -64,6 +107,56 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
                 currentDomain={domainInfo.domain}
                 serverIp={domainInfo.serverIp}
             />
+
+            {domainInfo.domain && domainInfo.domainVerificationStatus !== 'active' && domainInfo.domainVerificationToken && (
+                <div className="hostingDetalleDnsCheck">
+                    <h4 className="hostingDetalleSubTitle">Verificación de ownership</h4>
+                    <p className="hostingDetalleSectionDesc">
+                        Antes de activar el dominio en el hosting, crea este registro TXT en tu registrador.
+                    </p>
+                    <div className="hostingDetalleDnsRecords">
+                        <div className="hostingDetalleDnsRecord">
+                            <span className="hostingDetalleDnsType">TXT</span>
+                            <span className="hostingDetalleDnsHost">{domainInfo.txtHostname ?? domainInfo.domain}</span>
+                            <span className="hostingDetalleDnsValue">
+                                {domainInfo.domainVerificationToken}
+                                <CopyButton text={domainInfo.domainVerificationToken} />
+                            </span>
+                        </div>
+                    </div>
+                    <p className="hostingDetalleSectionDesc">
+                        El dominio no se propagará a Coolify ni pedirá SSL hasta que este TXT coincida.
+                    </p>
+                    <Button
+                        type="button"
+                        variante="outline"
+                        tamano="pequeno"
+                        onClick={handleDomainVerify}
+                        disabled={verifying}
+                    >
+                        {verifying ? (
+                            <><Loader size={14} className="hostingSpinner" /> Verificando ownership…</>
+                        ) : (
+                            'Verificar ownership'
+                        )}
+                    </Button>
+                    {verifyResult && (
+                        <div className={`hostingDetalleDnsResult ${
+                            verifyResult.verified ? 'hostingDetalleDnsResult--ok' :
+                            verifyResult.txt_records.length > 0 ? 'hostingDetalleDnsResult--warn' :
+                            'hostingDetalleDnsResult--error'
+                        }`}>
+                            {verifyResult.verified ? (
+                                <><CheckCircle size={16} /> {verifyResult.message}</>
+                            ) : verifyResult.txt_records.length > 0 ? (
+                                <><AlertCircle size={16} /> {verifyResult.message}</>
+                            ) : (
+                                <><XCircle size={16} /> {verifyResult.message}</>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <h3 className="hostingDetalleSectionTitle">Configuración DNS</h3>
             <p className="hostingDetalleSectionDesc">
@@ -145,6 +238,11 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
             {domainInfo.sslStatus === 'active' && (
                 <p className="hostingDetalleSslNota">
                     Tu certificado SSL se renueva automáticamente. No necesitas hacer nada.
+                </p>
+            )}
+            {domainInfo.sslStatus === 'pending' && (
+                <p className="hostingDetalleSectionDesc">
+                    El SSL quedará listo cuando el dominio esté verificado y los registros A apunten al servidor.
                 </p>
             )}
 

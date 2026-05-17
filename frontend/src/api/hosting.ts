@@ -16,6 +16,9 @@ export interface HostingSubscription {
     client_email: string;
     plan: string;
     domain: string | null;
+    domain_verification_status: 'none' | 'pending_verification' | 'verified' | 'active';
+    domain_verification_token: string | null;
+    domain_verified_at: string | null;
     coolify_site_name: string | null;
     status: string;
     monthly_price_cents: number;
@@ -125,6 +128,24 @@ export interface DnsCheckResult {
 export async function apiDnsCheck(id: string): Promise<DnsCheckResult> {
     const {data} = await axiosInstance.get<DnsCheckResult>(
         `/api/hosting/subscriptions/${id}/dns-check`,
+    );
+    return data;
+}
+
+export interface VerifyDomainResult {
+    verified: boolean;
+    applied: boolean;
+    status: HostingSubscription['domain_verification_status'];
+    domain: string;
+    txt_host: string;
+    txt_value: string | null;
+    txt_records: string[];
+    message: string;
+}
+
+export async function apiVerifyHostingDomain(id: string): Promise<VerifyDomainResult> {
+    const {data} = await axiosInstance.post<VerifyDomainResult>(
+        `/api/hosting/subscriptions/${id}/verify-domain`,
     );
     return data;
 }
@@ -310,8 +331,12 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
 /* [165A-10] La URL bootstrap del hosting debe derivarse del nombre del servicio
  * persistido en la suscripción, no del UUID interno de Coolify. */
 export function getProvisionedHostingSiteUrl(
-    sub: Pick<HostingSubscription, 'plan' | 'coolify_site_name' | 'server_ip'>,
+    sub: Pick<HostingSubscription, 'plan' | 'coolify_site_name' | 'server_ip' | 'domain' | 'domain_verification_status'>,
 ): string | null {
+    if (sub.domain && sub.domain_verification_status === 'active') {
+        return `https://${sub.domain}`;
+    }
+
     if (!sub.coolify_site_name || !sub.server_ip || !sub.coolify_site_name.startsWith('hosting-')) {
         return null;
     }
@@ -321,7 +346,7 @@ export function getProvisionedHostingSiteUrl(
 }
 
 export function getProvisionedHostingAdminUrl(
-    sub: Pick<HostingSubscription, 'plan' | 'coolify_site_name' | 'server_ip'>,
+    sub: Pick<HostingSubscription, 'plan' | 'coolify_site_name' | 'server_ip' | 'domain' | 'domain_verification_status'>,
 ): string | null {
     if (sub.plan.startsWith('normal-')) {
         return null;

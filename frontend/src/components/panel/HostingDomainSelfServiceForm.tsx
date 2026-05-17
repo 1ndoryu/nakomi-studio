@@ -48,7 +48,11 @@ export function HostingDomainSelfServiceForm({
                 queryClient.invalidateQueries({queryKey: ['hosting-subscriptions']}),
             ]);
             setDomainDraft(updated.domain ?? '');
-            toast.success('Dominio guardado. Configura ahora los DNS para activar el SSL.');
+            toast.success(
+                updated.domain_verification_status === 'pending_verification'
+                    ? 'Dominio guardado. Añade el TXT de verificación antes de activar el dominio en hosting.'
+                    : 'Dominio guardado.',
+            );
         },
         onError: (error: unknown) => {
             const message = error instanceof Error ? error.message : 'No se pudo guardar el dominio';
@@ -101,7 +105,7 @@ export function HostingDomainSelfServiceForm({
                 </div>
             </div>
             <p className="hostingDetalleSectionDesc">
-                Guarda primero el dominio y después crea los registros A hacia {serverIp ?? 'la IP de tu servidor'}.
+                Guarda primero el dominio. Si es nuevo, verifícalo con un TXT y después crea los registros A hacia {serverIp ?? 'la IP de tu servidor'}.
             </p>
         </form>
     );

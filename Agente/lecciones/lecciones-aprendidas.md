@@ -5,6 +5,11 @@
 - El host bootstrap debe derivarse del nombre persistido del servicio (`coolify_site_name`) y el compose debe generar labels Traefik explícitas; si no, el panel puede mostrar una URL válida en apariencia que responde `404 page not found`.
 - Los hostings provisionados antes del cambio necesitan refresh para heredar las nuevas labels, aunque el código ya esté corregido.
 
+## Hosting custom domains — ownership antes de routing
+- Guardar un dominio custom no debe activar Traefik/SSL inmediatamente. Primero hay que generar un TXT de ownership y bloquear el routing hasta que el backend confirme ese TXT.
+- El frontend también debe reflejar esa frontera: mientras el dominio esté `pending_verification` o `verified`, el enlace principal debe seguir apuntando al bootstrap temporal y el SSL debe mostrarse como pendiente.
+- Si el dominio cambia y el anterior estaba activo, retirar primero la ruta vieja en Coolify evita dejar un host huérfano que ya no coincide con la BD.
+
 ## Hosting WordPress — preinstalado significa cerrar el wizard
 - Que el contenedor WordPress responda 200 o muestre `/wp-admin/install.php` no alcanza para vender "WordPress preinstalado". El provisioning debe completar el wizard y verificar que `wp-login.php` ya responde como login real.
 - Si el auto-install falla pero el stack existe, no ocultarlo como éxito completo: registrar `wordpress_ready` + `wordpress_install_error` permite distinguir entre infraestructura levantada y bootstrap funcional.

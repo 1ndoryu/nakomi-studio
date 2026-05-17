@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO hosting_subscriptions (user_id, client_name, client_email, plan, domain, coolify_site_name, monthly_price_cents, storage_limit_mb)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n             RETURNING id, user_id, client_name, client_email, plan, domain,\n                       coolify_site_name, status, stripe_subscription_id,\n                       monthly_price_cents, storage_limit_mb,\n                       server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
+  "query": "SELECT id, user_id, client_name, client_email, plan, domain,\n                    domain_verification_status, domain_verification_token, domain_verified_at,\n                    coolify_site_name, status, stripe_subscription_id,\n                    monthly_price_cents, storage_limit_mb,\n                    server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at\n             FROM hosting_subscriptions\n             WHERE user_id = $1\n             ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -35,75 +35,83 @@
       },
       {
         "ordinal": 6,
-        "name": "coolify_site_name",
+        "name": "domain_verification_status",
         "type_info": "Varchar"
       },
       {
         "ordinal": 7,
-        "name": "status",
+        "name": "domain_verification_token",
         "type_info": "Varchar"
       },
       {
         "ordinal": 8,
+        "name": "domain_verified_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "coolify_site_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
         "name": "stripe_subscription_id",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 9,
+        "ordinal": 12,
         "name": "monthly_price_cents",
         "type_info": "Int4"
       },
       {
-        "ordinal": 10,
+        "ordinal": 13,
         "name": "storage_limit_mb",
         "type_info": "Int4"
       },
       {
-        "ordinal": 11,
+        "ordinal": 14,
         "name": "server_uuid",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 15,
         "name": "server_ip",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 16,
         "name": "sftp_user",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 17,
         "name": "sftp_password",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 18,
         "name": "sftp_port",
         "type_info": "Int4"
       },
       {
-        "ordinal": 16,
+        "ordinal": 19,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 17,
+        "ordinal": 20,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Varchar",
-        "Varchar",
-        "Varchar",
-        "Varchar",
-        "Varchar",
-        "Int4",
-        "Int4"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -112,6 +120,9 @@
       false,
       false,
       false,
+      true,
+      false,
+      true,
       true,
       true,
       false,
@@ -127,5 +138,5 @@
       false
     ]
   },
-  "hash": "18409156de642b622e310bad4cef006d04f4ab2fc5549fb317e31e4c06b6d09c"
+  "hash": "8c1b0c58aaf7da434a4366ba23eae1e211bb1d3560fa0ec105e357fc188693f4"
 }

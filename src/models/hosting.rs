@@ -36,6 +36,12 @@ pub struct HostingSubscription {
     pub client_email: String,
     pub plan: String,
     pub domain: Option<String>,
+    #[sqlx(default)]
+    pub domain_verification_status: String,
+    #[sqlx(default)]
+    pub domain_verification_token: Option<String>,
+    #[sqlx(default)]
+    pub domain_verified_at: Option<DateTime<Utc>>,
     pub coolify_site_name: Option<String>,
     pub status: String,
     pub stripe_subscription_id: Option<String>,
@@ -141,6 +147,9 @@ pub struct HostingSubscriptionResponse {
     pub client_email: String,
     pub plan: String,
     pub domain: Option<String>,
+    pub domain_verification_status: String,
+    pub domain_verification_token: Option<String>,
+    pub domain_verified_at: Option<DateTime<Utc>>,
     pub coolify_site_name: Option<String>,
     pub status: String,
     pub monthly_price_cents: i32,
@@ -165,6 +174,9 @@ impl From<HostingSubscription> for HostingSubscriptionResponse {
             client_email: s.client_email,
             plan: s.plan,
             domain: s.domain,
+            domain_verification_status: s.domain_verification_status,
+            domain_verification_token: s.domain_verification_token,
+            domain_verified_at: s.domain_verified_at,
             coolify_site_name: s.coolify_site_name,
             status: s.status,
             monthly_price_cents: s.monthly_price_cents,
@@ -520,6 +532,9 @@ mod tests {
             client_email: "test@test.com".to_string(),
             plan: "pro".to_string(),
             domain: Some("test.com".to_string()),
+            domain_verification_status: "active".to_string(),
+            domain_verification_token: Some("nakomi-verification=abc123".to_string()),
+            domain_verified_at: Some(now),
             coolify_site_name: Some("hosting-abc123".to_string()),
             status: "active".to_string(),
             stripe_subscription_id: Some("sub_123".to_string()),
@@ -539,6 +554,12 @@ mod tests {
         assert_eq!(resp.user_id, Some(user_id));
         assert_eq!(resp.plan, "pro");
         assert_eq!(resp.domain.as_deref(), Some("test.com"));
+        assert_eq!(resp.domain_verification_status, "active");
+        assert_eq!(
+            resp.domain_verification_token.as_deref(),
+            Some("nakomi-verification=abc123")
+        );
+        assert_eq!(resp.domain_verified_at, Some(now));
         assert_eq!(resp.status, "active");
         assert_eq!(resp.monthly_price_cents, 1000);
         assert_eq!(resp.storage_limit_mb, 20480);
