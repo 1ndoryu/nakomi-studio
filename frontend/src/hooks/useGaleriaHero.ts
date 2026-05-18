@@ -10,8 +10,10 @@ export interface EntradaGaleriaHero {
 }
 
 export const useGaleriaHero = () => {
+    /* [175A-1] Misma queryKey que SeccionShowcase para compartir cach\u00e9 y evitar
+     * un segundo request a /api/projects. Un solo fetch sirve ambos componentes. */
     const {data: proyectos} = useQuery({
-        queryKey: ['public-projects-gallery'],
+        queryKey: ['public-projects-showcase'],
         queryFn: apiListPublicProjects,
         staleTime: 5 * 60 * 1000,
         retry: 1,
