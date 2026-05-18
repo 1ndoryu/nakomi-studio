@@ -18,10 +18,17 @@ function viteDeferCss(): Plugin {
         (_match, before: string, href: string, after: string) => {
           const attrs = (before + after).trim();
           const crossorigin = attrs.includes('crossorigin') ? ' crossorigin' : '';
+          /* Al cargar el CSS: remover overlay FOUC + revelar #root. Timeout 4s como fallback
+           * por si onload no dispara (navegadores viejos, JS bloqueado parcialmente). */
+          const onloadHandler =
+            `var o=document.getElementById('fouc-overlay');if(o){o.style.transition='opacity 0.15s';o.style.opacity='0';setTimeout(function(){o.remove()},200);}` +
+            `var r=document.getElementById('root');if(r)r.style.removeProperty('opacity');` +
+            `this.onload=null;this.media='all'`;
           return (
             `<link rel="preload" as="style"${crossorigin} href="${href}">` +
-            `<link rel="stylesheet" media="print"${crossorigin} onload="this.onload=null;this.rel='stylesheet'" href="${href}">` +
-            `<noscript><link rel="stylesheet"${crossorigin} href="${href}"></noscript>`
+            `<link rel="stylesheet" media="print"${crossorigin} onload="${onloadHandler}" href="${href}">` +
+            `<noscript><link rel="stylesheet"${crossorigin} href="${href}"></noscript>` +
+            `<script>setTimeout(function(){var o=document.getElementById('fouc-overlay');if(o)o.remove();var r=document.getElementById('root');if(r)r.style.removeProperty('opacity')},4000)<\/script>`
           );
         },
       );
