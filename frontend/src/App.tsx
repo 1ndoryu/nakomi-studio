@@ -60,6 +60,16 @@ const queryClient = new QueryClient({
     },
 });
 
+/* [175A-2] Pre-poblar cache de React Query con datos inyectados por el servidor.
+ * El middleware prerender.rs escribe window.__INITIAL_DATA__.projects en el HTML
+ * para que GaleriaHero y SeccionShowcase rendericen sin esperar la API en 4G slow. */
+if (typeof window !== 'undefined') {
+    const initialData = (window as unknown as {__INITIAL_DATA__?: {projects?: unknown}})['__INITIAL_DATA__'];
+    if (initialData?.projects) {
+        queryClient.setQueryData(['public-projects-showcase'], initialData.projects);
+    }
+}
+
 /* Registra navigate de React Router en el módulo navegacionSPA para compatibilidad */
 function NavigateRegistrar() {
     const navigate = useNavigate();

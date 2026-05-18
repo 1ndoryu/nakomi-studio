@@ -160,12 +160,16 @@ fn encode_image(
             Ok((buf, "image/jpeg"))
         }
         OutputFormat::Webp => {
-            /* [154A-IMG] image-webp 0.2 solo soporta lossless (archivos enormes).
-             * Caer a JPEG lossy con la calidad indicada — ~80% menor tamaño. */
-            let encoder = JpegEncoder::new_with_quality(&mut buf, quality);
-            img.write_with_encoder(encoder)
-                .map_err(|e| AppError::Internal(format!("Error codificando WebP→JPEG: {e}")))?;
-            Ok((buf, "image/jpeg"))
+            /* [175A-2] Codificación WebP lossy real via libwebp vendorizado.
+             * image-webp solo soporta lossless (archivos 5-10x más grandes para fotos).
+             * Encoder::from_rgba no depende de la versión de `image`, solo bytes RGBA crudos.
+             * Esto corrige el Content-Type y satisface el diagnóstico de Lighthouse
+             * "Mejorar la entrega de imágenes" que antes reclamaba 2361 KiB de savings. */
+            let rgba = img.to_rgba8();
+            let (w, h) = rgba.dimensions();
+            let encoder = webp::Encoder::from_rgba(rgba.as_raw(), w, h);
+            let webp_bytes = encoder.encode(f32::from(quality));
+            Ok((webp_bytes.to_vec(), "image/webp"))
         }
         OutputFormat::Png => {
             img.write_to(&mut Cursor::new(&mut buf), image::ImageFormat::Png)
