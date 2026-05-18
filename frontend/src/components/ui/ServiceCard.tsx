@@ -52,7 +52,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({servicio, variant = 'si
     const card = (
         <a href={servicio.link} className="serviceCard simple" onClick={e => spaClick(e, servicio.link)}>
             <div className="simpleImageWrapper">
-                <OptimizedImage src={servicio.imagen} alt={titulo} className="simpleImage" width={180} height={100} sizes="(max-width: 768px) 100vw, 33vw" />
+                {/* [185A-3] max-width real = 60px (CSS). sizes correcto evita cargar
+                 * variante 800px en mobile (antes: 100vw → 412px×2x DPR ≈ 800px).
+                 * Con sizes="60px" el browser elige w=150 (primer bucket ≥ 60×2x=120). */}
+                <OptimizedImage src={servicio.imagen} alt={titulo} className="simpleImage" width={60} height={60} sizes="60px" />
             </div>
             <div className="simpleContent">
                 <h3 className="simpleTitle">{titulo}</h3>

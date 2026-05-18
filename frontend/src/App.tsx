@@ -134,6 +134,10 @@ function HomePage() {
 function DeferredGlobalWidgets() {
     const [ready, setReady] = useState(false);
     const chatAbierto = useChatStore(s => s.abierto);
+    /* [185A-2] Solo cargar AdminEditorProvider (y por ende el chunk editor 119KB) si el
+     * usuario es admin. Para visitantes normales el editor nunca se importa, eliminando
+     * el editor chunk de la cadena crítica y ahorrando ~120KB en el primer paint. */
+    const isAdmin = useAuthStore(s => s.user?.effectiveRole === 'admin');
 
     useEffect(() => {
         const idleWindow = window as Window & {
@@ -155,7 +159,7 @@ function DeferredGlobalWidgets() {
     return (
         <>
             <Suspense fallback={null}><ChatWidget /></Suspense>
-            <Suspense fallback={null}><AdminEditorProvider /></Suspense>
+            {isAdmin && <Suspense fallback={null}><AdminEditorProvider /></Suspense>}
         </>
     );
 }

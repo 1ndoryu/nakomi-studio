@@ -8,8 +8,9 @@
         <!-- [154A-6] Preload fuentes críticas para evitar FOIT y mejorar FCP -->
         <link rel="preload" as="font" href="/assets/fonts/NeueMontreal-Regular.woff2" type="font/woff2" crossorigin />
         <link rel="preload" as="font" href="/assets/fonts/NeueMontreal-Medium.woff2" type="font/woff2" crossorigin />
-        <!-- [074A-14] Preconnect a Stripe (se usa en checkout) -->
-        <link rel="preconnect" href="https://js.stripe.com" crossorigin />
+        <!-- [074A-14] dns-prefetch a Stripe (se usa en checkout, no en home).
+             preconnect quitado: PageSpeed penaliza conexiones que no se usan en la
+             pagina actual (FCP). dns-prefetch es gratuito (solo DNS, sin TCP/TLS). -->
         <link rel="dns-prefetch" href="https://js.stripe.com" />
         <title>Nakomi Studio</title>
     </head>
