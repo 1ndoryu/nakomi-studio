@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 
 import {
     generateSrcSet,
+    generateWebPSrcSet,
     optimizedUrl,
     resolveBestWidth,
     resolveResponsiveWidths,
@@ -103,8 +104,9 @@ export function useOptimizedImage({
         resolvedSizes,
         fallbackSrc: optimizedUrl(src, fallbackWidth ? {quality, width: fallbackWidth} : {quality}),
         fallbackSrcSet: fixedWidth ? '' : generateSrcSet(src, responsiveWidths, {quality}),
-        /* [154A-IMG] WebP desactivado: image-webp 0.2 solo soporta lossless (archivos enormes).
-         * JPEG lossy con quality 80 produce ~80% menos peso. Reactivar cuando haya lossy WebP. */
-        webpSrcSet: '',
+        /* [154A-IMG] WebP reactivado: backend usa webp::Encoder::from_rgba() lossy desde d6b260c.
+         * El lossy WebP produce 80-90% menos peso que PNG y 20-30% menos que JPEG.
+         * Fixed-width usa URL única; responsive usa srcset completo. */
+        webpSrcSet: fixedWidth ? '' : generateWebPSrcSet(src, responsiveWidths, quality),
     };
 }
