@@ -553,6 +553,10 @@ pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Route
             app_url: std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost:5173".into()),
         };
 
+        /* [185A-1] CompressionLayer aqui cubre /assets/ y SPA fallback (HTML).
+         * El CompressionLayer de create_router solo cubre /api/ y /uploads/.
+         * Los nest_service/fallback_service en create_app quedan fuera de ese layer.
+         * tower-http no recomprime si Content-Encoding ya esta establecido. */
         router
             .nest_service("/assets", asset_service)
             .fallback_service(spa_serve)
@@ -560,6 +564,7 @@ pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Route
                 prerender_state,
                 crate::middleware::prerender::prerender,
             ))
+            .layer(CompressionLayer::new())
     } else {
         router
     }
