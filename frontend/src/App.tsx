@@ -12,11 +12,12 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {registrarNavigate} from './navegacionSPA';
 import {ScrollToTop} from './components/ui/ScrollToTop';
 
-/* Pages (ex-islands) — carga directa solo para rutas de aterrizaje principales */
+/* Pages (ex-islands) — solo BienvenidaIsland queda eager (es la ruta de aterrizaje principal).
+ * [175A-1] ServiciosIsland, ProyectosIsland y NotFoundIsland → lazy para reducir bundle inicial. */
 import {BienvenidaIsland} from './islands/BienvenidaIsland';
-import {ServiciosIsland} from './islands/ServiciosIsland';
-import {ProyectosIsland} from './islands/ProyectosIsland';
-import {NotFoundIsland} from './islands/NotFoundIsland';
+const ServiciosIsland = lazy(() => import('./islands/ServiciosIsland').then(m => ({default: m.ServiciosIsland})));
+const ProyectosIsland = lazy(() => import('./islands/ProyectosIsland').then(m => ({default: m.ProyectosIsland})));
+const NotFoundIsland = lazy(() => import('./islands/NotFoundIsland').then(m => ({default: m.NotFoundIsland})));
 
 /* [204A-2] Lazy: páginas de detalle y rutas secundarias.
  * Solo cargan cuando el usuario navega a ellas, reduciendo el CSS+JS inicial.
@@ -162,9 +163,9 @@ function App() {
                 <GoogleAuthCallback />
                 <Routes>
                     <Route path="/" element={<HomePage />} />
-                    <Route path="/servicios" element={<ServiciosIsland />} />
+                    <Route path="/servicios" element={<Suspense fallback={null}><ServiciosIsland /></Suspense>} />
                     <Route path="/servicios/:slug" element={<Suspense fallback={null}><ServicioDetallePage /></Suspense>} />
-                    <Route path="/proyectos" element={<ProyectosIsland />} />
+                    <Route path="/proyectos" element={<Suspense fallback={null}><ProyectosIsland /></Suspense>} />
                     <Route path="/proyectos/:slug" element={<Suspense fallback={null}><ProyectoDetallePage /></Suspense>} />
                     <Route path="/nosotros" element={<Suspense fallback={null}><NosotrosIsland /></Suspense>} />
                     {/* [155A-6] /soluciones ya no es accesible; solo quedan las subpáginas reales. */}
@@ -178,7 +179,7 @@ function App() {
                     <Route path="/panel" element={<Suspense fallback={<div className="panelCargando" />}><PanelIsland /></Suspense>} />
                     <Route path="/panel/chat" element={<Suspense fallback={<div className="panelCargando" />}><PanelIsland /></Suspense>} />
                     {/* [044A-28] Página 404 real en vez de redirigir silenciosamente al home */}
-                    <Route path="*" element={<NotFoundIsland />} />
+                    <Route path="*" element={<Suspense fallback={null}><NotFoundIsland /></Suspense>} />
                 </Routes>
                 <DeferredGlobalWidgets />
             </BrowserRouter>
