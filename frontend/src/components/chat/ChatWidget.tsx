@@ -102,7 +102,7 @@ export const ChatWidget: React.FC = () => {
                     aria-label="Abrir chat"
                     type="button"
                 >
-                    <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetBubbleAvatar" loading="lazy" />
+                    <OptimizedImage src={AVATAR_SRC} alt="" className="chatWidgetBubbleAvatar" loading="lazy" sizes="36px" />
                     <span className="chatWidgetBubbleTexto">Chat</span>
                 </Button>
             )}

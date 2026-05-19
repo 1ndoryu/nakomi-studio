@@ -51,16 +51,31 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-core': ['react', 'react-dom', 'react-router-dom'],
-          'query': ['@tanstack/react-query'],
-          'editor': [
-            '@tiptap/react', '@tiptap/starter-kit',
-            '@tiptap/extension-image', '@tiptap/extension-link',
-            '@tiptap/extension-placeholder',
-          ],
-          'stripe': ['@stripe/react-stripe-js', '@stripe/stripe-js'],
-          'i18n': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+        /* [195A-1] Forma función para manualChunks: permite matching por subruta de paquete.
+         * La forma objeto solo matchea el módulo raíz exacto; use-sync-external-store se importa
+         * como use-sync-external-store/shim/with-selector y no sería capturado por la forma objeto.
+         * PROBLEMA RAÍZ: use-sync-external-store terminaba en el chunk editor.js (porque @tiptap
+         * lo importa) y luego index.js lo importaba estáticamente desde editor.js, creando la
+         * cadena crítica index.js → editor.js (119KB) que Lighthouse marcaba como bloqueante de LCP. */
+        manualChunks(id) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/react-router') || id.includes('node_modules/use-sync-external-store')) {
+            return 'react-core';
+          }
+          if (id.includes('node_modules/@tiptap') || id.includes('node_modules/@prosemirror') ||
+              id.includes('node_modules/prosemirror') || id.includes('node_modules/rope-sequence') ||
+              id.includes('node_modules/w3c-keyname') || id.includes('node_modules/crelt')) {
+            return 'editor';
+          }
+          if (id.includes('node_modules/@tanstack/react-query') || id.includes('node_modules/@tanstack/query')) {
+            return 'query';
+          }
+          if (id.includes('node_modules/i18next') || id.includes('node_modules/react-i18next')) {
+            return 'i18n';
+          }
+          if (id.includes('node_modules/@stripe')) {
+            return 'stripe';
+          }
         },
       },
     },
