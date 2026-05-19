@@ -64,7 +64,8 @@
 .vpsConfiguradorLayout {
     max-width: var(--container-width);
     margin: 0 auto;
-    padding: 0 var(--spacing-lg) var(--spacing-2xl);
+    /* 4.5rem compensa el header fixed; igual que tenía .vpsConfiguradorNavBar */
+    padding: calc(4.5rem + var(--spacing-md)) var(--spacing-lg) var(--spacing-2xl);
     display: grid;
     grid-template-columns: minmax(0, 1fr) 360px;
     gap: var(--spacing-lg);
