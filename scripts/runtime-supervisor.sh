@@ -10,18 +10,40 @@ INTERVAL="${GLORY_SUPERVISOR_INTERVAL:-30}"
 TIMEOUT="${GLORY_SUPERVISOR_TIMEOUT:-4}"
 RETRIES="${GLORY_SUPERVISOR_RETRIES:-3}"
 START_PERIOD="${GLORY_SUPERVISOR_START_PERIOD:-90}"
-URL="http://127.0.0.1:${PORT}${HEALTH_PATH}"
+LOOPBACK_URL="http://127.0.0.1:${PORT}${HEALTH_PATH}"
+NETWORK_IP="$(hostname -i 2>/dev/null || true)"
+NETWORK_IP="${NETWORK_IP%% *}"
+if [ -z "${NETWORK_IP}" ]; then
+    NETWORK_IP="127.0.0.1"
+fi
+NETWORK_URL="http://${NETWORK_IP}:${PORT}${HEALTH_PATH}"
+FAILED_PROBES=""
 
 log() {
     printf '%s [runtime-supervisor] %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"
 }
 
 dump_state() {
+    log "probe urls before restart: loopback=${LOOPBACK_URL} network=${NETWORK_URL}"
     log "process status before restart"
     cat "/proc/${APP_PID}/status" 2>/dev/null || true
     log "tcp snapshot before restart"
     cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | head -120 || true
     log "fd count before restart: $(ls "/proc/${APP_PID}/fd" 2>/dev/null | wc -l || true)"
+}
+
+probe_health() {
+    FAILED_PROBES=""
+
+    if ! curl -fsS --max-time "${TIMEOUT}" "${LOOPBACK_URL}" >/dev/null; then
+        FAILED_PROBES="${FAILED_PROBES} loopback=${LOOPBACK_URL}"
+    fi
+
+    if [ "${NETWORK_URL}" != "${LOOPBACK_URL}" ] && ! curl -fsS --max-time "${TIMEOUT}" "${NETWORK_URL}" >/dev/null; then
+        FAILED_PROBES="${FAILED_PROBES} network=${NETWORK_URL}"
+    fi
+
+    [ -z "${FAILED_PROBES}" ]
 }
 
 shutdown() {
@@ -34,7 +56,7 @@ shutdown() {
 /app/glory-backend &
 APP_PID="$!"
 trap shutdown INT TERM
-log "started app pid ${APP_PID}; probing ${URL} after ${START_PERIOD}s"
+log "started app pid ${APP_PID}; probing loopback=${LOOPBACK_URL} network=${NETWORK_URL} after ${START_PERIOD}s"
 
 elapsed=0
 while [ "${elapsed}" -lt "${START_PERIOD}" ]; do
@@ -48,14 +70,14 @@ done
 
 failures=0
 while kill -0 "${APP_PID}" 2>/dev/null; do
-    if curl -fsS --max-time "${TIMEOUT}" "${URL}" >/dev/null; then
+    if probe_health; then
         if [ "${failures}" -gt 0 ]; then
             log "health recovered after ${failures} failed probe(s)"
         fi
         failures=0
     else
         failures=$((failures + 1))
-        log "health probe failed (${failures}/${RETRIES}) url=${URL}"
+        log "health probe failed (${failures}/${RETRIES}) failed=${FAILED_PROBES}"
         if [ "${failures}" -ge "${RETRIES}" ]; then
             dump_state
             log "terminating frozen app so Docker restart policy can recover it"
