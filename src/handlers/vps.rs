@@ -94,6 +94,8 @@ fn public_plan_from_config(config: VpsPlanConfig) -> PublicVpsPlan {
         bandwidth_label: config.bandwidth_label,
         snapshot_count: config.snapshot_count,
         region: config.region,
+        region_extra_cents: config.region_extra_cents,
+        storage_extra_cents: config.storage_extra_cents,
         features,
         approval_required: config.approval_required,
         recommended: false,
@@ -325,6 +327,17 @@ pub async fn subscribe_self(
         req.server_password.as_deref(),
     );
 
+    /* [205A-1] Computar precio total real incluyendo extra de región y storage elegidos */
+    let region_extra = req.region_preference.as_deref()
+        .and_then(|r| plan_config.region_extra_cents.get(r))
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0) as i32;
+    let storage_extra = req.storage_preference.as_deref()
+        .and_then(|s| plan_config.storage_extra_cents.get(s))
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0) as i32;
+    let total_monthly_cents = plan_config.monthly_price_cents + region_extra + storage_extra;
+
     let subscription = VpsRepository::create(
         &state.pool,
         CreateVpsSubscriptionParams {
@@ -334,7 +347,7 @@ pub async fn subscribe_self(
             tier_name: &req.tier,
             requested_hostname: req.hostname.as_deref(),
             client_notes: notes_str.as_deref(),
-            monthly_price_cents: plan_config.monthly_price_cents,
+            monthly_price_cents: total_monthly_cents,
         },
     )
     .await?;

@@ -161,7 +161,8 @@ impl VpsRepository {
                      base_cost_cents, monthly_price_cents, setup_fee_cents,
                      cpu_cores, ram_mb, disk_mb, storage_type, storage_options,
                      port_speed_mbps, bandwidth_label, snapshot_count,
-                     region, is_active, approval_required, created_at, updated_at
+                     region, region_extra_cents, storage_extra_cents,
+                     is_active, approval_required, created_at, updated_at
                FROM vps_plan_configs
                WHERE tier_name = $1",
         )
@@ -177,7 +178,8 @@ impl VpsRepository {
                      base_cost_cents, monthly_price_cents, setup_fee_cents,
                      cpu_cores, ram_mb, disk_mb, storage_type, storage_options,
                      port_speed_mbps, bandwidth_label, snapshot_count,
-                     region, is_active, approval_required, created_at, updated_at
+                     region, region_extra_cents, storage_extra_cents,
+                     is_active, approval_required, created_at, updated_at
                FROM vps_plan_configs
                WHERE is_active = TRUE
                ORDER BY monthly_price_cents ASC",

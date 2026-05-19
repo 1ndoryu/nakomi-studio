@@ -1,18 +1,18 @@
 /* [195A-1] Configurador VPS estilo proveedor: plan, recursos, hostname y checkout real.
  * La compra ya no abre un modal genérico; el detalle técnico queda visible antes de Stripe.
- * [205A-1] Helpers/constantes en vpsConfiguradorHelpers.ts para mantenerse bajo 300 líneas. */
+ * [205A-1] Helpers/constantes en vpsConfiguradorHelpers.ts para mantenerse bajo 300 líneas.
+ * [205A-2] Select → SelectDropdown (MenuContextual). Región → botones igual que storage. */
 import {useParams} from 'react-router-dom';
 import {Cpu, HardDrive, KeyRound, Monitor, Network, Server, ShieldCheck} from 'lucide-react';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
 import {Button} from '../components/ui/Button';
 import {Input} from '../components/ui/Input';
-import {Select} from '../components/ui/Select';
+import {SelectDropdown} from '../components/ui/SelectDropdown';
 import {useVpsConfiguradorIsland} from '../hooks/useVpsConfiguradorIsland';
-import {navegar} from '../navegacionSPA';
 import {
     formatMoney, formatRam, formatPort, storageLabel,
-    VPS_LOCATIONS, VPS_CONTINENTS, storageExtraLabel, OS_IMAGES,
+    VPS_LOCATIONS, storageExtraLabel, regionExtraLabel, OS_IMAGES,
 } from './vpsConfiguradorHelpers';
 import './VpsConfiguradorIsland.css';
 
@@ -21,7 +21,8 @@ export function VpsConfiguradorIsland(): JSX.Element {
     const configurador = useVpsConfiguradorIsland(tier);
     const {
         plans, selectedPlan, form, emailExiste, status,
-        dueToday, logueado, updateField, handleSubmit,
+        dueToday, monthlyTotal, storageExtraCents, regionExtraCents,
+        logueado, updateField, handleSubmit,
     } = configurador;
 
     return (
@@ -32,16 +33,6 @@ export function VpsConfiguradorIsland(): JSX.Element {
                 path="/soluciones/vps/configurar"
             />
 
-            <div className="vpsConfiguradorNavBar">
-                <Button type="button" variante="texto" tamano="pequeno" className="vpsConfiguradorVolver" onClick={() => navegar('/soluciones/vps')}>
-                    ← Volver a VPS
-                </Button>
-            </div>
-            <section className="vpsConfiguradorHero">
-                <span className="vpsConfiguradorEtiqueta">Nakomi VPS</span>
-                <h1 className="vpsConfiguradorTitulo">Configura tu servidor</h1>
-            </section>
-
             <form className="vpsConfiguradorLayout" onSubmit={handleSubmit}>
                 <main className="vpsConfiguradorPrincipal">
                     <section className="vpsConfiguradorBloque">
@@ -49,17 +40,12 @@ export function VpsConfiguradorIsland(): JSX.Element {
                             <Server size={18} />
                             <h2 className="vpsConfiguradorBloqueTitulo">Plan</h2>
                         </div>
-                        <Select
-                            className="vpsConfiguradorSelect"
+                        <SelectDropdown
                             value={form.selectedTier || selectedPlan?.tier_name || ''}
-                            onChange={e => updateField('selectedTier', e.target.value)}
-                        >
-                            {plans.map(plan => (
-                                <option key={plan.tier_name} value={plan.tier_name}>
-                                    {plan.display_name} — {formatMoney(plan.monthly_price_cents)}/mes
-                                </option>
-                            ))}
-                        </Select>
+                            opciones={plans.map(p => ({value: p.tier_name, label: `${p.display_name} — ${formatMoney(p.monthly_price_cents)}/mes`}))}
+                            onChange={v => updateField('selectedTier', v)}
+                            ariaLabel="Seleccionar plan"
+                        />
                     </section>
 
                     {selectedPlan && (
@@ -88,7 +74,7 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                         <span className="vpsConfiguradorStorageLabel">Storage</span>
                                         <div className="vpsConfiguradorStorageOpciones">
                                             {selectedPlan.storage_options.map(opt => {
-                                                const extra = storageExtraLabel(opt);
+                                                const extra = storageExtraLabel(opt, selectedPlan.storage_extra_cents as Record<string, number>);
                                                 const activo = (form.selectedStorage || selectedPlan.storage_options[0]) === opt;
                                                 return (
                                                     <Button
@@ -125,21 +111,20 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                 </div>
                                 <div className="vpsConfiguradorRegionSel">
                                     <span className="vpsConfiguradorStorageLabel">Región</span>
-                                    <Select
-                                        className="vpsConfiguradorSelect"
-                                        value={form.selectedRegion}
-                                        onChange={e => updateField('selectedRegion', e.target.value)}
-                                    >
-                                        {VPS_CONTINENTS.map(continent => (
-                                            <optgroup key={continent} label={continent}>
-                                                {VPS_LOCATIONS.filter(l => l.continent === continent).map(loc => (
-                                                    <option key={loc.code} value={loc.code}>
-                                                        {loc.label}{loc.free ? ' — Incluido' : ' (+costo)'}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
+                                    <div className="vpsConfiguradorStorageOpciones">
+                                        {VPS_LOCATIONS.map(loc => (
+                                            <Button
+                                                key={loc.code}
+                                                type="button"
+                                                variante="outline"
+                                                tamano="pequeno"
+                                                className={`vpsConfiguradorStorageOpcion${form.selectedRegion === loc.code ? ' vpsConfiguradorStorageOpcionActivo' : ''}`}
+                                                onClick={() => updateField('selectedRegion', loc.code)}
+                                            >
+                                                {loc.label}{regionExtraLabel(loc.code, selectedPlan.region_extra_cents as Record<string, number>)}
+                                            </Button>
                                         ))}
-                                    </Select>
+                                    </div>
                                 </div>
                             </section>
                         </>
@@ -151,15 +136,12 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                 <Monitor size={18} />
                                 <h2 className="vpsConfiguradorBloqueTitulo">Sistema operativo</h2>
                             </div>
-                            <Select
-                                className="vpsConfiguradorSelect"
+                            <SelectDropdown
                                 value={form.selectedOs}
-                                onChange={e => updateField('selectedOs', e.target.value)}
-                            >
-                                {OS_IMAGES.map(os => (
-                                    <option key={os} value={os}>{os}</option>
-                                ))}
-                            </Select>
+                                opciones={OS_IMAGES.map(os => ({value: os, label: os}))}
+                                onChange={v => updateField('selectedOs', v)}
+                                ariaLabel="Seleccionar sistema operativo"
+                            />
                         </section>
                     )}
 
@@ -183,7 +165,7 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                     minLength={8}
                                 />
                             </label>
-                            <p className="vpsConfiguradorMuted">No se enviará por email. Guárdala en un gestor de contraseñas.</p>
+                            <p className="vpsConfiguradorMuted">Te la enviaremos por email al confirmar el pedido.</p>
                         </section>
                     )}
 
@@ -257,6 +239,7 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                 <span>Storage</span>
                                 <strong>{form.selectedStorage || selectedPlan.storage_options[0] || storageLabel(selectedPlan)}</strong>
                             </div>
+                            {storageExtraCents > 0 && <div className="vpsConfiguradorResumenFila"><span>Storage extra</span><strong>+{formatMoney(storageExtraCents)}/mes</strong></div>}
                             <div className="vpsConfiguradorResumenFila">
                                 <span>OS</span>
                                 <strong>{form.selectedOs}</strong>
@@ -269,6 +252,7 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                 <span>Región</span>
                                 <strong>{form.selectedRegion}</strong>
                             </div>
+                            {regionExtraCents > 0 && <div className="vpsConfiguradorResumenFila"><span>Región extra</span><strong>+{formatMoney(regionExtraCents)}/mes</strong></div>}
                             <div className="vpsConfiguradorResumenFila">
                                 <span>Snapshots</span>
                                 <strong>{selectedPlan.snapshot_count}</strong>
@@ -284,7 +268,7 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                 <strong>{formatMoney(dueToday)}</strong>
                             </div>
                             <p className="vpsConfiguradorResumenNota">
-                                Luego queda la suscripción mensual de {formatMoney(selectedPlan.monthly_price_cents)}.
+                                Luego queda la suscripción mensual de {formatMoney(monthlyTotal)}.
                             </p>
                         </>
                     ) : (

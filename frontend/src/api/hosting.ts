@@ -472,6 +472,9 @@ export interface PublicVpsPlan {
     bandwidth_label: string;
     snapshot_count: number;
     region: string;
+    /* [205A-1] Costos extra por región y opción de storage (centavos/mes) */
+    region_extra_cents: Record<string, number>;
+    storage_extra_cents: Record<string, number>;
     features: string[];
     approval_required: boolean;
     recommended: boolean;

@@ -107,10 +107,7 @@
     gap: var(--spacing-sm);
 }
 
-/* Selector de plan/región/OS — usa selectBase del componente Select del sistema */
-.vpsConfiguradorSelect.selectBase {
-    cursor: pointer;
-}
+/* [205A-2] .vpsConfiguradorSelect.selectBase eliminado — se usa SelectDropdown (MenuContextual). */
 
 .vpsConfiguradorPlanSpecs,
 .vpsConfiguradorMuted,

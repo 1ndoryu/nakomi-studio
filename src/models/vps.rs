@@ -28,6 +28,9 @@ pub struct VpsPlanConfig {
     pub bandwidth_label: String,
     pub snapshot_count: i32,
     pub region: String,
+    /* [205A-1] Costos extra por región y storage (JSONB) para calcular precio real en checkout */
+    pub region_extra_cents: serde_json::Value,
+    pub storage_extra_cents: serde_json::Value,
     pub is_active: bool,
     pub approval_required: bool,
     pub created_at: DateTime<Utc>,
@@ -50,6 +53,9 @@ pub struct PublicVpsPlan {
     pub bandwidth_label: String,
     pub snapshot_count: i32,
     pub region: String,
+    /* [205A-1] Mapas de costo extra (centavos) por región y opción de storage */
+    pub region_extra_cents: serde_json::Value,
+    pub storage_extra_cents: serde_json::Value,
     pub features: Vec<String>,
     pub approval_required: bool,
     pub recommended: bool,

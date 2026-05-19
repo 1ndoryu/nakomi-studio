@@ -41,20 +41,18 @@ export const VPS_LOCATIONS: ContaboLocation[] = [
 
 export const VPS_CONTINENTS = ['Europa', 'América', 'Asia', 'Oceanía'] as const;
 
-/* Costos adicionales de storage según lista de Contabo (informativos, sin markup aplicado) */
-const STORAGE_EXTRA: Record<string, string> = {
-    '150 GB SSD':  'Incluido',
-    '300 GB SSD':  '+€1.55/mes',
-    '75 GB NVMe':  'Incluido',
-    '150 GB NVMe': '+€1.85/mes',
-    '200 GB SSD':  'Incluido',
-    '400 GB SSD':  '+€1.95/mes',
-    '100 GB NVMe': 'Incluido',
-    '200 GB NVMe': '+€2.55/mes',
-};
+/* storageExtraLabel y regionExtraLabel usan el mapa real del plan (DB) si se pasa;
+ * si no se pasa mapa, retornan cadena vacía (no muestra nada). */
+export function storageExtraLabel(opt: string, extraCentsMap?: Record<string, number>): string {
+    if (!extraCentsMap) { return ''; }
+    const extra = extraCentsMap[opt] ?? 0;
+    return extra > 0 ? `+${formatMoney(extra)}/mes` : 'Incluido';
+}
 
-export function storageExtraLabel(opt: string): string {
-    return STORAGE_EXTRA[opt] ?? '';
+export function regionExtraLabel(code: string, extraCentsMap?: Record<string, number>): string {
+    if (!extraCentsMap) { return ''; }
+    const extra = extraCentsMap[code] ?? 0;
+    return extra > 0 ? ` (+${formatMoney(extra)}/mes)` : '';
 }
 
 export const OS_IMAGES: string[] = [

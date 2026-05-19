@@ -45,8 +45,14 @@ export function useVpsConfiguradorIsland(initialTier?: string) {
 
     const selectedTier = form.selectedTier || initialTier || plans[0]?.tier_name || '';
     const selectedPlan = plans.find(plan => plan.tier_name === selectedTier) ?? plans[0];
+    const storageKey = form.selectedStorage || selectedPlan?.storage_options[0] || '';
+    const storageExtraCents = (selectedPlan?.storage_extra_cents as Record<string, number> | undefined)?.[storageKey] ?? 0;
+    const regionExtraCents = (selectedPlan?.region_extra_cents as Record<string, number> | undefined)?.[form.selectedRegion] ?? 0;
+    const monthlyTotal = selectedPlan
+        ? selectedPlan.monthly_price_cents + storageExtraCents + regionExtraCents
+        : 0;
     const dueToday = selectedPlan
-        ? selectedPlan.monthly_price_cents + selectedPlan.setup_fee_cents
+        ? monthlyTotal + selectedPlan.setup_fee_cents
         : 0;
 
     const updateField = (field: keyof ConfigForm, value: string) => {
@@ -115,6 +121,9 @@ export function useVpsConfiguradorIsland(initialTier?: string) {
         emailExiste,
         status,
         dueToday,
+        monthlyTotal,
+        storageExtraCents,
+        regionExtraCents,
         logueado,
         updateField,
         handleSubmit,
