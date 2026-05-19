@@ -38,6 +38,9 @@ pub const NOTIF_CHAT_INVOICE_PAID: &str = "chat_invoice_paid";
 /* Hosting cancelado/suspendido: se notifica al cliente propietario */
 pub const NOTIF_HOSTING_CANCELLED: &str = "hosting_cancelled";
 pub const NOTIF_HOSTING_SUSPENDED: &str = "hosting_suspended";
+/* [195A-1] Almacenamiento superado: SSH bloqueado hasta liberar espacio */
+pub const NOTIF_HOSTING_STORAGE_EXCEEDED: &str = "hosting_storage_exceeded";
+pub const NOTIF_HOSTING_STORAGE_RESTORED: &str = "hosting_storage_restored";
 /* [164A-17] Flujo VPS: aprobación manual, rechazo y suspensión por cobro. */
 pub const NOTIF_VPS_PENDING_APPROVAL: &str = "vps_pending_approval";
 pub const NOTIF_VPS_APPROVED: &str = "vps_approved";

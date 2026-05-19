@@ -22,6 +22,7 @@ mod order_slugs;
 mod payment;
 mod payment_method;
 mod seed;
+pub mod storage_enforcement;
 mod test_checkout;
 mod vps_stripe;
 mod wallet;

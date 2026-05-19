@@ -7,7 +7,8 @@ use argon2::password_hash::rand_core::OsRng;
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use glory_backend::config::AppConfig;
 use glory_backend::handlers;
-use glory_backend::services::AssignmentService;
+use glory_backend::services::storage_enforcement::storage_enforcement_loop;
+use glory_backend::services::{AssignmentService, CoolifyConfig};
 use glory_rs::fixtures::ContentManager;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
@@ -88,6 +89,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(async move {
         session_cleanup_loop(chat_cleanup_pool).await;
     });
+
+    /* [195A-1] Background task: enforcement de límites de almacenamiento.
+     * Cada 6h mide uso real via SSH+du; si supera storage_limit_mb, detiene el
+     * contenedor SSH (bloquea subidas) y notifica al cliente. Lo restaura cuando
+     * el cliente libera espacio. El sitio web nunca se interrumpe. */
+    if let Some(coolify_config) = CoolifyConfig::from_env() {
+        let enforcement_pool = pool.clone();
+        tokio::spawn(async move {
+            storage_enforcement_loop(enforcement_pool, coolify_config).await;
+        });
+    } else {
+        tracing::warn!(
+            "[storage-enforcement] Coolify no configurado — enforcement de storage desactivado"
+        );
+    }
 
     let addr = format!("{}:{}", config.host, config.port);
     tracing::info!("Servidor iniciando en {addr}");

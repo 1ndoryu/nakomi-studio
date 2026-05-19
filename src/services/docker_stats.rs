@@ -265,6 +265,72 @@ pub async fn fetch_storage_usage(
         .map_err(|e| format!("Failed to parse du output '{stdout}': {e}"))
 }
 
+/* [195A-1] Detiene el contenedor SSH de un hosting para bloquear subidas cuando
+ * se supera el límite de almacenamiento. El contenedor web sigue activo (sitio up).
+ * Nombre del contenedor SSH en Coolify: {site_name}-ssh-1 */
+pub async fn stop_ssh_container(
+    server_ip: &str,
+    ssh_key_path: &str,
+    site_name: &str,
+) -> Result<(), String> {
+    let cmd = format!("docker stop {site_name}-ssh-1 2>&1 || true");
+    let output = tokio::process::Command::new("ssh")
+        .args([
+            "-i",
+            ssh_key_path,
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=5",
+            "-o",
+            "BatchMode=yes",
+            &format!("root@{server_ip}"),
+            &cmd,
+        ])
+        .output()
+        .await
+        .map_err(|e| format!("SSH stop_ssh_container failed: {e}"))?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("docker stop SSH falló para {site_name}: {stderr}"))
+    }
+}
+
+/* [195A-1] Reinicia el contenedor SSH cuando el cliente libera espacio suficiente. */
+pub async fn start_ssh_container(
+    server_ip: &str,
+    ssh_key_path: &str,
+    site_name: &str,
+) -> Result<(), String> {
+    let cmd = format!("docker start {site_name}-ssh-1 2>&1");
+    let output = tokio::process::Command::new("ssh")
+        .args([
+            "-i",
+            ssh_key_path,
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=5",
+            "-o",
+            "BatchMode=yes",
+            &format!("root@{server_ip}"),
+            &cmd,
+        ])
+        .output()
+        .await
+        .map_err(|e| format!("SSH start_ssh_container failed: {e}"))?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("docker start SSH falló para {site_name}: {stderr}"))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

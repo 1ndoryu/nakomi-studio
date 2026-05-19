@@ -106,14 +106,14 @@ fn build_img_proxy_url(img_path: &str, width: u32, quality: u32) -> String {
         .map(|seg| urlencoding::encode(seg).into_owned())
         .collect::<Vec<_>>()
         .join("/");
-    format!("/api/img/{}?w={}&q={}&fmt=webp", encoded, width, quality)
+    format!("/api/img/{encoded}?w={width}&q={quality}&fmt=webp")
 }
 
 /* [175A-2] Genera el tag <link rel="preload"> responsivo para la imagen hero.
  * Widths sincronizados con ALLOWED_WIDTHS de imageUtils.ts para que el browser
  * pueda hacer cache-hit al crear el elemento <picture> con el mismo srcset.
  * La imagen empieza a descargarse al parsear el HTML, antes de que React monte. */
-fn build_hero_preload_from_path(img_path: &str) -> Option<String> {
+fn build_hero_preload_from_path(img_path: &str) -> String {
     let sizes = "(max-width: 768px) calc(100vw - 32px), min(100vw - 48px, 1200px)";
     /* Mismos buckets que ALLOWED_WIDTHS en frontend/src/utils/imageUtils.ts */
     let widths: &[u32] = &[150, 300, 480, 640, 800, 1024, 1200, 1600, 2400];
@@ -122,9 +122,9 @@ fn build_hero_preload_from_path(img_path: &str) -> Option<String> {
         .map(|&w| format!("{} {}w", build_img_proxy_url(img_path, w, 72), w))
         .collect::<Vec<_>>()
         .join(", ");
-    Some(format!(
+    format!(
         "<link rel=\"preload\" as=\"image\" type=\"image/webp\" imagesrcset=\"{srcset}\" imagesizes=\"{sizes}\" fetchpriority=\"high\">\n"
-    ))
+    )
 }
 
 /* [175A-2] Serializa proyectos publicados como script de datos iniciales.
@@ -133,10 +133,7 @@ fn build_hero_preload_from_path(img_path: &str) -> Option<String> {
  * XSS mitigation: escapamos </ para evitar inyección de cierre de script tag.
  * Toma ownership del Vec para no requerir Clone en Project. */
 fn build_initial_data_script(projects: Vec<Project>) -> Option<String> {
-    let responses: Vec<_> = projects
-        .into_iter()
-        .map(Project::into_response)
-        .collect();
+    let responses: Vec<_> = projects.into_iter().map(Project::into_response).collect();
     let json = serde_json::to_string(&responses).ok()?;
     /* Escapar </script> para prevenir XSS si algún campo contiene ese literal */
     let safe_json = json.replace("</", "<\\/");
@@ -340,9 +337,7 @@ pub async fn prerender(
                     .find_map(|p| p.gallery_image.clone().or_else(|| p.featured_image.clone()));
 
                 if let Some(ref img_path) = hero_path {
-                    if let Some(preload) = build_hero_preload_from_path(img_path) {
-                        inject.push_str(&preload);
-                    }
+                    inject.push_str(&build_hero_preload_from_path(img_path));
                 }
 
                 /* Script de datos iniciales: consume el Vec con into_iter */
