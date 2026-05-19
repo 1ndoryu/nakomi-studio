@@ -89,6 +89,14 @@
     border-color: var(--border-hover);
 }
 
+/* [195A-1] Variante no clickable (VPS card) */
+.hostingCardEstatica {
+    cursor: default;
+}
+.hostingCardEstatica:hover {
+    border-color: var(--border-default);
+}
+
 /* [094A-16] El área de icono ahora usa .panelCardIcono como base única.
  * Si hosting vuelve a necesitar una variante, debe limitarse a overrides. */
 

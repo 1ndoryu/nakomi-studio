@@ -13,6 +13,7 @@ import {useSeccionHosting} from '../../hooks/useSeccionHosting';
 import {Modal} from '../ui/Modal';
 import {Button} from '../ui/Button';
 import {HostingCard} from './HostingSubComponents';
+import {VpsCard} from './VpsCard';
 import {CreateHostingForm} from './HostingCreateForm';
 import {HostingDetalle} from './HostingDetalle';
 import {HostingPlanSelector} from './HostingPlanSelector';
@@ -21,6 +22,7 @@ import './SeccionHosting.css';
 export const SeccionHosting: React.FC = () => {
     const {
         subscriptions,
+        vpsSubscriptions,
         isLoading,
         isAdmin,
         tabActiva,
@@ -46,6 +48,8 @@ export const SeccionHosting: React.FC = () => {
         startMutation,
         assignMutation,
         adminCheckoutMutation,
+        approveMutation,
+        rejectMutation,
     } = useSeccionHosting();
 
     if (isLoading) {
@@ -125,11 +129,41 @@ export const SeccionHosting: React.FC = () => {
                 >
                     Inactivos ({inactivos.length})
                 </Button>
+                {/* [195A-1] Tab VPS: suscripciones de servidor dedicado */}
+                <Button
+                    type="button"
+                    variante="texto"
+                    className={`hostingTab ${tabActiva === 'vps' ? 'hostingTab--activa' : ''}`}
+                    onClick={() => setTabActiva('vps')}
+                >
+                    Mis VPS ({vpsSubscriptions.length})
+                </Button>
             </div>
 
             {/* [084A-24] Contenido condicional por tab */}
             {/* [304A-1] 'deployments' y 'servidores' movidos a SeccionInfraestructura */}
-            {subscriptions.length === 0 ? (
+            {/* [195A-1] Tab VPS: lista de suscripciones VPS del usuario */}
+            {tabActiva === 'vps' ? (
+                vpsSubscriptions.length === 0 ? (
+                    <div className="hostingVacio">
+                        <Server size={48} strokeWidth={1.2} />
+                        <p>Sin suscripciones VPS</p>
+                    </div>
+                ) : (
+                    <div className="hostingLista">
+                        {vpsSubscriptions.map(sub => (
+                            <VpsCard
+                                key={sub.id}
+                                sub={sub}
+                                isAdmin={isAdmin}
+                                onApprove={() => approveMutation.mutate(sub.id)}
+                                onReject={(reason) => rejectMutation.mutate({id: sub.id, reason})}
+                                approveLoading={approveMutation.isPending}
+                            />
+                        ))}
+                    </div>
+                )
+            ) : subscriptions.length === 0 ? (
                 <div className="hostingVacio">
                     <Server size={48} strokeWidth={1.2} />
                     <p>Sin suscripciones de hosting</p>
