@@ -5,19 +5,24 @@
  * Lectura de dominios y DNS accesible para admin y clientes autorizados. */
 
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
-use axum::routing::get;
+use axum::http::{HeaderMap, StatusCode};
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use validator::Validate;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
-use crate::models::UserRole;
+use crate::models::{
+    CreateDomainCheckoutRequest, DomainCheckoutResponse, DomainOrder, DomainPriceQuote, UserRole,
+};
+use crate::repositories::{CreateDomainOrderParams, DomainOrderRepository, UserRepository};
 use crate::services::contabo_domains::{
     ContaboDomain, ContaboHandle, CreateDnsRecordRequest, CreateHandleRequest, DnsRecord, DnsZone,
     DomainHandles, Nameserver, OrderDomainRequest, UpdateDnsRecordRequest,
 };
+use crate::services::{DomainCheckoutParams, DomainStripeService};
 use crate::AppState;
 
 /* ── Helper ────────────────────────────── */
@@ -36,26 +41,160 @@ fn require_admin(auth: &AuthUser) -> Result<(), AppError> {
     Ok(())
 }
 
-/* ── Disponibilidad ────────────────────── */
+fn resolve_public_base_url(headers: &HeaderMap) -> String {
+    if let Some(origin) = headers.get("origin").and_then(|value| value.to_str().ok()) {
+        let trimmed = origin.trim_end_matches('/');
+        if !trimmed.is_empty() && !trimmed.contains("localhost") {
+            return trimmed.to_string();
+        }
+    }
 
-#[derive(Serialize, ToSchema)]
-pub struct DomainAvailability {
-    pub domain: String,
-    pub available: bool,
+    if let Ok(env_url) = std::env::var("GLORY_PUBLIC_URL") {
+        return env_url.trim_end_matches('/').to_string();
+    }
+
+    "http://localhost:5173".to_string()
 }
+
+fn normalize_domain(raw: &str) -> Result<String, AppError> {
+    let value = raw
+        .trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_matches('/')
+        .to_ascii_lowercase();
+    if value.contains('/') || value.contains(' ') || !value.contains('.') {
+        return Err(AppError::Validation("Dominio inválido".into()));
+    }
+    Ok(value)
+}
+
+fn domain_tld(domain: &str) -> Result<String, AppError> {
+    domain
+        .rsplit('.')
+        .next()
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .ok_or_else(|| AppError::Validation("Dominio sin TLD válido".into()))
+}
+
+fn base_domain_cost_cents(tld: &str) -> Result<i32, AppError> {
+    match tld {
+        "com" => Ok(1200),
+        "net" | "org" => Ok(1400),
+        "studio" => Ok(3500),
+        "io" => Ok(4500),
+        _ => Err(AppError::Validation(format!(
+            "El TLD .{tld} aún no está habilitado para checkout automático"
+        ))),
+    }
+}
+
+fn domain_price_quote(domain: String, available: bool) -> Result<DomainPriceQuote, AppError> {
+    let tld = domain_tld(&domain)?;
+    let base_cost_cents = base_domain_cost_cents(&tld)?;
+    let price_cents = ((base_cost_cents * 105) + 99) / 100;
+    Ok(DomainPriceQuote {
+        domain,
+        available,
+        tld,
+        base_cost_cents,
+        price_cents,
+    })
+}
+
+/* ── Disponibilidad ────────────────────── */
 
 pub async fn check_domain_availability(
     State(state): State<AppState>,
     _auth: AuthUser,
     Path(domain): Path<String>,
-) -> Result<Json<DomainAvailability>, AppError> {
+) -> Result<Json<DomainPriceQuote>, AppError> {
+    let normalized = normalize_domain(&domain)?;
     let svc = contabo(&state)?;
     let available = svc
-        .check_domain_availability(&domain)
+        .check_domain_availability(&normalized)
         .await
         .map_err(AppError::Internal)?;
 
-    Ok(Json(DomainAvailability { domain, available }))
+    Ok(Json(domain_price_quote(normalized, available)?))
+}
+
+pub async fn list_domain_orders(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<Vec<DomainOrder>>, AppError> {
+    let orders = if auth.effective_role == UserRole::Admin {
+        DomainOrderRepository::list_all(&state.pool).await?
+    } else {
+        DomainOrderRepository::list_by_user(&state.pool, auth.user_id).await?
+    };
+    Ok(Json(orders))
+}
+
+pub async fn create_domain_checkout(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    headers: HeaderMap,
+    Json(body): Json<CreateDomainCheckoutRequest>,
+) -> Result<(StatusCode, Json<DomainCheckoutResponse>), AppError> {
+    body.validate()
+        .map_err(|error| AppError::Validation(error.to_string()))?;
+    let normalized = normalize_domain(&body.domain)?;
+    let svc = contabo(&state)?;
+    let available = svc
+        .check_domain_availability(&normalized)
+        .await
+        .map_err(AppError::Internal)?;
+    if !available {
+        return Err(AppError::Validation("El dominio no está disponible".into()));
+    }
+
+    let quote = domain_price_quote(normalized.clone(), true)?;
+    let user = UserRepository::find_by_id(&state.pool, auth.user_id)
+        .await?
+        .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+    let order = DomainOrderRepository::create(
+        &state.pool,
+        CreateDomainOrderParams {
+            user_id: auth.user_id,
+            domain: &quote.domain,
+            tld: &quote.tld,
+            base_cost_cents: quote.base_cost_cents,
+            price_cents: quote.price_cents,
+        },
+    )
+    .await?;
+
+    let stripe_key = state
+        .stripe_secret_key
+        .as_deref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Stripe no configurado".into()))?;
+    let base_url = resolve_public_base_url(&headers);
+    let success_url = format!("{base_url}/panel?seccion=dominios&domain=success");
+    let cancel_url = format!("{base_url}/panel?seccion=dominios&domain=cancelled");
+    let (session_id, checkout_url) =
+        DomainStripeService::create_checkout_session(&DomainCheckoutParams {
+            http_client: &state.http_client,
+            stripe_key,
+            order_id: order.id,
+            domain: &order.domain,
+            amount_cents: order.price_cents,
+            customer_email: &user.email,
+            success_url: &success_url,
+            cancel_url: &cancel_url,
+        })
+        .await?;
+    let order =
+        DomainOrderRepository::set_checkout_session(&state.pool, order.id, &session_id).await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(DomainCheckoutResponse {
+            order,
+            checkout_url,
+        }),
+    ))
 }
 
 /* ── Listar dominios ───────────────────── */
@@ -400,6 +539,8 @@ pub fn domain_routes() -> Router<AppState> {
             "/hosting/domains/check/:domain",
             get(check_domain_availability),
         )
+        .route("/hosting/domain-orders", get(list_domain_orders))
+        .route("/hosting/domains/checkout", post(create_domain_checkout))
         .route("/hosting/domains", get(list_domains).post(order_domain))
         .route(
             "/hosting/domains/:domain",

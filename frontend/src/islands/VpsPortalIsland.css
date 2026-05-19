@@ -342,28 +342,6 @@
     position: relative;
 }
 
-.vpsPrecioCardDestacado {
-    border-color: var(--brand-primary);
-    background: var(--bg-accent);
-}
-
-.vpsPrecioRecomendado {
-    position: absolute;
-    top: -0.75rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--brand-primary);
-    background: var(--bg-primary);
-    padding: 0.2rem 0.75rem;
-    border-radius: var(--radius-full);
-    border: 1px solid var(--brand-primary);
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
 .vpsPrecioNombre {
     font-size: var(--text-base);
     font-weight: 600;

@@ -69,7 +69,6 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     /* [104A-16] Hosting ya no pasa por órdenes genéricas.
      * El dominio opcional se envía al flujo self-service real de suscripciones. */
     const [hostingDomain, setHostingDomain] = useState('');
-    const [projectDescription, setProjectDescription] = useState('');
     const [checkoutPendiente, setCheckoutPendiente] = useState<CheckoutPendiente | null>(null);
     const isHosting = servicioSlug === 'hosting';
     const isVps = servicioSlug === 'vps';
@@ -107,7 +106,6 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             const response = await apiSelfSubscribeVps({
                 tier: normalizeVpsTier(plan.id),
                 hostname: hostingDomain.trim() || undefined,
-                notes: projectDescription.trim() || undefined,
             });
             localStorage.setItem(PANEL_TAB_KEY, 'hosting');
             window.location.href = response.checkout_url;
@@ -126,7 +124,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
                 service_slug: servicioSlug,
                 plan_slug: plan.id,
                 payment_mode: paymentMode,
-                project_description: isVps ? projectDescription.trim() || undefined : undefined,
+                project_description: undefined,
                 client_notes: undefined,
             });
 
@@ -187,11 +185,6 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
          * sin este guard el modal intenta crear la orden y recibe 403. */
         if (logueado && user?.effectiveRole === 'employee') {
             setErrorMsg('La compra publica solo se puede iniciar con una sesion de cliente. Si estas probando con un empleado, cambia a cliente o usa una cuenta cliente.');
-            return;
-        }
-
-        if (isVps && projectDescription.trim().length < 10) {
-            setErrorMsg('Describe el uso previsto del VPS para continuar con la solicitud.');
             return;
         }
 
@@ -263,8 +256,6 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         setPaymentMode,
         hostingDomain,
         setHostingDomain,
-        projectDescription,
-        setProjectDescription,
         checkoutPendiente,
         isHosting,
         isVps,

@@ -27,6 +27,7 @@ pub struct VpsCheckoutParams<'a> {
     pub subscription_id: Uuid,
     pub tier_name: &'a str,
     pub amount_cents: i32,
+    pub setup_fee_cents: i32,
     pub customer_email: &'a str,
     pub success_url: &'a str,
     pub cancel_url: &'a str,
@@ -55,7 +56,7 @@ impl VpsStripeService {
         }
 
         let tier_name = humanize_tier_name(params.tier_name);
-        let form = vec![
+        let mut form = vec![
             ("mode", "subscription".to_string()),
             ("line_items[0][price_data][currency]", "usd".to_string()),
             (
@@ -68,7 +69,7 @@ impl VpsStripeService {
             ),
             (
                 "line_items[0][price_data][product_data][description]",
-                "Servidor VPS dedicado con aprobación manual antes del provisioning".to_string(),
+                "Servidor VPS dedicado con entrega verificada antes del provisioning".to_string(),
             ),
             (
                 "line_items[0][price_data][recurring][interval]",
@@ -92,6 +93,25 @@ impl VpsStripeService {
                 params.subscription_id.to_string(),
             ),
         ];
+
+        if params.setup_fee_cents > 0 {
+            form.extend([
+                ("line_items[1][price_data][currency]", "usd".to_string()),
+                (
+                    "line_items[1][price_data][unit_amount]",
+                    params.setup_fee_cents.to_string(),
+                ),
+                (
+                    "line_items[1][price_data][product_data][name]",
+                    format!("{tier_name} — puesta en marcha"),
+                ),
+                (
+                    "line_items[1][price_data][product_data][description]",
+                    "Cargo inicial de configuración del VPS".to_string(),
+                ),
+                ("line_items[1][quantity]", "1".to_string()),
+            ]);
+        }
 
         let response = params
             .http_client

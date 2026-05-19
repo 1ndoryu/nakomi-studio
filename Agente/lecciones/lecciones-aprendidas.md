@@ -1,5 +1,9 @@
 # Lecciones Aprendidas
 
+## Dominios — pago no equivale a registro inmediato
+- Un checkout de dominio no debe llamar a Contabo `order_domain` si faltan handles WHOIS reales del cliente; registrar con datos incompletos crea deuda legal/operativa.
+- El boundary seguro es separar pago (`domain_orders.paid_pending_registration`) de registro final, y mostrar ese estado en panel hasta completar contactos/nameservers válidos.
+
 ## Hosting Coolify — bootstrap route estable
 - En hostings compose de Coolify, el preview `sslip.io` no debe depender del FQDN implícito ni del `server_uuid` expuesto al frontend.
 - El host bootstrap debe derivarse del nombre persistido del servicio (`coolify_site_name`) y el compose debe generar labels Traefik explícitas; si no, el panel puede mostrar una URL válida en apariencia que responde `404 page not found`.

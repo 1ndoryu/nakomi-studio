@@ -18,8 +18,8 @@ use crate::models::{
 };
 use crate::repositories::{OrderRepository, PaymentRepository, UserRepository};
 use crate::services::{
-    is_checkout_bypass_email, AuditService, EmailService, HostingStripeService, PaymentService,
-    VpsStripeService,
+    is_checkout_bypass_email, AuditService, DomainStripeService, EmailService,
+    HostingStripeService, PaymentService, VpsStripeService,
 };
 use crate::AppState;
 
@@ -279,6 +279,8 @@ pub async fn stripe_webhook(
         &event["data"],
     )
     .await?;
+
+    DomainStripeService::handle_webhook(&state.pool, event_type, &event["data"]).await?;
 
     /* [064A-73] Audit: webhook procesado exitosamente */
     AuditService::log(

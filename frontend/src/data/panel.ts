@@ -67,6 +67,12 @@ const TABS_CLIENT: TabConfig[] = [
         id: 'hosting',
         label: 'Mi Hosting',
         descripcion: 'Estado de tus suscripciones de hosting, plan activo y eventos recientes.'
+    },
+    /* [195A-1] Dominios self-service: clientes pueden cotizar y comprar dominios con checkout. */
+    {
+        id: 'dominios',
+        label: 'Mis Dominios',
+        descripcion: 'Cotiza dominios, revisa disponibilidad y consulta tus compras pendientes de registro.'
     }
 ];
 

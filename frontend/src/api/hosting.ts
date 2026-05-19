@@ -462,9 +462,15 @@ export interface PublicVpsPlan {
     display_name: string;
     description: string;
     monthly_price_cents: number;
+    setup_fee_cents: number;
     cpu_cores: number;
     ram_mb: number;
     disk_mb: number;
+    storage_type: string;
+    storage_options: string[];
+    port_speed_mbps: number;
+    bandwidth_label: string;
+    snapshot_count: number;
     region: string;
     features: string[];
     approval_required: boolean;
@@ -496,7 +502,6 @@ export interface VpsSubscription {
 export interface SelfSubscribeVpsRequest {
     tier: string;
     hostname?: string;
-    notes?: string;
 }
 
 export interface SelfSubscribeVpsResponse {
@@ -573,6 +578,22 @@ export interface DomainNameserver {
 export interface DomainAvailability {
     domain: string;
     available: boolean;
+    tld: string;
+    base_cost_cents: number;
+    price_cents: number;
+}
+
+export interface DomainOrder {
+    id: string;
+    user_id: string;
+    domain: string;
+    tld: string;
+    status: string;
+    base_cost_cents: number;
+    price_cents: number;
+    stripe_session_id: string | null;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface DnsZone {
@@ -622,6 +643,19 @@ export interface HandlePhone {
 export async function apiCheckDomainAvailability(domain: string): Promise<DomainAvailability> {
     const { data } = await axiosInstance.get<DomainAvailability>(
         `/api/hosting/domains/check/${encodeURIComponent(domain)}`,
+    );
+    return data;
+}
+
+export async function apiListDomainOrders(): Promise<DomainOrder[]> {
+    const { data } = await axiosInstance.get<DomainOrder[]>('/api/hosting/domain-orders');
+    return data;
+}
+
+export async function apiCreateDomainCheckout(domain: string): Promise<{order: DomainOrder; checkout_url: string}> {
+    const { data } = await axiosInstance.post<{order: DomainOrder; checkout_url: string}>(
+        '/api/hosting/domains/checkout',
+        { domain },
     );
     return data;
 }

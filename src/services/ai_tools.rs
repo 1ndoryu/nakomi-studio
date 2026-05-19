@@ -138,8 +138,7 @@ fn vps_tool_defs() -> Value {
                     "type": "object",
                     "properties": {
                         "tier": { "type": "string", "description": "Slug del tier VPS, por ejemplo vps1, vps2 o vps3" },
-                        "hostname": { "type": "string", "description": "Hostname opcional solicitado por el cliente" },
-                        "notes": { "type": "string", "description": "Uso previsto, stack o notas operativas del cliente" }
+                        "hostname": { "type": "string", "description": "Hostname opcional solicitado por el cliente" }
                     },
                     "required": ["tier"]
                 }
@@ -745,9 +744,15 @@ fn vps_plan_json(plan: &VpsPlanConfig) -> Value {
         "display_name": plan.display_name,
         "description": plan.description,
         "monthly_price_cents": plan.monthly_price_cents,
+        "setup_fee_cents": plan.setup_fee_cents,
         "cpu_cores": plan.cpu_cores,
         "ram_mb": plan.ram_mb,
         "disk_mb": plan.disk_mb,
+        "storage_type": plan.storage_type,
+        "storage_options": plan.storage_options,
+        "port_speed_mbps": plan.port_speed_mbps,
+        "bandwidth_label": plan.bandwidth_label,
+        "snapshot_count": plan.snapshot_count,
         "region": plan.region,
         "approval_required": plan.approval_required,
     })
@@ -864,6 +869,7 @@ async fn exec_create_vps_checkout(ctx: &ToolExecutionContext<'_>, args: &Value) 
     let checkout_url = match create_chat_vps_checkout_url(
         ctx.http_client,
         stripe_key,
+        &plan_config,
         &subscription,
         &client_email,
     )
@@ -882,15 +888,9 @@ fn parse_vps_checkout_request(args: &Value) -> Result<SelfSubscribeVpsRequest, T
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToString::to_string);
-    let notes = args["notes"]
-        .as_str()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToString::to_string);
     let req = SelfSubscribeVpsRequest {
         tier: args["tier"].as_str().unwrap_or("").trim().to_string(),
         hostname,
-        notes,
     };
     req.validate()
         .map(|()| req)
@@ -924,7 +924,7 @@ async fn create_chat_vps_subscription(
             client_email,
             tier_name: &req.tier,
             requested_hostname: req.hostname.as_deref(),
-            client_notes: req.notes.as_deref(),
+            client_notes: None,
             monthly_price_cents: plan_config.monthly_price_cents,
         },
     )
@@ -983,6 +983,7 @@ async fn activate_chat_vps_bypass(
 async fn create_chat_vps_checkout_url(
     http_client: &reqwest::Client,
     stripe_key: &str,
+    plan_config: &VpsPlanConfig,
     subscription: &VpsSubscription,
     client_email: &str,
 ) -> Result<String, ToolExecResult> {
@@ -995,6 +996,7 @@ async fn create_chat_vps_checkout_url(
         subscription_id: subscription.id,
         tier_name: &subscription.tier_name,
         amount_cents: subscription.monthly_price_cents,
+        setup_fee_cents: plan_config.setup_fee_cents,
         customer_email: client_email,
         success_url: &success_url,
         cancel_url: &cancel_url,

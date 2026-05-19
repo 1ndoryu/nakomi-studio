@@ -28,6 +28,7 @@ const NosotrosIsland = lazy(() => import('./islands/NosotrosIsland').then(m => (
 const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
 const SolucionHostingWordPressIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingWordPressIsland})));
 const SolucionVpsIsland = lazy(() => import('./islands/SolucionVpsIsland').then(m => ({default: m.SolucionVpsIsland})));
+const VpsConfiguradorIsland = lazy(() => import('./islands/VpsConfiguradorIsland').then(m => ({default: m.VpsConfiguradorIsland})));
 
 const UsuarioPublicoIsland = lazy(() => import('./islands/UsuarioPublicoIsland').then(m => ({default: m.UsuarioPublicoIsland})));
 /* [095A-5] Página legal requerida por el footer */
@@ -186,6 +187,8 @@ function App() {
                     <Route path="/soluciones/hosting-wordpress" element={<Suspense fallback={null}><SolucionHostingWordPressIsland /></Suspense>} />
                     <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />
                     <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionVpsIsland /></Suspense>} />
+                    <Route path="/soluciones/vps/configurar" element={<Suspense fallback={null}><VpsConfiguradorIsland /></Suspense>} />
+                    <Route path="/soluciones/vps/configurar/:tier" element={<Suspense fallback={null}><VpsConfiguradorIsland /></Suspense>} />
                     {/* [064A-5] Ruta /contacto eliminada — todos los CTAs abren el chat */}
                     {/* [095A-5] Política de privacidad accesible desde el footer */}
                     <Route path="/politica-privacidad" element={<Suspense fallback={null}><PrivacidadIsland /></Suspense>} />

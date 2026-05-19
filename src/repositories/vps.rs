@@ -158,8 +158,10 @@ impl VpsRepository {
     ) -> Result<Option<VpsPlanConfig>, AppError> {
         sqlx::query_as::<_, VpsPlanConfig>(
             r"SELECT id, tier_name, display_name, description, contabo_product_id,
-                      base_cost_cents, monthly_price_cents, cpu_cores, ram_mb, disk_mb,
-                      region, is_active, approval_required, created_at, updated_at
+                     base_cost_cents, monthly_price_cents, setup_fee_cents,
+                     cpu_cores, ram_mb, disk_mb, storage_type, storage_options,
+                     port_speed_mbps, bandwidth_label, snapshot_count,
+                     region, is_active, approval_required, created_at, updated_at
                FROM vps_plan_configs
                WHERE tier_name = $1",
         )
@@ -172,8 +174,10 @@ impl VpsRepository {
     pub async fn list_plan_configs(pool: &PgPool) -> Result<Vec<VpsPlanConfig>, AppError> {
         sqlx::query_as::<_, VpsPlanConfig>(
             r"SELECT id, tier_name, display_name, description, contabo_product_id,
-                      base_cost_cents, monthly_price_cents, cpu_cores, ram_mb, disk_mb,
-                      region, is_active, approval_required, created_at, updated_at
+                     base_cost_cents, monthly_price_cents, setup_fee_cents,
+                     cpu_cores, ram_mb, disk_mb, storage_type, storage_options,
+                     port_speed_mbps, bandwidth_label, snapshot_count,
+                     region, is_active, approval_required, created_at, updated_at
                FROM vps_plan_configs
                WHERE is_active = TRUE
                ORDER BY monthly_price_cents ASC",

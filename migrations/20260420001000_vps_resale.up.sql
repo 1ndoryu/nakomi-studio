@@ -8,9 +8,15 @@ CREATE TABLE vps_plan_configs (
     contabo_product_id VARCHAR(20) NOT NULL,
     base_cost_cents INT NOT NULL,
     monthly_price_cents INT NOT NULL,
+    setup_fee_cents INT NOT NULL DEFAULT 0,
     cpu_cores INT NOT NULL,
     ram_mb INT NOT NULL,
     disk_mb INT NOT NULL,
+    storage_type VARCHAR(20) NOT NULL DEFAULT 'NVMe',
+    storage_options TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    port_speed_mbps INT NOT NULL DEFAULT 200,
+    bandwidth_label VARCHAR(120) NOT NULL DEFAULT 'Tráfico ilimitado con uso justo',
+    snapshot_count INT NOT NULL DEFAULT 1,
     region VARCHAR(20) NOT NULL DEFAULT 'EU',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     approval_required BOOLEAN NOT NULL DEFAULT TRUE,
@@ -19,12 +25,14 @@ CREATE TABLE vps_plan_configs (
 );
 
 INSERT INTO vps_plan_configs
-    (tier_name, display_name, description, contabo_product_id, base_cost_cents, monthly_price_cents, cpu_cores, ram_mb, disk_mb, region)
+    (tier_name, display_name, description, contabo_product_id, base_cost_cents, monthly_price_cents, setup_fee_cents, cpu_cores, ram_mb, disk_mb, storage_type, storage_options, port_speed_mbps, bandwidth_label, snapshot_count, region)
 VALUES
-    ('vps1', 'Cloud VPS 1', 'Instancia dedicada para proyectos pequeños, automatizaciones y entornos privados con acceso root.', 'V91', 550, 688, 4, 8192, 204800, 'EU'),
-    ('vps2', 'Cloud VPS 2', 'Servidor balanceado para SaaS liviano, APIs, staging persistente y sitios con más margen operativo.', 'V92', 990, 1238, 6, 16384, 409600, 'EU'),
-    ('vps3', 'Cloud VPS 3', 'Nodo dedicado para cargas medianas, workers concurrentes y tiendas o apps con tráfico sostenido.', 'V93', 1650, 2063, 8, 30720, 819200, 'EU'),
-    ('vps4', 'Cloud VPS 4', 'Capacidad dedicada para cargas intensivas, pipelines pesados y aplicaciones con mucha memoria.', 'V94', 2970, 3713, 12, 49152, 1638400, 'EU');
+    ('vps1', 'Cloud VPS 10', 'Entrada dedicada para automatizaciones, paneles internos y servicios pequeños con acceso root.', 'V91', 450, 473, 450, 4, 8192, 76800, 'NVMe', ARRAY['75 GB NVMe', '150 GB SSD'], 200, 'Tráfico ilimitado con uso justo', 1, 'EU'),
+    ('vps2', 'Cloud VPS 20', 'Servidor balanceado para APIs, SaaS liviano y cargas sostenidas con más memoria.', 'V92', 840, 882, 0, 6, 12288, 102400, 'NVMe', ARRAY['100 GB NVMe', '200 GB SSD'], 1000, 'Tráfico ilimitado con uso justo', 2, 'EU'),
+    ('vps3', 'VPS 30', 'Nodo dedicado para workloads medianos, workers concurrentes y aplicaciones con tráfico constante.', 'V93', 1680, 1764, 0, 8, 24576, 204800, 'NVMe', ARRAY['200 GB NVMe', '400 GB SSD'], 1000, 'Tráfico ilimitado con uso justo', 3, 'EU'),
+    ('vps4', 'VPS 40', 'Capacidad dedicada para pipelines pesados, bases de datos exigentes y servicios con mucha memoria.', 'V94', 3000, 3150, 0, 12, 49152, 256000, 'NVMe', ARRAY['250 GB NVMe', '500 GB SSD'], 1000, 'Tráfico ilimitado con uso justo', 3, 'EU'),
+    ('vps5', 'VPS 50', 'Servidor de alta memoria para cargas intensivas, colas y stacks con varios servicios.', 'V95', 4450, 4673, 0, 16, 65536, 307200, 'NVMe', ARRAY['300 GB NVMe', '600 GB SSD'], 1000, 'Tráfico ilimitado con uso justo', 3, 'EU'),
+    ('vps6', 'VPS 60', 'Capacidad máxima del catálogo VPS para workloads pesados y crecimiento sostenido.', 'V96', 5880, 6174, 0, 18, 98304, 358400, 'NVMe', ARRAY['350 GB NVMe', '700 GB SSD'], 1000, 'Tráfico ilimitado con uso justo', 3, 'EU');
 
 CREATE TABLE vps_subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

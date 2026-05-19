@@ -100,7 +100,11 @@ fn generate_domain_verification_token() -> String {
 
 fn build_domain_verification_state(
     domain: Option<&str>,
-) -> (String, Option<String>, Option<chrono::DateTime<chrono::Utc>>) {
+) -> (
+    String,
+    Option<String>,
+    Option<chrono::DateTime<chrono::Utc>>,
+) {
     if domain.is_some() {
         (
             DOMAIN_STATUS_PENDING.to_string(),
@@ -227,7 +231,8 @@ async fn resolve_domain_activation(
     let fallback_message =
         "Dominio verificado, pero la activación en hosting quedó pendiente. Usa refresh cuando el servicio esté listo.";
 
-    let Some(plan_config) = HostingRepository::get_plan_config(&state.pool, &sub.plan).await? else {
+    let Some(plan_config) = HostingRepository::get_plan_config(&state.pool, &sub.plan).await?
+    else {
         return Ok((false, DOMAIN_STATUS_VERIFIED, pending_message.to_string()));
     };
     let Some(update) = compose_update_from_subscription(sub, Some(domain), &plan_config) else {
@@ -267,9 +272,7 @@ async fn mark_domain_active(
     )
     .await
     {
-        tracing::warn!(
-            "No se pudo marcar dominio activo para {subscription_id}: {error}"
-        );
+        tracing::warn!("No se pudo marcar dominio activo para {subscription_id}: {error}");
     }
 }
 
@@ -487,13 +490,9 @@ pub async fn list_subscriptions(
             let mut repaired = Vec::new();
             for sub in subs.into_iter().filter(|s| s.user_id == Some(auth.user_id)) {
                 repaired.push(
-                    maybe_backfill_test_hosting_access(
-                        &state,
-                        sub,
-                        "test_checkout_backfill_list",
-                    )
-                    .await?
-                    .into(),
+                    maybe_backfill_test_hosting_access(&state, sub, "test_checkout_backfill_list")
+                        .await?
+                        .into(),
                 );
             }
             repaired
@@ -534,11 +533,8 @@ pub async fn create_subscription(
     let price = plan_config.monthly_price_cents;
     let storage = plan_config.storage_limit_mb;
     let requested_domain = normalize_domain(req.domain.as_deref());
-    let (
-        domain_verification_status,
-        domain_verification_token,
-        domain_verified_at,
-    ) = build_domain_verification_state(requested_domain.as_deref());
+    let (domain_verification_status, domain_verification_token, domain_verified_at) =
+        build_domain_verification_state(requested_domain.as_deref());
 
     let sub = HostingRepository::create(
         &state.pool,
@@ -620,11 +616,8 @@ pub async fn subscribe_self(
     let client_name = user.display_name.unwrap_or_else(|| user.email.clone());
     let client_email = user.email;
     let requested_domain = normalize_domain(req.domain.as_deref());
-    let (
-        domain_verification_status,
-        domain_verification_token,
-        domain_verified_at,
-    ) = build_domain_verification_state(requested_domain.as_deref());
+    let (domain_verification_status, domain_verification_token, domain_verified_at) =
+        build_domain_verification_state(requested_domain.as_deref());
 
     /* Crear la suscripción en estado pending */
     let sub = HostingRepository::create(
@@ -768,7 +761,10 @@ async fn maybe_backfill_test_hosting_access(
     sub: crate::models::HostingSubscription,
     source: &str,
 ) -> Result<crate::models::HostingSubscription, AppError> {
-    if sub.status != "active" || sub.server_uuid.is_some() || !is_checkout_bypass_email(&sub.client_email) {
+    if sub.status != "active"
+        || sub.server_uuid.is_some()
+        || !is_checkout_bypass_email(&sub.client_email)
+    {
         return Ok(sub);
     }
 
@@ -812,7 +808,8 @@ pub async fn get_subscription(
         return Err(AppError::Forbidden("Sin permisos".into()));
     }
 
-    let sub = maybe_backfill_test_hosting_access(&state, sub, "test_checkout_backfill_detail").await?;
+    let sub =
+        maybe_backfill_test_hosting_access(&state, sub, "test_checkout_backfill_detail").await?;
 
     Ok(Json(sub.into()))
 }
@@ -974,19 +971,16 @@ pub async fn update_subscription(
         }
     }
 
-    let (
-        next_domain_verification_status,
-        next_domain_verification_token,
-        next_domain_verified_at,
-    ) = if domain_changed {
-        build_domain_verification_state(requested_domain.as_deref())
-    } else {
-        (
-            sub.domain_verification_status.clone(),
-            sub.domain_verification_token.clone(),
-            sub.domain_verified_at,
-        )
-    };
+    let (next_domain_verification_status, next_domain_verification_token, next_domain_verified_at) =
+        if domain_changed {
+            build_domain_verification_state(requested_domain.as_deref())
+        } else {
+            (
+                sub.domain_verification_status.clone(),
+                sub.domain_verification_token.clone(),
+                sub.domain_verified_at,
+            )
+        };
 
     let updated = HostingRepository::update(
         &state.pool,
@@ -1589,7 +1583,10 @@ pub async fn delete_deployment(
     if let Some(cfg) = state.coolify_config_vps1.as_ref() {
         match CoolifyService::list_services(&state.http_client, cfg).await {
             Ok(services) => {
-                if let Some(service) = services.into_iter().find(|service| service.uuid == deployment_uuid) {
+                if let Some(service) = services
+                    .into_iter()
+                    .find(|service| service.uuid == deployment_uuid)
+                {
                     target_name = Some(service.name);
                     target_config = Some(cfg);
                 }
@@ -1609,7 +1606,10 @@ pub async fn delete_deployment(
         if let Some(cfg) = state.coolify_config.as_ref() {
             match CoolifyService::list_services(&state.http_client, cfg).await {
                 Ok(services) => {
-                    if let Some(service) = services.into_iter().find(|service| service.uuid == deployment_uuid) {
+                    if let Some(service) = services
+                        .into_iter()
+                        .find(|service| service.uuid == deployment_uuid)
+                    {
                         target_name = Some(service.name);
                         target_config = Some(cfg);
                     }
@@ -1655,7 +1655,8 @@ pub async fn delete_deployment(
         )));
     }
 
-    CoolifyService::delete_service(&state.http_client, target_config, &deployment_uuid, true).await?;
+    CoolifyService::delete_service(&state.http_client, target_config, &deployment_uuid, true)
+        .await?;
     tracing::info!(
         "[deployments] Despliegue huérfano {} ({}) eliminado desde el panel admin.",
         target_name,
@@ -1987,35 +1988,38 @@ pub async fn verify_domain(
     let txt_host = domain_verification_txt_host(domain);
 
     if sub.domain_verification_status == DOMAIN_STATUS_ACTIVE {
-        return Ok(Json(domain_verification_response(&DomainVerificationResponse {
-            verified: true,
-            applied: true,
-            status: DOMAIN_STATUS_ACTIVE,
-            domain,
-            txt_host: &txt_host,
-            txt_value: sub.domain_verification_token.as_deref(),
-            txt_records: &[],
-            message: "El dominio ya está verificado y activo en el hosting.",
-        })));
+        return Ok(Json(domain_verification_response(
+            &DomainVerificationResponse {
+                verified: true,
+                applied: true,
+                status: DOMAIN_STATUS_ACTIVE,
+                domain,
+                txt_host: &txt_host,
+                txt_value: sub.domain_verification_token.as_deref(),
+                txt_records: &[],
+                message: "El dominio ya está verificado y activo en el hosting.",
+            },
+        )));
     }
 
-    let expected_token = sub
-        .domain_verification_token
-        .as_deref()
-        .ok_or_else(|| AppError::Validation("No hay un token de verificación pendiente para este dominio".into()))?;
+    let expected_token = sub.domain_verification_token.as_deref().ok_or_else(|| {
+        AppError::Validation("No hay un token de verificación pendiente para este dominio".into())
+    })?;
     let txt_records = match lookup_txt_records(&txt_host).await {
         Ok(records) => records,
         Err(error) => {
-            return Ok(Json(domain_verification_response(&DomainVerificationResponse {
-                verified: false,
-                applied: false,
-                status: &sub.domain_verification_status,
-                domain,
-                txt_host: &txt_host,
-                txt_value: Some(expected_token),
-                txt_records: &[],
-                message: &error,
-            })));
+            return Ok(Json(domain_verification_response(
+                &DomainVerificationResponse {
+                    verified: false,
+                    applied: false,
+                    status: &sub.domain_verification_status,
+                    domain,
+                    txt_host: &txt_host,
+                    txt_value: Some(expected_token),
+                    txt_records: &[],
+                    message: &error,
+                },
+            )));
         }
     };
 
@@ -2063,16 +2067,18 @@ pub async fn verify_domain(
         tracing::warn!("Error registrando evento domain_verified para {id}: {error}");
     }
 
-    Ok(Json(domain_verification_response(&DomainVerificationResponse {
-        verified: true,
-        applied,
-        status: &updated.domain_verification_status,
-        domain,
-        txt_host: &txt_host,
-        txt_value: Some(expected_token),
-        txt_records: &txt_records,
-        message: &message,
-    })))
+    Ok(Json(domain_verification_response(
+        &DomainVerificationResponse {
+            verified: true,
+            applied,
+            status: &updated.domain_verification_status,
+            domain,
+            txt_host: &txt_host,
+            txt_value: Some(expected_token),
+            txt_records: &txt_records,
+            message: &message,
+        },
+    )))
 }
 
 /* [114A-1] Rotación de credenciales SFTP: genera nueva contraseña, actualiza BD y
@@ -2512,11 +2518,8 @@ pub async fn admin_test_subscribe(
         .await?
         .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
     let requested_domain = normalize_domain(req.domain.as_deref());
-    let (
-        domain_verification_status,
-        domain_verification_token,
-        domain_verified_at,
-    ) = build_domain_verification_state(requested_domain.as_deref());
+    let (domain_verification_status, domain_verification_token, domain_verified_at) =
+        build_domain_verification_state(requested_domain.as_deref());
 
     let sub = HostingRepository::create(
         &state.pool,
@@ -2788,13 +2791,18 @@ mod tests {
         let (status, token, verified_at) = build_domain_verification_state(Some("example.com"));
 
         assert_eq!(status, DOMAIN_STATUS_PENDING);
-        assert!(token.as_deref().is_some_and(|value| value.starts_with("nakomi-verification=")));
+        assert!(token
+            .as_deref()
+            .is_some_and(|value| value.starts_with("nakomi-verification=")));
         assert!(verified_at.is_none());
     }
 
     #[test]
     fn domain_verification_txt_host_uses_expected_prefix() {
-        assert_eq!(domain_verification_txt_host("example.com"), "_nakomi-verify.example.com");
+        assert_eq!(
+            domain_verification_txt_host("example.com"),
+            "_nakomi-verify.example.com"
+        );
     }
 
     #[test]

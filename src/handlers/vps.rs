@@ -54,33 +54,49 @@ fn resolve_public_base_url(headers: &HeaderMap) -> String {
 
 fn vps_plan_features(config: &VpsPlanConfig) -> Vec<String> {
     let ram_gb = config.ram_mb / 1024;
-    let disk_gb = config.disk_mb / 1024;
+    let storage_summary = if config.storage_options.is_empty() {
+        format!("{} GB {}", config.disk_mb / 1024, config.storage_type)
+    } else {
+        config.storage_options.join(" o ")
+    };
     vec![
         format!("{} vCPU dedicados", config.cpu_cores),
         format!("{} GB RAM", ram_gb),
-        format!("{} GB SSD", disk_gb),
+        storage_summary,
+        format!("Puerto de {} Mbit/s", config.port_speed_mbps),
+        config.bandwidth_label.clone(),
+        format!(
+            "{} snapshot{} incluido{}",
+            config.snapshot_count,
+            if config.snapshot_count == 1 { "" } else { "s" },
+            if config.snapshot_count == 1 { "" } else { "s" }
+        ),
         "Acceso root y SSH".to_string(),
         "Hostname y MOTD white-label".to_string(),
-        "Aprobación manual anti-fraude".to_string(),
-        "Bootstrap inicial con Docker + firewall".to_string(),
+        "Entrega verificada antes del provisioning".to_string(),
     ]
 }
 
 fn public_plan_from_config(config: VpsPlanConfig) -> PublicVpsPlan {
-    let recommended = config.tier_name == "vps2";
     let features = vps_plan_features(&config);
     PublicVpsPlan {
         tier_name: config.tier_name,
         display_name: config.display_name,
         description: config.description,
         monthly_price_cents: config.monthly_price_cents,
+        setup_fee_cents: config.setup_fee_cents,
         cpu_cores: config.cpu_cores,
         ram_mb: config.ram_mb,
         disk_mb: config.disk_mb,
+        storage_type: config.storage_type,
+        storage_options: config.storage_options,
+        port_speed_mbps: config.port_speed_mbps,
+        bandwidth_label: config.bandwidth_label,
+        snapshot_count: config.snapshot_count,
         region: config.region,
         features,
         approval_required: config.approval_required,
-        recommended,
+        recommended: false,
     }
 }
 
@@ -276,7 +292,7 @@ pub async fn subscribe_self(
             client_email: &client_email,
             tier_name: &req.tier,
             requested_hostname: req.hostname.as_deref(),
-            client_notes: req.notes.as_deref(),
+            client_notes: None,
             monthly_price_cents: plan_config.monthly_price_cents,
         },
     )
@@ -338,6 +354,7 @@ pub async fn subscribe_self(
         subscription_id: subscription.id,
         tier_name: &subscription.tier_name,
         amount_cents: subscription.monthly_price_cents,
+        setup_fee_cents: plan_config.setup_fee_cents,
         customer_email: &subscription.client_email,
         success_url: &success_url,
         cancel_url: &cancel_url,

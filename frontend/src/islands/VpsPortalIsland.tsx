@@ -20,15 +20,15 @@ interface Feature { icono: ElementType; titulo: string; desc: string; }
 
 const FEATURES: Feature[] = [
     {icono: Cpu, titulo: 'Recursos dedicados', desc: 'CPU, RAM y NVMe SSD dedicados. Sin compartir nodo con otros clientes.'},
-    {icono: Shield, titulo: 'Aprobación manual', desc: 'Revisamos cada compra antes de provisionar. Menos fraude, más calidad.'},
-    {icono: HardDrive, titulo: 'Disco NVMe', desc: 'Storage rápido para bases de datos, colas, workers y despliegues.'},
+    {icono: Shield, titulo: 'Entrega verificada', desc: 'Provisionamos el servidor después del pago y enviamos IP, usuario y acceso inicial.'},
+    {icono: HardDrive, titulo: 'NVMe o SSD', desc: 'Storage coherente con el catálogo vigente de Contabo.'},
     {icono: TerminalSquare, titulo: 'Root + SSH', desc: 'Acceso root completo desde el día uno. Instala lo que necesites.'},
     {icono: Activity, titulo: 'Bootstrap inicial', desc: 'Docker, firewall y hostname ya configurados. Despliega de inmediato.'},
     {icono: Server, titulo: 'Escalado claro', desc: 'Cambia de tier cuando lo necesites. Pricing transparente sin sorpresas.'},
 ];
 
 const FAQ_ITEMS = [
-    {q: '¿Cuándo se activa el VPS?', a: 'El alta no es automática: revisamos cada compra manualmente. El tiempo habitual es menos de 24 h en días laborables.'},
+    {q: '¿Cuándo se activa el VPS?', a: 'Después del pago provisionamos el servidor y enviamos los accesos cuando Contabo lo entregue. El tiempo habitual es menos de 24 h en días laborables.'},
     {q: '¿Qué incluye el bootstrap inicial?', a: 'Docker instalado y activo, firewall ufw con puertos 22, 80 y 443 abiertos, hostname configurado y MOTD con tus recursos de hardware.'},
     {q: '¿Puedo cancelar en cualquier momento?', a: 'Sí. La suscripción se cancela desde tu panel y el servidor se desprovisiona al finalizar el ciclo de facturación actual.'},
     {q: '¿Qué sistema operativo incluye?', a: 'Ubuntu 22.04 LTS por defecto. Si necesitas otra distribución contáctanos antes de completar la compra.'},
@@ -36,10 +36,10 @@ const FAQ_ITEMS = [
 ];
 
 const PLANES_FALLBACK = [
-    {nombre: 'Nakomi VPS 1', precio: '$6.88', desc: 'Para proyectos ligeros y bots.', destacado: false, features: ['1 vCPU dedicado', '2 GB RAM', '40 GB NVMe SSD', 'Root + SSH', 'Docker preinstalado']},
-    {nombre: 'Nakomi VPS 2', precio: '$11.99', desc: 'Ideal para apps web y APIs.', destacado: true, features: ['2 vCPU dedicados', '4 GB RAM', '60 GB NVMe SSD', 'Root + SSH', 'Docker preinstalado', 'Soporte prioritario']},
-    {nombre: 'Nakomi VPS 3', precio: '$20.49', desc: 'Para cargas de trabajo mayores.', destacado: false, features: ['4 vCPU dedicados', '8 GB RAM', '100 GB NVMe SSD', 'Root + SSH', 'Docker preinstalado']},
-    {nombre: 'Nakomi VPS 4', precio: '$36.99', desc: 'Infraestructura seria.', destacado: false, features: ['6 vCPU dedicados', '16 GB RAM', '200 GB NVMe SSD', 'Root + SSH', 'Docker preinstalado', 'IPv6 disponible']},
+    {nombre: 'Cloud VPS 10', precio: '$4.73', desc: 'Entrada dedicada para automatizaciones.', destacado: false, features: ['4 vCPU dedicados', '8 GB RAM', '75 GB NVMe o 150 GB SSD', 'Puerto de 200 Mbit/s']},
+    {nombre: 'Cloud VPS 20', precio: '$8.82', desc: 'Balanceado para APIs y SaaS liviano.', destacado: false, features: ['6 vCPU dedicados', '12 GB RAM', '100 GB NVMe o 200 GB SSD', 'Puerto de 1 Gbit/s']},
+    {nombre: 'VPS 30', precio: '$17.64', desc: 'Para workloads medianos.', destacado: false, features: ['8 vCPU dedicados', '24 GB RAM', '200 GB NVMe o 400 GB SSD', 'Puerto de 1 Gbit/s']},
+    {nombre: 'VPS 40', precio: '$31.50', desc: 'Para cargas con más memoria.', destacado: false, features: ['12 vCPU dedicados', '48 GB RAM', '250 GB NVMe o 500 GB SSD', 'Puerto de 1 Gbit/s']},
 ];
 
 function formatPrice(cents: number): string {
@@ -71,14 +71,14 @@ export function VpsPortalIsland(): JSX.Element {
 
     const lowestPrice = plans.length
         ? formatPrice(Math.min(...plans.map(p => p.monthly_price_cents)))
-        : '$6.88';
+        : '$4.73';
 
     const preciosActivos = plans.length > 0
         ? plans.map(p => ({
             nombre: p.display_name,
             precio: formatPrice(p.monthly_price_cents),
             desc: p.description,
-            destacado: p.recommended,
+            destacado: false,
             features: p.features,
         }))
         : PLANES_FALLBACK;
@@ -87,7 +87,7 @@ export function VpsPortalIsland(): JSX.Element {
         <div className="vpsPortal">
             <SEOHead
                 title="Nakomi VPS — Infraestructura dedicada sin intermediarios"
-                description={`Servidores VPS con recursos dedicados, root SSH, Docker listo y aprobación manual. Planes desde ${lowestPrice}/mes.`}
+                description={`Servidores VPS con recursos dedicados, root SSH, Docker listo, velocidad y tráfico visibles. Planes desde ${lowestPrice}/mes.`}
                 path="/"
             />
 
@@ -98,9 +98,9 @@ export function VpsPortalIsland(): JSX.Element {
                         <span className="vpsNavLogoProducto">VPS</span>
                     </a>
                     <div className="vpsNavLinks">
-                        <button className="vpsNavLink" type="button" onClick={() => scrollTo('caracteristicas')}>Características</button>
-                        <button className="vpsNavLink" type="button" onClick={() => scrollTo('precios')}>Precios</button>
-                        <button className="vpsNavLink" type="button" onClick={() => scrollTo('faq')}>FAQ</button>
+                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('caracteristicas')}>Características</Button>
+                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('precios')}>Precios</Button>
+                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('faq')}>FAQ</Button>
                     </div>
                     <div className="vpsNavAcciones">
                         <Button variante="outline" onClick={abrirPanelOLogin}>
@@ -118,8 +118,7 @@ export function VpsPortalIsland(): JSX.Element {
                     <span className="vpsHeroTituloAcento">sin intermediarios.</span>
                 </h1>
                 <p className="vpsHeroSub">
-                    VPS con recursos propios, aprobación manual y bootstrap listo el día uno.
-                    Precios honestos sin margen oculto.
+                    VPS con recursos propios, bootstrap inicial, tráfico visible y margen operativo claro.
                 </p>
                 <div className="vpsHeroBotones">
                     <Button variante="primario" onClick={() => scrollTo('precios')}>Ver planes y precios</Button>
@@ -196,7 +195,6 @@ root@nakomi-vps:~$ █`}</pre>
                     <div className="vpsPreciosGrid">
                         {preciosActivos.map((plan) => (
                             <div key={plan.nombre} className={`vpsPrecioCard${plan.destacado ? ' vpsPrecioCardDestacado' : ''}`}>
-                                {plan.destacado && <span className="vpsPrecioRecomendado">Recomendado</span>}
                                 <h3 className="vpsPrecioNombre">{plan.nombre}</h3>
                                 <div className="vpsPrecioValor">
                                     <span className="vpsPrecioCantidad">{plan.precio}</span>
@@ -206,8 +204,8 @@ root@nakomi-vps:~$ █`}</pre>
                                 <ul className="vpsPrecioFeatures">
                                     {plan.features.map((f) => <li key={f}>{f}</li>)}
                                 </ul>
-                                <Button variante={plan.destacado ? 'primario' : 'outline'} onClick={() => {}}>
-                                    Solicitar {plan.nombre}
+                                <Button variante="outline" onClick={() => navegar(`/soluciones/vps/configurar/${plans.find(p => p.display_name === plan.nombre)?.tier_name ?? ''}`)}>
+                                    Configurar {plan.nombre}
                                 </Button>
                             </div>
                         ))}
@@ -239,8 +237,8 @@ root@nakomi-vps:~$ █`}</pre>
 
             <section className="vpsCtaFinal">
                 <h2 className="vpsCtaFinalTitulo">Infraestructura lista en minutos.</h2>
-                <p className="vpsCtaFinalSub">Solicita tu VPS hoy — revisamos tu petición y te respondemos en menos de 24 h.</p>
-                <Button variante="primario" onClick={() => scrollTo('precios')}>Ver planes →</Button>
+                <p className="vpsCtaFinalSub">Configura tu VPS hoy y completa el checkout con los recursos visibles antes de pagar.</p>
+                <Button variante="primario" onClick={() => scrollTo('precios')}>Ver planes</Button>
             </section>
 
             <footer className="vpsFooterPortal">
@@ -256,7 +254,7 @@ root@nakomi-vps:~$ █`}</pre>
 
             <Modal abierto={modalLoginAbierto} onCerrar={() => setModalLoginAbierto(false)}>
                 <ModalBody as="form" onSubmit={auth.handleLogin}>
-                    <h3 className="modalTitulo">Acceder al panel</h3>
+                    <p className="modalTexto">Accede al panel para ver tus solicitudes y servidores.</p>
                     {auth.error && <p className="vpsLoginError">{auth.error}</p>}
                     <div className="modalCampo">
                         <label className="modalEtiqueta" htmlFor="vps-email">Correo</label>

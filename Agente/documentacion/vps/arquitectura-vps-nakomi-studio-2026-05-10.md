@@ -41,6 +41,22 @@
 - La ruta pública `/soluciones/vps` se mantiene en Nakomi como entrada comercial; el portal dedicado `vps.nakomi.studio` sigue siendo un despliegue separado pendiente.
 - Las acciones de provisioning y operación crítica continúan fuera del alcance del agente cliente; el agente vende/consulta, no ejecuta infraestructura privilegiada.
 
+## Actualización 2026-05-19 — configurador y catálogo VPS
+
+- `/soluciones/vps` ya no abre el modal genérico de compra para VPS: cada plan deriva a `/soluciones/vps/configurar/:tier`.
+- El configurador muestra recursos antes de Stripe: CPU, RAM, storage NVMe/SSD, snapshots, región, velocidad de puerto, tráfico y cargo inicial cuando aplica.
+- El catálogo VPS queda alineado con la referencia Contabo visible: Cloud VPS 10/20 y VPS 30/40/50/60, con margen operativo de 5% sobre coste base.
+- El plan Cloud VPS 10 conserva cargo inicial de puesta en marcha; el resto no añade setup fee.
+- Se retiró el campo de “uso previsto” del flujo de compra y del tool schema del agente; el checkout solo confirma tier y hostname opcional.
+- La entrega sigue siendo verificada por el equipo antes del provisioning, pero el copy público ya no usa lenguaje de “anti-fraude”.
+
+## Actualización 2026-05-19 — dominios self-service
+
+- Clientes y admins ven la sección `Dominios` en el panel.
+- El check de disponibilidad ahora devuelve cotización anual con margen mínimo de 5% para TLDs habilitados (`.com`, `.net`, `.org`, `.studio`, `.io`).
+- `POST /api/hosting/domains/checkout` crea una `domain_order` y redirige a Stripe Checkout en modo pago único.
+- El webhook `checkout.session.completed` marca la orden como `paid_pending_registration`; el registro final en Contabo queda pendiente para completar handles WHOIS reales con datos correctos.
+
 ## Seguridad operativa
 
 - El portal dedicado no debe leer `settings.json`, tokens de Coolify, claves SSH ni secretos desde frontend.

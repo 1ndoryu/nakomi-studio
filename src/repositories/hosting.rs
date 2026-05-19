@@ -2,8 +2,8 @@
  * [114A-3] Plan configs: CRUD para configuración de recursos por plan.
  * Queries verificadas con sqlx offline. */
 
-use rand::Rng;
 use chrono::{DateTime, Utc};
+use rand::Rng;
 use sqlx::PgPool;
 use uuid::Uuid;
 

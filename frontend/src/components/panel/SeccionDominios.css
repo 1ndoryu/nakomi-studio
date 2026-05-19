@@ -15,6 +15,66 @@
     justify-content: flex-end;
 }
 
+.dominiosCompra {
+    background: var(--brand-white);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+}
+
+.dominiosCompraHeader {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--spacing-sm);
+    color: var(--text-primary);
+}
+
+.dominiosTitulo {
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: var(--text-lg);
+    font-weight: 500;
+    margin: 0;
+}
+
+.dominiosSubtitulo,
+.dominiosErrorTexto {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    margin: 0;
+}
+
+.dominiosErrorTexto {
+    color: var(--color-error-text);
+}
+
+.dominiosBuscador {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--spacing-sm);
+}
+
+.dominiosQuote {
+    align-items: center;
+    background: var(--bg-accent);
+    border-radius: var(--radius-md);
+    display: grid;
+    gap: var(--spacing-sm);
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    padding: var(--spacing-sm);
+}
+
+.dominiosQuote span,
+.dominiosQuote strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Lista de dominios */
 .dominiosLista {
     display: grid;
@@ -133,6 +193,10 @@
 /* Responsive */
 @media (max-width: 480px) {
     .dominiosLista {
+        grid-template-columns: 1fr;
+    }
+    .dominiosBuscador,
+    .dominiosQuote {
         grid-template-columns: 1fr;
     }
     .dominiosContenedor {

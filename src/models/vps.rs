@@ -18,9 +18,15 @@ pub struct VpsPlanConfig {
     pub contabo_product_id: String,
     pub base_cost_cents: i32,
     pub monthly_price_cents: i32,
+    pub setup_fee_cents: i32,
     pub cpu_cores: i32,
     pub ram_mb: i32,
     pub disk_mb: i32,
+    pub storage_type: String,
+    pub storage_options: Vec<String>,
+    pub port_speed_mbps: i32,
+    pub bandwidth_label: String,
+    pub snapshot_count: i32,
     pub region: String,
     pub is_active: bool,
     pub approval_required: bool,
@@ -34,9 +40,15 @@ pub struct PublicVpsPlan {
     pub display_name: String,
     pub description: String,
     pub monthly_price_cents: i32,
+    pub setup_fee_cents: i32,
     pub cpu_cores: i32,
     pub ram_mb: i32,
     pub disk_mb: i32,
+    pub storage_type: String,
+    pub storage_options: Vec<String>,
+    pub port_speed_mbps: i32,
+    pub bandwidth_label: String,
+    pub snapshot_count: i32,
     pub region: String,
     pub features: Vec<String>,
     pub approval_required: bool,
@@ -81,8 +93,6 @@ pub struct SelfSubscribeVpsRequest {
     pub tier: String,
     #[validate(length(max = 253))]
     pub hostname: Option<String>,
-    #[validate(length(max = 2000))]
-    pub notes: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]

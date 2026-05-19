@@ -10,7 +10,6 @@ import CheckoutModal from '../panel/CheckoutModal';
 import {Modal, ModalBody} from '../ui/Modal';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
-import {Textarea} from '../ui/Textarea';
 import {useModalCompra} from '../../hooks/useModalCompra';
 import {PAYMENT_MODE_LABELS, type PaymentMode} from '../../api/orders';
 import type {PlanServicio} from '../../data/planes/tipos';
@@ -55,7 +54,7 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
     const {
         paso, email, setEmail, password, setPassword,
         emailExiste, errorMsg, paymentMode, setPaymentMode,
-        hostingDomain, setHostingDomain, projectDescription, setProjectDescription, checkoutPendiente, isHosting, isVps,
+        hostingDomain, setHostingDomain, checkoutPendiente, isHosting, isVps,
         navegarAlPanelPendiente, handleContinuar, handleAuth, reintentar
     } = useModalCompra({plan, servicioSlug, onClose: onCerrar});
 
@@ -110,35 +109,20 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
                             </p>
                         </div>
                     ) : isVps ? (
-                        <>
-                            <div className="modalCompraBrief">
-                                <span className="modalCompraBriefLabel">
-                                    Hostname solicitado
-                                </span>
-                                <Input
-                                    type="text"
-                                    value={hostingDomain}
-                                    onChange={e => setHostingDomain(e.target.value)}
-                                    placeholder="cliente-vps-01 (opcional)"
-                                />
-                                <p className="modalCompraAviso">
-                                    Usaremos este nombre como referencia interna y para el bootstrap inicial si la provisión es aprobada.
-                                </p>
-                            </div>
-                            <label className="modalCompraBrief">
-                                <span className="modalCompraBriefLabel">
-                                    Cuéntanos para qué usarás el VPS
-                                </span>
-                                <Textarea
-                                    className="modalCompraBriefInput"
-                                    value={projectDescription}
-                                    onChange={e => setProjectDescription(e.target.value)}
-                                    placeholder="Describe el tipo de carga, stack, exposición pública o cualquier contexto que ayude a aprobar la provisión."
-                                    rows={4}
-                                    required
-                                />
-                            </label>
-                        </>
+                        <div className="modalCompraBrief">
+                            <span className="modalCompraBriefLabel">
+                                Hostname solicitado
+                            </span>
+                            <Input
+                                type="text"
+                                value={hostingDomain}
+                                onChange={e => setHostingDomain(e.target.value)}
+                                placeholder="cliente-vps-01 (opcional)"
+                            />
+                            <p className="modalCompraAviso">
+                                Usaremos este nombre como referencia interna y para el bootstrap inicial al provisionar el servidor.
+                            </p>
+                        </div>
                     ) : (
                         /* [064A-60] Servicios: selector de modo de pago */
                         <div className="modalCompraModos" role="radiogroup" aria-label="Modo de pago">

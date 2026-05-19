@@ -3,6 +3,7 @@ mod chat;
 mod dashboard;
 mod delegation;
 mod deliverable;
+mod domain;
 mod hosting;
 mod note;
 mod notification;
@@ -38,6 +39,9 @@ pub use delegation::{
 pub use deliverable::{
     DeliverPhaseRequest, DeliverPhaseResponse, PhaseDeliverable, PhaseDeliverablesResponse,
     ALLOWED_MIME_TYPES, MAX_FILES_PER_DELIVERY, MAX_FILE_SIZE,
+};
+pub use domain::{
+    CreateDomainCheckoutRequest, DomainCheckoutResponse, DomainOrder, DomainPriceQuote,
 };
 pub use hosting::{
     AssignHostingRequest, CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent,
