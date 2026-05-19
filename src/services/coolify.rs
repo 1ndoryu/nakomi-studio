@@ -283,7 +283,7 @@ fn is_normal_hosting_plan(plan_name: &str) -> bool {
 }
 
 fn millicores_to_cpu(millicores: i32) -> String {
-        format!("{:.2}", f64::from(millicores) / 1000.0)
+    format!("{:.2}", f64::from(millicores) / 1000.0)
 }
 
 fn clean_route_host(value: &str) -> String {
@@ -311,8 +311,7 @@ fn route_host_slug(host: &str) -> String {
         })
         .collect::<String>();
 
-    slug
-        .split('-')
+    slug.split('-')
         .filter(|segment| !segment.is_empty())
         .collect::<Vec<_>>()
         .join("-")
@@ -349,7 +348,11 @@ fn hosting_route_hosts(
 /* [165A-13] Las labels Traefik deben alinearse con las claves del servicio.
  * El compose estático usa 8/12 espacios y el de WordPress 4/6; si se reutiliza
  * una indentación fija, YAML queda inválido y Coolify deja el stack en `exited`. */
-fn build_traefik_labels(route_hosts: &[String], property_indent: usize, item_indent: usize) -> String {
+fn build_traefik_labels(
+    route_hosts: &[String],
+    property_indent: usize,
+    item_indent: usize,
+) -> String {
     if route_hosts.is_empty() {
         return String::new();
     }
@@ -513,7 +516,9 @@ async fn install_wordpress_instance(
         .map_err(|error| format!("Leyendo install.php?step=2 falló: {error}"))?;
 
     if !status.is_success() {
-        return Err(format!("WordPress respondió {status} al instalar en {install_step_two_url}"));
+        return Err(format!(
+            "WordPress respondió {status} al instalar en {install_step_two_url}"
+        ));
     }
 
     if wordpress_install_form_is_ready(&body) {
@@ -602,7 +607,10 @@ async fn start_hosting_service(
         .map_err(|e| AppError::Internal(format!("Coolify start service request failed: {e}")))?;
 
     if start_resp.status().is_success() {
-        tracing::info!("[Coolify] Servicio '{}' iniciado correctamente.", service_name);
+        tracing::info!(
+            "[Coolify] Servicio '{}' iniciado correctamente.",
+            service_name
+        );
         return Ok(());
     }
 
@@ -678,7 +686,7 @@ fn build_compose_wp_db(
     route_hosts: &[String],
 ) -> String {
     let traefik_labels = build_traefik_labels(route_hosts, 4, 6);
-        format!(
+    format!(
                 "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
         )
 }
@@ -686,8 +694,8 @@ fn build_compose_wp_db(
 /* [155A-13] Servicio web para hosting normal: Nginx sirve el volumen editable por SFTP. */
 fn build_compose_static_site(site_cpu: &str, site_mem: &str, route_hosts: &[String]) -> String {
     let traefik_labels = build_traefik_labels(route_hosts, 8, 12);
-        format!(
-                r#"  site:
+    format!(
+        r#"  site:
         image: 'nginx:1.27-alpine'
         environment:
             - SERVICE_FQDN_SITE=
@@ -718,7 +726,7 @@ fn build_compose_static_site(site_cpu: &str, site_mem: &str, route_hosts: &[Stri
                 reservations:
                     memory: 64M
 "#
-        )
+    )
 }
 
 /* [164A-6][155A-13] Genera el compose YAML para hosting administrado.
@@ -750,7 +758,8 @@ fn build_hosting_compose_for_service(
     sftp_port: i32,
     config: &HostingPlanConfig,
 ) -> String {
-    let route_hosts = hosting_route_hosts(&config.plan_name, service_name, server_ip, custom_domain);
+    let route_hosts =
+        hosting_route_hosts(&config.plan_name, service_name, server_ip, custom_domain);
     build_hosting_compose_with_routes(&route_hosts, sftp_user, sftp_password, sftp_port, config)
 }
 
@@ -762,7 +771,13 @@ fn build_hosting_compose_with_routes(
     config: &HostingPlanConfig,
 ) -> String {
     if is_normal_hosting_plan(&config.plan_name) {
-        return build_normal_hosting_compose(route_hosts, sftp_user, sftp_password, sftp_port, config);
+        return build_normal_hosting_compose(
+            route_hosts,
+            sftp_user,
+            sftp_password,
+            sftp_port,
+            config,
+        );
     }
 
     build_wordpress_hosting_compose(route_hosts, sftp_user, sftp_password, sftp_port, config)
@@ -829,8 +844,8 @@ fn build_compose_ssh(
     ssh_cpu: &str,
     ssh_mem: &str,
 ) -> String {
-        format!(
-            r#"  ssh:
+    format!(
+        r#"  ssh:
         build:
             dockerfile_inline: |
                 FROM lscr.io/linuxserver/openssh-server:version-9.9_p2-r0
@@ -882,7 +897,7 @@ fn build_compose_ssh(
                 reservations:
                     memory: 64M
 "#
-        )
+    )
 }
 
 /* [155A-13] SSH/SFTP para hosting normal sin PHP/WP-CLI ni red backend. */
@@ -893,8 +908,8 @@ fn build_compose_static_ssh(
     ssh_cpu: &str,
     ssh_mem: &str,
 ) -> String {
-        format!(
-            r#"  ssh:
+    format!(
+        r#"  ssh:
         build:
             dockerfile_inline: |
                 FROM lscr.io/linuxserver/openssh-server:version-9.9_p2-r0
@@ -942,7 +957,7 @@ fn build_compose_static_ssh(
                 reservations:
                     memory: 64M
 "#
-        )
+    )
 }
 
 /* [174A-17] Sidecar de backup automático para plan ecommerce.
@@ -1034,11 +1049,8 @@ impl CoolifyService {
         client_email: &str,
     ) -> Result<CoolifyProvisionResult, AppError> {
         let (sftp_user, sftp_password) = generate_sftp_credentials();
-        let bootstrap_domain = hosting_bootstrap_host(
-            &plan_config.plan_name,
-            service_name,
-            &config.server_ip,
-        );
+        let bootstrap_domain =
+            hosting_bootstrap_host(&plan_config.plan_name, service_name, &config.server_ip);
         let compose_yaml = build_hosting_compose_for_service(
             service_name,
             &config.server_ip,
@@ -1050,7 +1062,8 @@ impl CoolifyService {
         );
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose_yaml);
 
-        let created = create_hosting_service(http_client, config, service_name, compose_b64).await?;
+        let created =
+            create_hosting_service(http_client, config, service_name, compose_b64).await?;
 
         let coolify_domain = created.domains.into_iter().next();
         let domain = format!("http://{bootstrap_domain}");
@@ -1199,7 +1212,10 @@ impl CoolifyService {
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose);
 
         /* PATCH: actualizar docker_compose_raw en Coolify */
-        let patch_url = format!("{}/api/v1/services/{}", config.base_url, update.service_uuid);
+        let patch_url = format!(
+            "{}/api/v1/services/{}",
+            config.base_url, update.service_uuid
+        );
         let patch_resp = http_client
             .patch(&patch_url)
             .bearer_auth(&config.api_token)
@@ -1217,16 +1233,25 @@ impl CoolifyService {
         }
 
         /* Restart: stop + start para aplicar nuevo compose */
-        let stop_url = format!("{}/api/v1/services/{}/stop", config.base_url, update.service_uuid);
+        let stop_url = format!(
+            "{}/api/v1/services/{}/stop",
+            config.base_url, update.service_uuid
+        );
         if let Err(e) = http_client
             .post(&stop_url)
             .bearer_auth(&config.api_token)
             .send()
             .await
         {
-            tracing::warn!("[Coolify] Error deteniendo servicio {}: {e}", update.service_uuid);
+            tracing::warn!(
+                "[Coolify] Error deteniendo servicio {}: {e}",
+                update.service_uuid
+            );
         }
-        let start_url = format!("{}/api/v1/services/{}/start", config.base_url, update.service_uuid);
+        let start_url = format!(
+            "{}/api/v1/services/{}/start",
+            config.base_url, update.service_uuid
+        );
         let start_resp = http_client
             .post(&start_url)
             .bearer_auth(&config.api_token)
@@ -1461,7 +1486,10 @@ mod tests {
         let payload = serde_json::to_value(&body).expect("serialize create body");
 
         assert_eq!(payload["instant_deploy"], Value::Bool(true));
-        assert_eq!(payload["environment_name"], Value::String("production".to_string()));
+        assert_eq!(
+            payload["environment_name"],
+            Value::String("production".to_string())
+        );
     }
 
     #[test]
@@ -1633,7 +1661,9 @@ mod tests {
         );
 
         assert!(compose.contains("site-hosting-6d746a75.173.249.50.44.sslip.io"));
-        assert!(compose.contains("traefik.http.routers.site-hosting-6d746a75-173-249-50-44-sslip-io-http.rule"));
+        assert!(compose.contains(
+            "traefik.http.routers.site-hosting-6d746a75-173-249-50-44-sslip-io-http.rule"
+        ));
 
         let wp_config = test_plan_config("basico");
         let wp_compose = build_hosting_compose_for_service(
@@ -1647,7 +1677,9 @@ mod tests {
         );
 
         assert!(wp_compose.contains("wordpress-hosting-de17015b.173.249.50.44.sslip.io"));
-        assert!(wp_compose.contains("traefik.http.routers.wordpress-hosting-de17015b-173-249-50-44-sslip-io-http.rule"));
+        assert!(wp_compose.contains(
+            "traefik.http.routers.wordpress-hosting-de17015b-173-249-50-44-sslip-io-http.rule"
+        ));
     }
 
     #[test]

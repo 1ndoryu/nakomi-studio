@@ -603,10 +603,9 @@ async fn create_chat_hosting_subscription(
     } else {
         "none".to_string()
     };
-    let domain_verification_token = requested_domain.as_ref().map(|_| {
-        format!("nakomi-verification={}", Uuid::new_v4().simple())
-            .to_ascii_lowercase()
-    });
+    let domain_verification_token = requested_domain
+        .as_ref()
+        .map(|_| format!("nakomi-verification={}", Uuid::new_v4().simple()).to_ascii_lowercase());
 
     let sub = HostingRepository::create(
         pool,
