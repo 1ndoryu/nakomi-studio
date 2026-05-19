@@ -9,6 +9,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 
 export const Select: React.FC<SelectProps> = ({className = '', variante = 'default', children, ...props}) => {
     const claseVariante = `select${variante.charAt(0).toUpperCase() + variante.slice(1)}`;
+    /* sentinel-disable-next-line select-nativo: este ES el componente base; el native select aquí es intencional */
     return (
         <select className={`selectBase ${claseVariante} ${className}`} {...props}>
             {children}

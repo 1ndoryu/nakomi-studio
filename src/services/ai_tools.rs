@@ -891,6 +891,10 @@ fn parse_vps_checkout_request(args: &Value) -> Result<SelfSubscribeVpsRequest, T
     let req = SelfSubscribeVpsRequest {
         tier: args["tier"].as_str().unwrap_or("").trim().to_string(),
         hostname,
+        storage_preference: None,
+        region_preference: None,
+        os_preference: None,
+        server_password: None,
     };
     req.validate()
         .map(|()| req)

@@ -1,40 +1,26 @@
 /* [195A-1] Configurador VPS estilo proveedor: plan, recursos, hostname y checkout real.
- * La compra ya no abre un modal genérico; el detalle técnico queda visible antes de Stripe. */
+ * La compra ya no abre un modal genérico; el detalle técnico queda visible antes de Stripe.
+ * [205A-1] Helpers/constantes en vpsConfiguradorHelpers.ts para mantenerse bajo 300 líneas. */
 import {useParams} from 'react-router-dom';
-import {Cpu, HardDrive, Network, Server, ShieldCheck} from 'lucide-react';
+import {Cpu, HardDrive, KeyRound, Monitor, Network, Server, ShieldCheck} from 'lucide-react';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
 import {Button} from '../components/ui/Button';
 import {Input} from '../components/ui/Input';
-import type {PublicVpsPlan} from '../api/hosting';
+import {Select} from '../components/ui/Select';
 import {useVpsConfiguradorIsland} from '../hooks/useVpsConfiguradorIsland';
 import {navegar} from '../navegacionSPA';
+import {
+    formatMoney, formatRam, formatPort, storageLabel,
+    VPS_LOCATIONS, VPS_CONTINENTS, storageExtraLabel, OS_IMAGES,
+} from './vpsConfiguradorHelpers';
 import './VpsConfiguradorIsland.css';
-
-function formatMoney(cents: number): string {
-    const value = cents / 100;
-    return `$${value.toFixed(cents % 100 === 0 ? 0 : 2)}`;
-}
-
-function formatRam(ramMb: number): string {
-    return `${ramMb / 1024} GB`;
-}
-
-function formatPort(speedMbps: number): string {
-    return speedMbps >= 1000 ? `${speedMbps / 1000} Gbit/s` : `${speedMbps} Mbit/s`;
-}
-
-function storageLabel(plan: PublicVpsPlan): string {
-    return plan.storage_options.length > 0
-        ? plan.storage_options.join(' / ')
-        : `${plan.disk_mb / 1024} GB ${plan.storage_type}`;
-}
 
 export function VpsConfiguradorIsland(): JSX.Element {
     const {tier} = useParams<{tier?: string}>();
     const configurador = useVpsConfiguradorIsland(tier);
     const {
-        plans, isLoading, selectedPlan, form, emailExiste, status,
+        plans, selectedPlan, form, emailExiste, status,
         dueToday, logueado, updateField, handleSubmit,
     } = configurador;
 
@@ -46,15 +32,14 @@ export function VpsConfiguradorIsland(): JSX.Element {
                 path="/soluciones/vps/configurar"
             />
 
-            <section className="vpsConfiguradorHero">
+            <div className="vpsConfiguradorNavBar">
                 <Button type="button" variante="texto" tamano="pequeno" className="vpsConfiguradorVolver" onClick={() => navegar('/soluciones/vps')}>
-                    Volver a VPS
+                    ← Volver a VPS
                 </Button>
+            </div>
+            <section className="vpsConfiguradorHero">
                 <span className="vpsConfiguradorEtiqueta">Nakomi VPS</span>
                 <h1 className="vpsConfiguradorTitulo">Configura tu servidor</h1>
-                <p className="vpsConfiguradorSubtitulo">
-                    Recursos de Contabo con identidad Nakomi, margen operativo de 5% y entrega técnica verificada.
-                </p>
             </section>
 
             <form className="vpsConfiguradorLayout" onSubmit={handleSubmit}>
@@ -64,24 +49,17 @@ export function VpsConfiguradorIsland(): JSX.Element {
                             <Server size={18} />
                             <h2 className="vpsConfiguradorBloqueTitulo">Plan</h2>
                         </div>
-                        {isLoading && <p className="vpsConfiguradorMuted">Cargando catálogo VPS...</p>}
-                        <div className="vpsConfiguradorPlanes">
+                        <Select
+                            className="vpsConfiguradorSelect"
+                            value={form.selectedTier || selectedPlan?.tier_name || ''}
+                            onChange={e => updateField('selectedTier', e.target.value)}
+                        >
                             {plans.map(plan => (
-                                <Button
-                                    key={plan.tier_name}
-                                    type="button"
-                                    variante="texto"
-                                    className={`vpsConfiguradorPlan ${selectedPlan?.tier_name === plan.tier_name ? 'vpsConfiguradorPlanActivo' : ''}`}
-                                    onClick={() => updateField('selectedTier', plan.tier_name)}
-                                >
-                                    <span className="vpsConfiguradorPlanNombre">{plan.display_name}</span>
-                                    <span className="vpsConfiguradorPlanPrecio">{formatMoney(plan.monthly_price_cents)}/mes</span>
-                                    <span className="vpsConfiguradorPlanSpecs">
-                                        {plan.cpu_cores} vCPU · {formatRam(plan.ram_mb)} RAM · {storageLabel(plan)}
-                                    </span>
-                                </Button>
+                                <option key={plan.tier_name} value={plan.tier_name}>
+                                    {plan.display_name} — {formatMoney(plan.monthly_price_cents)}/mes
+                                </option>
                             ))}
-                        </div>
+                        </Select>
                     </section>
 
                     {selectedPlan && (
@@ -101,14 +79,33 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                         <strong>{formatRam(selectedPlan.ram_mb)}</strong>
                                     </div>
                                     <div className="vpsConfiguradorSpec">
-                                        <span>Storage</span>
-                                        <strong>{storageLabel(selectedPlan)}</strong>
-                                    </div>
-                                    <div className="vpsConfiguradorSpec">
                                         <span>Snapshots</span>
                                         <strong>{selectedPlan.snapshot_count}</strong>
                                     </div>
                                 </div>
+                                {selectedPlan.storage_options.length > 1 && (
+                                    <div className="vpsConfiguradorStorageSel">
+                                        <span className="vpsConfiguradorStorageLabel">Storage</span>
+                                        <div className="vpsConfiguradorStorageOpciones">
+                                            {selectedPlan.storage_options.map(opt => {
+                                                const extra = storageExtraLabel(opt);
+                                                const activo = (form.selectedStorage || selectedPlan.storage_options[0]) === opt;
+                                                return (
+                                                    <Button
+                                                        key={opt}
+                                                        type="button"
+                                                        variante="outline"
+                                                        tamano="pequeno"
+                                                        className={`vpsConfiguradorStorageOpcion${activo ? ' vpsConfiguradorStorageOpcionActivo' : ''}`}
+                                                        onClick={() => updateField('selectedStorage', opt)}
+                                                    >
+                                                        {opt}{extra && extra !== 'Incluido' ? ` (${extra})` : ''}
+                                                    </Button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </section>
 
                             <section className="vpsConfiguradorBloque">
@@ -125,13 +122,69 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                         <span>Tráfico</span>
                                         <strong>{selectedPlan.bandwidth_label}</strong>
                                     </div>
-                                    <div className="vpsConfiguradorSpec">
-                                        <span>Región</span>
-                                        <strong>{selectedPlan.region}</strong>
-                                    </div>
+                                </div>
+                                <div className="vpsConfiguradorRegionSel">
+                                    <span className="vpsConfiguradorStorageLabel">Región</span>
+                                    <Select
+                                        className="vpsConfiguradorSelect"
+                                        value={form.selectedRegion}
+                                        onChange={e => updateField('selectedRegion', e.target.value)}
+                                    >
+                                        {VPS_CONTINENTS.map(continent => (
+                                            <optgroup key={continent} label={continent}>
+                                                {VPS_LOCATIONS.filter(l => l.continent === continent).map(loc => (
+                                                    <option key={loc.code} value={loc.code}>
+                                                        {loc.label}{loc.free ? ' — Incluido' : ' (+costo)'}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        ))}
+                                    </Select>
                                 </div>
                             </section>
                         </>
+                    )}
+
+                    {selectedPlan && (
+                        <section className="vpsConfiguradorBloque">
+                            <div className="vpsConfiguradorBloqueHeader">
+                                <Monitor size={18} />
+                                <h2 className="vpsConfiguradorBloqueTitulo">Sistema operativo</h2>
+                            </div>
+                            <Select
+                                className="vpsConfiguradorSelect"
+                                value={form.selectedOs}
+                                onChange={e => updateField('selectedOs', e.target.value)}
+                            >
+                                {OS_IMAGES.map(os => (
+                                    <option key={os} value={os}>{os}</option>
+                                ))}
+                            </Select>
+                        </section>
+                    )}
+
+                    {selectedPlan && (
+                        <section className="vpsConfiguradorBloque">
+                            <div className="vpsConfiguradorBloqueHeader">
+                                <KeyRound size={18} />
+                                <h2 className="vpsConfiguradorBloqueTitulo">Acceso al servidor</h2>
+                            </div>
+                            <label className="vpsConfiguradorCampo">
+                                <span>Usuario</span>
+                                <Input type="text" value="root" disabled />
+                            </label>
+                            <label className="vpsConfiguradorCampo">
+                                <span>Contraseña de root</span>
+                                <Input
+                                    type="password"
+                                    value={form.serverPassword}
+                                    onChange={event => updateField('serverPassword', event.target.value)}
+                                    placeholder="Mínimo 8 caracteres"
+                                    minLength={8}
+                                />
+                            </label>
+                            <p className="vpsConfiguradorMuted">No se enviará por email. Guárdala en un gestor de contraseñas.</p>
+                        </section>
                     )}
 
                     <section className="vpsConfiguradorBloque">
@@ -202,11 +255,23 @@ export function VpsConfiguradorIsland(): JSX.Element {
                             </div>
                             <div className="vpsConfiguradorResumenFila">
                                 <span>Storage</span>
-                                <strong>{storageLabel(selectedPlan)}</strong>
+                                <strong>{form.selectedStorage || selectedPlan.storage_options[0] || storageLabel(selectedPlan)}</strong>
+                            </div>
+                            <div className="vpsConfiguradorResumenFila">
+                                <span>OS</span>
+                                <strong>{form.selectedOs}</strong>
                             </div>
                             <div className="vpsConfiguradorResumenFila">
                                 <span>Puerto</span>
                                 <strong>{formatPort(selectedPlan.port_speed_mbps)}</strong>
+                            </div>
+                            <div className="vpsConfiguradorResumenFila">
+                                <span>Región</span>
+                                <strong>{form.selectedRegion}</strong>
+                            </div>
+                            <div className="vpsConfiguradorResumenFila">
+                                <span>Snapshots</span>
+                                <strong>{selectedPlan.snapshot_count}</strong>
                             </div>
                             {selectedPlan.setup_fee_cents > 0 && (
                                 <div className="vpsConfiguradorResumenFila">

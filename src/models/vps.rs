@@ -93,6 +93,18 @@ pub struct SelfSubscribeVpsRequest {
     pub tier: String,
     #[validate(length(max = 253))]
     pub hostname: Option<String>,
+    /* Preferencia de storage elegida en el configurador (ej: "100 GB NVMe" o "200 GB SSD") */
+    #[validate(length(max = 100))]
+    pub storage_preference: Option<String>,
+    /* Región solicitada (ej: "EU", "UK", "US", "SIN", "AUS") */
+    #[validate(length(max = 20))]
+    pub region_preference: Option<String>,
+    /* Sistema operativo solicitado (ej: "Ubuntu 24.04 LTS") */
+    #[validate(length(max = 60))]
+    pub os_preference: Option<String>,
+    /* Contraseña root deseada para el servidor — se incluye en las notas del pedido */
+    #[validate(length(min = 8, max = 128))]
+    pub server_password: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]

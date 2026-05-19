@@ -13,6 +13,10 @@ interface ConfigForm {
     hostname: string;
     email: string;
     password: string;
+    selectedStorage: string;
+    selectedRegion: string;
+    selectedOs: string;
+    serverPassword: string;
 }
 
 interface ConfigStatus {
@@ -25,6 +29,10 @@ const DEFAULT_FORM: ConfigForm = {
     hostname: '',
     email: '',
     password: '',
+    selectedStorage: '',
+    selectedRegion: 'EU',
+    selectedOs: 'Ubuntu 24.04 LTS',
+    serverPassword: '',
 };
 
 export function useVpsConfiguradorIsland(initialTier?: string) {
@@ -42,6 +50,13 @@ export function useVpsConfiguradorIsland(initialTier?: string) {
         : 0;
 
     const updateField = (field: keyof ConfigForm, value: string) => {
+        if (field === 'selectedTier') {
+            /* Al cambiar plan, resetear storage a la primera opción del nuevo plan */
+            const newPlan = plans.find(p => p.tier_name === value);
+            const newStorage = newPlan?.storage_options[0] ?? '';
+            setForm(prev => ({...prev, selectedTier: value, selectedStorage: newStorage}));
+            return;
+        }
         setForm(prev => ({...prev, [field]: value}));
     };
 
@@ -52,6 +67,10 @@ export function useVpsConfiguradorIsland(initialTier?: string) {
             const response = await apiSelfSubscribeVps({
                 tier: selectedPlan.tier_name,
                 hostname: form.hostname.trim() || undefined,
+                storage_preference: form.selectedStorage || selectedPlan.storage_options[0] || undefined,
+                region_preference: form.selectedRegion || undefined,
+                os_preference: form.selectedOs || undefined,
+                server_password: form.serverPassword.trim() || undefined,
             });
             localStorage.setItem(PANEL_TAB_KEY, 'hosting');
             window.location.href = response.checkout_url;

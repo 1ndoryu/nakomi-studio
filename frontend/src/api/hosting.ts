@@ -502,6 +502,10 @@ export interface VpsSubscription {
 export interface SelfSubscribeVpsRequest {
     tier: string;
     hostname?: string;
+    storage_preference?: string;
+    region_preference?: string;
+    os_preference?: string;
+    server_password?: string;
 }
 
 export interface SelfSubscribeVpsResponse {

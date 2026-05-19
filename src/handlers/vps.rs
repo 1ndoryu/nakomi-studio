@@ -100,6 +100,40 @@ fn public_plan_from_config(config: VpsPlanConfig) -> PublicVpsPlan {
     }
 }
 
+fn build_client_notes(
+    storage: Option<&str>,
+    region: Option<&str>,
+    os: Option<&str>,
+    server_password: Option<&str>,
+) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(s) = storage {
+        if !s.trim().is_empty() {
+            parts.push(format!("Storage: {s}"));
+        }
+    }
+    if let Some(r) = region {
+        if !r.trim().is_empty() {
+            parts.push(format!("Región: {r}"));
+        }
+    }
+    if let Some(o) = os {
+        if !o.trim().is_empty() {
+            parts.push(format!("OS: {o}"));
+        }
+    }
+    if let Some(p) = server_password {
+        if !p.trim().is_empty() {
+            parts.push(format!("Password: {p}"));
+        }
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(", "))
+    }
+}
+
 fn sanitize_hostname(requested_hostname: Option<&str>, subscription_id: Uuid) -> String {
     let fallback = format!("nakomi-vps-{}", &subscription_id.to_string()[..8]);
     let Some(raw_value) = requested_hostname else {
@@ -284,6 +318,13 @@ pub async fn subscribe_self(
     let client_name = user.display_name.unwrap_or_else(|| user.email.clone());
     let client_email = user.email;
 
+    let notes_str = build_client_notes(
+        req.storage_preference.as_deref(),
+        req.region_preference.as_deref(),
+        req.os_preference.as_deref(),
+        req.server_password.as_deref(),
+    );
+
     let subscription = VpsRepository::create(
         &state.pool,
         CreateVpsSubscriptionParams {
@@ -292,7 +333,7 @@ pub async fn subscribe_self(
             client_email: &client_email,
             tier_name: &req.tier,
             requested_hostname: req.hostname.as_deref(),
-            client_notes: None,
+            client_notes: notes_str.as_deref(),
             monthly_price_cents: plan_config.monthly_price_cents,
         },
     )
