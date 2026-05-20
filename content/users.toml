@@ -36,3 +36,10 @@ username = "empleado2"
 password_hash = "plain:empleado2"
 role = "employee"
 display_name = "Diseñador Jr"
+
+[[records]]
+email = "guillermo@nakomi.com"
+username = "guillermo"
+password_hash = "plain:test123"
+role = "client"
+display_name = "Guillermo"

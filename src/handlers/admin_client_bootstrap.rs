@@ -160,11 +160,13 @@ async fn upsert_guillermo_user(
     temporary_password: &str,
 ) -> Result<(Uuid, bool), AppError> {
     if let Some(existing) = UserRepository::find_by_email(pool, GUILLERMO_EMAIL).await? {
+        let password_hash = hash_password(temporary_password)?;
         sqlx::query(
-            "UPDATE users SET display_name = COALESCE(display_name, $1), role = 'client'::user_role WHERE id = $2",
+            "UPDATE users SET display_name = COALESCE(display_name, $1), role = 'client'::user_role, password_hash = $3 WHERE id = $2",
         )
         .bind(GUILLERMO_NAME)
         .bind(existing.id)
+        .bind(password_hash)
         .execute(pool)
         .await?;
         return Ok((existing.id, false));
