@@ -180,16 +180,7 @@ fn build_checkout_form(params: &BillingCheckoutParams<'_>) -> Result<StripeForm,
 }
 
 fn checkout_idempotency_key(params: &BillingCheckoutParams<'_>) -> String {
-    format!(
-        "billing-{}-{}",
-        params.mode,
-        params
-            .items
-            .iter()
-            .map(|item| item.id.to_string())
-            .collect::<Vec<_>>()
-            .join("-")
-    )
+    format!("billing-{}-{}", params.mode, uuid::Uuid::new_v4())
 }
 
 impl BillingStripeService {
