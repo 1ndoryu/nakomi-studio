@@ -103,7 +103,18 @@ export function HostingCard({
         <>
             <div className="hostingCard" role="button" tabIndex={0} onClick={onSelect} onKeyDown={e => { if (e.key === 'Enter') onSelect(); }}>
                 <div className="panelCardIcono">
-                    <Server size={28} strokeWidth={1.4} />
+                    {/* [195A-1] Screenshot automatico del dominio via thum.io para hostings activos. */}
+                    {sub.domain && sub.status === 'active' ? (
+                        <img
+                            src={`https://image.thum.io/get/width/280/crop/180/https://${sub.domain}`}
+                            alt={sub.domain}
+                            className="panelCardIconoImg"
+                            loading="lazy"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                    ) : (
+                        <Server size={28} strokeWidth={1.4} />
+                    )}
                 </div>
                 <div className="hostingCardBody">
                     <div className="hostingCardHeader">

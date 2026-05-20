@@ -8,6 +8,7 @@ import type {useHostingDetalle} from '../../hooks/useHostingDetalle';
 import {HOSTING_PLAN_LABELS} from '../../api/hosting';
 import {useHostingCatalog} from '../../hooks/useHostingCatalog';
 import {Button} from '../ui/Button';
+import {InfoRow} from './HostingDetalle';
 
 type Subscription = NonNullable<ReturnType<typeof useHostingDetalle>['subscription']>;
 
@@ -26,6 +27,13 @@ export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
     const [showPlanChange, setShowPlanChange] = useState(false);
     const currentPlanInfo = plans.find(p => p.id === sub.plan);
     const otherPlans = plans.filter(p => p.id !== sub.plan);
+
+    /* [195A-1] Proximo cobro: 1 año desde hoy para hostings con suscripcion activa. */
+    const nextBillingDate = new Date();
+    nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+    const nextBillingLabel = nextBillingDate.toLocaleDateString('es', {
+        year: 'numeric', month: 'long', day: 'numeric',
+    });
 
     const handleSelectPlan = (planId: string) => {
         if (onPlanChange) {
@@ -46,6 +54,11 @@ export function TabFacturacion({sub, onPlanChange, planChangeLoading}: {
                         ${(sub.monthly_price_cents / 100).toFixed(2)}/mes
                     </span>
                 </div>
+                {sub.status === 'active' && (
+                    <div className="hostingDetallePlanMeta">
+                        <InfoRow label="Próximo cobro estimado" value={nextBillingLabel} />
+                    </div>
+                )}
                 <div className="hostingDetallePlanFeatures">
                     {currentPlanInfo?.features.map(f => (
                         <span key={f}>{f}</span>

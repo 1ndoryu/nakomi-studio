@@ -110,7 +110,22 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
 
             {domainInfo.domain && domainInfo.domainVerificationStatus !== 'active' && domainInfo.domainVerificationToken && (
                 <div className="hostingDetalleDnsCheck">
-                    <h4 className="hostingDetalleSubTitle">Verificación de ownership</h4>
+                    <div className="hostingDetalleDnsCheckHeader">
+                        <h4 className="hostingDetalleSubTitle">Verificación de ownership</h4>
+                        <Button
+                            type="button"
+                            variante="outline"
+                            tamano="pequeno"
+                            onClick={handleDomainVerify}
+                            disabled={verifying}
+                        >
+                            {verifying ? (
+                                <><Loader size={14} className="hostingSpinner" /> Verificando ownership…</>
+                            ) : (
+                                'Verificar ownership'
+                            )}
+                        </Button>
+                    </div>
                     <p className="hostingDetalleSectionDesc">
                         Antes de activar el dominio en el hosting, crea este registro TXT en tu registrador.
                     </p>
@@ -127,19 +142,6 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
                     <p className="hostingDetalleSectionDesc">
                         El dominio no se propagará a Coolify ni pedirá SSL hasta que este TXT coincida.
                     </p>
-                    <Button
-                        type="button"
-                        variante="outline"
-                        tamano="pequeno"
-                        onClick={handleDomainVerify}
-                        disabled={verifying}
-                    >
-                        {verifying ? (
-                            <><Loader size={14} className="hostingSpinner" /> Verificando ownership…</>
-                        ) : (
-                            'Verificar ownership'
-                        )}
-                    </Button>
                     {verifyResult && (
                         <div className={`hostingDetalleDnsResult ${
                             verifyResult.verified ? 'hostingDetalleDnsResult--ok' :
@@ -188,23 +190,25 @@ export function TabDominio({sub, domainInfo, subscriptionId}: {
                 Los cambios DNS pueden tardar entre 15 minutos y 48 horas en propagarse globalmente.
             </p>
 
-            {/* [154A-16] Verificación DNS interactiva */}
+            {/* [154A-16][195A-1] Verificación DNS interactiva — botón alineado a la derecha del título. */}
             {domainInfo.domain && (
                 <div className="hostingDetalleDnsCheck">
-                    <h4 className="hostingDetalleSubTitle">Verificación DNS</h4>
-                    <Button
-                        type="button"
-                        variante="outline"
-                        tamano="pequeno"
-                        onClick={handleDnsCheck}
-                        disabled={checking}
-                    >
-                        {checking ? (
-                            <><Loader size={14} className="hostingSpinner" /> Verificando…</>
-                        ) : (
-                            'Verificar DNS'
-                        )}
-                    </Button>
+                    <div className="hostingDetalleDnsCheckHeader">
+                        <h4 className="hostingDetalleSubTitle">Verificación DNS</h4>
+                        <Button
+                            type="button"
+                            variante="outline"
+                            tamano="pequeno"
+                            onClick={handleDnsCheck}
+                            disabled={checking}
+                        >
+                            {checking ? (
+                                <><Loader size={14} className="hostingSpinner" /> Verificando…</>
+                            ) : (
+                                'Verificar DNS'
+                            )}
+                        </Button>
+                    </div>
                     {dnsResult && (
                         <div className={`hostingDetalleDnsResult ${
                             dnsResult.points_to_server ? 'hostingDetalleDnsResult--ok' :
@@ -345,7 +349,7 @@ export function TabAcceso({sshInfo, sub}: {
                     </>
                 ) : (
                     <p className="hostingDetalleSectionDesc">
-                        Las credenciales SFTP estarán disponibles una vez que el hosting esté provisionado.
+                        Solicita al soporte las credenciales SFTP para acceder a los archivos de tu sitio.
                     </p>
                 )}
             </div>

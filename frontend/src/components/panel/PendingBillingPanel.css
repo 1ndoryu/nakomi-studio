@@ -1,0 +1,97 @@
+.billingPendientePanel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.billingPendienteHeader {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+.billingPendientePrecio span,
+.billingPendienteMeta {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.billingPendienteResumen {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-2xs);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.billingPendienteResumen span:first-child {
+    color: var(--brand-black);
+    font-weight: 600;
+}
+
+.billingPendienteMeta {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.billingPendienteMeta span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.billingPendienteLista {
+    display: grid;
+    gap: var(--spacing-sm);
+}
+
+.billingPendienteItem {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+.billingPendientePrecio {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-2xs);
+    white-space: nowrap;
+}
+
+/* [195A-1] Precio del item en verde: sin negritas, con color exito. */
+.billingPrecioCobro {
+    color: var(--success-color);
+    font-weight: 500;
+    font-size: var(--text-sm);
+}
+
+/* Descuento anual destacado en italica */
+.billingResumenAnual em {
+    font-style: normal;
+    color: var(--success-color);
+    font-size: var(--text-xs);
+}
+
+.billingPendienteAcciones {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 767px) {
+    .billingPendienteHeader,
+    .billingPendienteItem {
+        grid-template-columns: 1fr;
+    }
+
+    .billingPendienteResumen,
+    .billingPendientePrecio,
+    .billingPendienteAcciones {
+        align-items: flex-start;
+        justify-content: flex-start;
+    }
+}

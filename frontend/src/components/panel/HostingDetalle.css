@@ -196,6 +196,10 @@
     color: var(--brand-black);
     font-weight: 500;
     text-align: right;
+    /* [195A-1] Evita que dominios largos rompan el layout de la fila. */
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-all;
 }
 
 .hostingDetalleLink {
@@ -275,13 +279,13 @@
 
 .hostingDetallePlanNombre {
     font-size: var(--text-base);
-    font-weight: 700;
+    font-weight: 500;
     color: var(--brand-black);
 }
 
 .hostingDetallePlanPrecio {
     font-size: var(--text-base);
-    font-weight: 700;
+    font-weight: 500;
     color: var(--brand-primary);
 }
 
@@ -291,6 +295,12 @@
     gap: var(--spacing-xs) var(--spacing-md);
     font-size: var(--text-sm);
     color: var(--text-tertiary);
+}
+
+/* [195A-1] Plan meta: fila informativa adicional dentro de la plan card. */
+.hostingDetallePlanMeta {
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--spacing-xs);
 }
 
 /* [094A-6] Botón cambiar plan dentro de la plan card */
@@ -460,6 +470,19 @@
     border-top: 1px solid var(--border-light);
 }
 
+/* [195A-1] Header inline para verificaciones DNS: título a la izquierda, botón a la derecha. */
+.hostingDetalleDnsCheckHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xs);
+}
+
+.hostingDetalleDnsCheckHeader .hostingDetalleSubTitle {
+    margin: 0;
+}
+
 .hostingDetalleDnsResult {
     display: flex;
     align-items: center;
@@ -488,13 +511,26 @@
     border: 1px solid color-mix(in srgb, var(--error-color) 20%, transparent);
 }
 
-/* ── Acciones rápidas ────────────────────── */
-
+/* [195A-1] Acciones: estado a la izquierda, botones a la derecha. */
 .hostingDetalleAcciones {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
     gap: var(--spacing-sm);
     flex-wrap: wrap;
     padding-top: var(--spacing-sm);
+}
+
+.hostingDetalleAccionesEstado {
+    display: flex;
+    align-items: center;
+}
+
+.hostingDetalleAccionesBtns {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .hostingDetalleAccionLink {

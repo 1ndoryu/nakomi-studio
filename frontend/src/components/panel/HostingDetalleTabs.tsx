@@ -76,12 +76,16 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
                     </>
                 )}
             </div>
+            {/* [195A-1] Acciones: estado a la izquierda, botones a la derecha. */}
             <div className="hostingDetalleAcciones">
-                {isRealProvisioned && (
-                    <span className={`hostingStatus ${sub.status === 'active' ? 'hostingStatus--active' : sub.status === 'suspended' ? 'hostingStatus--suspended' : ''}`}>
-                        Servicio {HOSTING_STATUS_LABELS[sub.status]?.toLowerCase() ?? sub.status}
-                    </span>
-                )}
+                <div className="hostingDetalleAccionesEstado">
+                    {isRealProvisioned && (
+                        <span className={`hostingStatus ${sub.status === 'active' ? 'hostingStatus--active' : sub.status === 'suspended' ? 'hostingStatus--suspended' : ''}`}>
+                            Servicio {HOSTING_STATUS_LABELS[sub.status]?.toLowerCase() ?? sub.status}
+                        </span>
+                    )}
+                </div>
+                <div className="hostingDetalleAccionesBtns">
                 {canProvision && (
                     <Button
                         type="button"
@@ -130,6 +134,7 @@ export function TabGeneral({sub, isAdmin, onProvision, provisionLoading, onResta
                         {startLoading ? <Loader size={14} className="hostingSpinner" /> : <Play size={14} />} Iniciar
                     </Button>
                 )}
+                </div>
             </div>
         </div>
     );

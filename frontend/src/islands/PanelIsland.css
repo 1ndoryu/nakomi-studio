@@ -65,6 +65,14 @@
     color: var(--panel-card-icono-color, var(--text-tertiary));
 }
 
+/* [195A-1] Imagen de screenshot de dominio dentro de panelCardIcono. */
+.panelCardIconoImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 /* Responsive: stack vertical en movil */
 @media (max-width: 768px) {
     .panelCardIcono {
