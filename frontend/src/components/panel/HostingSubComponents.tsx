@@ -106,7 +106,7 @@ export function HostingCard({
                     {/* [195A-1] Screenshot automatico del dominio via thum.io para hostings activos. */}
                     {sub.domain && sub.status === 'active' ? (
                         <img
-                            src={`https://image.thum.io/get/width/280/crop/180/https://${sub.domain}`}
+                            src={`https://image.thum.io/get/width/800/crop/500/https://${sub.domain}`}
                             alt={sub.domain}
                             className="panelCardIconoImg"
                             loading="lazy"
