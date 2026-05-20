@@ -5,14 +5,14 @@
 import React from 'react';
 import './Tarjeta.css';
 
-interface TarjetaProps {
+interface TarjetaProps extends React.HTMLAttributes<HTMLDivElement | HTMLButtonElement> {
     children: React.ReactNode;
     className?: string;
     fondo?: string;
     onClick?: () => void;
 }
 
-export const Tarjeta: React.FC<TarjetaProps> = ({children, className, fondo, onClick}) => {
+export const Tarjeta: React.FC<TarjetaProps> = ({children, className, fondo, onClick, ...props}) => {
     const estiloInline = fondo ? {backgroundColor: fondo} : undefined;
     const Tag = onClick ? 'button' : 'div';
 
@@ -21,6 +21,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({children, className, fondo, onC
             className={`tarjetaBase ${className ?? ''}`}
             style={estiloInline}
             onClick={onClick}
+            {...props}
             {...(onClick ? {type: 'button' as const} : {})}
         >
             {children}

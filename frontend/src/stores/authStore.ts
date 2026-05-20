@@ -28,6 +28,8 @@ interface AuthState {
     actualizarRol: (token: string, userId: string, role: UserRole, effectiveRole: UserRole, impersonating: boolean) => void;
     /* [154A-5] Marca que el usuario ya estableció su contraseña */
     marcarPasswordEstablecida: () => void;
+    /* [205A-1] Actualiza email local tras cambio de perfil para que Google pueda vincular por email real. */
+    actualizarEmail: (email: string) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -88,6 +90,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const currentUser = get().user;
         if (!currentUser) return;
         const updatedUser = {...currentUser, needsPassword: false};
+        localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+        set({user: updatedUser});
+    },
+
+    actualizarEmail: (email) => {
+        const currentUser = get().user;
+        if (!currentUser) return;
+        const updatedUser = {...currentUser, email};
         localStorage.setItem('auth_user', JSON.stringify(updatedUser));
         set({user: updatedUser});
     },

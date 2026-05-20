@@ -1,3 +1,4 @@
+mod billing;
 mod blog;
 mod chat;
 mod dashboard;
@@ -21,6 +22,9 @@ mod user;
 mod vps;
 mod wallet;
 
+pub use billing::{
+    BillingCheckoutMode, BillingCheckoutResponse, BillingItem, CreateBillingCheckoutRequest,
+};
 pub use blog::{
     BlogPost, BlogPostResponse, CreateBlogPostRequest, PaginatedBlogPosts, UpdateBlogPostRequest,
 };

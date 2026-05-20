@@ -8,6 +8,7 @@ import {currentProfileKey, useCurrentProfile} from './useCurrentProfile';
 import {useAuthStore} from '../stores/authStore';
 
 interface EstadoPerfil {
+    email: string;
     nombre: string;
     descripcion: string;
     linkedin: string;
@@ -32,10 +33,12 @@ interface RetornoUsePerfil {
 export const usePerfil = (): RetornoUsePerfil => {
     const queryClient = useQueryClient();
     const userId = useAuthStore(s => s.user?.userId);
+    const actualizarEmailAuth = useAuthStore(s => s.actualizarEmail);
     const {perfil, cargando: cargandoPerfil, avatarUrl} = useCurrentProfile();
     const [subiendoAvatar, setSubiendoAvatar] = useState(false);
 
     const [estado, setEstado] = useState<EstadoPerfil>({
+        email: '',
         nombre: '',
         descripcion: '',
         linkedin: '',
@@ -52,6 +55,7 @@ export const usePerfil = (): RetornoUsePerfil => {
         if (!perfil) return;
         setEstado(prev => ({
             ...prev,
+            email: prev.email || perfil.email || '',
             nombre: prev.nombre || perfil.display_name || ''
         }));
     }, [perfil]);
@@ -67,6 +71,7 @@ export const usePerfil = (): RetornoUsePerfil => {
         setErrorGuardar(null);
         try {
             const resp = await actualizarPerfil({
+                email: estado.email.trim() || undefined,
                 display_name: estado.nombre || undefined,
                 bio: estado.descripcion || undefined,
                 linkedin: estado.linkedin || undefined,
@@ -75,8 +80,10 @@ export const usePerfil = (): RetornoUsePerfil => {
             });
             queryClient.setQueryData<PerfilResponse | undefined>(
                 currentProfileKey(userId),
-                (prev) => prev ? {...prev, display_name: resp.display_name} : prev,
+                (prev) => prev ? {...prev, email: resp.email, display_name: resp.display_name} : prev,
             );
+            actualizarEmailAuth(resp.email);
+            setEstado(prev => ({...prev, email: resp.email}));
             setGuardado(true);
             setTimeout(() => setGuardado(false), 3000);
         } catch (err: unknown) {

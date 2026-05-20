@@ -5,6 +5,7 @@
  * [044A-38 Fase 1] Tabs dinámicos por rol + botón switch-role para admin.
  */
 import React, {useState, useCallback, useRef} from 'react';
+import {useQuery} from '@tanstack/react-query';
 import {useTranslation} from 'react-i18next';
 import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, Banknote, Menu, Network, Globe} from 'lucide-react';
 import { useClickOutside } from '../../hooks/useClickOutside';
@@ -12,6 +13,8 @@ import {obtenerTabsPorRol, type SeccionPanel} from '../../data/panel';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
 import {useAuthStore} from '../../stores/authStore';
 import {apiSwitchRole, extraerMensajeError} from '../../api/auth';
+import {apiListBillingItems} from '../../api/billing';
+import {BILLING_ITEMS_KEY} from '../../hooks/useBillingItems';
 import type {UserRole} from '../../api/auth';
 import {toast} from '../../stores/toastStore';
 import {Button} from '../ui/Button';
@@ -67,6 +70,13 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
     const isAdmin = authUser?.role === 'admin';
     const isImpersonating = authUser?.impersonating ?? false;
     const tabs = obtenerTabsPorRol(effectiveRole);
+    const {data: billingItems = []} = useQuery({
+        queryKey: BILLING_ITEMS_KEY,
+        queryFn: apiListBillingItems,
+        enabled: effectiveRole === 'client',
+        staleTime: 30_000,
+    });
+    const pendingBillingCount = billingItems.filter(item => item.status === 'pending').length;
 
     /* [114A-9] Nav inferior móvil: muestra 4 items + botón "Más" para overflow */
     const MAX_BOTTOM_NAV = 4;
@@ -74,6 +84,8 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
     const menuRef = useRef<HTMLDivElement>(null);
     const visibleTabs = tabs.slice(0, MAX_BOTTOM_NAV);
     const overflowTabs = tabs.slice(MAX_BOTTOM_NAV);
+    const overflowTieneHostingPendiente = pendingBillingCount > 0
+        && overflowTabs.some(tab => tab.id === 'hosting');
 
     /* [124A-SENT-R7] Cerrar el menú overflow al hacer click/touch fuera. */
     useClickOutside(menuRef, () => setMenuAbierto(false), menuAbierto);
@@ -151,6 +163,9 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
                         >
                             <Icono size={18} className="sidebarItemIcono" aria-hidden="true" />
                             <span className="sidebarItemTexto">{tab.label}</span>
+                            {tab.id === 'hosting' && pendingBillingCount > 0 && (
+                                <span className="sidebarItemIndicador" aria-label={`${pendingBillingCount} pagos pendientes`} />
+                            )}
                         </Button>
                     );
                 })}
@@ -168,6 +183,9 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
                             title={tab.label}
                         >
                             <Icono size={20} className="sidebarItemIcono" aria-hidden="true" />
+                            {tab.id === 'hosting' && pendingBillingCount > 0 && (
+                                <span className="sidebarItemIndicador sidebarItemIndicadorMovil" aria-label={`${pendingBillingCount} pagos pendientes`} />
+                            )}
                         </Button>
                     );
                 })}
@@ -184,6 +202,9 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
                             title="Más opciones"
                         >
                             <Menu size={20} className="sidebarItemIcono" aria-hidden="true" />
+                            {overflowTieneHostingPendiente && (
+                                <span className="sidebarItemIndicador sidebarItemIndicadorMovil" aria-label={`${pendingBillingCount} pagos pendientes`} />
+                            )}
                         </Button>
 
                         {menuAbierto && (
@@ -199,6 +220,9 @@ export const SidebarPanel: React.FC<SidebarPanelProps> = ({seccionActiva, onCamb
                                         >
                                             <Icono size={16} className="sidebarItemIcono" aria-hidden="true" />
                                             <span>{tab.label}</span>
+                                            {tab.id === 'hosting' && pendingBillingCount > 0 && (
+                                                <span className="sidebarItemIndicador" aria-label={`${pendingBillingCount} pagos pendientes`} />
+                                            )}
                                         </Button>
                                     );
                                 })}

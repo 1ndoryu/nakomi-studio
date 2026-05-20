@@ -179,6 +179,30 @@ pub async fn update_profile(
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
+    if let Some(email) = req
+        .email
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        let email = email.to_ascii_lowercase();
+        if let Some(existing) = UserRepository::find_by_email(&state.pool, &email).await? {
+            if existing.id != auth.user_id {
+                return Err(AppError::Conflict("Ese email ya está registrado".into()));
+            }
+        }
+        UserRepository::update_email(&state.pool, auth.user_id, &email)
+            .await
+            .map_err(|e| {
+                if let sqlx::Error::Database(db_error) = &e {
+                    if db_error.constraint() == Some("users_email_key") {
+                        return AppError::Conflict("Ese email ya está registrado".into());
+                    }
+                }
+                AppError::Internal(format!("Error actualizando email: {e}"))
+            })?;
+    }
+
     UserRepository::update_profile(
         &state.pool,
         auth.user_id,

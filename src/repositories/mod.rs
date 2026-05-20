@@ -1,4 +1,5 @@
 mod activity_log;
+mod billing;
 mod blog;
 mod chat;
 mod dashboard;
@@ -24,6 +25,7 @@ mod vps;
 mod wallet;
 
 pub use activity_log::{ActivityLogRepository, ActivityRow};
+pub use billing::BillingRepository;
 pub use blog::{BlogRepository, CreateBlogPostParams, UpdateBlogPostParams};
 pub use chat::ChatRepository;
 pub use dashboard::DashboardRepository;

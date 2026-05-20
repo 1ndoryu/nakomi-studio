@@ -27,7 +27,7 @@
 .sidebarAvatar {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: var(--radius-full);
     overflow: hidden;
     flex-shrink: 0;
 }
@@ -41,7 +41,7 @@
 .sidebarInfo {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--spacing-2xs);
     overflow: hidden;
 }
 
@@ -65,7 +65,7 @@
 .sidebarNav {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--spacing-2xs);
     flex: 1;
 }
 
@@ -81,10 +81,10 @@
     font-weight: 500;
     color: var(--text-muted);
     padding: var(--spacing-sm) var(--spacing-md);
-    margin-left: -1rem;
+    margin-left: calc(-1 * var(--spacing-md));
     border-radius: var(--radius-md);
     text-align: left;
-    width: calc(100% + 1rem);
+    width: calc(100% + var(--spacing-md));
     min-width: 0;
 }
 
@@ -114,6 +114,20 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.sidebarItemIndicador {
+    width: var(--spacing-xs);
+    height: var(--spacing-xs);
+    flex: 0 0 auto;
+    border-radius: var(--radius-full);
+    background: var(--error-color);
+}
+
+.sidebarItemIndicadorMovil {
+    position: absolute;
+    top: var(--spacing-xs);
+    right: calc(50% - var(--spacing-md));
 }
 
 /* [114A-9] Desktop: items de escritorio visibles, items móviles ocultos */
@@ -168,6 +182,7 @@
     }
 
     .sidebarItem.sidebarItemMovil {
+        position: relative;
         flex: 1;
         flex-direction: column;
         align-items: center;
@@ -222,7 +237,7 @@
         margin-bottom: var(--spacing-xs);
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: var(--spacing-2xs);
         z-index: 110;
     }
 

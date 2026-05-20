@@ -11,6 +11,7 @@ import {toast} from '../stores/toastStore';
 import {useAuthStore} from '../stores/authStore';
 import {useHostingMutations} from './useHostingMutations';
 import {useVpsMutations} from './useVpsMutations';
+import {useBillingItems} from './useBillingItems';
 import {getPanelHostingIdFromUrl, syncPanelHostingInUrl} from '../utils/panelUrlState';
 
 const ACTIVE_STATUSES = new Set(['pending', 'provisioning', 'active']);
@@ -93,6 +94,11 @@ export function useSeccionHosting() {
         queryKey: vpsKey,
         queryFn: apiListVpsSubscriptions,
     });
+    const {
+        billingItems,
+        isLoading: billingLoading,
+        checkoutMutation: billingCheckoutMutation,
+    } = useBillingItems();
 
     const activos = useMemo(
         () => subscriptions.filter(s => ACTIVE_STATUSES.has(s.status)),
@@ -113,6 +119,9 @@ export function useSeccionHosting() {
         subscriptions,
         vpsSubscriptions,
         isLoading,
+        billingItems,
+        billingLoading,
+        billingCheckoutMutation,
         isAdmin,
         tabActiva,
         setTabActiva,

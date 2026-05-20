@@ -10,6 +10,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::routing::get;
 use axum::{Json, Router};
 use rand::Rng;
+use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -17,7 +18,7 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     PublicVpsPlan, RejectVpsRequest, SelfSubscribeVpsRequest, SelfSubscribeVpsResponse, UserRole,
-    VpsPlanConfig, VpsSubscriptionResponse,
+    VpsPlanConfig, VpsSubscription, VpsSubscriptionResponse,
 };
 use crate::repositories::{CreateVpsSubscriptionParams, UserRepository, VpsRepository};
 use crate::services::{
@@ -134,6 +135,53 @@ fn build_client_notes(
     } else {
         Some(parts.join(", "))
     }
+}
+
+fn selected_extra_cents(
+    options: &serde_json::Value,
+    selected: Option<&str>,
+) -> Result<i32, AppError> {
+    let amount = selected
+        .and_then(|key| options.get(key))
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or(0);
+
+    i32::try_from(amount)
+        .map_err(|_| AppError::Validation("Extra de precio VPS fuera de rango".into()))
+}
+
+async fn complete_test_bypass_checkout(
+    pool: &PgPool,
+    subscription: VpsSubscription,
+    tier: &str,
+    user_id: Uuid,
+    base_url: &str,
+) -> Result<SelfSubscribeVpsResponse, AppError> {
+    VpsRepository::update_status(pool, subscription.id, "pending_approval").await?;
+    let _ = VpsRepository::add_event(
+        pool,
+        subscription.id,
+        "test_checkout_bypassed",
+        Some(serde_json::json!({
+            "tier": tier,
+            "source": "self-service",
+            "by": user_id.to_string(),
+        })),
+    )
+    .await;
+
+    let updated = VpsRepository::find_by_id(pool, subscription.id)
+        .await?
+        .unwrap_or(subscription);
+    let checkout_url = format!(
+        "{base_url}/panel?vps=test-bypass&subscription_id={}",
+        updated.id
+    );
+
+    Ok(SelfSubscribeVpsResponse {
+        subscription: updated.into(),
+        checkout_url,
+    })
 }
 
 fn sanitize_hostname(requested_hostname: Option<&str>, subscription_id: Uuid) -> String {
@@ -328,14 +376,14 @@ pub async fn subscribe_self(
     );
 
     /* [205A-1] Computar precio total real incluyendo extra de región y storage elegidos */
-    let region_extra = req.region_preference.as_deref()
-        .and_then(|r| plan_config.region_extra_cents.get(r))
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0) as i32;
-    let storage_extra = req.storage_preference.as_deref()
-        .and_then(|s| plan_config.storage_extra_cents.get(s))
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0) as i32;
+    let region_extra = selected_extra_cents(
+        &plan_config.region_extra_cents,
+        req.region_preference.as_deref(),
+    )?;
+    let storage_extra = selected_extra_cents(
+        &plan_config.storage_extra_cents,
+        req.storage_preference.as_deref(),
+    )?;
     let total_monthly_cents = plan_config.monthly_price_cents + region_extra + storage_extra;
 
     let subscription = VpsRepository::create(
@@ -366,32 +414,15 @@ pub async fn subscribe_self(
 
     let base_url = resolve_public_base_url(&headers);
     if is_checkout_bypass_email(&client_email) {
-        VpsRepository::update_status(&state.pool, subscription.id, "pending_approval").await?;
-        let _ = VpsRepository::add_event(
+        let response = complete_test_bypass_checkout(
             &state.pool,
-            subscription.id,
-            "test_checkout_bypassed",
-            Some(serde_json::json!({
-                "tier": req.tier,
-                "source": "self-service",
-                "by": auth.user_id.to_string(),
-            })),
+            subscription,
+            &req.tier,
+            auth.user_id,
+            &base_url,
         )
-        .await;
-        let updated = VpsRepository::find_by_id(&state.pool, subscription.id)
-            .await?
-            .unwrap_or(subscription);
-        let checkout_url = format!(
-            "{base_url}/panel?vps=test-bypass&subscription_id={}",
-            updated.id
-        );
-        return Ok((
-            StatusCode::CREATED,
-            Json(SelfSubscribeVpsResponse {
-                subscription: updated.into(),
-                checkout_url,
-            }),
-        ));
+        .await?;
+        return Ok((StatusCode::CREATED, Json(response)));
     }
 
     let stripe_key = state

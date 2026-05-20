@@ -32,4 +32,4 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Tareas pendientes
 
-- (sin tareas pendientes)
+(sin tareas pendientes)

@@ -17,6 +17,7 @@ import {VpsCard} from './VpsCard';
 import {CreateHostingForm} from './HostingCreateForm';
 import {HostingDetalle} from './HostingDetalle';
 import {HostingPlanSelector} from './HostingPlanSelector';
+import {PendingBillingPanel} from './PendingBillingPanel';
 import './SeccionHosting.css';
 
 export const SeccionHosting: React.FC = () => {
@@ -24,6 +25,9 @@ export const SeccionHosting: React.FC = () => {
         subscriptions,
         vpsSubscriptions,
         isLoading,
+        billingItems,
+        billingLoading,
+        billingCheckoutMutation,
         isAdmin,
         tabActiva,
         setTabActiva,
@@ -86,6 +90,15 @@ export const SeccionHosting: React.FC = () => {
 
     return (
         <div className="hostingContenedor">
+            {!isAdmin && (
+                <PendingBillingPanel
+                    items={billingItems}
+                    isLoading={billingLoading}
+                    checkoutLoading={billingCheckoutMutation.isPending}
+                    onCheckout={(itemIds, mode) => billingCheckoutMutation.mutate({itemIds, mode})}
+                />
+            )}
+
             <div className="hostingAcciones">
                 {isAdmin ? (
                     <Button

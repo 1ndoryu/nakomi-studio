@@ -19,6 +19,7 @@ export interface AvatarResponse {
 }
 
 export interface UpdateProfilePayload {
+    email?: string;
     display_name?: string;
     bio?: string;
     linkedin?: string;

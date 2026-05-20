@@ -2,12 +2,14 @@
  * [164A-17] Sigue siendo el orquestador único de rutas/estado global del backend. */
 #![allow(clippy::needless_for_each)] // Generado por utoipa OpenApi derive
 
+mod admin_client_bootstrap;
 mod admin_fixtures;
 mod admin_seed;
 mod admin_services;
 mod admin_users;
 mod assignment;
 mod auth;
+mod billing;
 mod blog;
 mod cancellation;
 mod chat;
@@ -637,6 +639,7 @@ fn api_routes() -> Router<AppState> {
         .merge(orders::routes())
         .merge(order_lifecycle::routes())
         .merge(payments::routes())
+        .merge(billing::routes())
         .merge(payment_methods::routes())
         .merge(chat::rest_routes())
         .merge(deliverables::routes())
@@ -655,6 +658,7 @@ fn api_routes() -> Router<AppState> {
         .merge(team_members::public_routes())
         .merge(team_members::admin_routes())
         .merge(public_users::public_routes())
+        .merge(admin_client_bootstrap::routes())
         .merge(admin_fixtures::routes())
         .merge(admin_seed::seed_routes())
         .merge(configuracion::configuracion_routes())

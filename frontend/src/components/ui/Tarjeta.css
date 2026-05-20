@@ -7,6 +7,40 @@
     background: var(--bg-primary);
 }
 
+.tarjetaIconoAlerta {
+    display: grid;
+    place-items: center;
+    width: calc(var(--spacing-lg) + var(--spacing-xs));
+    height: calc(var(--spacing-lg) + var(--spacing-xs));
+    border-radius: var(--radius-md);
+    color: var(--error-color);
+    background: color-mix(in srgb, var(--error-color) 10%, transparent);
+}
+
+.tarjetaEyebrow,
+.tarjetaTexto {
+    color: var(--text-muted);
+}
+
+.tarjetaEyebrow {
+    font-size: var(--text-xs);
+}
+
+.tarjetaTitulo {
+    margin: 0;
+    color: var(--brand-black);
+    font-size: var(--text-lg);
+}
+
+.tarjetaTituloCompacto {
+    font-size: var(--text-base);
+}
+
+.tarjetaTexto {
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--text-sm);
+}
+
 /* Reset para cuando es botón */
 button.tarjetaBase {
     cursor: pointer;

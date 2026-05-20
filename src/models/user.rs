@@ -209,6 +209,8 @@ pub struct AdminCreateUserRequest {
 /* [074A-23] Request para actualizar perfil (display_name + campos extendidos) */
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateProfileRequest {
+    #[validate(email(message = "Formato de email inválido"))]
+    pub email: Option<String>,
     #[validate(length(max = 100, message = "El nombre no puede exceder 100 caracteres"))]
     pub display_name: Option<String>,
     #[validate(length(max = 500, message = "La descripción no puede exceder 500 caracteres"))]

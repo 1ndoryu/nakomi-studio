@@ -1,5 +1,9 @@
 # Lecciones Aprendidas
 
+## Datos reales de cliente — no van en fixtures TOML
+- Los fixtures sirven para demo/dev, no para dar de alta clientes reales en produccion. Si la carga debe tocar solo cuenta, hostings existentes y facturas, crear un bootstrap admin idempotente y ejecutarlo explicitamente.
+- Las fechas de dominios cobrables deben modelar la renovacion real (`due_at`), no la fecha de preview local; para GoDaddy usar el vencimiento/renovacion comunicado por el cliente.
+
 ## Dominios — pago no equivale a registro inmediato
 - Un checkout de dominio no debe llamar a Contabo `order_domain` si faltan handles WHOIS reales del cliente; registrar con datos incompletos crea deuda legal/operativa.
 - El boundary seguro es separar pago (`domain_orders.paid_pending_registration`) de registro final, y mostrar ese estado en panel hasta completar contactos/nameservers válidos.

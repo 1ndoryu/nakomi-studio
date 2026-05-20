@@ -13,7 +13,7 @@ import './SeccionPerfil.css';
 export const SeccionPerfil: React.FC = () => {
     const {t} = useTranslation();
     const {
-        estado, guardado, guardando, errorGuardar, cargando, perfil, avatarUrl,
+        estado, guardado, guardando, errorGuardar, cargando, avatarUrl,
         subiendoAvatar, actualizarCampo, handleGuardar, handleSubirAvatar
     } = usePerfil();
     const inputArchivoRef = useRef<HTMLInputElement>(null);
@@ -86,10 +86,11 @@ export const SeccionPerfil: React.FC = () => {
                         <Input
                             type="email"
                             id="perfilEmail"
-                            value={perfil?.email || ''}
+                            value={estado.email}
+                            onChange={(e) => actualizarCampo('email', e.target.value)}
                             className="perfilCampoInput"
-                            disabled
                         />
+                        <span className="perfilAvatarNota">Usa aquí el correo real antes de vincular Google.</span>
                     </div>
                 </div>
 
