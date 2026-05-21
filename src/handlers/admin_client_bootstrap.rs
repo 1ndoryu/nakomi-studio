@@ -80,8 +80,11 @@ struct GuillermoBillingItem {
     description: &'static str,
     amount_cents: i32,
     billing_period: &'static str,
-    /* [195A-1] Fechas computadas en upsert_guillermo_billing_items:
+    /* [205A-4] initially_paid: si true, el upsert inserta/actualiza el item como 'paid'.
+     * Sirve para marcar cobros ya saldados sin perder el registro historico.
+     * [195A-1] Fechas computadas en upsert_guillermo_billing_items:
      * hosting -> Utc::now() + 90 dias de gracia; domain -> fecha fija GoDaddy. */
+    initially_paid: bool,
 }
 
 const GUILLERMO_BILLING_ITEMS: &[GuillermoBillingItem] = &[
@@ -93,6 +96,9 @@ const GUILLERMO_BILLING_ITEMS: &[GuillermoBillingItem] = &[
         description: "El cobro empieza al pagar; periodo de revision de 3 meses.",
         amount_cents: 248,
         billing_period: "month",
+        /* [205A-4] guillechatbots.es ya esta pagado — se registra como paid para que
+         * no aparezca como deuda pendiente en la vista del cliente. */
+        initially_paid: true,
     },
     GuillermoBillingItem {
         id: "d1000001-0001-4000-8000-000000000002",
@@ -102,6 +108,7 @@ const GUILLERMO_BILLING_ITEMS: &[GuillermoBillingItem] = &[
         description: "El dominio wandori.us no se cobra al cliente.",
         amount_cents: 248,
         billing_period: "month",
+        initially_paid: false,
     },
     GuillermoBillingItem {
         id: "d1000001-0001-4000-8000-000000000003",
@@ -111,6 +118,7 @@ const GUILLERMO_BILLING_ITEMS: &[GuillermoBillingItem] = &[
         description: "Dominio comprado en GoDaddy. Renovacion Jan 14, 2027.",
         amount_cents: 1500,
         billing_period: "year",
+        initially_paid: false,
     },
     GuillermoBillingItem {
         id: "d1000001-0001-4000-8000-000000000004",
@@ -120,6 +128,17 @@ const GUILLERMO_BILLING_ITEMS: &[GuillermoBillingItem] = &[
         description: "Dominio comprado en GoDaddy. Renovacion Jan 14, 2027.",
         amount_cents: 1500,
         billing_period: "year",
+        initially_paid: false,
+    },
+    GuillermoBillingItem {
+        id: "d1000001-0001-4000-8000-000000000005",
+        resource_type: "hosting",
+        hosting_domain: Some("restaurante.wandori.us"),
+        title: "Hosting restaurante.wandori.us \u2014 Plan Pro",
+        description: "Plan Pro ($4.13/mes). El cobro empieza al pagar.",
+        amount_cents: 413,
+        billing_period: "month",
+        initially_paid: false,
     },
 ];
 
@@ -141,7 +160,7 @@ async fn bootstrap_guillermo(
         user_created,
         hostings_upserted: hosting_ids.len(),
         billing_items_upserted: GUILLERMO_BILLING_ITEMS.len(),
-        message: "Cliente Guillermo listo para revision: 4 hostings activos y 4 cobros pendientes."
+        message: "Cliente Guillermo listo para revision: 4 hostings activos, 4 cobros (1 pagado) y 1 pendiente nuevo (restaurante Pro)."
             .into(),
     }))
 }
@@ -260,13 +279,18 @@ async fn upsert_guillermo_billing_items(
             )
         };
 
+        /* [205A-4] $12 = initial_status ('paid' | 'pending').
+         * ON CONFLICT: si el item ya es 'paid' O el bootstrap lo marca paid, queda paid.
+         * Esto permite re-ejecutar el bootstrap sin revertir pagos ya registrados
+         * y sin crear deuda falsa para cobros ya saldados (e.g. guillechatbots.es). */
+        let initial_status = if item.initially_paid { "paid" } else { "pending" };
         sqlx::query(
             r"INSERT INTO billing_items (
                     id, user_id, resource_type, resource_id, title, description,
                     amount_cents, currency, billing_period, status, due_at,
                     grace_period_ends_at, metadata
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, 'USD', $8, 'pending', $9, $10, $11)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, 'USD', $8, $12, $9, $10, $11)
                 ON CONFLICT (id) DO UPDATE SET
                     user_id = EXCLUDED.user_id,
                     resource_type = EXCLUDED.resource_type,
@@ -276,10 +300,17 @@ async fn upsert_guillermo_billing_items(
                     amount_cents = EXCLUDED.amount_cents,
                     currency = EXCLUDED.currency,
                     billing_period = EXCLUDED.billing_period,
-                    status = CASE WHEN billing_items.status = 'paid' THEN 'paid' ELSE 'pending' END,
+                    status = CASE
+                        WHEN $12 = 'paid' OR billing_items.status = 'paid' THEN 'paid'
+                        ELSE 'pending'
+                    END,
                     due_at = EXCLUDED.due_at,
                     grace_period_ends_at = EXCLUDED.grace_period_ends_at,
-                    paid_at = CASE WHEN billing_items.status = 'paid' THEN billing_items.paid_at ELSE NULL END,
+                    paid_at = CASE
+                        WHEN $12 = 'paid' THEN COALESCE(billing_items.paid_at, NOW())
+                        WHEN billing_items.status = 'paid' THEN billing_items.paid_at
+                        ELSE NULL
+                    END,
                     stripe_session_id = CASE WHEN billing_items.status = 'paid' THEN billing_items.stripe_session_id ELSE NULL END,
                     metadata = EXCLUDED.metadata,
                     updated_at = NOW()",
@@ -295,6 +326,7 @@ async fn upsert_guillermo_billing_items(
         .bind(due_at)
         .bind(grace_period_ends_at)
         .bind(metadata)
+        .bind(initial_status)
         .execute(pool)
         .await?;
     }
