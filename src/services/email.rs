@@ -154,6 +154,14 @@ fn html_escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
+fn recipient_label(display_name: Option<&str>, email: &str) -> String {
+  let raw = display_name
+    .map(str::trim)
+    .filter(|value| !value.is_empty())
+    .unwrap_or(email);
+  html_escape(raw)
+}
+
 fn format_usd_cents(amount_cents: i32) -> String {
     format!("${:.2} USD", f64::from(amount_cents) / 100.0)
 }
@@ -441,6 +449,126 @@ impl EmailService {
 
         if let Err(error) = Self::send(config, client_email, &subject, &html).await {
             tracing::error!("Error enviando email VPS rechazado a {client_email}: {error}");
+        }
+    }
+
+    /* [205A-2] Notificación informativa al correo nuevo tras cambiar el email desde perfil.
+     * No verifica ownership; solo confirma que el cambio ya se aplicó y deja rastro en la bandeja. */
+    pub async fn send_profile_email_changed_new_address(
+        config: &EmailConfig,
+        new_email: &str,
+        display_name: Option<&str>,
+        old_email: &str,
+    ) {
+        let subject = "Tu correo de acceso fue actualizado — Nakomi Studio";
+        let recipient = recipient_label(display_name, new_email);
+        let escaped_old = html_escape(old_email);
+        let escaped_new = html_escape(new_email);
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#1a1a1a;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Correo actualizado</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">Hola, <strong>{recipient}</strong>.</p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
+      Tu cuenta cambió el correo de acceso de <strong>{escaped_old}</strong> a <strong>{escaped_new}</strong>.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
+      Desde ahora puedes iniciar sesión con este correo. Este cambio no requirió verificación por email.
+    </p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        match Self::send(config, new_email, subject, &html).await {
+            Ok(()) => tracing::info!("Email de confirmación de cambio de correo enviado a {new_email}"),
+            Err(error) => tracing::error!("Error enviando email de cambio de correo a {new_email}: {error}"),
+        }
+    }
+
+    /* [205A-2] Notificación defensiva al correo anterior tras un cambio de email.
+     * Sirve para alertar al usuario si no reconoce la modificación. */
+    pub async fn send_profile_email_changed_old_address(
+        config: &EmailConfig,
+        old_email: &str,
+        display_name: Option<&str>,
+        new_email: &str,
+    ) {
+        let subject = "Tu correo de acceso fue reemplazado — Nakomi Studio";
+        let recipient = recipient_label(display_name, old_email);
+        let escaped_old = html_escape(old_email);
+        let escaped_new = html_escape(new_email);
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#991b1b;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Cambio de correo detectado</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">Hola, <strong>{recipient}</strong>.</p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
+      Tu cuenta dejó de usar <strong>{escaped_old}</strong> y ahora usa <strong>{escaped_new}</strong> para iniciar sesión.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
+      Si no reconoces este cambio, responde a este correo o contacta a soporte de inmediato.
+    </p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        match Self::send(config, old_email, subject, &html).await {
+            Ok(()) => tracing::info!("Email de alerta por cambio de correo enviado a {old_email}"),
+            Err(error) => tracing::error!("Error enviando alerta por cambio de correo a {old_email}: {error}"),
+        }
+    }
+
+    /* [205A-2] Notificación informativa tras cambio de contraseña desde perfil.
+     * Permite comprobar entrega SMTP y avisar al usuario si el cambio fue inesperado. */
+    pub async fn send_profile_password_changed(
+        config: &EmailConfig,
+        to_email: &str,
+        display_name: Option<&str>,
+    ) {
+        let subject = "Tu contraseña fue actualizada — Nakomi Studio";
+        let recipient = recipient_label(display_name, to_email);
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#1a1a1a;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Contraseña actualizada</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">Hola, <strong>{recipient}</strong>.</p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
+      La contraseña de tu cuenta fue cambiada correctamente desde la configuración de perfil.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
+      Si no fuiste tú, cambia tu contraseña de nuevo de inmediato y contacta al equipo de soporte.
+    </p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        match Self::send(config, to_email, subject, &html).await {
+            Ok(()) => tracing::info!("Email de cambio de contraseña enviado a {to_email}"),
+            Err(error) => tracing::error!("Error enviando email de cambio de contraseña a {to_email}: {error}"),
         }
     }
 }

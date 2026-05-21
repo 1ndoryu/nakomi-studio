@@ -30,7 +30,7 @@
 .perfilAvatar {
     width: 80px;
     height: 80px;
-    border-radius: 50%;
+    border-radius: var(--radius-full);
     overflow: hidden;
     flex-shrink: 0;
 }
@@ -110,7 +110,51 @@
     color: var(--brand-black);
     margin: 0;
     padding-top: var(--spacing-sm);
-    border-top: 1px solid var(--border-default);
+}
+
+.perfilSeguridadBloque {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background-color: var(--bg-card-subtle);
+    border-radius: var(--radius-lg);
+}
+
+.perfilSeguridadDescripcion {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.perfilModalResumen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.perfilModalConfirmacion {
+    gap: var(--spacing-md);
+}
+
+.perfilModalEmailObjetivo {
+    margin: 0;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-card-subtle);
+    color: var(--brand-black);
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    word-break: break-word;
+}
+
+.perfilModalError {
+    margin: 0;
+    color: var(--error-color);
+    font-family: var(--font-serif);
+    font-size: var(--text-sm);
 }
 
 /* Acciones */

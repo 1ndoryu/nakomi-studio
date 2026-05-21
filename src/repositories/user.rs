@@ -196,15 +196,14 @@ impl UserRepository {
     }
 
     /* [205A-1] Permite que cuentas bootstrap con email temporal adopten el email real.
-     * Google OAuth vincula por email, por eso el cambio debe ocurrir antes de sincronizar Google. */
+     * Google OAuth vincula por email, por eso el cambio debe ocurrir antes de sincronizar Google.
+     * [205A-2] Sin flujo de re-verificación aún, preservamos email_verified actual. */
     pub async fn update_email(
         pool: &PgPool,
         user_id: Uuid,
         email: &str,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("UPDATE users SET email = $2, email_verified = false WHERE id = $1")
-            .bind(user_id)
-            .bind(email)
+        sqlx::query!("UPDATE users SET email = $2 WHERE id = $1", user_id, email)
             .execute(pool)
             .await?;
         Ok(())

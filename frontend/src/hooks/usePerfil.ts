@@ -1,8 +1,10 @@
 /* [044A-43] Hook de perfil: carga perfil desde backend, sube avatar.
- * [074A-23] handleGuardar conectado a PATCH /api/profile (antes era stub). */
+ * [074A-23] handleGuardar conectado a PATCH /api/profile (antes era stub).
+ * [205A-2] Añade cambio de contraseña desde configuración, separado del perfil general. */
 import {useState, useEffect} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
-import {subirAvatar, actualizarPerfil} from '../api/profile';
+import {extraerMensajeError} from '../api/auth';
+import {subirAvatar, actualizarPerfil, cambiarPasswordPerfil} from '../api/profile';
 import type {PerfilResponse} from '../api/profile';
 import {currentProfileKey, useCurrentProfile} from './useCurrentProfile';
 import {useAuthStore} from '../stores/authStore';
@@ -16,6 +18,12 @@ interface EstadoPerfil {
     website: string;
 }
 
+interface EstadoPassword {
+    actual: string;
+    nueva: string;
+    confirmar: string;
+}
+
 interface RetornoUsePerfil {
     estado: EstadoPerfil;
     guardado: boolean;
@@ -25,8 +33,14 @@ interface RetornoUsePerfil {
     perfil: PerfilResponse | null;
     avatarUrl: string;
     subiendoAvatar: boolean;
+    estadoPassword: EstadoPassword;
+    passwordActualizada: boolean;
+    guardandoPassword: boolean;
+    errorPassword: string | null;
     actualizarCampo: (campo: keyof EstadoPerfil, valor: string) => void;
-    handleGuardar: (e: React.FormEvent) => void;
+    actualizarPasswordCampo: (campo: keyof EstadoPassword, valor: string) => void;
+    guardarPerfil: () => Promise<boolean>;
+    handleGuardarPassword: (e: React.FormEvent) => void;
     handleSubirAvatar: (archivo: File) => Promise<void>;
 }
 
@@ -49,6 +63,14 @@ export const usePerfil = (): RetornoUsePerfil => {
     const [guardado, setGuardado] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
+    const [estadoPassword, setEstadoPassword] = useState<EstadoPassword>({
+        actual: '',
+        nueva: '',
+        confirmar: ''
+    });
+    const [passwordActualizada, setPasswordActualizada] = useState(false);
+    const [guardandoPassword, setGuardandoPassword] = useState(false);
+    const [errorPassword, setErrorPassword] = useState<string | null>(null);
 
     /* Sincroniza los datos editables cuando el backend devuelve el perfil actual */
     useEffect(() => {
@@ -64,9 +86,12 @@ export const usePerfil = (): RetornoUsePerfil => {
         setEstado(prev => ({...prev, [campo]: valor}));
     };
 
+    const actualizarPasswordCampo = (campo: keyof EstadoPassword, valor: string) => {
+        setEstadoPassword(prev => ({...prev, [campo]: valor}));
+    };
+
     /* [074A-23] Guardar perfil llamando PATCH /api/profile */
-    const handleGuardar = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const guardarPerfil = async (): Promise<boolean> => {
         setGuardando(true);
         setErrorGuardar(null);
         try {
@@ -86,11 +111,54 @@ export const usePerfil = (): RetornoUsePerfil => {
             setEstado(prev => ({...prev, email: resp.email}));
             setGuardado(true);
             setTimeout(() => setGuardado(false), 3000);
+            return true;
         } catch (err: unknown) {
             const axiosData = (err as { response?: { data?: { message?: string } } })?.response?.data;
             setErrorGuardar(axiosData?.message ?? (err instanceof Error ? err.message : 'Error guardando perfil'));
+            return false;
         } finally {
             setGuardando(false);
+        }
+    };
+
+    const handleGuardarPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setGuardandoPassword(true);
+        setErrorPassword(null);
+        setPasswordActualizada(false);
+        try {
+            if (!estadoPassword.actual || !estadoPassword.nueva || !estadoPassword.confirmar) {
+                throw new Error('Completa los tres campos de contraseña.');
+            }
+            if (estadoPassword.nueva.length < 8) {
+                throw new Error('La nueva contraseña debe tener al menos 8 caracteres.');
+            }
+            if (estadoPassword.nueva !== estadoPassword.confirmar) {
+                throw new Error('La confirmación de la nueva contraseña no coincide.');
+            }
+            if (estadoPassword.actual === estadoPassword.nueva) {
+                throw new Error('La nueva contraseña debe ser distinta a la actual.');
+            }
+
+            await cambiarPasswordPerfil({
+                current_password: estadoPassword.actual,
+                new_password: estadoPassword.nueva,
+            });
+
+            setEstadoPassword({actual: '', nueva: '', confirmar: ''});
+            setPasswordActualizada(true);
+            setTimeout(() => setPasswordActualizada(false), 3000);
+        } catch (err: unknown) {
+            const hasHttpResponse = typeof err === 'object' && err !== null && 'response' in err;
+            setErrorPassword(
+                hasHttpResponse
+                    ? extraerMensajeError(err)
+                    : err instanceof Error
+                        ? err.message
+                        : 'Error actualizando contraseña'
+            );
+        } finally {
+            setGuardandoPassword(false);
         }
     };
 
@@ -109,6 +177,8 @@ export const usePerfil = (): RetornoUsePerfil => {
 
     return {
         estado, guardado, guardando, errorGuardar, cargando: cargandoPerfil, perfil, avatarUrl,
-        subiendoAvatar, actualizarCampo, handleGuardar, handleSubirAvatar
+        subiendoAvatar, estadoPassword, passwordActualizada, guardandoPassword, errorPassword,
+        actualizarCampo, actualizarPasswordCampo, guardarPerfil, handleGuardarPassword,
+        handleSubirAvatar
     };
 };

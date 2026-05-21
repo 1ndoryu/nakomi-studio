@@ -1,7 +1,8 @@
 /* [044A-43] API de perfil de usuario.
  * GET /api/profile — obtiene perfil del usuario autenticado.
  * POST /api/profile/avatar — sube imagen de avatar (multipart).
- * [074A-23] PATCH /api/profile — actualiza display_name y campos extendidos. */
+ * [074A-23] PATCH /api/profile — actualiza display_name y campos extendidos.
+ * [205A-2] PUT /api/profile/password — cambia contraseña desde configuración. */
 import instance from './axios-instance';
 
 export interface PerfilResponse {
@@ -27,6 +28,11 @@ export interface UpdateProfilePayload {
     website?: string;
 }
 
+export interface ChangeProfilePasswordPayload {
+    current_password: string;
+    new_password: string;
+}
+
 export async function obtenerPerfil(): Promise<PerfilResponse> {
     const {data} = await instance.get<PerfilResponse>('/api/profile');
     return data;
@@ -35,6 +41,10 @@ export async function obtenerPerfil(): Promise<PerfilResponse> {
 export async function actualizarPerfil(payload: UpdateProfilePayload): Promise<PerfilResponse> {
     const {data} = await instance.patch<PerfilResponse>('/api/profile', payload);
     return data;
+}
+
+export async function cambiarPasswordPerfil(payload: ChangeProfilePasswordPayload): Promise<void> {
+    await instance.put('/api/profile/password', payload);
 }
 
 export async function subirAvatar(archivo: File): Promise<AvatarResponse> {

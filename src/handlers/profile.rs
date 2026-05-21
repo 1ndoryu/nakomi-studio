@@ -2,6 +2,7 @@
 Upload multipart con validación MIME (image), max 2MB, guardado en uploads/avatars/.
 [074A-23] PATCH /api/profile para actualizar display_name y campos extendidos. */
 use axum::extract::{Multipart, State};
+use axum::http::StatusCode;
 use axum::Json;
 use axum::Router;
 use chrono::Utc;
@@ -9,8 +10,9 @@ use validator::Validate;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
-use crate::models::{UpdateProfileRequest, UserResponse};
+use crate::models::{ChangePasswordRequest, UpdateProfileRequest, UserResponse};
 use crate::repositories::UserRepository;
+use crate::services::{AuthService, EmailService};
 use crate::AppState;
 
 const MAX_AVATAR_SIZE: usize = 2 * 1024 * 1024;
@@ -152,10 +154,11 @@ pub struct AvatarResponse {
 
 /* Rutas de perfil — montadas bajo /api en mod.rs */
 pub fn routes() -> Router<AppState> {
-    use axum::routing::{get, post};
+    use axum::routing::{get, post, put};
     Router::new()
         .route("/profile", get(get_profile).patch(update_profile))
         .route("/profile/avatar", post(upload_avatar))
+        .route("/profile/password", put(change_password))
 }
 
 /* [074A-23] PATCH /api/profile — actualiza display_name y campos extendidos */
@@ -179,6 +182,12 @@ pub async fn update_profile(
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
+    let current_user = UserRepository::find_by_id(&state.pool, auth.user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Usuario no encontrado".into()))?;
+
+    let mut email_changed = false;
+
     if let Some(email) = req
         .email
         .as_deref()
@@ -186,21 +195,24 @@ pub async fn update_profile(
         .filter(|value| !value.is_empty())
     {
         let email = email.to_ascii_lowercase();
-        if let Some(existing) = UserRepository::find_by_email(&state.pool, &email).await? {
-            if existing.id != auth.user_id {
-                return Err(AppError::Conflict("Ese email ya está registrado".into()));
-            }
-        }
-        UserRepository::update_email(&state.pool, auth.user_id, &email)
-            .await
-            .map_err(|e| {
-                if let sqlx::Error::Database(db_error) = &e {
-                    if db_error.constraint() == Some("users_email_key") {
-                        return AppError::Conflict("Ese email ya está registrado".into());
-                    }
+        if !current_user.email.eq_ignore_ascii_case(&email) {
+            if let Some(existing) = UserRepository::find_by_email(&state.pool, &email).await? {
+                if existing.id != auth.user_id {
+                    return Err(AppError::Conflict("Ese email ya está registrado".into()));
                 }
-                AppError::Internal(format!("Error actualizando email: {e}"))
-            })?;
+            }
+            UserRepository::update_email(&state.pool, auth.user_id, &email)
+                .await
+                .map_err(|e| {
+                    if let sqlx::Error::Database(db_error) = &e {
+                        if db_error.constraint() == Some("users_email_key") {
+                            return AppError::Conflict("Ese email ya está registrado".into());
+                        }
+                    }
+                    AppError::Internal(format!("Error actualizando email: {e}"))
+                })?;
+            email_changed = true;
+        }
     }
 
     UserRepository::update_profile(
@@ -219,5 +231,61 @@ pub async fn update_profile(
         .await?
         .ok_or_else(|| AppError::NotFound("Usuario no encontrado".into()))?;
 
+    if email_changed {
+        if let Some(config) = &state.email_config {
+            EmailService::send_profile_email_changed_new_address(
+                config,
+                &user.email,
+                user.display_name.as_deref(),
+                &current_user.email,
+            )
+            .await;
+
+            EmailService::send_profile_email_changed_old_address(
+                config,
+                &current_user.email,
+                current_user.display_name.as_deref(),
+                &user.email,
+            )
+            .await;
+        }
+    }
+
     Ok(Json(user.into()))
+}
+
+/* [205A-2] PUT /api/profile/password — cambia contraseña desde configuración de perfil.
+ * Requiere contraseña actual; las cuentas quick_register siguen usando /api/auth/set-password. */
+#[utoipa::path(
+    put,
+    path = "/api/profile/password",
+    request_body = ChangePasswordRequest,
+    responses(
+        (status = 200, description = "Contraseña actualizada"),
+        (status = 400, description = "Datos inválidos", body = crate::errors::ErrorResponse),
+        (status = 401, description = "No autenticado", body = crate::errors::ErrorResponse),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "profile"
+)]
+pub async fn change_password(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(req): Json<ChangePasswordRequest>,
+) -> Result<StatusCode, AppError> {
+    req.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+
+    let user = AuthService::change_password(&state.pool, auth.user_id, req).await?;
+
+    if let Some(config) = &state.email_config {
+        EmailService::send_profile_password_changed(
+            config,
+            &user.email,
+            user.display_name.as_deref(),
+        )
+        .await;
+    }
+
+    Ok(StatusCode::OK)
 }

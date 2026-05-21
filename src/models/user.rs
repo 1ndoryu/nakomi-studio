@@ -102,6 +102,16 @@ pub struct QuickRegisterRequest {
     pub email: String,
 }
 
+/* [205A-2] Cambio de contraseña desde configuración de perfil.
+ * Requiere contraseña actual para evitar cambios silenciosos con una sesión robada. */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct ChangePasswordRequest {
+    #[validate(length(min = 1, message = "Debes ingresar tu contraseña actual"))]
+    pub current_password: String,
+    #[validate(length(min = 8, message = "La nueva contraseña debe tener al menos 8 caracteres"))]
+    pub new_password: String,
+}
+
 /* [154A-5] Request para que un usuario sin contraseña establezca la suya */
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct SetPasswordRequest {

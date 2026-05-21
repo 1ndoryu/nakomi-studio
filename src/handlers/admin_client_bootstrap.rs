@@ -65,7 +65,7 @@ const GUILLERMO_HOSTINGS: &[GuillermoHosting] = &[
         paid_subscription_id: None,
     },
     GuillermoHosting {
-        domain: "rest.wandori.us",
+        domain: "restaurante.wandori.us",
         coolify_site_name: "glory-rest",
         server_uuid: "b8s0cks444o0sogo8kg8wcgw",
         paid_subscription_id: Some("sub_legacy_paid_glory_rest"),

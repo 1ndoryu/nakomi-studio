@@ -9,7 +9,8 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::{
-    AuthResponse, LoginRequest, QuickRegisterRequest, RegisterRequest, SetPasswordRequest, UserRole,
+    AuthResponse, ChangePasswordRequest, LoginRequest, QuickRegisterRequest, RegisterRequest,
+    SetPasswordRequest, User, UserRole,
 };
 use crate::repositories::UserRepository;
 
@@ -39,6 +40,19 @@ pub fn hash_password(password: &str) -> Result<String, AppError> {
         .hash_password(password.as_bytes(), &salt)
         .map_err(|e| AppError::Internal(format!("Error al hashear contraseña: {e}")))
         .map(|h| h.to_string())
+}
+
+/* [205A-2] Helper compartido para login y cambio de contraseña.
+ * Distingue entre mismatch normal y un hash almacenado corrupto. */
+pub fn verify_password_hash(password: &str, password_hash: &str) -> Result<bool, AppError> {
+    let parsed_hash = PasswordHash::new(password_hash)
+        .map_err(|e| AppError::Internal(format!("Hash almacenado inválido: {e}")))?;
+
+    match Argon2::default().verify_password(password.as_bytes(), &parsed_hash) {
+        Ok(()) => Ok(true),
+        Err(argon2::password_hash::Error::Password) => Ok(false),
+        Err(e) => Err(AppError::Internal(format!("Error verificando contraseña: {e}"))),
+    }
 }
 
 /* [104A-3] Verifica si el email está en GLORY_ADMIN_EMAILS y promueve a admin.
@@ -152,12 +166,9 @@ impl AuthService {
             .await?
             .ok_or(AppError::Unauthorized)?;
 
-        let parsed_hash = PasswordHash::new(&user.password_hash)
-            .map_err(|e| AppError::Internal(format!("Hash almacenado inválido: {e}")))?;
-
-        Argon2::default()
-            .verify_password(req.password.as_bytes(), &parsed_hash)
-            .map_err(|_| AppError::Unauthorized)?;
+        if !verify_password_hash(&req.password, &user.password_hash)? {
+            return Err(AppError::Unauthorized);
+        }
 
         let effective = user.effective_role();
         let token = Self::generate_token(user.id, user.role, effective, None, jwt_secret)?;
@@ -194,6 +205,42 @@ impl AuthService {
 
         UserRepository::set_password(pool, user_id, &password_hash).await?;
         Ok(())
+    }
+
+    /* [205A-2] Cambio de contraseña desde perfil.
+     * El flujo de quick_register sigue usando set_password porque no conoce la contraseña aleatoria. */
+    pub async fn change_password(
+        pool: &PgPool,
+        user_id: Uuid,
+        req: ChangePasswordRequest,
+    ) -> Result<User, AppError> {
+        let user = UserRepository::find_by_id(pool, user_id)
+            .await?
+            .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+
+        if !user.password_set {
+            return Err(AppError::BadRequest(
+                "Tu cuenta todavía no tiene una contraseña propia. Usa primero Crear contraseña.".into(),
+            ));
+        }
+
+        if req.current_password == req.new_password {
+            return Err(AppError::BadRequest(
+                "La nueva contraseña debe ser distinta a la actual".into(),
+            ));
+        }
+
+        if !verify_password_hash(&req.current_password, &user.password_hash)? {
+            return Err(AppError::BadRequest(
+                "La contraseña actual es incorrecta".into(),
+            ));
+        }
+
+        let password_hash = hash_password(&req.new_password)?;
+
+        UserRepository::set_password(pool, user_id, &password_hash)
+            .await
+            .map_err(|e| AppError::Internal(format!("Error actualizando contraseña: {e}")))
     }
 
     /// Genera un JWT con expiración de 10 años (efectivamente permanente para CMS).
