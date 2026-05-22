@@ -226,16 +226,57 @@ fn parse_size_to_mb(s: &str) -> f64 {
     }
 }
 
-/* [154A-3] Obtener uso de almacenamiento (MB) del contenedor WordPress via SSH + du.
- * Ejecuta `docker exec {prefix}-wordpress-1 du -sm /var/www/html` en el servidor. */
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn storage_targets(
+    site_name: &str,
+    service_uuid: Option<&str>,
+    plan: &str,
+) -> Vec<(String, &'static str)> {
+    let mut targets = Vec::new();
+
+    if plan.starts_with("normal-") {
+        if let Some(uuid) = service_uuid.filter(|value| !value.is_empty()) {
+            targets.push((format!("site-{uuid}"), "/usr/share/nginx/html"));
+        }
+        targets.push((format!("{site_name}-site-1"), "/usr/share/nginx/html"));
+        return targets;
+    }
+
+    if let Some(uuid) = service_uuid.filter(|value| !value.is_empty()) {
+        targets.push((format!("wordpress-{uuid}"), "/var/www/html"));
+        targets.push((format!("mariadb-{uuid}"), "/var/lib/mysql"));
+    }
+    targets.push((format!("{site_name}-wordpress-1"), "/var/www/html"));
+    targets.push((format!("{site_name}-mariadb-1"), "/var/lib/mysql"));
+    targets
+}
+
+fn build_storage_usage_command(site_name: &str, service_uuid: Option<&str>, plan: &str) -> String {
+    let mut cmd = "total=0; found=0".to_string();
+    for (container, path) in storage_targets(site_name, service_uuid, plan) {
+        cmd.push_str(&format!(
+            "; if docker inspect {container} >/dev/null 2>&1; then value=$(docker exec {container} du -sm {path} 2>/dev/null | awk '{{print $1}}' || true); case \"$value\" in ''|*[!0-9]* ) ;; *) total=$((total + value)); found=1;; esac; fi",
+            container = shell_quote(&container),
+            path = shell_quote(path),
+        ));
+    }
+    cmd.push_str("; if [ \"$found\" -eq 1 ]; then echo \"$total\"; else exit 1; fi");
+    cmd
+}
+
+/* [154A-3][215A-7] Obtener uso de almacenamiento (MB) via SSH + du.
+ * WordPress suma archivos + MariaDB; hosting normal mide el volumen servido por Nginx. */
 pub async fn fetch_storage_usage(
     server_ip: &str,
     ssh_key_path: &str,
-    container_prefix: &str,
+    site_name: &str,
+    service_uuid: Option<&str>,
+    plan: &str,
 ) -> Result<i64, String> {
-    let docker_cmd = format!(
-        "docker exec {container_prefix}-wordpress-1 du -sm /var/www/html 2>/dev/null | awk '{{print $1}}'"
-    );
+    let docker_cmd = build_storage_usage_command(site_name, service_uuid, plan);
 
     let output = tokio::process::Command::new("ssh")
         .args([
@@ -403,5 +444,67 @@ mod tests {
         assert!((parse_size_to_mb("1024KiB") - 1.0).abs() < 0.01);
         assert!((parse_size_to_mb("1GiB") - 1024.0).abs() < 0.01);
         assert!((parse_size_to_mb("invalid") - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn storage_targets_wordpress_use_coolify_uuid_and_legacy_fallbacks() {
+        let targets = storage_targets(
+            "hosting-de17015b",
+            Some("e1m95ycgcc72zjiles3mov3c"),
+            "basico",
+        );
+
+        assert_eq!(
+            targets,
+            vec![
+                (
+                    "wordpress-e1m95ycgcc72zjiles3mov3c".to_string(),
+                    "/var/www/html"
+                ),
+                (
+                    "mariadb-e1m95ycgcc72zjiles3mov3c".to_string(),
+                    "/var/lib/mysql"
+                ),
+                ("hosting-de17015b-wordpress-1".to_string(), "/var/www/html"),
+                ("hosting-de17015b-mariadb-1".to_string(), "/var/lib/mysql"),
+            ]
+        );
+    }
+
+    #[test]
+    fn storage_targets_normal_hosting_use_site_volume() {
+        let targets = storage_targets(
+            "hosting-6d746a75",
+            Some("v12vc781nvfl5udm2ie13dde"),
+            "normal-pro",
+        );
+
+        assert_eq!(
+            targets,
+            vec![
+                (
+                    "site-v12vc781nvfl5udm2ie13dde".to_string(),
+                    "/usr/share/nginx/html"
+                ),
+                (
+                    "hosting-6d746a75-site-1".to_string(),
+                    "/usr/share/nginx/html"
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn storage_usage_command_sums_all_found_targets() {
+        let cmd = build_storage_usage_command(
+            "hosting-de17015b",
+            Some("e1m95ycgcc72zjiles3mov3c"),
+            "basico",
+        );
+
+        assert!(cmd.contains("wordpress-e1m95ycgcc72zjiles3mov3c"));
+        assert!(cmd.contains("mariadb-e1m95ycgcc72zjiles3mov3c"));
+        assert!(cmd.contains("total=$((total + value))"));
+        assert!(cmd.contains("echo \"$total\""));
     }
 }

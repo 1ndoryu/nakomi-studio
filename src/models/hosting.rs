@@ -24,6 +24,10 @@ static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     .expect("regex de dominio válida")
 });
 
+static HOSTING_USERNAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^[A-Za-z0-9_][A-Za-z0-9_-]{2,59}$").expect("regex de usuario hosting válida")
+});
+
 /* ============================================================
 MODELOS DE BD
 ============================================================ */
@@ -73,6 +77,46 @@ pub struct HostingEvent {
     pub created_at: DateTime<Utc>,
 }
 
+const HOSTING_EVENT_SECRET_KEYS: &[&str] = &["wp_admin_password", "sftp_password"];
+
+pub fn sanitize_hosting_event_details(
+    details: Option<serde_json::Value>,
+) -> Option<serde_json::Value> {
+    details.map(|mut value| {
+        redact_hosting_event_value(&mut value);
+        value
+    })
+}
+
+pub fn sanitize_hosting_event(mut event: HostingEvent) -> HostingEvent {
+    event.details = sanitize_hosting_event_details(event.details);
+    event
+}
+
+fn redact_hosting_event_value(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(map) => {
+            for secret_key in HOSTING_EVENT_SECRET_KEYS {
+                if map.contains_key(*secret_key) {
+                    map.insert(
+                        (*secret_key).to_string(),
+                        serde_json::Value::String("[redacted]".to_string()),
+                    );
+                }
+            }
+            for nested_value in map.values_mut() {
+                redact_hosting_event_value(nested_value);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                redact_hosting_event_value(item);
+            }
+        }
+        _ => {}
+    }
+}
+
 /* ============================================================
 REQUESTS
 ============================================================ */
@@ -113,6 +157,26 @@ pub struct SelfSubscribeRequest {
         regex(path = "*DOMAIN_REGEX", message = "Dominio inválido")
     )]
     pub domain: Option<String>,
+    pub billing_cycle_months: Option<i32>,
+    #[validate(
+        length(min = 3, max = 60),
+        regex(
+            path = "*HOSTING_USERNAME_REGEX",
+            message = "Usuario wp-admin inválido"
+        )
+    )]
+    pub wp_admin_username: Option<String>,
+    #[validate(length(min = 8, max = 128))]
+    pub wp_admin_password: Option<String>,
+    #[validate(length(max = 20))]
+    pub wp_language: Option<String>,
+    #[validate(
+        length(min = 3, max = 60),
+        regex(path = "*HOSTING_USERNAME_REGEX", message = "Usuario SFTP inválido")
+    )]
+    pub sftp_user: Option<String>,
+    #[validate(length(min = 12, max = 128))]
+    pub sftp_password: Option<String>,
 }
 
 /* [074A-65] Request para editar suscripción (plan, dominio) */
@@ -310,6 +374,19 @@ mod tests {
     use super::*;
     use validator::Validate;
 
+    fn self_subscribe_request(plan: &str, domain: Option<&str>) -> SelfSubscribeRequest {
+        SelfSubscribeRequest {
+            plan: plan.to_string(),
+            domain: domain.map(ToOwned::to_owned),
+            billing_cycle_months: None,
+            wp_admin_username: None,
+            wp_admin_password: None,
+            wp_language: None,
+            sftp_user: None,
+            sftp_password: None,
+        }
+    }
+
     /* --- Domain regex --- */
 
     #[test]
@@ -352,37 +429,25 @@ mod tests {
 
     #[test]
     fn self_subscribe_request_valid_domain() {
-        let req = SelfSubscribeRequest {
-            plan: "basico".to_string(),
-            domain: Some("example.com".to_string()),
-        };
+        let req = self_subscribe_request("basico", Some("example.com"));
         assert!(req.validate().is_ok());
     }
 
     #[test]
     fn self_subscribe_request_invalid_domain_rejected() {
-        let req = SelfSubscribeRequest {
-            plan: "basico".to_string(),
-            domain: Some("'; DROP TABLE hosting_subscriptions; --".to_string()),
-        };
+        let req = self_subscribe_request("basico", Some("'; DROP TABLE hosting_subscriptions; --"));
         assert!(req.validate().is_err());
     }
 
     #[test]
     fn self_subscribe_request_no_domain_ok() {
-        let req = SelfSubscribeRequest {
-            plan: "basico".to_string(),
-            domain: None,
-        };
+        let req = self_subscribe_request("basico", None);
         assert!(req.validate().is_ok());
     }
 
     #[test]
     fn self_subscribe_request_empty_plan_rejected() {
-        let req = SelfSubscribeRequest {
-            plan: String::new(),
-            domain: None,
-        };
+        let req = self_subscribe_request("", None);
         assert!(req.validate().is_err());
     }
 

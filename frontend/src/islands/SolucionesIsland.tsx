@@ -25,7 +25,7 @@ interface Solucion {
 const SOLUCIONES: Solucion[] = [
     {
         titulo: 'WordPress Hosting',
-        descripcion: 'Infraestructura de alto rendimiento con WordPress pre-instalado, WP-CLI vía SSH, backups automáticos y soporte técnico.',
+        descripcion: 'Infraestructura de alto rendimiento con WordPress pre-instalado, WP-CLI + SSH, backups automáticos y soporte técnico.',
         enlace: '/soluciones/hosting',
         etiqueta: 'Desde $2.48/mes'
     },

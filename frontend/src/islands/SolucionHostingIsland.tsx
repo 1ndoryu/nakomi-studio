@@ -1,15 +1,14 @@
 /* [064A-32] Página de hosting.
- * [084A-20] CTA de planes ahora abre ModalCompra en vez de chat.
+ * [084A-20] CTA de planes abria ModalCompra.
  * [114A-5] Especialización WordPress: branding, features WP-CLI, WooCommerce.
+ * [215A-2] CTA de planes redirige a configurador de hosting, sin modal.
  * "Conversar" sigue abriendo el chat. */
 
-import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Server, Shield, Zap, Clock, Globe, Headphones} from 'lucide-react';
 import {LayoutPagina} from '../components/layout/LayoutPagina';
 import {SEOHead} from '../components/seo/SEOHead';
 import {SeccionContacto} from '../components/home/SeccionContacto';
-import {ModalCompra} from '../components/servicios/ModalCompra';
 import {useChatStore} from '../stores/chatStore';
 import {Button} from '../components/ui/Button';
 import {Tarjeta} from '../components/ui/Tarjeta';
@@ -17,6 +16,8 @@ import {SolucionHeroImagen} from '../components/soluciones/SolucionHeroImagen';
 import type {PlanServicio} from '../data/planes/tipos';
 import {incluida} from '../data/planes/tipos';
 import {useHostingCatalog} from '../hooks/useHostingCatalog';
+import {navegar} from '../navegacionSPA';
+import {PlanFeatureTooltip} from '../components/servicios/PlanFeatureTooltip';
 import '../components/servicios/SeccionPlanesServicio.css';
 import './SolucionHostingIsland.css';
 
@@ -49,12 +50,17 @@ function formatMonthlyPrice(priceCents: number): string {
     return `$${(priceCents / 100).toFixed(priceCents % 100 === 0 ? 0 : 2)}`;
 }
 
+function hostingConfigPath(kind: HostingSolutionKind, planId: string): string {
+    const normalizedPlan = planId.replace(/^hosting-/, '');
+    const basePath = kind === 'wordpress' ? '/soluciones/hosting-wordpress/configurar' : '/soluciones/hosting/configurar';
+    return `${basePath}/${normalizedPlan}`;
+}
+
 function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Element {
     const {t} = useTranslation();
     const abrirChat = useChatStore(s => s.abrir);
     const isWordPress = kind === 'wordpress';
     const {plans} = useHostingCatalog(isWordPress ? 'wordpress' : 'normal');
-    const [planSeleccionado, setPlanSeleccionado] = useState<PlanServicio | null>(null);
 
     const chatContext = isWordPress ? 'page:hosting-wordpress' : 'page:hosting';
     const seoTitle = isWordPress ? 'Hosting WordPress' : 'Hosting';
@@ -194,7 +200,7 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
                                                     </svg>
                                                 )}
                                             </span>
-                                            <span className="tarjetaPlanItemTexto">{t(`content.plans.${plan.id}.features.${idx}`, car.texto)}</span>
+                                            <PlanFeatureTooltip feature={t(`content.plans.${plan.id}.features.${idx}`, car.texto)} context={isWordPress ? 'wordpress' : 'hosting'} />
                                         </li>
                                     ))}
                                 </ul>
@@ -202,7 +208,7 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
                                     <Button
                                         variante={plan.destacado ? 'primario' : 'outline'}
                                         tamano="mediano"
-                                        onClick={() => setPlanSeleccionado(plan)}
+                                        onClick={() => navegar(hostingConfigPath(kind, plan.id))}
                                     >
                                         {t(`content.plans.${plan.id}.cta`, plan.ctaTexto)}
                                     </Button>
@@ -217,16 +223,6 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
             </section>
 
             <SeccionContacto />
-
-            {/* [084A-20] Modal de compra para planes de hosting */}
-            {planSeleccionado && (
-                <ModalCompra
-                    plan={planSeleccionado}
-                    servicioSlug="hosting"
-                    abierto={!!planSeleccionado}
-                    onCerrar={() => setPlanSeleccionado(null)}
-                />
-            )}
         </LayoutPagina>
     );
 }

@@ -27,6 +27,7 @@ const ProyectoIndividualIsland = lazy(() => import('./islands/ProyectoIndividual
 const NosotrosIsland = lazy(() => import('./islands/NosotrosIsland').then(m => ({default: m.NosotrosIsland})));
 const SolucionHostingIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingIsland})));
 const SolucionHostingWordPressIsland = lazy(() => import('./islands/SolucionHostingIsland').then(m => ({default: m.SolucionHostingWordPressIsland})));
+const HostingConfiguradorIsland = lazy(() => import('./islands/HostingConfiguradorIsland').then(m => ({default: m.HostingConfiguradorIsland})));
 const SolucionVpsIsland = lazy(() => import('./islands/SolucionVpsIsland').then(m => ({default: m.SolucionVpsIsland})));
 const VpsConfiguradorIsland = lazy(() => import('./islands/VpsConfiguradorIsland').then(m => ({default: m.VpsConfiguradorIsland})));
 
@@ -185,7 +186,11 @@ function App() {
                     <Route path="/nosotros" element={<Suspense fallback={null}><NosotrosIsland /></Suspense>} />
                     {/* [155A-6] /soluciones ya no es accesible; solo quedan las subpáginas reales. */}
                     <Route path="/soluciones/hosting-wordpress" element={<Suspense fallback={null}><SolucionHostingWordPressIsland /></Suspense>} />
+                    <Route path="/soluciones/hosting-wordpress/configurar" element={<Suspense fallback={null}><HostingConfiguradorIsland kind="wordpress" /></Suspense>} />
+                    <Route path="/soluciones/hosting-wordpress/configurar/:plan" element={<Suspense fallback={null}><HostingConfiguradorIsland kind="wordpress" /></Suspense>} />
                     <Route path="/soluciones/hosting" element={<Suspense fallback={null}><SolucionHostingIsland /></Suspense>} />
+                    <Route path="/soluciones/hosting/configurar" element={<Suspense fallback={null}><HostingConfiguradorIsland kind="normal" /></Suspense>} />
+                    <Route path="/soluciones/hosting/configurar/:plan" element={<Suspense fallback={null}><HostingConfiguradorIsland kind="normal" /></Suspense>} />
                     <Route path="/soluciones/vps" element={<Suspense fallback={null}><SolucionVpsIsland /></Suspense>} />
                     <Route path="/soluciones/vps/configurar" element={<Suspense fallback={null}><VpsConfiguradorIsland /></Suspense>} />
                     <Route path="/soluciones/vps/configurar/:tier" element={<Suspense fallback={null}><VpsConfiguradorIsland /></Suspense>} />

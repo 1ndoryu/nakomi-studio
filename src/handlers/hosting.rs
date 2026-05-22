@@ -22,10 +22,10 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    AssignHostingRequest, CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent,
-    HostingPlanConfig, HostingStatsResponse, HostingSubscriptionResponse, PublicHostingPlan,
-    SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
-    UpdatePlanConfigRequest, UserRole,
+    sanitize_hosting_event, AssignHostingRequest, CoolifyDeploymentResponse, CreateHostingRequest,
+    HostingEvent, HostingPlanConfig, HostingStatsResponse, HostingSubscriptionResponse,
+    PublicHostingPlan, SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest,
+    UpdateHostingStatusRequest, UpdatePlanConfigRequest, UserRole,
 };
 use crate::repositories::{
     CreateHostingParams, HostingRepository, ServerInfo, UpdateHostingParams, UserRepository,
@@ -325,7 +325,9 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                 features: &[
                     "Nginx administrado",
                     "20 GB almacenamiento SSD",
-                    "SSL gratuito",
+                    "Tráfico ilimitado",
+                    "Free temporary domain",
+                    "Certificado SSL incluido",
                     "Backups diarios",
                     "SFTP seguro",
                     "Recursos aislados",
@@ -333,13 +335,15 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                 recommended: true,
             },
             "ecommerce" => HostingPlanMarketing {
-                label: "Hosting E-commerce",
+                label: "Hosting Avanzado",
                 description: "Hosting administrado de mayor capacidad para catálogos amplios, assets pesados y operaciones con más demanda.",
                 features: &[
                     "Nginx administrado",
                     "50 GB almacenamiento SSD",
-                    "SSL gratuito",
-                    "Backups diarios + snapshots",
+                    "Tráfico ilimitado",
+                    "Free temporary domain",
+                    "Certificado SSL incluido",
+                    "Backups diarios + semanales",
                     "SFTP seguro",
                     "Recursos ampliados",
                 ],
@@ -351,7 +355,9 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
                 features: &[
                     "Nginx administrado",
                     "5 GB almacenamiento SSD",
-                    "SSL gratuito",
+                    "Tráfico ilimitado",
+                    "Free temporary domain",
+                    "Certificado SSL incluido",
                     "Backups semanales",
                     "SFTP seguro",
                 ],
@@ -367,22 +373,28 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
             features: &[
                 "WordPress pre-instalado",
                 "20 GB almacenamiento SSD",
-                "SSL gratuito",
+                "Tráfico ilimitado",
+                "Free temporary domain",
+                "Certificado SSL incluido",
+                "Free CDN",
                 "Backups diarios",
-                "WP-CLI vía SSH",
+                "WP-CLI + SSH",
                 "Staging environment",
             ],
             recommended: true,
         },
         "ecommerce" => HostingPlanMarketing {
-            label: "WordPress E-commerce",
-            description: "WooCommerce optimizado para tiendas con más tráfico, caché agresiva y margen operativo dedicado.",
+            label: "WordPress Avanzado",
+            description: "WordPress administrado de mayor capacidad para sitios con más contenido, tráfico y caché avanzada.",
             features: &[
-                "WordPress + WooCommerce",
+                "WordPress pre-instalado",
                 "50 GB almacenamiento SSD",
-                "SSL gratuito",
-                "Backups diarios + snapshots",
-                "WP-CLI vía SSH",
+                "Tráfico ilimitado",
+                "Free temporary domain",
+                "Certificado SSL incluido",
+                "Free CDN",
+                "Backups diarios + semanales",
+                "WP-CLI + SSH",
                 "Caché avanzada WordPress",
             ],
             recommended: false,
@@ -393,9 +405,12 @@ fn hosting_plan_marketing(plan: &str) -> HostingPlanMarketing {
             features: &[
                 "WordPress pre-instalado",
                 "5 GB almacenamiento SSD",
-                "SSL gratuito",
+                "Tráfico ilimitado",
+                "Free temporary domain",
+                "Certificado SSL incluido",
+                "Free CDN",
                 "Backups semanales",
-                "WP-CLI vía SSH",
+                "WP-CLI + SSH",
             ],
             recommended: false,
         },
@@ -424,6 +439,66 @@ fn public_plan_from_config(config: HostingPlanConfig) -> PublicHostingPlan {
             .collect(),
         recommended: marketing.recommended,
     }
+}
+
+fn normalize_hosting_billing_cycle(value: Option<i32>) -> Result<i32, AppError> {
+    let months = value.unwrap_or(1);
+    match months {
+        1 | 6 | 12 => Ok(months),
+        _ => Err(AppError::Validation(
+            "El periodo de pago debe ser 1, 6 o 12 meses".into(),
+        )),
+    }
+}
+
+fn hosting_billing_discount_cents(months: i32) -> i32 {
+    match months {
+        12 => 2000,
+        6 => 1000,
+        _ => 0,
+    }
+}
+
+fn hosting_period_amount_cents(monthly_price_cents: i32, months: i32) -> i32 {
+    (monthly_price_cents * months - hosting_billing_discount_cents(months)).max(0)
+}
+
+fn ensure_single_line_secret(value: Option<&str>, label: &str) -> Result<(), AppError> {
+    if value.is_some_and(|candidate| candidate.contains(['\n', '\r'])) {
+        return Err(AppError::Validation(format!(
+            "{label} no puede contener saltos de línea"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_hosting_checkout_request(req: &SelfSubscribeRequest) -> Result<i32, AppError> {
+    let billing_cycle_months = normalize_hosting_billing_cycle(req.billing_cycle_months)?;
+    ensure_single_line_secret(req.wp_admin_password.as_deref(), "La contraseña wp-admin")?;
+    ensure_single_line_secret(req.sftp_password.as_deref(), "La contraseña SFTP")?;
+    if let Some(language) = req.wp_language.as_deref() {
+        if !matches!(language, "es_ES" | "en_US" | "ja") {
+            return Err(AppError::Validation("Idioma WordPress no soportado".into()));
+        }
+    }
+    Ok(billing_cycle_months)
+}
+
+fn hosting_checkout_config_details(
+    req: &SelfSubscribeRequest,
+    billing_cycle_months: i32,
+    period_amount_cents: i32,
+) -> serde_json::Value {
+    serde_json::json!({
+        "billing_cycle_months": billing_cycle_months,
+        "period_amount_cents": period_amount_cents,
+        "discount_cents": hosting_billing_discount_cents(billing_cycle_months),
+        "wp_admin_username": req.wp_admin_username.as_deref(),
+        "wp_admin_password": req.wp_admin_password.as_deref(),
+        "wp_language": req.wp_language.as_deref(),
+        "sftp_user": req.sftp_user.as_deref(),
+        "sftp_password": req.sftp_password.as_deref(),
+    })
 }
 
 /* [104A-17] Contabo es un upstream opcional del panel admin.
@@ -595,6 +670,7 @@ pub async fn subscribe_self(
 ) -> Result<(StatusCode, Json<SelfSubscribeResponse>), AppError> {
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
+    let billing_cycle_months = validate_hosting_checkout_request(&req)?;
 
     /* [114A-3] Precios y límites desde BD (admin-configurable) */
     let plan_config = HostingRepository::get_plan_config(&state.pool, &req.plan)
@@ -607,6 +683,7 @@ pub async fn subscribe_self(
         })?;
     let price = plan_config.monthly_price_cents;
     let storage = plan_config.storage_limit_mb;
+    let period_amount_cents = hosting_period_amount_cents(price, billing_cycle_months);
 
     /* Obtener nombre y email del perfil del usuario autenticado */
     let user = UserRepository::find_by_id(&state.pool, auth.user_id)
@@ -646,7 +723,8 @@ pub async fn subscribe_self(
         Some(serde_json::json!({
             "plan": req.plan,
             "by": auth.user_id.to_string(),
-            "source": "self-service"
+            "source": "self-service",
+            "checkout_config": hosting_checkout_config_details(&req, billing_cycle_months, period_amount_cents)
         })),
     )
     .await
@@ -688,10 +766,11 @@ pub async fn subscribe_self(
             stripe_key,
             subscription_id: sub.id,
             plan: &sub.plan,
-            amount_cents: sub.monthly_price_cents,
+            amount_cents: period_amount_cents,
             customer_email: &client_email,
             success_url: &success_url,
             cancel_url: &cancel_url,
+            billing_cycle_months,
         },
     )
     .await?;
@@ -905,7 +984,11 @@ pub async fn list_events(
         return Err(AppError::Forbidden("Sin permisos".into()));
     }
 
-    let events = HostingRepository::list_events(&state.pool, id, 100).await?;
+    let events = HostingRepository::list_events(&state.pool, id, 100)
+        .await?
+        .into_iter()
+        .map(sanitize_hosting_event)
+        .collect();
     Ok(Json(events))
 }
 
@@ -1202,6 +1285,7 @@ pub async fn create_checkout(
             customer_email: &sub.client_email,
             success_url: &success_url,
             cancel_url: &cancel_url,
+            billing_cycle_months: 1,
         },
     )
     .await?;
@@ -1287,7 +1371,14 @@ async fn fetch_storage_used(
     let server_ip = sub.server_ip.as_deref().filter(|ip| !ip.is_empty())?;
     let ssh_key = state.coolify_config.as_ref()?.ssh_key_path.as_ref()?;
 
-    match crate::services::docker_stats::fetch_storage_usage(server_ip, ssh_key, coolify_name).await
+    match crate::services::docker_stats::fetch_storage_usage(
+        server_ip,
+        ssh_key,
+        coolify_name,
+        sub.server_uuid.as_deref(),
+        &sub.plan,
+    )
+    .await
     {
         Ok(mb) => Some(mb),
         Err(e) => {
@@ -1798,6 +1889,9 @@ pub async fn provision_subscription(
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
 
+    let provision_preferences =
+        HostingStripeService::load_provision_preferences(&state.pool, id).await;
+
     let result = match CoolifyService::provision_hosting(
         &state.http_client,
         config,
@@ -1806,6 +1900,7 @@ pub async fn provision_subscription(
         &plan_config,
         &sub.client_name,
         &sub.client_email,
+        provision_preferences.as_ref(),
     )
     .await
     {
@@ -2509,6 +2604,7 @@ pub async fn admin_test_subscribe(
     auth.require_role(&[UserRole::Admin])?;
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
+    let billing_cycle_months = validate_hosting_checkout_request(&req)?;
 
     let plan_config = HostingRepository::get_plan_config(&state.pool, &req.plan)
         .await?
@@ -2550,7 +2646,12 @@ pub async fn admin_test_subscribe(
             "plan": req.plan,
             "by": auth.user_id.to_string(),
             "source": "admin-test",
-            "note": "Suscripción de prueba sin Stripe"
+            "note": "Suscripción de prueba sin Stripe",
+            "checkout_config": hosting_checkout_config_details(
+                &req,
+                billing_cycle_months,
+                hosting_period_amount_cents(plan_config.monthly_price_cents, billing_cycle_months)
+            )
         })),
     )
     .await

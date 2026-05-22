@@ -31,6 +31,7 @@ struct EnforcementTarget<'a> {
     user_id: Uuid,
     plan: &'a str,
     site_name: &'a str,
+    service_uuid: Option<&'a str>,
     server_ip: &'a str,
     storage_limit_mb: i32,
 }
@@ -194,7 +195,15 @@ async fn check_and_enforce_one(
         return;
     };
 
-    let used_mb = match fetch_storage_usage(target.server_ip, ssh_key, target.site_name).await {
+    let used_mb = match fetch_storage_usage(
+        target.server_ip,
+        ssh_key,
+        target.site_name,
+        target.service_uuid,
+        target.plan,
+    )
+    .await
+    {
         Ok(mb) => mb,
         Err(e) => {
             tracing::warn!(
@@ -255,6 +264,7 @@ pub async fn run_storage_check(pool: &PgPool, coolify_config: &CoolifyConfig) {
 
     for h in candidates {
         let site_name = h.coolify_site_name.as_deref().unwrap();
+        let service_uuid = h.server_uuid.as_deref();
         let server_ip = h.server_ip.as_deref().unwrap();
         let user_id = h.user_id.unwrap();
 
@@ -266,6 +276,7 @@ pub async fn run_storage_check(pool: &PgPool, coolify_config: &CoolifyConfig) {
                 user_id,
                 plan: &h.plan,
                 site_name,
+                service_uuid,
                 server_ip,
                 storage_limit_mb: h.storage_limit_mb,
             },

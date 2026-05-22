@@ -1,10 +1,10 @@
 /* [064A-32] Planes de WordPress hosting.
  * [084A-10] 3 planes base del catálogo comercial.
  * [204A-1] Fallback alineado con pricing persistido: $2.48, $4.13 y $6.19.
- * [114A-5] Especializacion WordPress: pre-instalado, WP-CLI, WooCommerce.
- * CTA abre chat (provisioning manual por ahora — automático cuando infra esté lista). */
+ * [114A-5] Especializacion WordPress: pre-instalado, WP-CLI.
+ * [215A-4][215A-9] Beneficios obligatorios y planes genericos sin prometer WooCommerce. */
 
-import {incluida, noIncluida} from './tipos';
+import {incluida} from './tipos';
 import type {PlanServicio} from './tipos';
 
 export const PLANES_HOSTING: PlanServicio[] = [
@@ -21,11 +21,12 @@ export const PLANES_HOSTING: PlanServicio[] = [
         caracteristicas: [
             incluida('WordPress pre-instalado'),
             incluida('5 GB almacenamiento SSD'),
-            incluida('SSL gratuito'),
+            incluida('Tráfico ilimitado'),
+            incluida('Free temporary domain'),
+            incluida('Certificado SSL incluido'),
+            incluida('Free CDN'),
             incluida('Backups semanales'),
-            incluida('WP-CLI vía SSH'),
-            noIncluida('CDN global'),
-            noIncluida('Staging environment'),
+            incluida('WP-CLI + SSH'),
         ],
     },
     {
@@ -41,30 +42,35 @@ export const PLANES_HOSTING: PlanServicio[] = [
         caracteristicas: [
             incluida('WordPress pre-instalado'),
             incluida('20 GB almacenamiento SSD'),
-            incluida('SSL gratuito'),
+            incluida('Tráfico ilimitado'),
+            incluida('Free temporary domain'),
+            incluida('Certificado SSL incluido'),
+            incluida('Free CDN'),
             incluida('Backups diarios'),
-            incluida('CDN global'),
-            incluida('WP-CLI vía SSH'),
+            incluida('WP-CLI + SSH'),
             incluida('Staging environment'),
         ],
     },
     {
         id: 'hosting-ecommerce',
-        nombre: 'E-commerce',
+        nombre: 'Avanzado',
         precio: '$6.19',
         periodo: '/mes',
-        descripcion: 'WordPress + WooCommerce optimizado para tiendas online con alto tráfico y transacciones.',
+        descripcion: 'WordPress administrado de mayor capacidad para sitios con más contenido, tráfico y caché avanzada.',
         destacado: false,
-        ctaTexto: 'Elegir E-commerce',
+        ctaTexto: 'Elegir Avanzado',
         ctaLink: '#',
         stripeModo: 'subscription',
         caracteristicas: [
-            incluida('WordPress + WooCommerce'),
+            incluida('WordPress pre-instalado'),
             incluida('50 GB almacenamiento SSD'),
-            incluida('SSL gratuito'),
-            incluida('Backups diarios + snapshots'),
+            incluida('Tráfico ilimitado'),
+            incluida('Free temporary domain'),
+            incluida('Certificado SSL incluido'),
+            incluida('Free CDN'),
+            incluida('Backups diarios + semanales'),
             incluida('Soporte prioritario 24/7'),
-            incluida('WP-CLI vía SSH'),
+            incluida('WP-CLI + SSH'),
             incluida('Caché avanzada WordPress'),
         ],
     },

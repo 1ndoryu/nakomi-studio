@@ -16,7 +16,9 @@ use crate::models::{
     NOTIF_HOSTING_SUSPENDED,
 };
 use crate::repositories::{HostingRepository, NotificationRepository, ServerInfo};
-use crate::services::coolify::{CoolifyConfig, CoolifyProvisionResult, CoolifyService};
+use crate::services::coolify::{
+    CoolifyConfig, CoolifyProvisionResult, CoolifyService, HostingProvisionPreferences,
+};
 
 /* Respuesta mínima de Stripe Checkout Session */
 #[derive(Debug, Deserialize)]
@@ -35,6 +37,7 @@ pub struct CheckoutParams<'a> {
     pub customer_email: &'a str,
     pub success_url: &'a str,
     pub cancel_url: &'a str,
+    pub billing_cycle_months: i32,
 }
 
 pub struct HostingStripeService;
@@ -43,9 +46,42 @@ fn humanize_plan_name(plan: &str) -> &'static str {
     match plan.strip_prefix("normal-").unwrap_or(plan) {
         "basico" => "Basico",
         "pro" => "Pro",
-        "ecommerce" => "E-commerce",
+        "ecommerce" => "Avanzado",
         _ => "Personalizado",
     }
+}
+
+fn read_checkout_config_string(details: &serde_json::Value, field: &str) -> Option<String> {
+    let config = details.get("checkout_config").unwrap_or(details);
+    config
+        .get(field)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn provisioning_preferences_from_details(
+    details: &serde_json::Value,
+) -> Option<HostingProvisionPreferences> {
+    let preferences = HostingProvisionPreferences {
+        wp_admin_username: read_checkout_config_string(details, "wp_admin_username"),
+        wp_admin_password: read_checkout_config_string(details, "wp_admin_password"),
+        wp_language: read_checkout_config_string(details, "wp_language"),
+        sftp_user: read_checkout_config_string(details, "sftp_user"),
+        sftp_password: read_checkout_config_string(details, "sftp_password"),
+    };
+
+    if preferences.wp_admin_username.is_some()
+        || preferences.wp_admin_password.is_some()
+        || preferences.wp_language.is_some()
+        || preferences.sftp_user.is_some()
+        || preferences.sftp_password.is_some()
+    {
+        return Some(preferences);
+    }
+
+    None
 }
 
 fn hosting_product_copy(plan: &str) -> (String, String) {
@@ -176,6 +212,31 @@ async fn record_auto_provision_failure(
 }
 
 impl HostingStripeService {
+    pub async fn load_provision_preferences(
+        pool: &PgPool,
+        hosting_id: Uuid,
+    ) -> Option<HostingProvisionPreferences> {
+        let events = match HostingRepository::list_events(pool, hosting_id, 20).await {
+            Ok(events) => events,
+            Err(error) => {
+                tracing::warn!(
+                    "No se pudieron leer preferencias de provisioning para {hosting_id}: {error}"
+                );
+                return None;
+            }
+        };
+
+        events.into_iter().find_map(|event| {
+            if event.event_type != "created" {
+                return None;
+            }
+            event
+                .details
+                .as_ref()
+                .and_then(provisioning_preferences_from_details)
+        })
+    }
+
     /* [165A-1] El checkout bypass de cuentas de prueba debe provisionar igual que el
      * webhook real de Stripe; si no, la suscripción queda `active` pero sin SSH/SFTP. */
     pub async fn try_auto_provision_subscription(
@@ -193,6 +254,7 @@ impl HostingStripeService {
             else {
                 return;
             };
+            let preferences = Self::load_provision_preferences(pool, hosting_id).await;
 
             match CoolifyService::provision_hosting(
                 http_client,
@@ -202,6 +264,7 @@ impl HostingStripeService {
                 &plan_config,
                 &subscription.client_name,
                 &subscription.client_email,
+                preferences.as_ref(),
             )
             .await
             {
@@ -254,7 +317,7 @@ impl HostingStripeService {
 
         let (product_name, product_description) = hosting_product_copy(params.plan);
 
-        let form = vec![
+        let mut form = vec![
             ("mode", "subscription".to_string()),
             ("line_items[0][price_data][currency]", "usd".to_string()),
             (
@@ -291,6 +354,12 @@ impl HostingStripeService {
                 params.subscription_id.to_string(),
             ),
         ];
+        if params.billing_cycle_months > 1 {
+            form.push((
+                "line_items[0][price_data][recurring][interval_count]",
+                params.billing_cycle_months.to_string(),
+            ));
+        }
 
         let resp = params
             .http_client
@@ -611,7 +680,7 @@ mod tests {
     fn humanize_plan_name_maps_known_slugs() {
         assert_eq!(humanize_plan_name("basico"), "Basico");
         assert_eq!(humanize_plan_name("pro"), "Pro");
-        assert_eq!(humanize_plan_name("ecommerce"), "E-commerce");
+        assert_eq!(humanize_plan_name("ecommerce"), "Avanzado");
         assert_eq!(humanize_plan_name("normal-pro"), "Pro");
         assert_eq!(humanize_plan_name("custom"), "Personalizado");
     }

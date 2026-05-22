@@ -7,6 +7,7 @@ import {useChatStore} from '../stores/chatStore';
 import {Button} from '../components/ui/Button';
 import {Tarjeta} from '../components/ui/Tarjeta';
 import {SolucionHeroImagen} from '../components/soluciones/SolucionHeroImagen';
+import {PlanFeatureTooltip} from '../components/servicios/PlanFeatureTooltip';
 import {useVpsCatalog} from '../hooks/useVpsCatalog';
 import {navegar} from '../navegacionSPA';
 import '../components/servicios/SeccionPlanesServicio.css';
@@ -115,7 +116,7 @@ export const SolucionVpsIsland = (): JSX.Element => {
                                                     <polyline points="20 6 9 17 4 12" />
                                                 </svg>
                                             </span>
-                                            <span className="tarjetaPlanItemTexto">{feature}</span>
+                                            <PlanFeatureTooltip feature={feature} context="vps" />
                                         </li>
                                     ))}
                                 </ul>

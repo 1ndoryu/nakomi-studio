@@ -18,8 +18,8 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::models::{
-    HostingPlanConfig, HostingSubscription, SelfSubscribeRequest, SelfSubscribeVpsRequest,
-    UserRole, VpsPlanConfig, VpsSubscription,
+    sanitize_hosting_event_details, HostingPlanConfig, HostingSubscription, SelfSubscribeRequest,
+    SelfSubscribeVpsRequest, UserRole, VpsPlanConfig, VpsSubscription,
 };
 use crate::repositories::{
     ChatRepository, CreateHostingParams, CreateVpsSubscriptionParams, HostingRepository,
@@ -409,7 +409,7 @@ async fn with_hosting_events(pool: &PgPool, hostings: Vec<HostingSubscription>) 
             .map(|event| {
                 json!({
                     "event_type": event.event_type,
-                    "details": event.details,
+                    "details": sanitize_hosting_event_details(event.details),
                     "created_at": event.created_at,
                 })
             })
@@ -546,6 +546,12 @@ fn parse_hosting_checkout_request(args: &Value) -> Result<SelfSubscribeRequest, 
     let req = SelfSubscribeRequest {
         plan: args["plan"].as_str().unwrap_or("").trim().to_string(),
         domain,
+        billing_cycle_months: Some(1),
+        wp_admin_username: None,
+        wp_admin_password: None,
+        wp_language: None,
+        sftp_user: None,
+        sftp_password: None,
     };
     req.validate()
         .map(|()| req)
@@ -663,6 +669,7 @@ async fn create_chat_hosting_checkout_url(
         customer_email: client_email,
         success_url: &success_url,
         cancel_url: &cancel_url,
+        billing_cycle_months: 1,
     })
     .await
     .map_err(|e| {

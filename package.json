@@ -10,6 +10,7 @@
     "check:front": "npm --prefix frontend run type-check",
     "fmt": "cargo fmt",
     "fmt:check": "cargo fmt --check",
+    "clean:cargo": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-cargo-target.ps1",
     "dev:back": "cargo run",
     "dev:front": "npm --prefix frontend run dev",
     "codegen": "npm --prefix frontend run codegen",

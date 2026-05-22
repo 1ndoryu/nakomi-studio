@@ -5,20 +5,23 @@ import React from 'react';
 import {useTranslation} from 'react-i18next';
 import {obtenerPlanesServicio, type PlanServicio} from '../../data/planes/index';
 import {Button} from '../ui/Button';
+import {PlanFeatureTooltip, type PlanFeatureTooltipContext} from './PlanFeatureTooltip';
 import './SeccionPlanesServicio.css';
 
 interface SeccionPlanesServicioProps {
     slug?: string;
     planes?: PlanServicio[] | null;
     onSeleccionarPlan?: (plan: PlanServicio) => void;
+    tooltipContext?: PlanFeatureTooltipContext;
 }
 
 interface TarjetaPlanProps {
     plan: PlanServicio;
     onSeleccionar?: (plan: PlanServicio) => void;
+    tooltipContext?: PlanFeatureTooltipContext;
 }
 
-const TarjetaPlan: React.FC<TarjetaPlanProps> = ({plan, onSeleccionar}) => {
+const TarjetaPlan: React.FC<TarjetaPlanProps> = ({plan, onSeleccionar, tooltipContext}) => {
     const {t} = useTranslation();
     const claseDestacado = plan.destacado ? 'tarjetaPlanDestacado' : '';
 
@@ -51,7 +54,11 @@ const TarjetaPlan: React.FC<TarjetaPlanProps> = ({plan, onSeleccionar}) => {
                                 </svg>
                             )}
                         </span>
-                        <span className="tarjetaPlanItemTexto">{t(`content.plans.${plan.id}.features.${idx}`, car.texto)}</span>
+                        {tooltipContext ? (
+                            <PlanFeatureTooltip feature={t(`content.plans.${plan.id}.features.${idx}`, car.texto)} context={tooltipContext} />
+                        ) : (
+                            <span className="tarjetaPlanItemTexto">{t(`content.plans.${plan.id}.features.${idx}`, car.texto)}</span>
+                        )}
                     </li>
                 ))}
             </ul>
@@ -69,7 +76,7 @@ const TarjetaPlan: React.FC<TarjetaPlanProps> = ({plan, onSeleccionar}) => {
     );
 };
 
-export const SeccionPlanesServicio: React.FC<SeccionPlanesServicioProps> = ({slug, planes, onSeleccionarPlan}) => {
+export const SeccionPlanesServicio: React.FC<SeccionPlanesServicioProps> = ({slug, planes, onSeleccionarPlan, tooltipContext}) => {
     const {t} = useTranslation();
     const datos = planes && planes.length > 0
         ? {servicioSlug: slug || '', servicioTitulo: '', planes}
@@ -86,7 +93,7 @@ export const SeccionPlanesServicio: React.FC<SeccionPlanesServicioProps> = ({slu
                 </div>
                 <div className="planesGrid">
                     {datos.planes.map(plan => (
-                        <TarjetaPlan key={plan.id} plan={plan} onSeleccionar={onSeleccionarPlan} />
+                        <TarjetaPlan key={plan.id} plan={plan} onSeleccionar={onSeleccionarPlan} tooltipContext={tooltipContext} />
                     ))}
                 </div>
             </div>

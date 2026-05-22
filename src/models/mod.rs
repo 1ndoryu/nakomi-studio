@@ -48,10 +48,11 @@ pub use domain::{
     CreateDomainCheckoutRequest, DomainCheckoutResponse, DomainOrder, DomainPriceQuote,
 };
 pub use hosting::{
-    AssignHostingRequest, CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent,
-    HostingPlanConfig, HostingStatsResponse, HostingSubscription, HostingSubscriptionResponse,
-    PublicHostingPlan, SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest,
-    UpdateHostingStatusRequest, UpdatePlanConfigRequest,
+    sanitize_hosting_event, sanitize_hosting_event_details, AssignHostingRequest,
+    CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent, HostingPlanConfig,
+    HostingStatsResponse, HostingSubscription, HostingSubscriptionResponse, PublicHostingPlan,
+    SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
+    UpdatePlanConfigRequest,
 };
 pub use note::{CreateNoteRequest, Note, PaginatedNotes, PaginationParams, UpdateNoteRequest};
 pub use notification::{
@@ -100,10 +101,10 @@ pub use team_member::{
     CreateTeamMemberRequest, TeamMember, TeamMemberResponse, UpdateTeamMemberRequest,
 };
 pub use user::{
-    AdminCreateUserRequest, AdminUserItem, AuthResponse, ChangePasswordRequest,
-    ChangeRoleRequest, ChangeStatusRequest, GoogleAuthUrlResponse, GoogleLoginRequest,
-    LoginRequest, PaginatedUsers, QuickRegisterRequest, RegisterRequest, SetPasswordRequest,
-    UpdateProfileRequest, User, UserResponse, UserRole,
+    AdminCreateUserRequest, AdminUserItem, AuthResponse, ChangePasswordRequest, ChangeRoleRequest,
+    ChangeStatusRequest, GoogleAuthUrlResponse, GoogleLoginRequest, LoginRequest, PaginatedUsers,
+    QuickRegisterRequest, RegisterRequest, SetPasswordRequest, UpdateProfileRequest, User,
+    UserResponse, UserRole,
 };
 pub use vps::{
     PublicVpsPlan, RejectVpsRequest, SelfSubscribeVpsRequest, SelfSubscribeVpsResponse, VpsEvent,

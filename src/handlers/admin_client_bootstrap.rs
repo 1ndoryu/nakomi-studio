@@ -134,7 +134,7 @@ const GUILLERMO_BILLING_ITEMS: &[GuillermoBillingItem] = &[
         id: "d1000001-0001-4000-8000-000000000005",
         resource_type: "hosting",
         hosting_domain: Some("restaurante.wandori.us"),
-        title: "Hosting restaurante.wandori.us \u2014 Plan Pro",
+        title: "Hosting restaurante.wandori.us \u{2014} Plan Pro",
         description: "Plan Pro ($4.13/mes). El cobro empieza al pagar.",
         amount_cents: 413,
         billing_period: "month",
@@ -283,7 +283,11 @@ async fn upsert_guillermo_billing_items(
          * ON CONFLICT: si el item ya es 'paid' O el bootstrap lo marca paid, queda paid.
          * Esto permite re-ejecutar el bootstrap sin revertir pagos ya registrados
          * y sin crear deuda falsa para cobros ya saldados (e.g. guillechatbots.es). */
-        let initial_status = if item.initially_paid { "paid" } else { "pending" };
+        let initial_status = if item.initially_paid {
+            "paid"
+        } else {
+            "pending"
+        };
         sqlx::query(
             r"INSERT INTO billing_items (
                     id, user_id, resource_type, resource_id, title, description,

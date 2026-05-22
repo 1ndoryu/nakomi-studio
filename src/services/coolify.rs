@@ -150,6 +150,15 @@ pub struct CoolifyProvisionResult {
     pub wordpress_install_error: Option<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct HostingProvisionPreferences {
+    pub wp_admin_username: Option<String>,
+    pub wp_admin_password: Option<String>,
+    pub wp_language: Option<String>,
+    pub sftp_user: Option<String>,
+    pub sftp_password: Option<String>,
+}
+
 pub struct HostingComposeUpdate<'a> {
     pub service_uuid: &'a str,
     pub service_name: &'a str,
@@ -352,6 +361,7 @@ fn build_traefik_labels(
     route_hosts: &[String],
     property_indent: usize,
     item_indent: usize,
+    ingress_network: Option<&str>,
 ) -> String {
     if route_hosts.is_empty() {
         return String::new();
@@ -364,6 +374,13 @@ fn build_traefik_labels(
         format!("{property_prefix}labels:"),
         format!("{item_prefix}- 'traefik.enable=true'"),
     ];
+
+    if let Some(network) = ingress_network
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        lines.push(format!("{item_prefix}- 'traefik.docker.network={network}'"));
+    }
 
     for host in route_hosts {
         let cleaned_host = clean_route_host(host);
@@ -451,6 +468,7 @@ async fn install_wordpress_instance(
     client_email: &str,
     admin_username: &str,
     admin_password: &str,
+    language: &str,
 ) -> Result<(), String> {
     let install_step_one_url = format!("{bootstrap_url}/wp-admin/install.php?step=1");
     let install_step_two_url = format!("{bootstrap_url}/wp-admin/install.php?step=2");
@@ -499,7 +517,7 @@ async fn install_wordpress_instance(
         ("admin_password".to_string(), admin_password.to_string()),
         ("admin_password2".to_string(), admin_password.to_string()),
         ("admin_email".to_string(), client_email.to_string()),
-        ("language".to_string(), String::new()),
+        ("language".to_string(), language.to_string()),
         ("Submit".to_string(), "Install WordPress".to_string()),
     ];
 
@@ -592,41 +610,6 @@ async fn create_hosting_service(
         .map_err(|e| AppError::Internal(format!("Coolify create service parse error: {e}")))
 }
 
-async fn start_hosting_service(
-    http_client: &Client,
-    config: &CoolifyConfig,
-    service_name: &str,
-    service_uuid: &str,
-) -> Result<(), AppError> {
-    let start_url = format!("{}/api/v1/services/{}/start", config.base_url, service_uuid);
-    let start_resp = http_client
-        .post(&start_url)
-        .bearer_auth(&config.api_token)
-        .send()
-        .await
-        .map_err(|e| AppError::Internal(format!("Coolify start service request failed: {e}")))?;
-
-    if start_resp.status().is_success() {
-        tracing::info!(
-            "[Coolify] Servicio '{}' iniciado correctamente.",
-            service_name
-        );
-        return Ok(());
-    }
-
-    let status = start_resp.status();
-    let body = start_resp.text().await.unwrap_or_default();
-    tracing::warn!(
-        "[Coolify] Error iniciando servicio '{}' (uuid={}): {} — {}. Servicio creado pero no iniciado.",
-        service_name,
-        service_uuid,
-        status,
-        body
-    );
-
-    Ok(())
-}
-
 struct WordpressInstallContext<'a> {
     service_name: &'a str,
     service_uuid: &'a str,
@@ -635,6 +618,7 @@ struct WordpressInstallContext<'a> {
     client_email: &'a str,
     admin_username: &'a str,
     admin_password: &'a str,
+    language: &'a str,
 }
 
 async fn finalize_wordpress_install(
@@ -658,6 +642,7 @@ async fn finalize_wordpress_install(
         install_context.client_email,
         install_context.admin_username,
         install_context.admin_password,
+        install_context.language,
     )
     .await
     {
@@ -684,16 +669,22 @@ fn build_compose_wp_db(
     db_cpu: &str,
     db_mem: &str,
     route_hosts: &[String],
+    ingress_network: Option<&str>,
 ) -> String {
-    let traefik_labels = build_traefik_labels(route_hosts, 4, 6);
+    let traefik_labels = build_traefik_labels(route_hosts, 4, 6, ingress_network);
     format!(
                 "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
         )
 }
 
 /* [155A-13] Servicio web para hosting normal: Nginx sirve el volumen editable por SFTP. */
-fn build_compose_static_site(site_cpu: &str, site_mem: &str, route_hosts: &[String]) -> String {
-    let traefik_labels = build_traefik_labels(route_hosts, 8, 12);
+fn build_compose_static_site(
+    site_cpu: &str,
+    site_mem: &str,
+    route_hosts: &[String],
+    ingress_network: Option<&str>,
+) -> String {
+    let traefik_labels = build_traefik_labels(route_hosts, 8, 12, ingress_network);
     format!(
         r#"  site:
         image: 'nginx:1.27-alpine'
@@ -737,7 +728,8 @@ fn build_compose_static_site(site_cpu: &str, site_mem: &str, route_hosts: &[Stri
  * `deploy.resources.limits.pids` y Compose rechaza ambas definiciones juntas.
  * [165A-12] El sidecar SSH debe usar una tag existente de linuxserver
  * (`version-9.9_p2-r0`): la tag legacy `9.9_p2-r0-ls190` ya no resuelve en lscr.io.
- * [174A-17] Plan ecommerce incluye sidecar de backup automático (3 daily + 2 weekly).
+ * [174A-17][215A-6] Incluye sidecar de backup automático: básico semanal,
+ * Pro/Avanzado diario con copia semanal.
  * [114A-3] Límites de CPU/RAM dinámicos desde HostingPlanConfig (admin-configurable). */
 #[cfg(test)]
 fn build_hosting_compose(
@@ -746,7 +738,7 @@ fn build_hosting_compose(
     sftp_port: i32,
     config: &HostingPlanConfig,
 ) -> String {
-    build_hosting_compose_with_routes(&[], sftp_user, sftp_password, sftp_port, config)
+    build_hosting_compose_with_routes(&[], sftp_user, sftp_password, sftp_port, config, None)
 }
 
 fn build_hosting_compose_for_service(
@@ -758,9 +750,38 @@ fn build_hosting_compose_for_service(
     sftp_port: i32,
     config: &HostingPlanConfig,
 ) -> String {
+    build_hosting_compose_for_service_with_ingress_network(
+        service_name,
+        server_ip,
+        custom_domain,
+        sftp_user,
+        sftp_password,
+        sftp_port,
+        config,
+        None,
+    )
+}
+
+fn build_hosting_compose_for_service_with_ingress_network(
+    service_name: &str,
+    server_ip: &str,
+    custom_domain: Option<&str>,
+    sftp_user: &str,
+    sftp_password: &str,
+    sftp_port: i32,
+    config: &HostingPlanConfig,
+    ingress_network: Option<&str>,
+) -> String {
     let route_hosts =
         hosting_route_hosts(&config.plan_name, service_name, server_ip, custom_domain);
-    build_hosting_compose_with_routes(&route_hosts, sftp_user, sftp_password, sftp_port, config)
+    build_hosting_compose_with_routes(
+        &route_hosts,
+        sftp_user,
+        sftp_password,
+        sftp_port,
+        config,
+        ingress_network,
+    )
 }
 
 fn build_hosting_compose_with_routes(
@@ -769,6 +790,7 @@ fn build_hosting_compose_with_routes(
     sftp_password: &str,
     sftp_port: i32,
     config: &HostingPlanConfig,
+    ingress_network: Option<&str>,
 ) -> String {
     if is_normal_hosting_plan(&config.plan_name) {
         return build_normal_hosting_compose(
@@ -777,10 +799,18 @@ fn build_hosting_compose_with_routes(
             sftp_password,
             sftp_port,
             config,
+            ingress_network,
         );
     }
 
-    build_wordpress_hosting_compose(route_hosts, sftp_user, sftp_password, sftp_port, config)
+    build_wordpress_hosting_compose(
+        route_hosts,
+        sftp_user,
+        sftp_password,
+        sftp_port,
+        config,
+        ingress_network,
+    )
 }
 
 fn build_wordpress_hosting_compose(
@@ -789,6 +819,7 @@ fn build_wordpress_hosting_compose(
     sftp_password: &str,
     sftp_port: i32,
     config: &HostingPlanConfig,
+    ingress_network: Option<&str>,
 ) -> String {
     let wp_cpu = millicores_to_cpu(config.wp_cpu_millicores);
     let wp_mem = format!("{}M", config.wp_memory_mb);
@@ -797,18 +828,17 @@ fn build_wordpress_hosting_compose(
     let ssh_cpu = millicores_to_cpu(config.ssh_cpu_millicores);
     let ssh_mem = format!("{}M", config.ssh_memory_mb);
 
-    let wp_db = build_compose_wp_db(&wp_cpu, &wp_mem, &db_cpu, &db_mem, route_hosts);
+    let wp_db = build_compose_wp_db(
+        &wp_cpu,
+        &wp_mem,
+        &db_cpu,
+        &db_mem,
+        route_hosts,
+        ingress_network,
+    );
     let ssh = build_compose_ssh(sftp_user, sftp_password, sftp_port, &ssh_cpu, &ssh_mem);
-    let backup = if config.plan_name == "ecommerce" {
-        build_compose_backup()
-    } else {
-        String::new()
-    };
-    let backup_vol = if config.plan_name == "ecommerce" {
-        "  backup-data:\n"
-    } else {
-        ""
-    };
+    let backup = build_compose_wordpress_backup(backup_cadence_for_plan(&config.plan_name));
+    let backup_vol = "  backup-data:\n";
     format!("services:\n{wp_db}{ssh}{backup}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n{backup_vol}")
 }
 
@@ -818,16 +848,18 @@ fn build_normal_hosting_compose(
     sftp_password: &str,
     sftp_port: i32,
     config: &HostingPlanConfig,
+    ingress_network: Option<&str>,
 ) -> String {
     let site_cpu = millicores_to_cpu(config.wp_cpu_millicores);
     let site_mem = format!("{}M", config.wp_memory_mb);
     let ssh_cpu = millicores_to_cpu(config.ssh_cpu_millicores);
     let ssh_mem = format!("{}M", config.ssh_memory_mb);
-    let site = build_compose_static_site(&site_cpu, &site_mem, route_hosts);
+    let site = build_compose_static_site(&site_cpu, &site_mem, route_hosts, ingress_network);
     let ssh = build_compose_static_ssh(sftp_user, sftp_password, sftp_port, &ssh_cpu, &ssh_mem);
+    let backup = build_compose_static_backup(backup_cadence_for_plan(&config.plan_name));
 
     format!(
-        "services:\n{site}{ssh}\nnetworks:\n  frontend_net:\n  ssh_net:\nvolumes:\n  site-data:\n"
+        "services:\n{site}{ssh}{backup}\nnetworks:\n  frontend_net:\n  ssh_net:\nvolumes:\n  site-data:\n  backup-data:\n"
     )
 }
 
@@ -960,13 +992,105 @@ fn build_compose_static_ssh(
     )
 }
 
-/* [174A-17] Sidecar de backup automático para plan ecommerce.
- * Retention: 3 copias diarias + 2 semanales (domingos).
- * MYSQL_PWD es leído automáticamente por mysqldump — no se pasa en CLI.
- * Sleep inicial de 60s da tiempo a MariaDB para arrancar completamente.
- * Solo se incluye en compose cuando plan == "ecommerce". */
-fn build_compose_backup() -> String {
-    "  backup:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_PWD=SERVICE_PASSWORD_DB\n    command:\n      - sh\n      - -c\n      - 'sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); mysqldump -h mariadb -u wordpress wordpress > /backups/daily_$$DT.sql 2>&1; tar czf /backups/daily_wp_$$DT.tar.gz -C /wp-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_$$DT.sql /backups/weekly_$$DT.sql; cp /backups/daily_wp_$$DT.tar.gz /backups/weekly_wp_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done'\n    volumes:\n      - 'wordpress-data:/wp-html:ro'\n      - 'backup-data:/backups'\n    networks:\n      - backend_net\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '0.25'\n          memory: 256M\n        reservations:\n          memory: 64M\n".to_string()
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum HostingBackupCadence {
+    Weekly,
+    Daily,
+}
+
+fn backup_cadence_for_plan(plan_name: &str) -> HostingBackupCadence {
+    let base_plan = plan_name.strip_prefix("normal-").unwrap_or(plan_name);
+    if base_plan == "basico" {
+        HostingBackupCadence::Weekly
+    } else {
+        HostingBackupCadence::Daily
+    }
+}
+
+fn wordpress_backup_command(cadence: HostingBackupCadence) -> &'static str {
+    match cadence {
+                HostingBackupCadence::Weekly => "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); if [ $$DOW = 7 ]; then mysqldump -h mariadb -u wordpress wordpress > /backups/weekly_$$DT.sql 2>&1; tar czf /backups/weekly_wp_$$DT.tar.gz -C /wp-html . 2>&1; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +28 -delete; fi; sleep 86400; done",
+                HostingBackupCadence::Daily => "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); mysqldump -h mariadb -u wordpress wordpress > /backups/daily_$$DT.sql 2>&1; tar czf /backups/daily_wp_$$DT.tar.gz -C /wp-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_$$DT.sql /backups/weekly_$$DT.sql; cp /backups/daily_wp_$$DT.tar.gz /backups/weekly_wp_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done",
+        }
+}
+
+fn static_backup_command(cadence: HostingBackupCadence) -> &'static str {
+    match cadence {
+                HostingBackupCadence::Weekly => "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); if [ $$DOW = 7 ]; then tar czf /backups/weekly_site_$$DT.tar.gz -C /site-html . 2>&1; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +28 -delete; fi; sleep 86400; done",
+                HostingBackupCadence::Daily => "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); tar czf /backups/daily_site_$$DT.tar.gz -C /site-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_site_$$DT.tar.gz /backups/weekly_site_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done",
+        }
+}
+
+/* [174A-17][215A-6] Sidecar de backup automático para WordPress.
+ * Básico crea una copia semanal; Pro/Avanzado crean copia diaria y retienen semanal dominical.
+ * MYSQL_PWD es leído automáticamente por mysqldump — no se pasa en CLI. */
+fn build_compose_wordpress_backup(cadence: HostingBackupCadence) -> String {
+    let command = wordpress_backup_command(cadence);
+    format!(
+        r#"  backup:
+        image: 'mariadb:11.4'
+        environment:
+            - MYSQL_PWD=SERVICE_PASSWORD_DB
+        command:
+            - sh
+            - -c
+            - '{command}'
+        volumes:
+            - 'wordpress-data:/wp-html:ro'
+            - 'backup-data:/backups'
+        networks:
+            - backend_net
+        depends_on:
+            - mariadb
+        restart: unless-stopped
+        cap_drop:
+            - ALL
+        cap_add:
+            - CHOWN
+            - SETUID
+            - SETGID
+            - DAC_OVERRIDE
+        security_opt:
+            - no-new-privileges:true
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.25'
+                    memory: 256M
+                reservations:
+                    memory: 64M
+"#
+    )
+}
+
+fn build_compose_static_backup(cadence: HostingBackupCadence) -> String {
+    let command = static_backup_command(cadence);
+    format!(
+        r#"  backup:
+        image: 'alpine:3.20'
+        command:
+            - sh
+            - -c
+            - '{command}'
+        volumes:
+            - 'site-data:/site-html:ro'
+            - 'backup-data:/backups'
+        networks:
+            - ssh_net
+        restart: unless-stopped
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.15'
+                    memory: 128M
+                reservations:
+                    memory: 32M
+"#
+    )
 }
 
 impl CoolifyService {
@@ -1047,8 +1171,29 @@ impl CoolifyService {
         plan_config: &HostingPlanConfig,
         client_name: &str,
         client_email: &str,
+        preferences: Option<&HostingProvisionPreferences>,
     ) -> Result<CoolifyProvisionResult, AppError> {
-        let (sftp_user, sftp_password) = generate_sftp_credentials();
+        let (generated_sftp_user, generated_sftp_password) = generate_sftp_credentials();
+        let sftp_user = preferences
+            .and_then(|prefs| prefs.sftp_user.as_deref())
+            .unwrap_or(&generated_sftp_user)
+            .to_string();
+        let sftp_password = preferences
+            .and_then(|prefs| prefs.sftp_password.as_deref())
+            .unwrap_or(&generated_sftp_password)
+            .to_string();
+        let wp_admin_username = preferences
+            .and_then(|prefs| prefs.wp_admin_username.as_deref())
+            .unwrap_or(&sftp_user)
+            .to_string();
+        let wp_admin_password = preferences
+            .and_then(|prefs| prefs.wp_admin_password.as_deref())
+            .unwrap_or(&sftp_password)
+            .to_string();
+        let wp_language = preferences
+            .and_then(|prefs| prefs.wp_language.as_deref())
+            .unwrap_or("")
+            .to_string();
         let bootstrap_domain =
             hosting_bootstrap_host(&plan_config.plan_name, service_name, &config.server_ip);
         let compose_yaml = build_hosting_compose_for_service(
@@ -1065,6 +1210,21 @@ impl CoolifyService {
         let created =
             create_hosting_service(http_client, config, service_name, compose_b64).await?;
 
+        Self::update_compose_and_restart(
+            http_client,
+            config,
+            HostingComposeUpdate {
+                service_uuid: &created.uuid,
+                service_name,
+                custom_domain: None,
+                sftp_user: &sftp_user,
+                sftp_password: &sftp_password,
+                sftp_port,
+                plan_config,
+            },
+        )
+        .await?;
+
         let coolify_domain = created.domains.into_iter().next();
         let domain = format!("http://{bootstrap_domain}");
 
@@ -1075,7 +1235,6 @@ impl CoolifyService {
             domain,
             coolify_domain
         );
-        start_hosting_service(http_client, config, service_name, &created.uuid).await?;
         let (wordpress_ready, wordpress_install_error) = finalize_wordpress_install(
             http_client,
             &domain,
@@ -1085,8 +1244,9 @@ impl CoolifyService {
                 plan_name: &plan_config.plan_name,
                 client_name,
                 client_email,
-                admin_username: &sftp_user,
-                admin_password: &sftp_password,
+                admin_username: &wp_admin_username,
+                admin_password: &wp_admin_password,
+                language: &wp_language,
             },
         )
         .await;
@@ -1200,7 +1360,7 @@ impl CoolifyService {
         config: &CoolifyConfig,
         update: HostingComposeUpdate<'_>,
     ) -> Result<(), AppError> {
-        let compose = build_hosting_compose_for_service(
+        let compose = build_hosting_compose_for_service_with_ingress_network(
             update.service_name,
             &config.server_ip,
             update.custom_domain,
@@ -1208,6 +1368,7 @@ impl CoolifyService {
             update.sftp_password,
             update.sftp_port,
             update.plan_config,
+            Some(update.service_uuid),
         );
         let compose_b64 = base64::engine::general_purpose::STANDARD.encode(&compose);
 
@@ -1683,6 +1844,23 @@ mod tests {
     }
 
     #[test]
+    fn compose_for_service_pins_traefik_ingress_network() {
+        let config = test_plan_config("basico");
+        let compose = build_hosting_compose_for_service_with_ingress_network(
+            "hosting-de17015b",
+            "173.249.50.44",
+            None,
+            "testuser",
+            "testpass",
+            10001,
+            &config,
+            Some("e1m95ycgcc72zjiles3mov3c"),
+        );
+
+        assert!(compose.contains("traefik.docker.network=e1m95ycgcc72zjiles3mov3c"));
+    }
+
+    #[test]
     fn compose_for_service_keeps_custom_domain_route() {
         let config = test_plan_config("basico");
         let compose = build_hosting_compose_for_service(
@@ -1905,10 +2083,10 @@ mod tests {
         assert!(compose.contains("memory: 128M"), "SSH memory debe ser 128M");
     }
 
-    /* --- Compose: backup sidecar (solo ecommerce) --- */
+    /* --- Compose: backup sidecar --- */
 
     #[test]
-    fn compose_ecommerce_includes_backup_sidecar() {
+    fn compose_wordpress_plans_include_backup_sidecar() {
         let config = test_plan_config("ecommerce");
         let compose = build_hosting_compose("user", "pass", 10001, &config);
 
@@ -1924,29 +2102,43 @@ mod tests {
     }
 
     #[test]
-    fn compose_basico_excludes_backup_sidecar() {
+    fn compose_basico_uses_weekly_backup_sidecar() {
         let config = test_plan_config("basico");
         let compose = build_hosting_compose("user", "pass", 10001, &config);
 
+        assert!(compose.contains("backup:"), "Basico debe incluir backup");
         assert!(
-            !compose.contains("backup:"),
-            "Basico no debe incluir sidecar backup"
+            compose.contains("weekly_wp_"),
+            "Basico guarda copia semanal"
         );
         assert!(
-            !compose.contains("backup-data:"),
-            "Basico no debe incluir volumen backup"
+            !compose.contains("daily_wp_"),
+            "Basico no crea copia diaria"
         );
     }
 
     #[test]
-    fn compose_pro_excludes_backup_sidecar() {
+    fn compose_pro_uses_daily_backup_sidecar() {
         let config = test_plan_config("pro");
         let compose = build_hosting_compose("user", "pass", 10001, &config);
 
+        assert!(compose.contains("backup:"), "Pro debe incluir backup");
+        assert!(compose.contains("daily_wp_"), "Pro guarda copia diaria");
+        assert!(compose.contains("weekly_wp_"), "Pro conserva copia semanal");
+    }
+
+    #[test]
+    fn compose_normal_plans_include_static_backup_sidecar() {
+        let config = test_plan_config("normal-pro");
+        let compose = build_hosting_compose("user", "pass", 10001, &config);
+
         assert!(
-            !compose.contains("backup:"),
-            "Pro no debe incluir sidecar backup"
+            compose.contains("backup:"),
+            "Hosting normal debe incluir backup"
         );
+        assert!(compose.contains("site-data:/site-html:ro"));
+        assert!(compose.contains("daily_site_"));
+        assert!(!compose.contains("mysqldump"));
     }
 
     #[test]
@@ -1979,7 +2171,7 @@ mod tests {
 
     #[test]
     fn compose_wordpress_connects_to_frontend_and_backend() {
-        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M", &[]);
+        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M", &[], None);
 
         /* WordPress debe estar en frontend (sirve tráfico) y backend (habla con DB) */
         assert!(compose.contains("frontend_net"));
@@ -1988,7 +2180,7 @@ mod tests {
 
     #[test]
     fn compose_mariadb_only_on_backend() {
-        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M", &[]);
+        let compose = build_compose_wp_db("0.50", "256M", "0.50", "512M", &[], None);
 
         /* MariaDB aparece como servicio "  mariadb:\n". Su sección debe contener
          * backend_net pero NO frontend_net. Extraer desde la definición del servicio. */

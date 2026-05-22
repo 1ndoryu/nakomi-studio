@@ -181,6 +181,12 @@ export async function apiListHostingEvents(id: string): Promise<HostingEvent[]> 
 export interface SelfSubscribeRequest {
     plan: string;
     domain?: string;
+    billing_cycle_months?: 1 | 6 | 12;
+    wp_admin_username?: string;
+    wp_admin_password?: string;
+    wp_language?: string;
+    sftp_user?: string;
+    sftp_password?: string;
 }
 
 export interface SelfSubscribeResponse {
@@ -220,10 +226,10 @@ export async function apiListPublicHostingPlans(): Promise<PublicHostingPlan[]> 
 export const HOSTING_PLAN_LABELS: Record<string, string> = {
     basico: 'Básico',
     pro: 'Profesional',
-    ecommerce: 'E-commerce',
+    ecommerce: 'Avanzado',
     'normal-basico': 'Hosting Básico',
     'normal-pro': 'Hosting Profesional',
-    'normal-ecommerce': 'Hosting E-commerce',
+    'normal-ecommerce': 'Hosting Avanzado',
     custom: 'Custom',
 };
 
@@ -282,7 +288,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 248,
         storageMb: 5120,
         description: 'WordPress administrado para sitios livianos y landings con costo controlado.',
-        features: ['WordPress pre-instalado', '5 GB almacenamiento', 'SSL gratuito', 'WP-CLI vía SSH'],
+        features: ['WordPress pre-instalado', '5 GB almacenamiento', 'Tráfico ilimitado', 'Free temporary domain', 'Certificado SSL incluido', 'Free CDN', 'WP-CLI + SSH', 'Backups semanales'],
     },
     {
         id: 'pro',
@@ -290,16 +296,16 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 413,
         storageMb: 20480,
         description: 'WordPress para negocios que necesitan más recursos y staging listo.',
-        features: ['WordPress pre-instalado', '20 GB almacenamiento', 'SSL gratuito', 'WP-CLI vía SSH', 'Backups diarios'],
+        features: ['WordPress pre-instalado', '20 GB almacenamiento', 'Tráfico ilimitado', 'Free temporary domain', 'Certificado SSL incluido', 'Free CDN', 'WP-CLI + SSH', 'Backups diarios'],
         recommended: true,
     },
     {
         id: 'ecommerce',
-        label: 'E-commerce',
+        label: 'Avanzado',
         priceCents: 619,
         storageMb: 51200,
-        description: 'WooCommerce optimizado para tiendas online con más tráfico y caché avanzada.',
-        features: ['WordPress + WooCommerce', '50 GB almacenamiento', 'SSL gratuito', 'WP-CLI vía SSH', 'Backups diarios', 'Caché avanzada'],
+        description: 'WordPress administrado de mayor capacidad para sitios con más contenido, tráfico y caché avanzada.',
+        features: ['WordPress pre-instalado', '50 GB almacenamiento', 'Tráfico ilimitado', 'Free temporary domain', 'Certificado SSL incluido', 'Free CDN', 'WP-CLI + SSH', 'Backups diarios + semanales', 'Caché avanzada'],
     },
     {
         id: 'normal-basico',
@@ -307,7 +313,7 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 323,
         storageMb: 5120,
         description: 'Hosting administrado con Nginx, SSL y SFTP para landings, sitios corporativos y proyectos sin WordPress.',
-        features: ['Nginx administrado', '5 GB almacenamiento', 'SSL gratuito', 'SFTP seguro'],
+        features: ['Nginx administrado', '5 GB almacenamiento', 'Tráfico ilimitado', 'Free temporary domain', 'Certificado SSL incluido', 'SFTP seguro', 'Backups semanales'],
     },
     {
         id: 'normal-pro',
@@ -315,16 +321,16 @@ export const HOSTING_PLANS_FALLBACK: HostingPlanInfo[] = [
         priceCents: 537,
         storageMb: 20480,
         description: 'Hosting administrado para sitios con más tráfico, frontends personalizados y despliegues con mayor exigencia operativa.',
-        features: ['Nginx administrado', '20 GB almacenamiento', 'SSL gratuito', 'SFTP seguro', 'Backups diarios'],
+        features: ['Nginx administrado', '20 GB almacenamiento', 'Tráfico ilimitado', 'Free temporary domain', 'Certificado SSL incluido', 'SFTP seguro', 'Backups diarios'],
         recommended: true,
     },
     {
         id: 'normal-ecommerce',
-        label: 'Hosting E-commerce',
+        label: 'Hosting Avanzado',
         priceCents: 805,
         storageMb: 51200,
         description: 'Hosting administrado de mayor capacidad para catálogos amplios, assets pesados y operaciones con más demanda.',
-        features: ['Nginx administrado', '50 GB almacenamiento', 'SSL gratuito', 'SFTP seguro', 'Backups diarios', 'Recursos ampliados'],
+        features: ['Nginx administrado', '50 GB almacenamiento', 'Tráfico ilimitado', 'Free temporary domain', 'Certificado SSL incluido', 'SFTP seguro', 'Backups diarios + semanales', 'Recursos ampliados'],
     },
 ];
 
