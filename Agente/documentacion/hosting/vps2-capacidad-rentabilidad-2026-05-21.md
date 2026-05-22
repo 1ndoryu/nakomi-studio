@@ -27,45 +27,54 @@ Volumenes actuales:
 
 ## Correccion frente al plan viejo
 
-El documento historico de abril asumia Cloud VPS 2 con 6 vCPU, 16 GB RAM y 400 GB. El target actual tiene 4 vCPU, 8 GB RAM y 290 GB. Por tanto las densidades viejas (5 basicos / 3 pro / 2 avanzado con margen 20%) son demasiado optimistas para este nodo si usamos limites de CPU estrictos.
+El documento historico de abril asumia Cloud VPS 2 con 6 vCPU, 16 GB RAM y 400 GB. El target actual sigue siendo mas pequeno: 4 vCPU, 8 GB RAM y 290 GB. Eso invalida el supuesto viejo de hardware, pero la primera version de este informe tambien fue demasiado conservadora al extrapolar solo desde limites nominales de CPU/RAM.
 
-## Capacidad conservadora por limites actuales
+Con las pruebas manuales reportadas por el usuario, este nodo aguanta bastante mas carga real de la que sugeria aquella tabla: se probaron varios sitios normales y hasta 7 WordPress complejos concurrentes funcionando bien. Por eso la capacidad comercial razonable debe ajustarse al alza, manteniendo vigilancia de disco y backups.
+
+## Capacidad operativa ajustada por pruebas reales
 
 Presupuesto recomendado para hosting en este nodo:
 
 - Reservar ~1 vCPU para Coolify, Traefik, PostgreSQL de Coolify, sistema y picos.
 - Reservar ~2 GB RAM para sistema/Coolify/headroom.
 - No vender por encima de 70% de disco si los backups quedan en el mismo VPS.
+- El cuello principal pasa a ser disco + retencion de backups; la RAM sigue muy holgada en el uso observado.
 
-Densidad por plan si el nodo se llena con un solo tipo:
+Densidad por plan usando las pruebas reales como baseline operativo:
 
-| Familia        | Plan     | Limite por hosting         | Cap CPU conservadora | Cap RAM conservadora | Cap disco sin backups | Recomendacion                      |
-| -------------- | -------- | -------------------------- | -------------------- | -------------------- | --------------------- | ---------------------------------- |
-| WordPress      | basico   | 1.0 CPU / 640 MB / 5 GB    | 3                    | 9                    | 40+                   | 3 activos por nodo                 |
-| WordPress      | pro      | 2.0 CPU / 1280 MB / 20 GB  | 1                    | 4                    | 10+                   | 1-2, mejor 1 si hay trafico real   |
-| WordPress      | avanzado | 2.75 CPU / 1792 MB / 50 GB | 1                    | 3                    | 4                     | 1 por nodo si no hay backup remoto |
-| Hosting normal | basico   | 0.75 CPU / 384 MB / 5 GB   | 4                    | 15                   | 40+                   | 4 activos por nodo                 |
-| Hosting normal | pro      | 1.5 CPU / 768 MB / 20 GB   | 2                    | 7                    | 10+                   | 2 activos por nodo                 |
-| Hosting normal | avanzado | 2.0 CPU / 1280 MB / 50 GB  | 1                    | 4                    | 4                     | 1 activo por nodo                  |
+| Familia        | Plan     | Limite por hosting         | Tabla anterior | Capacidad operativa ajustada | Lectura                                                                 |
+| -------------- | -------- | -------------------------- | -------------- | ---------------------------- | ----------------------------------------------------------------------- |
+| WordPress      | basico   | 1.0 CPU / 640 MB / 5 GB    | 3              | 6                            | Baseline comercial razonable con el uso real observado.                 |
+| WordPress      | pro      | 2.0 CPU / 1280 MB / 20 GB  | 1-2            | 3                            | Aguanta bastante mejor que lo que sugerian los limites nominales.       |
+| WordPress      | avanzado | 2.75 CPU / 1792 MB / 50 GB | 1              | 1-2 segun mix                | Mejor venderlo mezclado con 2 basicos o con disco/backups muy vigilados. |
+| Hosting normal | basico   | 0.75 CPU / 384 MB / 5 GB   | 4              | 8                            | Su consumo real sigue siendo muy bajo; el limite practico no es la RAM. |
+| Hosting normal | pro      | 1.5 CPU / 768 MB / 20 GB   | 2              | 4                            | Densidad razonable mientras el disco siga controlado.                   |
+| Hosting normal | avanzado | 2.0 CPU / 1280 MB / 50 GB  | 1              | 2                            | Factible, pero el disco manda antes que CPU/RAM.                        |
 
-La RAM real esta muy holgada; el cuello de botella serio es CPU vendida por limites y disco si las copias automaticas viven en el mismo VPS.
+Mixes que cuadran mejor con las pruebas del usuario:
 
-## Rentabilidad con precios actuales
+- 6 WordPress basicos.
+- 1 WordPress Pro + 4 basicos.
+- 3 WordPress Pro.
+- 1 WordPress Avanzado + 2 basicos.
+- Hosting normal: tomar como referencia el doble de la tabla inicial, es decir, 8 basicos o 4 Pro si el disco y los backups siguen bajo control.
 
-Coste historico usado para pricing: Cloud VPS 2 ~`$9.90/mes`. Si este nodo actual cuesta menos, el margen real mejora; si cuesta igual, el margen empeora frente al plan original porque la capacidad medida es menor.
+## Rentabilidad con coste real del nodo
 
-Ingresos por nodo con densidad conservadora:
+Coste real reportado para este VPS: `$7.44/mes`.
 
-| Mix ideal                                      | Ingreso mensual | Margen vs $9.90 | Lectura                                       |
-| ---------------------------------------------- | --------------: | --------------: | --------------------------------------------- |
-| 3 WordPress basico (`$2.48`)                   |         `$7.44` |        negativo | No cubre coste historico si solo hay basicos. |
-| 1 WordPress pro (`$4.13`) + 1 basico (`$2.48`) |         `$6.61` |        negativo | No rentable con el supuesto viejo.            |
-| 2 WordPress pro                                |         `$8.26` |        negativo | Mejor, pero aun bajo si el nodo cuesta $9.90. |
-| 1 avanzado + 1 basico                          |         `$8.67` |        negativo | CPU justa y disco/backups delicados.          |
-| 4 hosting normal basico (`$3.23`)              |        `$12.92` |            ~23% | Rentable si son sitios livianos.              |
-| 2 hosting normal pro (`$5.37`)                 |        `$10.74` |             ~8% | Rentabilidad baja.                            |
+Ingresos por nodo con la densidad operativa ajustada:
 
-Conclusion comercial: con 4 vCPU/8 GB, los precios WordPress actuales son demasiado baratos para margen estable si se respetan limites conservadores y backups locales. Hosting normal basico si puede sostener el margen por consumo real bajo.
+| Mix operativo                                   | Ingreso mensual | Margen vs $7.44 | Lectura                                                     |
+| ----------------------------------------------- | --------------: | --------------: | ----------------------------------------------------------- |
+| 6 WordPress basico (`$2.48`)                    |        `$14.88` |          `100%` | El basico si cubre bien el nodo con el coste real actual.   |
+| 1 WordPress Pro (`$4.13`) + 4 basicos (`$2.48`) |        `$14.05` |           `89%` | Mezcla solida para vender sin infrautilizar el VPS.         |
+| 3 WordPress Pro (`$4.13`)                       |        `$12.39` |           `67%` | Buen equilibrio entre ingreso y complejidad operativa.      |
+| 1 Avanzado (`$6.19`) + 2 basicos (`$2.48`)      |        `$11.15` |           `50%` | Rentable, pero mas sensible a disco y backups.              |
+| 8 hosting normal basico (`$3.23`)               |        `$25.84` |          `247%` | Hosting normal sigue siendo el mix mas holgado del nodo.    |
+| 4 hosting normal pro (`$5.37`)                  |        `$21.48` |          `189%` | Tambien muy rentable mientras el disco no sea el cuello.    |
+
+Conclusion comercial: con coste real de `$7.44/mes`, este VPS2 si es rentable como nodo comercial inicial. El cuello operativo deja de ser CPU/RAM y pasa a ser, sobre todo, el disco y la retencion local de backups.
 
 ## Backups y disco
 
@@ -75,19 +84,21 @@ El sidecar nuevo crea backups para todos los planes nuevos:
 - Pro/Avanzado: backup diario + copia semanal.
 - WordPress: archivos + MariaDB.
 - Hosting normal: archivos del sitio.
+- Retencion local objetivo: maximo 5 backups por hosting.
 
-Riesgo: esos backups viven en `backup-data` del mismo VPS. Si un plan avanzado usa 50 GB y retiene varios backups locales, un solo cliente puede consumir gran parte del disco. Para vender planes grandes con seguridad hace falta una de estas medidas antes de escalar:
+Riesgo: esos backups viven en `backup-data` del mismo VPS. Incluso con la capacidad revisada al alza, si un plan avanzado usa 50 GB y se le dejan demasiadas copias locales, un solo cliente puede comerse gran parte del disco. Para que las densidades anteriores sigan siendo realistas hace falta una de estas medidas antes de escalar:
 
-1. backup remoto a otro VPS/storage externo;
-2. cuota de backups por plan;
+1. limite duro de 5 backups por hosting;
+2. backup remoto a otro VPS/storage externo;
 3. retencion menor para planes grandes mientras no haya storage externo;
 4. calculo de capacidad que reserve multiplicador de backups.
 
 ## Recomendaciones operativas
 
-- No llenar este VPS2 con WordPress barato; usarlo para pruebas, hosting normal liviano y pocos WordPress basicos.
-- Umbral para contratar otro nodo: CPU load sostenido > 2.5, RAM disponible < 2 GB, disco usado > 65%, o 3 WordPress activos aunque el uso parezca bajo.
-- Para WordPress Pro/Avanzado, mover a un nodo de 6 vCPU/16 GB o superior si van a ser clientes reales.
+- Este VPS2 si puede funcionar como nodo comercial inicial para hosting compartido si se usa como baseline 6 WordPress basicos, 3 Pro o mezclas equivalentes como 1 Avanzado + 2 basicos.
+- En hosting normal, la referencia razonable es 8 basicos o 4 Pro mientras el disco siga controlado.
+- Umbral para contratar otro nodo: CPU load sostenido > 2.5, RAM disponible < 2 GB, disco usado > 65%, o al acercarse a 6 WordPress basicos / 3 Pro / 1 Avanzado + 2 basicos.
+- Estas cifras deben tratarse como capacidad operativa basada en pruebas reales, no como SLA fijo; si el perfil de clientes cambia, hay que re-medirlo.
 - Activar `ufw`/`fail2ban` o documentar por que Coolify/Traefik cubren ese riesgo; hoy la auditoria los marca inactivos.
-- Implementar backup remoto antes de prometer planes avanzados con retencion diaria seria.
+- Implementar cuanto antes el limite de 5 backups por hosting y, despues, backup remoto para no convertir el disco en el cuello principal.
 - Refrescar hostings existentes tras deploy si se quiere que reciban sidecar `backup-data`; los stacks actuales no lo tienen.
