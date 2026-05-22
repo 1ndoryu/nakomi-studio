@@ -1027,7 +1027,7 @@ fn static_backup_command(cadence: HostingBackupCadence) -> &'static str {
 fn build_compose_wordpress_backup(cadence: HostingBackupCadence) -> String {
     let command = wordpress_backup_command(cadence);
     format!(
-        r#"  backup:
+        r"  backup:
         image: 'mariadb:11.4'
         environment:
             - MYSQL_PWD=SERVICE_PASSWORD_DB
@@ -1059,14 +1059,14 @@ fn build_compose_wordpress_backup(cadence: HostingBackupCadence) -> String {
                     memory: 256M
                 reservations:
                     memory: 64M
-"#
+"
     )
 }
 
 fn build_compose_static_backup(cadence: HostingBackupCadence) -> String {
     let command = static_backup_command(cadence);
     format!(
-        r#"  backup:
+        r"  backup:
         image: 'alpine:3.20'
         command:
             - sh
@@ -1089,7 +1089,7 @@ fn build_compose_static_backup(cadence: HostingBackupCadence) -> String {
                     memory: 128M
                 reservations:
                     memory: 32M
-"#
+"
     )
 }
 
