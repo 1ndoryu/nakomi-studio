@@ -662,6 +662,7 @@ pub async fn create_subscription(
     security(("bearer_auth" = [])),
     tag = "hosting"
 )]
+#[allow(clippy::too_many_lines)]
 pub async fn subscribe_self(
     State(state): State<AppState>,
     auth: AuthUser,
