@@ -51,7 +51,9 @@ pub fn verify_password_hash(password: &str, password_hash: &str) -> Result<bool,
     match Argon2::default().verify_password(password.as_bytes(), &parsed_hash) {
         Ok(()) => Ok(true),
         Err(argon2::password_hash::Error::Password) => Ok(false),
-        Err(e) => Err(AppError::Internal(format!("Error verificando contraseña: {e}"))),
+        Err(e) => Err(AppError::Internal(format!(
+            "Error verificando contraseña: {e}"
+        ))),
     }
 }
 
@@ -220,7 +222,8 @@ impl AuthService {
 
         if !user.password_set {
             return Err(AppError::BadRequest(
-                "Tu cuenta todavía no tiene una contraseña propia. Usa primero Crear contraseña.".into(),
+                "Tu cuenta todavía no tiene una contraseña propia. Usa primero Crear contraseña."
+                    .into(),
             ));
         }
 

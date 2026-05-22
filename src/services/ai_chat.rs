@@ -146,8 +146,7 @@ impl AiChatConfig {
          * Default true. Añadir AI_ROTATION_ENABLED=false en .env para desactivarla al arrancar.
          * Sin esto, el AtomicBool se resetea a true en cada reinicio del servidor. */
         let rotation_from_env = std::env::var("AI_ROTATION_ENABLED")
-            .map(|v| !v.eq_ignore_ascii_case("false") && v != "0")
-            .unwrap_or(true);
+            .map_or(true, |v| !v.eq_ignore_ascii_case("false") && v != "0");
         ROTATION_ENABLED.store(rotation_from_env, Ordering::Relaxed);
         tracing::info!(
             "AI: rotación de API keys {}",

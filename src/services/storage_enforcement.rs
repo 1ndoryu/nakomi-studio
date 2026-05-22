@@ -24,7 +24,7 @@ use crate::services::{
 
 const EVENT_EXCEEDED: &str = "storage_limit_exceeded";
 const EVENT_RESTORED: &str = "storage_limit_restored";
-const CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_secs(6 * 3600);
+const CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_hours(6);
 
 struct EnforcementTarget<'a> {
     hosting_id: Uuid,
@@ -263,10 +263,14 @@ pub async fn run_storage_check(pool: &PgPool, coolify_config: &CoolifyConfig) {
     );
 
     for h in candidates {
-        let site_name = h.coolify_site_name.as_deref().unwrap();
+        let (Some(site_name), Some(server_ip), Some(user_id)) = (
+            h.coolify_site_name.as_deref(),
+            h.server_ip.as_deref(),
+            h.user_id,
+        ) else {
+            continue;
+        };
         let service_uuid = h.server_uuid.as_deref();
-        let server_ip = h.server_ip.as_deref().unwrap();
-        let user_id = h.user_id.unwrap();
 
         check_and_enforce_one(
             pool,

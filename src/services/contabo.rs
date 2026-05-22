@@ -159,8 +159,7 @@ impl ContaboService {
         {
             let guard = self.cached_token.read().await;
             if let Some(cached) = guard.as_ref() {
-                if cached.expires_at
-                    > std::time::Instant::now() + std::time::Duration::from_secs(60)
+                if cached.expires_at > std::time::Instant::now() + std::time::Duration::from_mins(1)
                 {
                     return Ok(cached.token.clone());
                 }

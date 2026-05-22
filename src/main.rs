@@ -59,9 +59,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
      * En producción (FIXTURES_SYNC=false o no definido) no se ejecuta,
      * evitando que datos de prueba sobreescriban datos reales.
      * En desarrollo: FIXTURES_SYNC=true en .env para sincronizar content/ TOMLs. */
-    let fixtures_sync = std::env::var("FIXTURES_SYNC")
-        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
-        .unwrap_or(false);
+    let fixtures_sync =
+        std::env::var("FIXTURES_SYNC").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
 
     if fixtures_sync {
         match fixture_manager.sync_all().await {
@@ -127,8 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn spawn_http_watchdog(port: u16) {
     if std::env::var("GLORY_HTTP_WATCHDOG")
-        .map(|value| value.eq_ignore_ascii_case("false") || value == "0")
-        .unwrap_or(false)
+        .is_ok_and(|value| value.eq_ignore_ascii_case("false") || value == "0")
     {
         tracing::warn!("[watchdog] HTTP self-check desactivado por GLORY_HTTP_WATCHDOG");
         return;
@@ -145,7 +143,7 @@ fn spawn_http_watchdog(port: u16) {
         let url = format!("http://127.0.0.1:{port}/healthz");
         let mut failures = 0_u8;
 
-        tokio::time::sleep(Duration::from_secs(60)).await;
+        tokio::time::sleep(Duration::from_mins(1)).await;
         loop {
             let ok = match client.get(&url).send().await {
                 Ok(response) => response.status().is_success(),
@@ -277,7 +275,7 @@ async fn session_cleanup_loop(pool: sqlx::PgPool) {
     use glory_backend::repositories::ChatRepository;
 
     const INACTIVITY_HOURS: i32 = 24;
-    const CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3600);
+    const CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_hours(1);
 
     loop {
         tokio::time::sleep(CHECK_INTERVAL).await;

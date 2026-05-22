@@ -1,0 +1,363 @@
+use axum::extract::{Path, State};
+use axum::Json;
+use chrono::Utc;
+use rand::Rng;
+use uuid::Uuid;
+
+use super::domain::{
+    activate_domain_route, domain_ready_for_route, DomainActivation, DOMAIN_STATUS_ACTIVE,
+    DOMAIN_STATUS_VERIFIED,
+};
+use crate::errors::AppError;
+use crate::middleware::AuthUser;
+use crate::models::{HostingSubscriptionResponse, UserRole};
+use crate::repositories::{HostingRepository, ServerInfo};
+use crate::services::coolify::{CoolifyProvisionResult, HostingComposeUpdate};
+use crate::services::{CoolifyService, HostingStripeService};
+use crate::AppState;
+
+/// Provisionar un hosting: crea servicio Nginx/WordPress en Coolify y actualiza la suscripción.
+/// Solo admin. La suscripción debe estar en estado "pending" o "provisioning".
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/provision",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "Hosting provisionado", body = HostingSubscriptionResponse),
+        (status = 400, description = "Estado inválido para provisioning"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "Suscripción no encontrada"),
+        (status = 503, description = "Coolify no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+#[allow(clippy::too_many_lines)]
+pub(super) async fn provision_subscription(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<HostingSubscriptionResponse>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Suscripción {id} no encontrada")))?;
+
+    if sub.status != "pending" && sub.status != "provisioning" {
+        return Err(AppError::Validation(format!(
+            "Solo se puede provisionar hostings en estado 'pending' o 'provisioning', actual: '{}'",
+            sub.status
+        )));
+    }
+
+    let config = state.coolify_config.as_ref().ok_or_else(|| {
+        AppError::ServiceUnavailable("Coolify no configurado. Variables COOLIFY_* ausentes.".into())
+    })?;
+
+    HostingRepository::update_status(&state.pool, id, "provisioning").await?;
+
+    let service_name = CoolifyService::service_name_for(&id);
+    let sftp_port = HostingRepository::find_available_sftp_port(&state.pool).await?;
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &sub.plan)
+        .await?
+        .ok_or_else(|| {
+            AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
+        })?;
+    let provision_preferences =
+        HostingStripeService::load_provision_preferences(&state.pool, id).await;
+
+    let result = match CoolifyService::provision_hosting(
+        &state.http_client,
+        config,
+        &service_name,
+        sftp_port,
+        &plan_config,
+        &sub.client_name,
+        &sub.client_email,
+        provision_preferences.as_ref(),
+    )
+    .await
+    {
+        Ok(result) => result,
+        Err(error) => {
+            tracing::error!("[Provision] Falló para {id}: {error}");
+            HostingRepository::update_status(&state.pool, id, "pending")
+                .await
+                .ok();
+            return Err(error);
+        }
+    };
+
+    HostingRepository::update_server_info(
+        &state.pool,
+        id,
+        &ServerInfo {
+            coolify_site_name: &service_name,
+            server_uuid: &result.service_uuid,
+            server_ip: &result.server_ip,
+            sftp_user: &result.sftp_user,
+            sftp_password: &result.sftp_password,
+            sftp_port: result.sftp_port,
+        },
+    )
+    .await?;
+
+    if let Some(custom_domain) = domain_ready_for_route(&sub) {
+        let _ = activate_domain_route(
+            &state,
+            DomainActivation {
+                subscription_id: id,
+                token: sub.domain_verification_token.as_deref(),
+                verified_at: sub.domain_verified_at,
+                update: HostingComposeUpdate {
+                    service_uuid: &result.service_uuid,
+                    service_name: &service_name,
+                    custom_domain: Some(custom_domain),
+                    sftp_user: &result.sftp_user,
+                    sftp_password: &result.sftp_password,
+                    sftp_port: result.sftp_port,
+                    plan_config: &plan_config,
+                },
+            },
+        )
+        .await;
+    }
+
+    HostingRepository::update_status(&state.pool, id, "active").await?;
+
+    record_provisioned_event(&state, id, auth.user_id, &service_name, &result).await;
+
+    let updated = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or_else(|| AppError::Internal("Suscripción perdida tras provisioning".into()))?;
+
+    Ok(Json(updated.into()))
+}
+
+async fn record_provisioned_event(
+    state: &AppState,
+    id: Uuid,
+    actor_id: Uuid,
+    service_name: &str,
+    result: &CoolifyProvisionResult,
+) {
+    if let Err(e) = HostingRepository::add_event(
+        &state.pool,
+        id,
+        "provisioned",
+        Some(serde_json::json!({
+            "coolify_uuid": result.service_uuid,
+            "domain": result.domain,
+            "server_ip": result.server_ip,
+            "service_name": service_name,
+            "wordpress_ready": result.wordpress_ready,
+            "wordpress_install_error": result.wordpress_install_error,
+            "by": actor_id.to_string(),
+        })),
+    )
+    .await
+    {
+        tracing::warn!("Error registrando evento provisioned para {id}: {e}");
+    }
+}
+
+/* [114A-1] Rotación de credenciales SFTP: genera nueva contraseña, actualiza BD y
+ * compose en Coolify, reinicia servicio SSH para que tome efecto. */
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/rotate-credentials",
+    params(("id" = Uuid, Path, description = "ID de la suscripción")),
+    responses(
+        (status = 200, description = "Credenciales rotadas"),
+        (status = 400, description = "Hosting no provisionado"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+        (status = 503, description = "Coolify no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub(super) async fn rotate_credentials(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    let server_uuid = sub.server_uuid.as_ref().ok_or_else(|| {
+        AppError::Validation("Hosting no provisionado — no se pueden rotar credenciales".into())
+    })?;
+    let sftp_user = sub.sftp_user.as_ref().ok_or_else(|| {
+        AppError::Internal("SFTP user ausente en suscripción provisionada".into())
+    })?;
+    let sftp_port = sub.sftp_port.ok_or_else(|| {
+        AppError::Internal("SFTP port ausente en suscripción provisionada".into())
+    })?;
+    let service_name = sub.coolify_site_name.as_ref().ok_or_else(|| {
+        AppError::Internal("Nombre de servicio Coolify ausente en suscripción provisionada".into())
+    })?;
+
+    let config = state
+        .coolify_config
+        .as_ref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Coolify no configurado".into()))?;
+
+    let new_password: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(20)
+        .map(char::from)
+        .collect();
+
+    HostingRepository::update_sftp_password(&state.pool, id, &new_password).await?;
+
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &sub.plan)
+        .await?
+        .ok_or_else(|| {
+            AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
+        })?;
+
+    CoolifyService::update_compose_and_restart(
+        &state.http_client,
+        config,
+        HostingComposeUpdate {
+            service_uuid: server_uuid,
+            service_name,
+            custom_domain: domain_ready_for_route(&sub),
+            sftp_user,
+            sftp_password: &new_password,
+            sftp_port,
+            plan_config: &plan_config,
+        },
+    )
+    .await?;
+
+    mark_verified_domain_active(&state, id, &sub).await;
+
+    if let Err(e) = HostingRepository::add_event(
+        &state.pool,
+        id,
+        "credentials_rotated",
+        Some(serde_json::json!({"by": auth.user_id.to_string()})),
+    )
+    .await
+    {
+        tracing::warn!("Error registrando evento credentials_rotated para {id}: {e}");
+    }
+
+    Ok(Json(serde_json::json!({
+        "sftp_user": sftp_user,
+        "sftp_password": new_password,
+        "sftp_port": sftp_port,
+    })))
+}
+
+/* [114A-4] Refresh: regenera compose con plan config actual y redeploya en Coolify.
+ * Usado para migrar hostings existentes cuando se cambian limits/features del plan. */
+#[utoipa::path(
+    post,
+    path = "/api/hosting/subscriptions/{id}/refresh",
+    params(("id" = Uuid, Path, description = "ID suscripción")),
+    responses(
+        (status = 200, description = "Hosting redeployado con config actual"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "Suscripción no encontrada"),
+        (status = 503, description = "Coolify no configurado"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "hosting"
+)]
+pub(super) async fn refresh_hosting(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let sub = HostingRepository::find_by_id(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
+
+    let server_uuid = sub.server_uuid.as_ref().ok_or_else(|| {
+        AppError::Validation("Hosting no provisionado — no se puede refrescar".into())
+    })?;
+    let sftp_user = sub.sftp_user.as_ref().ok_or_else(|| {
+        AppError::Internal("SFTP user ausente en suscripción provisionada".into())
+    })?;
+    let sftp_password = sub.sftp_password.as_ref().ok_or_else(|| {
+        AppError::Internal("SFTP password ausente en suscripción provisionada".into())
+    })?;
+    let sftp_port = sub.sftp_port.ok_or_else(|| {
+        AppError::Internal("SFTP port ausente en suscripción provisionada".into())
+    })?;
+    let service_name = sub.coolify_site_name.as_ref().ok_or_else(|| {
+        AppError::Internal("Nombre de servicio Coolify ausente en suscripción provisionada".into())
+    })?;
+
+    let coolify = state
+        .coolify_config
+        .as_ref()
+        .ok_or_else(|| AppError::ServiceUnavailable("Coolify no configurado".into()))?;
+
+    let plan_config = HostingRepository::get_plan_config(&state.pool, &sub.plan)
+        .await?
+        .ok_or_else(|| {
+            AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
+        })?;
+
+    CoolifyService::update_compose_and_restart(
+        &state.http_client,
+        coolify,
+        HostingComposeUpdate {
+            service_uuid: server_uuid,
+            service_name,
+            custom_domain: domain_ready_for_route(&sub),
+            sftp_user,
+            sftp_password,
+            sftp_port,
+            plan_config: &plan_config,
+        },
+    )
+    .await?;
+
+    mark_verified_domain_active(&state, id, &sub).await;
+
+    if let Err(e) = HostingRepository::add_event(
+        &state.pool,
+        id,
+        "refreshed",
+        Some(serde_json::json!({"by": auth.user_id.to_string(), "plan": sub.plan})),
+    )
+    .await
+    {
+        tracing::warn!("Error registrando evento refreshed para {id}: {e}");
+    }
+
+    Ok(Json(serde_json::json!({
+        "message": "Hosting redeployado con configuración actual",
+        "plan": sub.plan,
+    })))
+}
+
+async fn mark_verified_domain_active(
+    state: &AppState,
+    id: Uuid,
+    sub: &crate::models::HostingSubscription,
+) {
+    if sub.domain_verification_status != DOMAIN_STATUS_VERIFIED {
+        return;
+    }
+
+    let _ = HostingRepository::update_domain_verification(
+        &state.pool,
+        id,
+        DOMAIN_STATUS_ACTIVE,
+        sub.domain_verification_token.as_deref(),
+        Some(sub.domain_verified_at.unwrap_or_else(Utc::now)),
+    )
+    .await;
+}

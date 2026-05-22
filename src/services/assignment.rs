@@ -344,7 +344,7 @@ impl AssignmentService {
 
     /// Background loop: cada 60s revisa órdenes vencidas y auto-asigna al mejor empleado
     pub async fn auto_assign_loop(pool: PgPool) {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        let mut interval = tokio::time::interval(std::time::Duration::from_mins(1));
         loop {
             interval.tick().await;
             if let Err(e) = Self::check_and_auto_assign(&pool).await {

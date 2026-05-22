@@ -155,11 +155,11 @@ fn html_escape(s: &str) -> String {
 }
 
 fn recipient_label(display_name: Option<&str>, email: &str) -> String {
-  let raw = display_name
-    .map(str::trim)
-    .filter(|value| !value.is_empty())
-    .unwrap_or(email);
-  html_escape(raw)
+    let raw = display_name
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(email);
+    html_escape(raw)
 }
 
 fn format_usd_cents(amount_cents: i32) -> String {
@@ -488,8 +488,12 @@ impl EmailService {
         );
 
         match Self::send(config, new_email, subject, &html).await {
-            Ok(()) => tracing::info!("Email de confirmación de cambio de correo enviado a {new_email}"),
-            Err(error) => tracing::error!("Error enviando email de cambio de correo a {new_email}: {error}"),
+            Ok(()) => {
+                tracing::info!("Email de confirmación de cambio de correo enviado a {new_email}");
+            }
+            Err(error) => {
+                tracing::error!("Error enviando email de cambio de correo a {new_email}: {error}");
+            }
         }
     }
 
@@ -530,7 +534,11 @@ impl EmailService {
 
         match Self::send(config, old_email, subject, &html).await {
             Ok(()) => tracing::info!("Email de alerta por cambio de correo enviado a {old_email}"),
-            Err(error) => tracing::error!("Error enviando alerta por cambio de correo a {old_email}: {error}"),
+            Err(error) => {
+                tracing::error!(
+                    "Error enviando alerta por cambio de correo a {old_email}: {error}"
+                );
+            }
         }
     }
 
@@ -568,7 +576,9 @@ impl EmailService {
 
         match Self::send(config, to_email, subject, &html).await {
             Ok(()) => tracing::info!("Email de cambio de contraseña enviado a {to_email}"),
-            Err(error) => tracing::error!("Error enviando email de cambio de contraseña a {to_email}: {error}"),
+            Err(error) => tracing::error!(
+                "Error enviando email de cambio de contraseña a {to_email}: {error}"
+            ),
         }
     }
 }

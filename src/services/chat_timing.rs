@@ -60,14 +60,14 @@ const MAX_ACCUMULATION: Duration = Duration::from_secs(30);
 
 /* Rate limiting */
 const RATE_LIMIT_PER_MIN: u32 = 10;
-const RATE_WINDOW: Duration = Duration::from_secs(60);
+const RATE_WINDOW: Duration = Duration::from_mins(1);
 
 /* [084A-42] Anti-bot: limites por IP (más altos porque IPs pueden ser compartidas) */
 const IP_RATE_LIMIT_PER_MIN: u32 = 30;
 const MAX_WS_CONNECTIONS_PER_IP: u32 = 10;
 const MSG_MAX_LENGTH: usize = 2000;
 const AI_MAX_COMBINED_CHARS: usize = 6000;
-const AI_TOKEN_BUDGET_WINDOW: Duration = Duration::from_secs(60 * 60);
+const AI_TOKEN_BUDGET_WINDOW: Duration = Duration::from_hours(1);
 const AI_VISITOR_TOKEN_BUDGET_PER_HOUR: usize = 24_000;
 const AI_IP_TOKEN_BUDGET_PER_HOUR: usize = 80_000;
 const AI_REQUEST_OVERHEAD_TOKENS: usize = 1_500;
@@ -235,7 +235,7 @@ impl ChatTimingService {
         match state.cooldown_level {
             1 => (RateCheckResult::Warning, None),
             2 => {
-                state.mute_until = Some(Instant::now() + Duration::from_secs(60));
+                state.mute_until = Some(Instant::now() + Duration::from_mins(1));
                 (
                     RateCheckResult::Muted,
                     Some("Demasiados mensajes desde tu red. Espera un minuto.".into()),
