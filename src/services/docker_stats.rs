@@ -254,6 +254,7 @@ fn storage_targets(
     targets
 }
 
+#[allow(clippy::format_push_string)]
 fn build_storage_usage_command(site_name: &str, service_uuid: Option<&str>, plan: &str) -> String {
     let mut cmd = "total=0; found=0".to_string();
     for (container, path) in storage_targets(site_name, service_uuid, plan) {

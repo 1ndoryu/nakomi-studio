@@ -460,6 +460,7 @@ fn wordpress_install_form_is_ready(body: &str) -> bool {
         && body.contains("name=\"admin_password\"")
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn install_wordpress_instance(
     http_client: &Client,
     bootstrap_url: &str,
@@ -762,6 +763,7 @@ fn build_hosting_compose_for_service(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_hosting_compose_for_service_with_ingress_network(
     service_name: &str,
     server_ip: &str,
@@ -1163,6 +1165,7 @@ impl CoolifyService {
     ///
     /// # Errors
     /// Retorna `AppError` si la API falla o el JSON no parsea.
+    #[allow(clippy::too_many_arguments)]
     pub async fn provision_hosting(
         http_client: &Client,
         config: &CoolifyConfig,

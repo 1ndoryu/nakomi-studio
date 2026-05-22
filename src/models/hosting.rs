@@ -79,6 +79,7 @@ pub struct HostingEvent {
 
 const HOSTING_EVENT_SECRET_KEYS: &[&str] = &["wp_admin_password", "sftp_password"];
 
+#[must_use]
 pub fn sanitize_hosting_event_details(
     details: Option<serde_json::Value>,
 ) -> Option<serde_json::Value> {
@@ -88,6 +89,7 @@ pub fn sanitize_hosting_event_details(
     })
 }
 
+#[must_use]
 pub fn sanitize_hosting_event(mut event: HostingEvent) -> HostingEvent {
     event.details = sanitize_hosting_event_details(event.details);
     event

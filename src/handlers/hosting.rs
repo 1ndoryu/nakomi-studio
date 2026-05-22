@@ -1544,6 +1544,7 @@ resultados unificados con server_label para distinguir origen.
     security(("bearer_auth" = [])),
     tag = "hosting"
 )]
+#[allow(clippy::too_many_lines)]
 pub async fn list_vps2_deployments(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -1640,18 +1641,17 @@ pub async fn list_vps2_deployments(
         subscriptions.iter().map(|s| (s.id, s)).collect();
 
     for deployment in &mut deployments {
-        let sub_id = match deployment.linked_subscription_id {
-            Some(id) => id,
-            None => continue,
+        let Some(sub_id) = deployment.linked_subscription_id else {
+            continue;
         };
-        let sub = match subscriptions_by_id.get(&sub_id).copied() {
-            Some(s) => s,
-            None => continue,
+        let Some(sub) = subscriptions_by_id.get(&sub_id).copied() else {
+            continue;
         };
+
         if sub
             .coolify_site_name
             .as_ref()
-            .map_or(true, |n| n.is_empty())
+            .is_none_or(std::string::String::is_empty)
         {
             continue;
         }
@@ -1893,6 +1893,7 @@ PROVISIONING — Crear servicio real en Coolify (solo admin)
     security(("bearer_auth" = [])),
     tag = "hosting"
 )]
+#[allow(clippy::too_many_lines)]
 pub async fn provision_subscription(
     State(state): State<AppState>,
     auth: AuthUser,
