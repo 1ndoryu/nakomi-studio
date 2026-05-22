@@ -1578,7 +1578,8 @@ pub async fn list_vps2_deployments(
         })
         .collect();
 
-    /* Helper: mapea servicios Coolify a CoolifyDeploymentResponse con una etiqueta de servidor */
+    /* [215A-14] Helper: mapea servicios Coolify a CoolifyDeploymentResponse con recursos iniciales None.
+     * Los recursos reales se obtienen después en paralelo para no bloquear la respuesta base. */
     let map_services = |services: Vec<_>, label: &str| -> Vec<CoolifyDeploymentResponse> {
         services
             .into_iter()
@@ -1602,6 +1603,13 @@ pub async fn list_vps2_deployments(
                     linked_subscription_status: linked_subscription.map(|s| s.status.clone()),
                     linked_subscription_plan: linked_subscription.map(|s| s.plan.clone()),
                     server_label: label.to_string(),
+                    linked_subscription_client: linked_subscription
+                        .map(|s| s.client_name.clone()),
+                    storage_limit_mb: linked_subscription.map(|s| s.storage_limit_mb),
+                    cpu_percent: None,
+                    ram_used_mb: None,
+                    ram_limit_mb: None,
+                    storage_used_mb: None,
                 }
             })
             .collect()
@@ -1624,6 +1632,40 @@ pub async fn list_vps2_deployments(
             Err(e) => tracing::warn!("[deployments] Error listando VPS2: {e}"),
         }
     }
+
+    /* [215A-14] Enriquecer con recursos reales (CPU, RAM, disco).
+     * Solo para despliegues vinculados a una suscripción con coolify_site_name.
+     * Iteración secuencial — la cache de 30s de docker_stats evita SSH redundante. */
+    let subscriptions_by_id: HashMap<uuid::Uuid, &crate::models::HostingSubscription> =
+        subscriptions.iter().map(|s| (s.id, s)).collect();
+
+    for deployment in &mut deployments {
+        let sub_id = match deployment.linked_subscription_id {
+            Some(id) => id,
+            None => continue,
+        };
+        let sub = match subscriptions_by_id.get(&sub_id).copied() {
+            Some(s) => s,
+            None => continue,
+        };
+        if sub
+            .coolify_site_name
+            .as_ref()
+            .map_or(true, |n| n.is_empty())
+        {
+            continue;
+        }
+
+        let (cpu, ram_used, ram_limit, _containers) =
+            fetch_container_resources(&state, sub).await;
+        let storage = fetch_storage_used(&state, sub).await;
+
+        deployment.cpu_percent = cpu;
+        deployment.ram_used_mb = ram_used;
+        deployment.ram_limit_mb = ram_limit;
+        deployment.storage_used_mb = storage;
+    }
+
 
     deployments.sort_by(|left, right| {
         right

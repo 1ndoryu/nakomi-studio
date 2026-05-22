@@ -347,6 +347,8 @@ pub struct HostingStatsResponse {
 /* [164A-19] Despliegues reales de VPS2 en el panel admin.
  * Expone el estado de Coolify enriquecido con el vínculo opcional a suscripciones
  * de hosting guardadas en la BD para detectar drift entre panel e infraestructura. */
+/* [215A-14] Enriquecido con recursos reales por despliegue (CPU, RAM, disco)
+ * y nombre del cliente dueño para mostrar en la tabla de infraestructura. */
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CoolifyDeploymentResponse {
     pub uuid: String,
@@ -363,6 +365,18 @@ pub struct CoolifyDeploymentResponse {
     pub linked_subscription_plan: Option<String>,
     /// Etiqueta del servidor Coolify de origen, ej: "VPS Principal" o "VPS2".
     pub server_label: String,
+    /// [215A-14] Nombre del cliente dueño de la suscripción vinculada
+    pub linked_subscription_client: Option<String>,
+    /// [215A-14] CPU % combinado de todos los contenedores del despliegue (null si no disponible)
+    pub cpu_percent: Option<f64>,
+    /// [215A-14] RAM usada en MB combinada (null si no disponible)
+    pub ram_used_mb: Option<f64>,
+    /// [215A-14] RAM límite en MB combinada (null si no disponible)
+    pub ram_limit_mb: Option<f64>,
+    /// [215A-14] Almacenamiento usado en MB (null si no disponible)
+    pub storage_used_mb: Option<i64>,
+    /// [215A-14] Límite de almacenamiento del plan en MB (null si no vinculado)
+    pub storage_limit_mb: Option<i32>,
 }
 
 /* ============================================================

@@ -108,7 +108,10 @@ pub struct QuickRegisterRequest {
 pub struct ChangePasswordRequest {
     #[validate(length(min = 1, message = "Debes ingresar tu contraseña actual"))]
     pub current_password: String,
-    #[validate(length(min = 8, message = "La nueva contraseña debe tener al menos 8 caracteres"))]
+    #[validate(length(
+        min = 8,
+        message = "La nueva contraseña debe tener al menos 8 caracteres"
+    ))]
     pub new_password: String,
 }
 

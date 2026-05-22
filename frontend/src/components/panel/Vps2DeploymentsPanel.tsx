@@ -1,12 +1,13 @@
-/* [164A-19] Panel admin de despliegues reales en VPS2.
- * Muestra servicios de Coolify y si cada despliegue está o no vinculado a una
- * suscripción del panel para evitar otra falsa equivalencia entre VPS y deployment. */
+/* [215A-14] Panel admin de despliegues reales — vista tabla minimalista.
+ * Reemplaza las tarjetas por una tabla compacta con recursos por despliegue,
+ * resumen del VPS (CPU, RAM, disco, conteos WP vs Normal), íconos de tipo,
+ * columna de usuario dueño y menú contextual de 3 puntos para acciones. */
 
-import React, {useState} from 'react';
-import {Activity, ExternalLink, Globe, Link2, PlusCircle, Server, ShieldAlert, Trash2} from 'lucide-react';
+import React, {useState, useRef, useEffect} from 'react';
+import {Globe, MoreVertical, PlusCircle, Server, Trash2} from 'lucide-react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
-import type {CoolifyDeployment} from '../../api/hosting';
-import {apiCreateHostingSubscription, apiDeleteVps2Deployment} from '../../api/hosting';
+import type {CoolifyDeployment, VpsSummary} from '../../api/hosting';
+import {HOSTING_PLAN_LABELS, apiCreateHostingSubscription, apiDeleteVps2Deployment} from '../../api/hosting';
 import {useVps2DeploymentsPanel} from '../../hooks/useVps2DeploymentsPanel';
 import {CreateHostingForm} from './HostingCreateForm';
 import {Modal} from '../ui/Modal';
@@ -55,19 +56,203 @@ function getDeploymentStatusClass(status: string): string {
     return 'vpsStatus--other';
 }
 
-function resolveSubscriptionLabel(deployment: CoolifyDeployment): string {
-    return deployment.linked_subscription_domain
-        || deployment.linked_subscription_plan
-        || 'Vinculada sin dominio visible';
+/* Formatea MB a display legible */
+function formatMb(mb: number | null | undefined): string {
+    if (mb == null) return '—';
+    if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+    return `${Math.round(mb)} MB`;
 }
 
-function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
+function formatCpu(percent: number | null | undefined): string {
+    if (percent == null) return '—';
+    return `${percent.toFixed(2)}%`;
+}
+
+/* Ícono SVG inline para WordPress */
+function WordPressIcon() {
+    return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h4l3 8 4-16 3 8h4" />
+        </svg>
+    );
+}
+
+/* Ícono para hosting normal (server simple) */
+function HostingIcon() {
+    return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="3" width="20" height="8" rx="2" />
+            <rect x="2" y="13" width="20" height="8" rx="2" />
+            <circle cx="7" cy="7" r="1" />
+            <circle cx="7" cy="17" r="1" />
+        </svg>
+    );
+}
+
+/* Identifica si el plan es WordPress o hosting normal */
+function isWordPressDeployment(plan: string | null): boolean {
+    if (!plan) return false;
+    return !plan.startsWith('normal-');
+}
+
+function getDeploymentTypeLabel(plan: string | null): string {
+    if (!plan) return 'Sin plan';
+    return HOSTING_PLAN_LABELS[plan] || plan;
+}
+
+/* ─── Menú contextual de 3 puntos ─── */
+
+interface ContextMenuProps {
+    deployment: CoolifyDeployment;
+    onCreateSubscription: () => void;
+    onDeleteDeployment: () => void;
+    isDeleting: boolean;
+}
+
+function ContextMenu({deployment, onCreateSubscription, onDeleteDeployment, isDeleting}: ContextMenuProps) {
+    const [abierto, setAbierto] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
     const isLinked = Boolean(deployment.linked_subscription_id);
-    const fqdn = deployment.fqdn?.trim() || null;
-    /* [165A-4] Crea y limpia huérfanos directamente desde el card para evitar drift manual. */
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setAbierto(false);
+            }
+        }
+
+        if (abierto) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [abierto]);
+
+    /* Solo despliegues huérfanos tienen acciones */
+    if (isLinked) return null;
+
+    return (
+        <div className="infraMenuContenedor" ref={menuRef}>
+            <button
+                type="button"
+                className="infraMenuBoton"
+                onClick={() => setAbierto(!abierto)}
+                aria-label="Acciones del despliegue"
+            >
+                <MoreVertical size={16} />
+            </button>
+            {abierto && (
+                <div className="infraMenuDropdown">
+                    <button
+                        type="button"
+                        className="infraMenuItem"
+                        onClick={() => {
+                            setAbierto(false);
+                            onCreateSubscription();
+                        }}
+                    >
+                        <PlusCircle size={14} />
+                        Crear suscripción vinculada
+                    </button>
+                    <button
+                        type="button"
+                        className="infraMenuItem infraMenuItem--peligro"
+                        onClick={() => {
+                            setAbierto(false);
+                            onDeleteDeployment();
+                        }}
+                        disabled={isDeleting}
+                    >
+                        <Trash2 size={14} />
+                        Eliminar despliegue
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ─── Resumen del VPS ─── */
+
+interface VpsSummaryBarProps {
+    vpsInstances: VpsSummary[];
+    deployments: CoolifyDeployment[];
+}
+
+function VpsSummaryBar({vpsInstances, deployments}: VpsSummaryBarProps) {
+    /* Conteos de tipo de hosting */
+    const wpCount = deployments.filter(d =>
+        d.linked_subscription_plan && isWordPressDeployment(d.linked_subscription_plan),
+    ).length;
+    const normalCount = deployments.filter(d =>
+        d.linked_subscription_plan && !isWordPressDeployment(d.linked_subscription_plan),
+    ).length;
+    const orphanCount = deployments.filter(d => !d.linked_subscription_id).length;
+
+    /* Usar VPS2 si existe, sino el primero disponible */
+    const vps = vpsInstances.find(v => v.name.toLowerCase().includes('vps 2'))
+        || vpsInstances.find(v => v.ip === '173.249.50.44')
+        || vpsInstances[0];
+
+    return (
+        <div className="infraResumen">
+            {vps && (
+                <>
+                    <div className="infraResumenItem">
+                        <span className="infraResumenLabel">CPU</span>
+                        <span className="infraResumenValor">{vps.cpu_cores} vCPU</span>
+                    </div>
+                    <div className="infraResumenItem">
+                        <span className="infraResumenLabel">RAM</span>
+                        <span className="infraResumenValor">{formatMb(vps.ram_mb)}</span>
+                    </div>
+                    <div className="infraResumenItem">
+                        <span className="infraResumenLabel">Disco</span>
+                        <span className="infraResumenValor">{formatMb(vps.disk_mb)}</span>
+                    </div>
+                </>
+            )}
+            <div className="infraResumenItem">
+                <span className="infraResumenLabel">Despliegues</span>
+                <span className="infraResumenValor">
+                    {deployments.length} total
+                </span>
+            </div>
+            <div className="infraResumenItem">
+                <span className="infraResumenLabel">Tipo</span>
+                <span className="infraResumenValor">
+                    {wpCount > 0 && <>{wpCount} WP</>}
+                    {wpCount > 0 && normalCount > 0 && ' · '}
+                    {normalCount > 0 && <>{normalCount} Hosting</>}
+                    {wpCount === 0 && normalCount === 0 && '—'}
+                </span>
+            </div>
+            {orphanCount > 0 && (
+                <div className="infraResumenItem infraResumenItem--warning">
+                    <span className="infraResumenLabel">Huérfanos</span>
+                    <span className="infraResumenValor">{orphanCount}</span>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ─── Fila expandible de la tabla ─── */
+
+interface DeploymentRowProps {
+    deployment: CoolifyDeployment;
+}
+
+function DeploymentRow({deployment}: DeploymentRowProps) {
+    const [expandido, setExpandido] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const queryClient = useQueryClient();
+    const isLinked = Boolean(deployment.linked_subscription_id);
+    const fqdn = deployment.fqdn?.trim() || null;
+    const isWp = isWordPressDeployment(deployment.linked_subscription_plan);
+
     const createMutation = useMutation({
         mutationFn: apiCreateHostingSubscription,
         onSuccess: () => {
@@ -101,102 +286,104 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
     };
 
     return (
-        <article className="vpsCard">
-            <div className="vpsCardHeader">
-                <Server size={20} strokeWidth={1.4} />
-                <h4 className="vpsCardNombre">{deployment.name}</h4>
-                <span className="vpsServerLabel">{deployment.server_label}</span>
-                <span className={`vpsStatus ${getDeploymentStatusClass(deployment.status)}`}>
-                    {formatStatus(deployment.status)}
-                </span>
-            </div>
-
-            <div className="vpsCardStats">
-                <div className="vpsStat">
-                    <Link2 size={14} />
-                    <span className="vpsStatLabel">UUID</span>
-                    <span className="vpsStatValor">{deployment.uuid}</span>
-                </div>
-
-                <div className="vpsStat">
-                    <Activity size={14} />
-                    <span className="vpsStatLabel">Entorno</span>
-                    <span className="vpsStatValor">{deployment.environment_name || 'production'}</span>
-                </div>
-
-                <div className="vpsStat">
-                    <Server size={14} />
-                    <span className="vpsStatLabel">Servidor</span>
-                    <span className="vpsStatValor">{deployment.server_name || deployment.server_label}</span>
-                </div>
-
-                <div className="vpsStat">
-                    <ShieldAlert size={14} />
-                    <span className="vpsStatLabel">Panel</span>
-                    <span className="vpsStatValor">
-                        {isLinked ? resolveSubscriptionLabel(deployment) : 'Sin suscripción vinculada'}
+        <>
+            <tr
+                className={`infraFila ${expandido ? 'infraFila--expandida' : ''} ${!isLinked ? 'infraFila--huerfana' : ''}`}
+                onClick={() => setExpandido(!expandido)}
+            >
+                <td className="infraCelda infraCelda--tipo">
+                    <span className="infraTipoIcono" title={isWp ? 'WordPress' : 'Hosting'}>
+                        {deployment.linked_subscription_plan
+                            ? (isWp ? <WordPressIcon /> : <HostingIcon />)
+                            : <Server size={14} />
+                        }
                     </span>
-                </div>
-
-                <div className="vpsStat">
-                    <Activity size={14} />
-                    <span className="vpsStatLabel">Estado</span>
-                    <span className="vpsStatValor">
-                        {deployment.linked_subscription_status || 'Solo visible en Coolify'}
+                </td>
+                <td className="infraCelda">
+                    <div className="infraCeldaNombre">
+                        <span className="infraNombreTexto">{deployment.name}</span>
+                        <span className="infraServerBadge">{deployment.server_label}</span>
+                    </div>
+                </td>
+                <td className="infraCelda">
+                    <span className={`vpsStatus ${getDeploymentStatusClass(deployment.status)}`}>
+                        {formatStatus(deployment.status)}
                     </span>
-                </div>
+                </td>
+                <td className="infraCelda infraCelda--plan">
+                    {getDeploymentTypeLabel(deployment.linked_subscription_plan)}
+                </td>
+                <td className="infraCelda infraCelda--usuario">
+                    {deployment.linked_subscription_client || '—'}
+                </td>
+                <td className="infraCelda infraCelda--recurso">{formatCpu(deployment.cpu_percent)}</td>
+                <td className="infraCelda infraCelda--recurso">{formatMb(deployment.ram_used_mb)}</td>
+                <td className="infraCelda infraCelda--recurso">{formatMb(deployment.storage_used_mb)}</td>
+                <td className="infraCelda infraCelda--acciones" onClick={e => e.stopPropagation()}>
+                    <ContextMenu
+                        deployment={deployment}
+                        onCreateSubscription={() => setShowCreateForm(true)}
+                        onDeleteDeployment={() => setShowDeleteConfirm(true)}
+                        isDeleting={deleteMutation.isPending}
+                    />
+                </td>
+            </tr>
 
-                {fqdn && (
-                    <div className="vpsStat">
-                        <Globe size={14} />
-                        <span className="vpsStatLabel">FQDN</span>
-                        <a
-                            href={fqdn}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="vpsStatLink"
-                        >
-                            {fqdn}
-                            <ExternalLink size={12} strokeWidth={1.8} />
-                        </a>
-                    </div>
-                )}
-            </div>
-
-            <div className={`vpsDeploymentAudit ${isLinked ? 'vpsDeploymentAudit--linked' : 'vpsDeploymentAudit--orphan'}`}>
-                <ShieldAlert size={16} />
-                <p>
-                    {isLinked
-                        ? 'Despliegue real detectado y vinculado a una suscripción del panel.'
-                        : 'Despliegue real detectado en Coolify sin vínculo con una suscripción del panel.'}
-                </p>
-                {!isLinked && (
-                    <div className="vpsOrphanActions">
-                        <Button
-                            variante="secundario"
-                            tamano="pequeno"
-                            className="vpsOrphanLinkBtn"
-                            onClick={() => setShowCreateForm(true)}
-                            type="button"
-                            disabled={deleteMutation.isPending}
-                        >
-                            <PlusCircle size={14} />
-                            Crear suscripción vinculada
-                        </Button>
-                        <Button
-                            variante="outline"
-                            tamano="pequeno"
-                            className="vpsOrphanDeleteBtn"
-                            onClick={() => setShowDeleteConfirm(true)}
-                            type="button"
-                            disabled={createMutation.isPending}
-                        >
-                            <Trash2 size={14} />
-                            Eliminar despliegue
-                        </Button>
-                    </div>
-                )}
-            </div>
+            {/* Fila expandida con detalles */}
+            {expandido && (
+                <tr className="infraFilaDetalle">
+                    <td colSpan={9}>
+                        <div className="infraDetalleContenido">
+                            <div className="infraDetalleGrid">
+                                <div className="infraDetalleCampo">
+                                    <span className="infraDetalleLabel">UUID</span>
+                                    <span className="infraDetalleValor">{deployment.uuid}</span>
+                                </div>
+                                <div className="infraDetalleCampo">
+                                    <span className="infraDetalleLabel">Entorno</span>
+                                    <span className="infraDetalleValor">{deployment.environment_name || 'production'}</span>
+                                </div>
+                                <div className="infraDetalleCampo">
+                                    <span className="infraDetalleLabel">Servidor</span>
+                                    <span className="infraDetalleValor">{deployment.server_name || deployment.server_label}</span>
+                                </div>
+                                {deployment.ram_limit_mb != null && (
+                                    <div className="infraDetalleCampo">
+                                        <span className="infraDetalleLabel">RAM límite</span>
+                                        <span className="infraDetalleValor">{formatMb(deployment.ram_limit_mb)}</span>
+                                    </div>
+                                )}
+                                {deployment.storage_limit_mb != null && (
+                                    <div className="infraDetalleCampo">
+                                        <span className="infraDetalleLabel">Disco límite</span>
+                                        <span className="infraDetalleValor">{formatMb(deployment.storage_limit_mb)}</span>
+                                    </div>
+                                )}
+                                {fqdn && (
+                                    <div className="infraDetalleCampo">
+                                        <span className="infraDetalleLabel">FQDN</span>
+                                        <a
+                                            href={fqdn}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="infraDetalleLink"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            <Globe size={12} />
+                                            {fqdn}
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                            {!isLinked && (
+                                <div className="infraDetalleAlerta">
+                                    Despliegue sin suscripción vinculada en el panel.
+                                </div>
+                            )}
+                        </div>
+                    </td>
+                </tr>
+            )}
 
             <Modal abierto={showCreateForm} onCerrar={closeCreateForm}>
                 <CreateHostingForm
@@ -234,14 +421,14 @@ function DeploymentCard({deployment}: {deployment: CoolifyDeployment}) {
                     </Button>
                 </div>
             </Modal>
-        </article>
+        </>
     );
 }
 
+/* ─── Panel principal ─── */
+
 export const Vps2DeploymentsPanel: React.FC = () => {
-    const {deployments, isLoading, error} = useVps2DeploymentsPanel();
-    const linkedDeployments = deployments.filter(deployment => Boolean(deployment.linked_subscription_id));
-    const orphanDeployments = deployments.length - linkedDeployments.length;
+    const {deployments, vpsInstances, isLoading, error} = useVps2DeploymentsPanel();
 
     if (isLoading) {
         return (
@@ -271,25 +458,29 @@ export const Vps2DeploymentsPanel: React.FC = () => {
 
     return (
         <div className="vpsContenedor">
-            <div className="vpsDeploymentsSummary">
-                <div className="vpsDeploymentsSummaryCard">
-                    <span className="vpsDeploymentsSummaryLabel">Coolify</span>
-                    <span className="vpsDeploymentsSummaryValue">{deployments.length} despliegues reales</span>
-                </div>
-                <div className="vpsDeploymentsSummaryCard">
-                    <span className="vpsDeploymentsSummaryLabel">Vinculados</span>
-                    <span className="vpsDeploymentsSummaryValue">{linkedDeployments.length} en panel</span>
-                </div>
-                <div className="vpsDeploymentsSummaryCard">
-                    <span className="vpsDeploymentsSummaryLabel">Huérfanos</span>
-                    <span className="vpsDeploymentsSummaryValue">{orphanDeployments} sin vínculo</span>
-                </div>
-            </div>
+            <VpsSummaryBar vpsInstances={vpsInstances} deployments={deployments} />
 
-            <div className="vpsLista">
-                {deployments.map(deployment => (
-                    <DeploymentCard key={deployment.uuid} deployment={deployment} />
-                ))}
+            <div className="infraTablaWrapper">
+                <table className="infraTabla">
+                    <thead>
+                        <tr>
+                            <th className="infraEncabezado infraEncabezado--tipo" />
+                            <th className="infraEncabezado">Nombre</th>
+                            <th className="infraEncabezado">Estado</th>
+                            <th className="infraEncabezado">Plan</th>
+                            <th className="infraEncabezado">Usuario</th>
+                            <th className="infraEncabezado infraEncabezado--recurso">CPU</th>
+                            <th className="infraEncabezado infraEncabezado--recurso">RAM</th>
+                            <th className="infraEncabezado infraEncabezado--recurso">Disco</th>
+                            <th className="infraEncabezado infraEncabezado--acciones" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {deployments.map(deployment => (
+                            <DeploymentRow key={deployment.uuid} deployment={deployment} />
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );

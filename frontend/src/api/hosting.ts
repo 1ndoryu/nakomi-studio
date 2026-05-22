@@ -415,6 +415,7 @@ export async function apiGetHostingStats(id: string): Promise<HostingStatsData> 
     return data;
 }
 
+/* [215A-14] Enriquecido con recursos reales y nombre del cliente dueño */
 export interface CoolifyDeployment {
     uuid: string;
     name: string;
@@ -429,6 +430,12 @@ export interface CoolifyDeployment {
     linked_subscription_status: string | null;
     linked_subscription_plan: string | null;
     server_label: string;
+    linked_subscription_client: string | null;
+    cpu_percent: number | null;
+    ram_used_mb: number | null;
+    ram_limit_mb: number | null;
+    storage_used_mb: number | null;
+    storage_limit_mb: number | null;
 }
 
 /* [164A-19] Despliegues reales de Coolify filtrados para la VPS2 configurada. */
