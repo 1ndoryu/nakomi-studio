@@ -1300,9 +1300,39 @@ HOSTING STATS — Estadísticas reales de una suscripción
 [114A-15+] Docker stats reales via SSH para CPU/RAM.
 ============================================================ */
 
+/* [215A-14] Resuelve la clave SSH correcta para el server_ip de la suscripción.
+ * Compara contra coolify_config (VPS2) y coolify_config_vps1 (VPS1) para soportar
+ * despliegues en ambos servidores. Sin esto, solo la VPS2 podía mostrar recursos. */
+fn resolve_ssh_key<'a>(state: &'a AppState, server_ip: &str) -> Option<&'a str> {
+    /* Primero probar VPS2 (coolify_config) */
+    if let Some(cfg) = state.coolify_config.as_ref() {
+        if cfg.server_ip == server_ip {
+            return cfg.ssh_key_path.as_deref();
+        }
+    }
+    /* Luego VPS1 */
+    if let Some(cfg) = state.coolify_config_vps1.as_ref() {
+        if cfg.server_ip == server_ip {
+            return cfg.ssh_key_path.as_deref();
+        }
+    }
+    /* Fallback: usar cualquiera que tenga SSH key (útil si server_ip no está en la suscripción) */
+    state
+        .coolify_config
+        .as_ref()
+        .and_then(|c| c.ssh_key_path.as_deref())
+        .or_else(|| {
+            state
+                .coolify_config_vps1
+                .as_ref()
+                .and_then(|c| c.ssh_key_path.as_deref())
+        })
+}
+
 /* [114A-15+] Obtiene estadísticas de contenedores Docker via SSH.
  * Usa cache de 30s para evitar SSH en cada request.
- * Retorna (cpu_percent, ram_used, ram_limit, containers) — todo None si SSH no disponible. */
+ * Retorna (cpu_percent, ram_used, ram_limit, containers) — todo None si SSH no disponible.
+ * [215A-14] Ahora resuelve la SSH key correcta según el server_ip de la suscripción. */
 async fn fetch_container_resources(
     state: &AppState,
     sub: &crate::models::HostingSubscription,
@@ -1320,11 +1350,7 @@ async fn fetch_container_resources(
         Some(ip) if !ip.is_empty() => ip,
         _ => return (None, None, None, None),
     };
-    let Some(ssh_key) = state
-        .coolify_config
-        .as_ref()
-        .and_then(|c| c.ssh_key_path.as_ref())
-    else {
+    let Some(ssh_key) = resolve_ssh_key(state, server_ip) else {
         return (None, None, None, None);
     };
 
@@ -1363,14 +1389,15 @@ async fn fetch_container_resources(
 }
 
 /* [154A-3] Obtiene el uso de disco real del contenedor WordPress via SSH.
- * Sigue el mismo patrón que fetch_container_resources: requiere SSH key + server_ip. */
+ * Sigue el mismo patrón que fetch_container_resources: requiere SSH key + server_ip.
+ * [215A-14] Ahora resuelve SSH key via resolve_ssh_key para soportar VPS1 y VPS2. */
 async fn fetch_storage_used(
     state: &AppState,
     sub: &crate::models::HostingSubscription,
 ) -> Option<i64> {
     let coolify_name = sub.coolify_site_name.as_deref().filter(|n| !n.is_empty())?;
     let server_ip = sub.server_ip.as_deref().filter(|ip| !ip.is_empty())?;
-    let ssh_key = state.coolify_config.as_ref()?.ssh_key_path.as_ref()?;
+    let ssh_key = resolve_ssh_key(state, server_ip)?;
 
     match crate::services::docker_stats::fetch_storage_usage(
         server_ip,
