@@ -3,12 +3,13 @@ import {Globe, MoreVertical, PlusCircle, Server, Trash2} from 'lucide-react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import type {CoolifyDeployment} from '../../api/hosting';
 import {HOSTING_PLAN_LABELS, apiCreateHostingSubscription, apiDeleteDeployment} from '../../api/hosting';
-import {DEPLOYMENTS_QUERY_KEY} from '../../hooks/useDeploymentsPanel';
+import {DEPLOYMENTS_QUERY_KEY, useDeploymentMetrics} from '../../hooks/useDeploymentsPanel';
 import {toast} from '../../stores/toastStore';
 import {Button} from '../ui/Button';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
 import {Modal} from '../ui/Modal';
 import {CreateHostingForm} from './HostingCreateForm';
+import {ResourceUsageChart} from './ResourceUsageChart';
 
 export function getDeploymentPanelErrorMessage(error: unknown): string {
     const apiMessage = (error as {response?: {data?: {message?: string}}})?.response?.data?.message;
@@ -157,6 +158,8 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
 }
 
 function DeploymentDetails({deployment, fqdn, isLinked}: {deployment: CoolifyDeployment; fqdn: string | null; isLinked: boolean}) {
+    const {data: metrics, isLoading, error} = useDeploymentMetrics(deployment.uuid, true);
+
     return (
         <tr className="infraFilaDetalle">
             <td colSpan={9}>
@@ -170,6 +173,12 @@ function DeploymentDetails({deployment, fqdn, isLinked}: {deployment: CoolifyDep
                         {fqdn && <div className="infraDetalleCampo"><span className="infraDetalleLabel">FQDN</span><a href={fqdn} target="_blank" rel="noopener noreferrer" className="infraDetalleLink" onClick={event => event.stopPropagation()}><Globe size={12} />{fqdn}</a></div>}
                     </div>
                     {!isLinked && <div className="infraDetalleAlerta">Despliegue sin suscripción vinculada en el panel.</div>}
+                    <div className="infraDetalleGrafico">
+                        <span className="infraDetalleLabel">Uso 24h</span>
+                        {isLoading && <div className="graficoRecursosVacio">Cargando muestras...</div>}
+                        {error && <div className="graficoRecursosVacio">No se pudieron cargar las muestras</div>}
+                        {!isLoading && !error && <ResourceUsageChart points={metrics?.points ?? []} />}
+                    </div>
                 </div>
             </td>
         </tr>

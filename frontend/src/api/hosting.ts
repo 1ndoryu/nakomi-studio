@@ -399,6 +399,8 @@ export interface HostingStatsData {
     storage_used_mb: number | null;
     bandwidth_limit_gb: number;
     bandwidth_used_gb: number | null;
+    bandwidth_remaining_gb: number | null;
+    bandwidth_reset_at: string;
     uptime_percent: number;
     active_since: string | null;
     total_events: number;
@@ -449,6 +451,26 @@ export async function apiDeleteDeployment(uuid: string): Promise<void> {
     await axiosInstance.delete(`/api/hosting/deployments/${encodeURIComponent(uuid)}`);
 }
 
+export interface ResourceMetricPoint {
+    sampled_at: string;
+    cpu_percent: number | null;
+    ram_used_mb: number | null;
+    ram_limit_mb: number | null;
+    disk_used_mb: number | null;
+    disk_limit_mb: number | null;
+}
+
+export interface DeploymentMetricsResponse {
+    deployment_uuid: string;
+    range: string;
+    points: ResourceMetricPoint[];
+}
+
+export async function apiGetDeploymentMetrics(uuid: string, range = '24h'): Promise<DeploymentMetricsResponse> {
+    const {data} = await axiosInstance.get<DeploymentMetricsResponse>(`/api/hosting/deployments/${encodeURIComponent(uuid)}/metrics`, {params: {range}});
+    return data;
+}
+
 export interface VpsSummary {
     inventory_id: string;
     instance_id: number | null;
@@ -465,6 +487,12 @@ export interface VpsSummary {
     is_configured: boolean;
     coolify_server_uuid: string | null;
     ssh_available: boolean;
+    cpu_avg_1h: number | null;
+    ram_used_mb: number | null;
+    ram_limit_mb: number | null;
+    disk_used_mb: number | null;
+    disk_limit_mb: number | null;
+    sampled_at: string | null;
 }
 
 export async function apiListVps(): Promise<VpsSummary[]> {

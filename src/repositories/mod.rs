@@ -8,6 +8,7 @@ mod deliverable;
 mod domain;
 mod fixture;
 mod hosting;
+mod infrastructure;
 mod note;
 mod notification;
 mod order;
@@ -34,6 +35,11 @@ pub use deliverable::{CreateDeliverableParams, DeliverableRepository};
 pub use domain::{CreateDomainOrderParams, DomainOrderRepository};
 pub use fixture::{FixtureRepository, FixtureTableStat};
 pub use hosting::{CreateHostingParams, HostingRepository, ServerInfo, UpdateHostingParams};
+pub use infrastructure::{
+    BandwidthEnforcementCandidate, BandwidthSnapshotInput, ConfiguredServerInput,
+    HostingResourceAllocation, InfrastructureRepository, InfrastructureServerRecord,
+    ResourceSampleInput,
+};
 pub use note::NoteRepository;
 pub use notification::NotificationRepository;
 pub use order::{CreateOrderParams, CreatePhaseParams, OrderRepository};

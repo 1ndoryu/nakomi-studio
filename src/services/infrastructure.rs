@@ -3,6 +3,7 @@
 
 use std::collections::HashSet;
 
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use super::coolify::CoolifyConfig;
@@ -30,6 +31,12 @@ pub struct InfrastructureServerSummary {
     pub is_configured: bool,
     pub coolify_server_uuid: Option<String>,
     pub ssh_available: bool,
+    pub cpu_avg_1h: Option<f64>,
+    pub ram_used_mb: Option<f64>,
+    pub ram_limit_mb: Option<f64>,
+    pub disk_used_mb: Option<f64>,
+    pub disk_limit_mb: Option<f64>,
+    pub sampled_at: Option<DateTime<Utc>>,
 }
 
 impl InfrastructureServerSummary {
@@ -57,6 +64,12 @@ impl InfrastructureServerSummary {
             is_configured: false,
             coolify_server_uuid: None,
             ssh_available: false,
+            cpu_avg_1h: None,
+            ram_used_mb: None,
+            ram_limit_mb: None,
+            disk_used_mb: None,
+            disk_limit_mb: None,
+            sampled_at: None,
         }
     }
 }
@@ -149,6 +162,12 @@ pub fn configured_server_summaries(
             is_configured: true,
             coolify_server_uuid: Some(target.config.server_uuid.clone()),
             ssh_available: target.config.ssh_key_path.is_some(),
+            cpu_avg_1h: None,
+            ram_used_mb: None,
+            ram_limit_mb: None,
+            disk_used_mb: None,
+            disk_limit_mb: None,
+            sampled_at: None,
         })
         .collect()
 }

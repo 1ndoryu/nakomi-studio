@@ -1,0 +1,22 @@
+.graficoRecursos {
+    width: 100%;
+    min-height: 220px;
+    overflow: hidden;
+}
+
+.graficoRecursos .uplot {
+    font-family: var(--font-body);
+    color: var(--text-muted);
+}
+
+.graficoRecursos .u-legend {
+    font-size: var(--text-xs);
+}
+
+.graficoRecursosVacio {
+    display: flex;
+    align-items: center;
+    min-height: 120px;
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+}

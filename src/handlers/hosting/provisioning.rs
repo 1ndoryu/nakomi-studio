@@ -11,7 +11,7 @@ use super::domain::{
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{HostingSubscriptionResponse, UserRole};
-use crate::repositories::{HostingRepository, ServerInfo};
+use crate::repositories::{HostingRepository, InfrastructureRepository, ServerInfo};
 use crate::services::coolify::{CoolifyProvisionResult, HostingComposeUpdate};
 use crate::services::{CoolifyService, HostingStripeService};
 use crate::AppState;
@@ -64,6 +64,22 @@ pub(super) async fn provision_subscription(
         .ok_or_else(|| {
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
+    let allocation =
+        InfrastructureRepository::hosting_allocation_for_plan(&state.pool, &sub.plan).await?;
+    let capacity_reserved = InfrastructureRepository::reserve_capacity_if_known(
+        &state.pool,
+        &config.server_uuid,
+        &allocation,
+    )
+    .await?;
+    if !capacity_reserved {
+        HostingRepository::update_status(&state.pool, id, "pending")
+            .await
+            .ok();
+        return Err(AppError::Validation(
+            "La VPS no tiene capacidad suficiente para provisionar este plan".into(),
+        ));
+    }
     let provision_preferences =
         HostingStripeService::load_provision_preferences(&state.pool, id).await;
 
@@ -82,6 +98,13 @@ pub(super) async fn provision_subscription(
         Ok(result) => result,
         Err(error) => {
             tracing::error!("[Provision] Falló para {id}: {error}");
+            InfrastructureRepository::release_capacity(
+                &state.pool,
+                &config.server_uuid,
+                &allocation,
+            )
+            .await
+            .ok();
             HostingRepository::update_status(&state.pool, id, "pending")
                 .await
                 .ok();

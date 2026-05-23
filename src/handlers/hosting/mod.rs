@@ -2,6 +2,7 @@ mod checkout;
 mod control;
 mod deployments;
 mod domain;
+mod infrastructure;
 mod plans;
 mod provisioning;
 mod routes;

@@ -1,11 +1,12 @@
 use axum::extract::{Path, State};
 use axum::Json;
+use chrono::{Datelike, TimeZone};
 use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{HostingEvent, HostingStatsResponse, UserRole};
-use crate::repositories::HostingRepository;
+use crate::repositories::{HostingRepository, InfrastructureRepository};
 use crate::AppState;
 
 pub(super) fn resolve_ssh_key<'a>(state: &'a AppState, server_ip: &str) -> Option<&'a str> {
@@ -115,6 +116,13 @@ pub(super) async fn fetch_storage_used(
     }
 }
 
+fn f64_to_i64_rounded(value: f64) -> Option<i64> {
+    if !value.is_finite() {
+        return None;
+    }
+    format!("{value:.0}").parse::<i64>().ok()
+}
+
 /* [094A-8] Calcula el porcentaje de uptime analizando transiciones de status en eventos.
  * Recorre los eventos cronológicamente, contando el tiempo total en estado "active".
  * Si la suscripción actualmente está activa, el período abierto se extiende hasta ahora. */
@@ -208,24 +216,62 @@ pub(super) async fn get_hosting_stats(
     let total_events = i64::try_from(events.len()).unwrap_or(i64::MAX);
     let last_event_at = events.first().map(|event| event.created_at);
     let monitoring_available = sub.coolify_site_name.is_some();
-    let bandwidth = HostingRepository::get_plan_config(&state.pool, &sub.plan)
+    let bandwidth = InfrastructureRepository::bandwidth_limit_gb(&state.pool, sub.id).await?;
+    let bandwidth_used_gb = InfrastructureRepository::current_bandwidth_gb(&state.pool, sub.id)
         .await?
-        .map(|config| config.bandwidth_limit_gb)
-        .ok_or_else(|| {
-            AppError::Internal(format!(
-                "Plan config '{}' no encontrado para stats",
-                sub.plan
-            ))
-        })?;
-    let (cpu_percent, ram_used_mb, ram_limit_mb, containers) =
-        fetch_container_resources(&state, &sub).await;
-    let storage_used_mb = fetch_storage_used(&state, &sub).await;
+        .or(Some(0.0));
+    let bandwidth_remaining_gb = if bandwidth < 0 {
+        None
+    } else {
+        Some((f64::from(bandwidth) - bandwidth_used_gb.unwrap_or(0.0)).max(0.0))
+    };
+    let now = chrono::Utc::now();
+    let next_month_year = if now.month() == 12 {
+        now.year() + 1
+    } else {
+        now.year()
+    };
+    let next_month = if now.month() == 12 {
+        1
+    } else {
+        now.month() + 1
+    };
+    let bandwidth_reset_at = chrono::Utc
+        .with_ymd_and_hms(next_month_year, next_month, 1, 0, 0, 0)
+        .single()
+        .unwrap_or(now);
+    let latest_sample = if let Some(deployment_uuid) = sub.server_uuid.as_deref() {
+        InfrastructureRepository::latest_deployment_sample(&state.pool, deployment_uuid).await?
+    } else {
+        None
+    };
+    let storage_from_sample = latest_sample
+        .as_ref()
+        .and_then(|sample| sample.disk_used_mb.and_then(f64_to_i64_rounded));
+    let (cpu_percent, ram_used_mb, ram_limit_mb, containers) = if let Some(sample) = &latest_sample
+    {
+        (
+            sample.cpu_percent,
+            sample.ram_used_mb,
+            sample.ram_limit_mb,
+            None,
+        )
+    } else {
+        fetch_container_resources(&state, &sub).await
+    };
+    let storage_used_mb = if storage_from_sample.is_some() {
+        storage_from_sample
+    } else {
+        fetch_storage_used(&state, &sub).await
+    };
 
     Ok(Json(HostingStatsResponse {
         storage_limit_mb: sub.storage_limit_mb,
         storage_used_mb,
         bandwidth_limit_gb: bandwidth,
-        bandwidth_used_gb: None,
+        bandwidth_used_gb,
+        bandwidth_remaining_gb,
+        bandwidth_reset_at,
         uptime_percent,
         active_since,
         total_events,

@@ -3,13 +3,11 @@ use axum::http::StatusCode;
 use axum::Json;
 use std::collections::HashMap;
 
-use super::stats::resolve_ssh_key;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{CoolifyDeploymentResponse, UserRole};
-use crate::repositories::HostingRepository;
+use crate::repositories::{HostingRepository, InfrastructureRepository};
 use crate::services::coolify::CoolifyServiceSummary;
-use crate::services::docker_stats::ContainerStats;
 use crate::services::infrastructure::coolify_server_targets;
 use crate::services::{CoolifyConfig, CoolifyService};
 use crate::AppState;
@@ -58,201 +56,35 @@ fn map_coolify_services(
         .collect()
 }
 
-/* [225A-1] Obtiene stats de TODOS los contenedores y el uso de disco de TODAS las apps/servicios
- * en una sola SSH call. Retorna (Vec<ContainerStats>, HashMap<String, i64>) con {uuid: mb}.
- * Utiliza un caché local de 30 segundos para evitar llamadas SSH excesivas. */
-async fn fetch_all_container_stats(
-    server_ip: &str,
-    ssh_key: &str,
-) -> (Vec<ContainerStats>, HashMap<String, i64>) {
-    struct CacheEntry {
-        fetched_at: std::time::Instant,
-        containers: Vec<ContainerStats>,
-        storage: HashMap<String, i64>,
+fn f64_to_i64_rounded(value: f64) -> Option<i64> {
+    if !value.is_finite() {
+        return None;
     }
-
-    static SERVER_STATS_CACHE: std::sync::OnceLock<
-        tokio::sync::RwLock<HashMap<String, CacheEntry>>,
-    > = std::sync::OnceLock::new();
-
-    let cache = SERVER_STATS_CACHE.get_or_init(|| tokio::sync::RwLock::new(HashMap::new()));
-
-    // 1. Intentar leer del caché
-    {
-        let cache_guard = cache.read().await;
-        if let Some(entry) = cache_guard.get(server_ip) {
-            if entry.fetched_at.elapsed() < std::time::Duration::from_secs(30) {
-                return (entry.containers.clone(), entry.storage.clone());
-            }
-        }
-    }
-
-    let docker_cmd = "docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}'; echo '===STORAGE==='; du -sm /var/lib/docker/volumes/*/_data 2>/dev/null || true";
-
-    let mut command = tokio::process::Command::new("ssh");
-    command
-        .args([
-            "-i",
-            ssh_key,
-            "-o",
-            "StrictHostKeyChecking=accept-new",
-            "-o",
-            "ConnectTimeout=8",
-            "-o",
-            "BatchMode=yes",
-            &format!("root@{server_ip}"),
-            docker_cmd,
-        ])
-        .stdin(std::process::Stdio::null());
-
-    let output_result =
-        tokio::time::timeout(std::time::Duration::from_secs(15), command.output()).await;
-
-    let output = match output_result {
-        Ok(Ok(output)) => output,
-        Ok(Err(e)) => {
-            tracing::warn!("[deployments] SSH a {server_ip} falló al ejecutar: {e}");
-            return (vec![], HashMap::new());
-        }
-        Err(_) => {
-            tracing::warn!(
-                "[deployments] Timeout: SSH a {server_ip} tomó más de 15 segundos y fue cancelado"
-            );
-            return (vec![], HashMap::new());
-        }
-    };
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let mut parts = stdout.split("===STORAGE===");
-
-    let stats_part = parts.next().unwrap_or("").trim();
-    let storage_part = parts.next().unwrap_or("").trim();
-
-    let containers = crate::services::docker_stats::parse_docker_stats_public(stats_part);
-
-    let mut storage_map = HashMap::new();
-    for line in storage_part.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-
-        let cols: Vec<&str> = line.split_whitespace().collect();
-        if cols.len() >= 2 {
-            if let Ok(mb) = cols[0].parse::<i64>() {
-                // cols[1] es como "/var/lib/docker/volumes/uuid_data/_data"
-                if let Some(folder_path) = cols[1].strip_suffix("/_data") {
-                    if let Some(volume_name) = folder_path.split('/').next_back() {
-                        let uuid = volume_name.split('_').next().unwrap_or(volume_name);
-                        *storage_map.entry(uuid.to_string()).or_insert(0) += mb;
-                    }
-                }
-            }
-        }
-    }
-
-    // 2. Guardar en el caché
-    {
-        let mut cache_guard = cache.write().await;
-        cache_guard.insert(
-            server_ip.to_string(),
-            CacheEntry {
-                fetched_at: std::time::Instant::now(),
-                containers: containers.clone(),
-                storage: storage_map.clone(),
-            },
-        );
-    }
-
-    (containers, storage_map)
+    format!("{value:.0}").parse::<i64>().ok()
 }
 
-/* [225A-1] Enriquece despliegues con CPU/RAM de TODOS los contenedores (2 SSH calls máximo,
- * en paralelo via tokio::join!). Storage se omite aquí — se consulta en stats individuales. */
+/* [225A-4] Enriquece despliegues desde snapshots del sampler, no desde SSH en render.
+ * Si aún no hay muestras, el panel muestra guiones hasta que el loop background
+ * capture el primer promedio. */
 async fn enrich_deployment_resources(
     state: &AppState,
     deployments: &mut [CoolifyDeploymentResponse],
 ) {
-    let targets = coolify_server_targets(
-        state.coolify_config_vps1.as_ref(),
-        state.coolify_config.as_ref(),
-    );
-    let mut fetches = Vec::new();
-    let server_ip_by_uuid: HashMap<String, String> = targets
-        .iter()
-        .map(|target| {
-            (
-                target.config.server_uuid.clone(),
-                target.config.server_ip.clone(),
-            )
-        })
-        .collect();
-
-    for target in &targets {
-        if let Some(ssh_key) = resolve_ssh_key(state, &target.config.server_ip) {
-            let server_ip = target.config.server_ip.clone();
-            let label = target.label.clone();
-            fetches.push(async move {
-                let (container_stats, storage) =
-                    fetch_all_container_stats(&server_ip, ssh_key).await;
-                (label, server_ip, container_stats, storage)
-            });
-        }
-    }
-
-    let results = futures::future::join_all(fetches).await;
-    let mut stats_by_server: HashMap<String, (Vec<ContainerStats>, HashMap<String, i64>)> =
-        HashMap::new();
-    for (label, ip, stats, disk) in results {
-        tracing::info!(
-            "[deployments] {label} ({ip}): {} contenedores, {} carpetas disco",
-            stats.len(),
-            disk.len()
-        );
-        stats_by_server.insert(ip, (stats, disk));
-    }
-
-    /* Fase 2: cruzar CPU/RAM y Disco en memoria */
     for deployment in deployments {
-        let server_ip = deployment
-            .server_uuid
-            .as_deref()
-            .and_then(|server_uuid| server_ip_by_uuid.get(server_uuid).map(String::as_str))
-            .or_else(|| {
-                targets
-                    .iter()
-                    .find(|target| target.label == deployment.server_label)
-                    .map(|target| target.config.server_ip.as_str())
-            });
-
-        if let Some(server_ip) = server_ip {
-            if let Some((containers, storage_map)) = stats_by_server.get(server_ip) {
-                let mut cpu = 0.0_f64;
-                let mut ram_used = 0.0_f64;
-                let mut ram_limit = 0.0_f64;
-                let mut found = false;
-
-                for c in containers {
-                    // Coolify nombra los contenedores con el UUID del recurso (ej: app-do8k... o wordpress-u00g...)
-                    if c.name.contains(&deployment.uuid) || c.name.contains(&deployment.name) {
-                        cpu += c.cpu_percent;
-                        ram_used += c.mem_used_mb;
-                        ram_limit += c.mem_limit_mb;
-                        found = true;
-                    }
-                }
-
-                if found {
-                    deployment.cpu_percent = Some(cpu);
-                    deployment.ram_used_mb = Some(ram_used);
-                    deployment.ram_limit_mb = Some(ram_limit);
-                }
-
-                // Si la carpeta del despliegue existe en el storage map, asignarlo
-                if let Some(&mb) = storage_map.get(&deployment.uuid) {
-                    deployment.storage_used_mb = Some(mb);
-                }
+        match InfrastructureRepository::latest_deployment_sample(&state.pool, &deployment.uuid)
+            .await
+        {
+            Ok(Some(sample)) => {
+                deployment.cpu_percent = sample.cpu_percent;
+                deployment.ram_used_mb = sample.ram_used_mb;
+                deployment.ram_limit_mb = sample.ram_limit_mb;
+                deployment.storage_used_mb = sample.disk_used_mb.and_then(f64_to_i64_rounded);
             }
+            Ok(None) => {}
+            Err(error) => tracing::warn!(
+                "[deployments] No se pudo leer snapshot para {}: {error}",
+                deployment.uuid
+            ),
         }
     }
 }

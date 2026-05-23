@@ -217,6 +217,7 @@
 ## Infra admin - proveedor no equivale a deployment
 - Si el panel pide “despliegues reales”, la fuente correcta es la capa de orquestacion (Coolify, Kubernetes, etc.), no la API del proveedor de VPS.
 - Contabo responde “que servidores existen”; Coolify responde “que servicios estan desplegados”. Mezclar ambas capas permite cerrar tareas en falso y oculta orfandades reales entre deployment y suscripcion.
+- Para recursos de infraestructura, el dashboard tampoco debe abrir SSH en render. Meter un sampler de baja frecuencia + snapshots DB evita carga, timeouts y variaciones raras de UI; hasta que exista una muestra, mostrar `null`/guiones es la opcion correcta.
 
 ## Commit-por-tarea — no acumular cambios
 - Si el protocolo dice "un commit por tarea", cumplirlo inmediatamente después de validar, no al "final de la sesión" ni "cuando haya tiempo". Acumular 3+ tareas sin commit significa que un solo error en git rompe todo el trabajo.

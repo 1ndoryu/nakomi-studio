@@ -17,6 +17,16 @@ function formatCpu(cpu: number | null | undefined): string {
     return cpu == null ? '—' : `${cpu} vCPU`;
 }
 
+function formatPercent(percent: number | null | undefined): string {
+    return percent == null ? '—' : `${percent.toFixed(1)}%`;
+}
+
+function formatUsage(used: number | null | undefined, limit: number | null | undefined): string {
+    if (used == null) return '—';
+    if (limit == null || limit <= 0) return formatMb(used);
+    return `${formatMb(used)} / ${formatMb(limit)}`;
+}
+
 function getVpsErrorMessage(error: unknown): string {
     const apiMessage = (error as {
         response?: {data?: {message?: string}};
@@ -75,6 +85,21 @@ function VpsCard({instance}: {instance: VpsSummary}) {
                     <HardDrive size={14} />
                     <span className="vpsStatLabel">Disco</span>
                     <span className="vpsStatValor">{formatMb(instance.disk_mb)}</span>
+                </div>
+                <div className="vpsStat">
+                    <Activity size={14} />
+                    <span className="vpsStatLabel">CPU prom.</span>
+                    <span className="vpsStatValor">{formatPercent(instance.cpu_avg_1h)}</span>
+                </div>
+                <div className="vpsStat">
+                    <MemoryStick size={14} />
+                    <span className="vpsStatLabel">RAM prom.</span>
+                    <span className="vpsStatValor">{formatUsage(instance.ram_used_mb, instance.ram_limit_mb)}</span>
+                </div>
+                <div className="vpsStat">
+                    <HardDrive size={14} />
+                    <span className="vpsStatLabel">Disco usado</span>
+                    <span className="vpsStatValor">{formatUsage(instance.disk_used_mb, instance.disk_limit_mb)}</span>
                 </div>
             </div>
         </div>

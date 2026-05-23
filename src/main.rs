@@ -7,11 +7,15 @@ use argon2::password_hash::rand_core::OsRng;
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use glory_backend::config::AppConfig;
 use glory_backend::handlers;
+use glory_backend::services::bandwidth_enforcement::bandwidth_enforcement_loop;
+use glory_backend::services::infrastructure_metrics::infrastructure_metrics_loop;
 use glory_backend::services::storage_enforcement::storage_enforcement_loop;
-use glory_backend::services::{AssignmentService, CoolifyConfig};
+use glory_backend::services::vps_monitor::vps_monitor_loop;
+use glory_backend::services::{AssignmentService, ContaboConfig, ContaboService, CoolifyConfig};
 use glory_rs::fixtures::ContentManager;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+#[allow(clippy::too_many_lines)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
 
@@ -93,7 +97,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
      * Cada 6h mide uso real via SSH+du; si supera storage_limit_mb, detiene el
      * contenedor SSH (bloquea subidas) y notifica al cliente. Lo restaura cuando
      * el cliente libera espacio. El sitio web nunca se interrumpe. */
-    if let Some(coolify_config) = CoolifyConfig::from_env() {
+    let coolify_config = CoolifyConfig::from_env();
+    let coolify_config_vps1 = CoolifyConfig::from_env_with_prefix("COOLIFY_VPS1_");
+
+    if let Some(coolify_config) = coolify_config.clone() {
         let enforcement_pool = pool.clone();
         tokio::spawn(async move {
             storage_enforcement_loop(enforcement_pool, coolify_config).await;
@@ -102,6 +109,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::warn!(
             "[storage-enforcement] Coolify no configurado — enforcement de storage desactivado"
         );
+    }
+
+    /* [225A-4] Recursos hosting: sampler aproximado cada 10 min.
+     * Evita que el panel admin haga SSH directo por cada render y alimenta
+     * promedios, gráficas y bandwidth mensual. */
+    if coolify_config.is_some() || coolify_config_vps1.is_some() {
+        let metrics_pool = pool.clone();
+        let metrics_client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("metrics HTTP client");
+        let metrics_vps1 = coolify_config_vps1.clone();
+        let metrics_default = coolify_config.clone();
+        tokio::spawn(async move {
+            infrastructure_metrics_loop(
+                metrics_pool,
+                metrics_client,
+                metrics_vps1,
+                metrics_default,
+            )
+            .await;
+        });
+
+        let bandwidth_pool = pool.clone();
+        let bandwidth_client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("bandwidth HTTP client");
+        let bandwidth_vps1 = coolify_config_vps1.clone();
+        let bandwidth_default = coolify_config.clone();
+        tokio::spawn(async move {
+            bandwidth_enforcement_loop(
+                bandwidth_pool,
+                bandwidth_client,
+                bandwidth_vps1,
+                bandwidth_default,
+            )
+            .await;
+        });
+    } else {
+        tracing::warn!("[infra-metrics] Coolify no configurado — sampler desactivado");
+    }
+
+    if let Some(contabo_config) = ContaboConfig::from_env() {
+        let monitor_pool = pool.clone();
+        let monitor_service = ContaboService::new(contabo_config, reqwest::Client::new());
+        tokio::spawn(async move {
+            vps_monitor_loop(monitor_pool, monitor_service).await;
+        });
+    } else {
+        tracing::debug!("[vps-monitor] Contabo no configurado — monitor proveedor desactivado");
     }
 
     let addr = format!("{}:{}", config.host, config.port);

@@ -611,7 +611,9 @@ async fn spa_index(State(state): State<AppState>) -> Response {
 }
 
 fn api_routes() -> Router<AppState> {
-    /* [064A-73] Rate limiting: auth estricto (5 req/min por IP), API general (120 req/min) */
+    /* [064A-73][225A-4] Rate limiting: auth estricto, API general menos restrictiva
+     * para dashboards con varias consultas concurrentes. Endpoints sensibles
+     * (subscribe/checkout) conservan límites específicos en hosting::routes. */
     let auth_governor = GovernorConfigBuilder::default()
         .per_second(12)
         .burst_size(5)
@@ -619,8 +621,8 @@ fn api_routes() -> Router<AppState> {
         .expect("rate limit config válida");
 
     let api_governor = GovernorConfigBuilder::default()
-        .per_second(1)
-        .burst_size(120)
+        .per_second(600)
+        .burst_size(60)
         .finish()
         .expect("rate limit config válida");
 

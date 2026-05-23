@@ -6,6 +6,7 @@ mod delegation;
 mod deliverable;
 mod domain;
 mod hosting;
+mod infrastructure;
 mod note;
 mod notification;
 mod order;
@@ -53,6 +54,10 @@ pub use hosting::{
     HostingStatsResponse, HostingSubscription, HostingSubscriptionResponse, PublicHostingPlan,
     SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
     UpdatePlanConfigRequest,
+};
+pub use infrastructure::{
+    DeploymentMetricsResponse, InfrastructureServerMetricsResponse, ResourceMetricPoint,
+    ResourceUsageReportItem,
 };
 pub use note::{CreateNoteRequest, Note, PaginatedNotes, PaginationParams, UpdateNoteRequest};
 pub use notification::{

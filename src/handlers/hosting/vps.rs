@@ -4,6 +4,7 @@ use axum::Json;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::UserRole;
+use crate::repositories::InfrastructureRepository;
 use crate::services::infrastructure::{configured_server_summaries, InfrastructureServerSummary};
 use crate::AppState;
 
@@ -79,6 +80,8 @@ pub(super) async fn list_vps(
         ));
     }
 
+    enrich_configured_metrics(&state, &mut instances).await?;
+
     instances.sort_by(|left, right| {
         right
             .is_configured
@@ -88,6 +91,24 @@ pub(super) async fn list_vps(
     });
 
     Ok(Json(serde_json::json!({ "data": instances })))
+}
+
+async fn enrich_configured_metrics(
+    state: &AppState,
+    servers: &mut [InfrastructureServerSummary],
+) -> Result<(), AppError> {
+    let metrics = InfrastructureRepository::list_servers_with_metrics(&state.pool).await?;
+    for server in servers.iter_mut() {
+        if let Some(metric) = metrics.iter().find(|metric| metric.server_ip == server.ip) {
+            server.cpu_avg_1h = metric.cpu_avg_1h;
+            server.ram_used_mb = metric.ram_used_mb;
+            server.ram_limit_mb = metric.ram_limit_mb;
+            server.disk_used_mb = metric.disk_used_mb;
+            server.disk_limit_mb = metric.disk_limit_mb;
+            server.sampled_at = metric.sampled_at;
+        }
+    }
+    Ok(())
 }
 
 fn merge_contabo_instances(

@@ -74,7 +74,9 @@ pub struct HostingStatsResponse {
     pub storage_used_mb: Option<i64>,
     pub bandwidth_limit_gb: i32,
     /// null = monitoring no disponible aún
-    pub bandwidth_used_gb: Option<i64>,
+    pub bandwidth_used_gb: Option<f64>,
+    pub bandwidth_remaining_gb: Option<f64>,
+    pub bandwidth_reset_at: DateTime<Utc>,
     /// Calculado desde historial de eventos (tiempo en status "active")
     pub uptime_percent: f64,
     /// Timestamp desde que la suscripción está activa (null si nunca se activó)

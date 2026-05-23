@@ -2,7 +2,7 @@
 
 > **Fecha:** 2026-05-22
 > **Origen:** Auditoria de gaps en `src/services/storage_enforcement.rs`, `coolify.rs`, `docker_stats.rs`, panel `/panel/?seccion=infraestructura`
-> **Estado:** Revisado contra codigo real — corregido y complementado para multi-VPS, observabilidad y baja carga operativa
+> **Estado:** Implementado en 225A-4 — queda solo observacion post-deploy y ajustes finos segun datos reales
 
 ---
 
@@ -35,7 +35,21 @@ Correcciones obligatorias antes de implementar:
 - Backend: `/api/hosting/deployments` itera targets Coolify configurados en vez de ramas fijas VPS1/VPS2.
 - Frontend: tabs renombradas a **Despliegues** y **VPS**; eliminado `infraResumen`; fila de despliegue separada en `DeploymentRow`, menú contextual migrado a `MenuContextual` y deuda semantica `Vps2DeploymentsPanel`/`useVps2DeploymentsPanel`/`apiListVps2Deployments` renombrada a `DeploymentsPanel`/`useDeploymentsPanel`/`apiListDeployments`.
 - Tooling: `coolify-manager-rs` no inyectaba `COOLIFY_*` al compose runtime por seguridad; se corrigió para permitir solo claves `COOLIFY_VPSn_*` y mantener bloqueadas las `COOLIFY_*` planas de plataforma.
-- Pendiente del plan: sampler de promedios, graficos `uplot`, bandwidth enforcement, capacidad pre-provisioning, alertas y limites de suscripciones.
+- Pendiente del plan: observacion post-deploy para confirmar muestras reales, overage mensual y estado Contabo con trafico productivo.
+
+### Aplicado 2026-05-22 — bloque enforcement de recursos
+
+- Migracion: agregadas `infrastructure_servers`, `infrastructure_resource_samples`, `bandwidth_snapshots`, `bandwidth_usage`, `server_capacity`, `vps_monitor_state`, `hosting_subscriptions.bandwidth_limit_gb`, `hosting_plan_configs.usage_alert_threshold_pct` y `user_profiles.max_active_subscriptions`.
+- Backend: nuevo repositorio `InfrastructureRepository` con queries runtime preparadas para inventario, snapshots, bandwidth mensual, capacidad atomica, reporte admin y estado de monitor VPS.
+- Backend: nuevo sampler `infrastructure_metrics_loop` cada 10 minutos, con una SSH por servidor configurado, CPU/RAM/disco VPS, `docker stats` por despliegue, `du` por volumen solo en ventana horaria y acumulado de bandwidth por deltas.
+- Backend: `/api/infrastructure/servers`, `/api/infrastructure/deployments`, `/api/infrastructure/deployments/:uuid/metrics`, `/api/infrastructure/metrics/refresh` y `/api/infrastructure/resource-report`; endpoints legacy de hosting siguen como alias.
+- Backend: `/api/hosting/deployments` ya no hace SSH en render; lee snapshots del sampler y deja guiones hasta tener datos.
+- Backend: `/api/hosting/subscriptions/:id/stats` lee `bandwidth_limit_gb` por suscripcion, devuelve uso mensual real, remanente y fecha de reset.
+- Backend: `bandwidth_enforcement_loop` suspende/restaura servicios Coolify cuando el uso mensual cruza el limite; `bandwidth_limit_gb = -1` queda como ilimitado.
+- Backend: provisioning reserva capacidad de servidor de forma atomica cuando `server_capacity` tiene specs; si no hay specs conocidas, no bloquea falsamente.
+- Backend: `vps_monitor_loop` consulta Contabo cada hora para estado proveedor, registra eventos y marca `provider_attention` tras estados no running.
+- Frontend: instalado `uplot`, creado `ResourceUsageChart`, cargado bajo demanda al expandir despliegues y mostrados promedios CPU/RAM/disco en tab VPS.
+- Seguridad/operacion: rate limit global ajustado segun Fase 5, manteniendo limites especificos de checkout/subscribe.
 
 ---
 

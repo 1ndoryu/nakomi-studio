@@ -10,7 +10,9 @@ use crate::middleware::AuthUser;
 use crate::models::{
     HostingSubscriptionResponse, SelfSubscribeRequest, SelfSubscribeResponse, UserRole,
 };
-use crate::repositories::{CreateHostingParams, HostingRepository, UserRepository};
+use crate::repositories::{
+    CreateHostingParams, HostingRepository, InfrastructureRepository, UserRepository,
+};
 use crate::services::{is_checkout_bypass_email, CoolifyConfig, HostingStripeService};
 use crate::AppState;
 
@@ -101,6 +103,17 @@ fn hosting_checkout_config_details(
     })
 }
 
+async fn enforce_user_hosting_limit(pool: &sqlx::PgPool, user_id: Uuid) -> Result<(), AppError> {
+    let limit = InfrastructureRepository::user_subscription_limit(pool, user_id).await?;
+    let active = InfrastructureRepository::active_subscription_count(pool, user_id).await?;
+    if active >= i64::from(limit) {
+        return Err(AppError::Validation(format!(
+            "Has alcanzado el límite de {limit} suscripciones activas de hosting"
+        )));
+    }
+    Ok(())
+}
+
 /* [094A-3] Self-service: cliente contrata hosting + paga en un solo paso.
  * Toma plan y dominio opcional, obtiene nombre/email del perfil del usuario autenticado,
  * crea la suscripción y la Stripe Checkout Session, retorna URL de pago. */
@@ -139,6 +152,7 @@ pub(super) async fn subscribe_self(
     let price = plan_config.monthly_price_cents;
     let storage = plan_config.storage_limit_mb;
     let period_amount_cents = hosting_period_amount_cents(price, billing_cycle_months);
+    enforce_user_hosting_limit(&state.pool, auth.user_id).await?;
 
     let user = UserRepository::find_by_id(&state.pool, auth.user_id)
         .await?
@@ -165,6 +179,12 @@ pub(super) async fn subscribe_self(
             monthly_price_cents: price,
             storage_limit_mb: storage,
         },
+    )
+    .await?;
+    InfrastructureRepository::set_subscription_bandwidth_limit(
+        &state.pool,
+        sub.id,
+        plan_config.bandwidth_limit_gb,
     )
     .await?;
 
@@ -442,6 +462,12 @@ pub(super) async fn admin_test_subscribe(
             monthly_price_cents: plan_config.monthly_price_cents,
             storage_limit_mb: plan_config.storage_limit_mb,
         },
+    )
+    .await?;
+    InfrastructureRepository::set_subscription_bandwidth_limit(
+        &state.pool,
+        sub.id,
+        plan_config.bandwidth_limit_gb,
     )
     .await?;
 
