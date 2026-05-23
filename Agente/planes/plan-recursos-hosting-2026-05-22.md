@@ -356,6 +356,103 @@ Correcciones obligatorias antes de implementar:
 
 ---
 
+## Fase 7: Throttle anti-abuso por ancho de banda
+
+> **Contexto:** Contabo no cobra por GB, solo port speed fijo (200-1000 Mbps segun plan VPS).
+> Si un hosting consume mas de lo justo, afecta a los demas en el mismo VPS y arriesga
+> que Contabo throttle el VPS completo. Necesitamos throttle reactivo por hosting.
+
+### 7.1 Modelar port speed del VPS
+
+- Agregar `port_speed_mbps INT NOT NULL` a `infrastructure_servers` (la tabla creada en Fase 0.1)
+- Seed con valores Contabo: VPS1=200, VPS2=300, VPS3=600, VPS4=800, VPS5=1000, VPS6=1000
+
+### 7.2 Funcion `fair_share()`
+
+```sql
+-- Cuantos Mbps le tocan a cada hosting en un VPS
+port_speed_mbps / COUNT(hostings activos en ese VPS)
+```
+
+- Si un VPS3 (600 Mbps) tiene 6 hostings, fair share = **100 Mbps** cada uno
+- Si tiene 3 hostings avanzados, fair share = **200 Mbps** cada uno
+
+### 7.3 Implementar throttle via `tc` (SSH al servidor)
+
+Nuevo modulo `src/services/tc_throttle.rs`:
+
+- `find_veth(server_ip, site_name)` → SSH para encontrar el veth del contenedor
+  ```bash
+  CONTAINER=$(docker compose -p {site} ps -q {service} 2>/dev/null || echo "")
+  PID=$(docker inspect -f '{{.State.Pid}}' "$CONTAINER")
+  IFACE=$(nsenter -t "$PID" -n ip -o route show to default | awk '{print $5}')
+  IDX=$(nsenter -t "$PID" -n cat /sys/class/net/$IFACE/iflink)
+  ip link show | awk -F': ' "\$1 == ${IDX} {print \$2}" | cut -d@ -f1
+  ```
+- `set_rate_limit(server_ip, site_name, rate_mbps)` → aplica `tc qdisc replace`
+  ```bash
+  tc qdisc replace dev $VETH root tbf rate Xmbit burst 32kbit latency 400ms
+  ```
+- `remove_rate_limit(server_ip, site_name)` → `tc qdisc del dev $VETH root`
+- `list_throttled(server_ip)` → lista veths con qdisc activo
+
+### 7.4 Criterios de abuso (loop cada 5 min)
+
+| Condicion | Accion |
+|-----------|--------|
+| `uso_mbps > fair_share * 0.50` por >10 min seguidos | Throttle a **10 Mbps** |
+| `uso_mbps > fair_share * 1.00` por >5 min seguidos | Throttle a **5 Mbps** |
+| `uso_mbps > port_speed * 0.70` (un hosting domina el VPS entero) | Throttle a **10 Mbps** |
+| Proyeccion mensual >25 TB (riesgo Contabo) | Throttle preventivo a **20 Mbps** |
+
+**Revertir:** cuando `uso_mbps < umbral_activacion * 0.30` por 5 min seguidos → restaurar velocidad.
+
+**Histeresis:** umbral de activacion = 50%, umbral de desactivacion = 30% (diferencia 20pp evita oscilacion).
+
+### 7.5 Enforcement loop
+
+Refactorizar `bandwidth_enforcement.rs` (o crear `bandwidth_throttle.rs`):
+
+```rust
+pub async fn bandwidth_throttle_loop(pool, http_client, coolify_config) {
+    loop {
+        // 1. Leer bandwidth_usage del ultimo sample (uso_mbps por hosting)
+        // 2. Calcular fair_share de cada VPS (port_speed / hostings_activos)
+        // 3. Evaluar cada hosting contra los criterios
+        // 4. Si aplica throttle y no esta throttled: tc::set_rate_limit(...)
+        // 5. Si esta throttled y ya no aplica: tc::remove_rate_limit(...)
+        // 6. Registrar evento bandwidth_throttled / bandwidth_restored
+        tokio::time::sleep(Duration::from_secs(300)); // 5 min
+    }
+}
+```
+
+### 7.6 Visibilidad (solo admin)
+
+- Sin notificaciones al cliente. El throttle es silencioso.
+- Badge "Velocidad reducida" visible solo en panel admin
+- Admin: lista de hostings actualmente throttled, historial de eventos, metrica de velocidad asignada
+
+### 7.7 Sin corte mensual por GB
+
+- **No hay limite mensual en GB** para ningun tipo de hosting.
+- Fase 7 es el unico enforcement: **throttle reactivo por uso excesivo del port speed**.
+- Nunca se corta el servicio completamente por trafico, solo se reduce velocidad temporalmente.
+- El throttle se revierte automaticamente cuando el uso vuelve a niveles normales.
+
+### 7.R Riesgos y mitigaciones (Fase 7)
+
+| Riesgo | Prob. | Impacto | Mitigacion |
+|--------|-------|---------|------------|
+| `tc` no instalado en el servidor (falta `iproute2`) | Baja | Alto | Fallo silencioso + alerta admin. Agregar check en deploy del VPS. |
+| veth name cambia al recrear contenedor | Alta | Medio | Buscar veth por PID cada vez que se aplica throttle, no cachear. |
+| Falso positivo (cliente con pico momentaneo legitimo) | Media | Medio | Exigir 2 muestras consecutivas (10 min) antes de throttle. |
+| Bucle throttle/restore si el cliente oscila en el umbral | Media | Medio | Histeresis 20pp (activa 50%, restaura 30%). |
+| Throttle no persiste tras reboot del contenedor | Alta | Bajo | El loop cada 5 min lo re-aplica. |
+| Contabo throttle a nosotros antes de que detectemos | Baja | Alto | Loop cada 5 min reacciona mucho mas rapido que Contabo (promedio 10 dias). |
+
+---
+
 ## Tabla de esfuerzo estimado
 
 | Tarea                                   | Archivos                                     | Esfuerzo | Depende de   |

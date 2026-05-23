@@ -92,6 +92,18 @@ pub struct BandwidthEnforcementCandidate {
     pub bandwidth_used_gb: f64,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct BandwidthThrottleCandidate {
+    pub subscription_id: Uuid,
+    pub deployment_uuid: Option<String>,
+    pub coolify_site_name: Option<String>,
+    pub server_ip: Option<String>,
+    pub server_id: Uuid,
+    pub port_speed_mbps: i32,
+    pub net_input_mb: f64,
+    pub net_output_mb: f64,
+}
+
 impl InfrastructureRepository {
     pub async fn upsert_configured_server(
         pool: &PgPool,
@@ -608,6 +620,32 @@ impl InfrastructureRepository {
                WHERE hs.status IN ('active', 'suspended_bandwidth')
                  AND hs.server_uuid IS NOT NULL
                ORDER BY bandwidth_used_gb DESC",
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(AppError::from)
+    }
+
+    pub async fn bandwidth_throttle_candidates(
+        pool: &PgPool,
+    ) -> Result<Vec<BandwidthThrottleCandidate>, AppError> {
+        sqlx::query_as::<_, BandwidthThrottleCandidate>(
+            r"SELECT hs.id AS subscription_id,
+                      hs.server_uuid AS deployment_uuid,
+                      hs.coolify_site_name,
+                      hs.server_ip,
+                      s.id AS server_id,
+                      s.port_speed_mbps,
+                      COALESCE(bs.net_input_mb, 0.0) AS net_input_mb,
+                      COALESCE(bs.net_output_mb, 0.0) AS net_output_mb
+               FROM hosting_subscriptions hs
+               JOIN infrastructure_servers s ON s.server_ip = hs.server_ip AND s.is_active = TRUE
+               LEFT JOIN bandwidth_snapshots bs
+                      ON bs.subscription_id = hs.id
+                     AND bs.deployment_uuid = hs.server_uuid
+               WHERE hs.status = 'active'
+                 AND hs.server_uuid IS NOT NULL
+                 AND hs.server_ip IS NOT NULL",
         )
         .fetch_all(pool)
         .await

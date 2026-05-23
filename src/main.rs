@@ -7,7 +7,7 @@ use argon2::password_hash::rand_core::OsRng;
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use glory_backend::config::AppConfig;
 use glory_backend::handlers;
-use glory_backend::services::bandwidth_enforcement::bandwidth_enforcement_loop;
+use glory_backend::services::bandwidth_enforcement::bandwidth_throttle_loop;
 use glory_backend::services::infrastructure_metrics::infrastructure_metrics_loop;
 use glory_backend::services::storage_enforcement::storage_enforcement_loop;
 use glory_backend::services::vps_monitor::vps_monitor_loop;
@@ -132,21 +132,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await;
         });
 
-        let bandwidth_pool = pool.clone();
-        let bandwidth_client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .expect("bandwidth HTTP client");
-        let bandwidth_vps1 = coolify_config_vps1.clone();
-        let bandwidth_default = coolify_config.clone();
+        let throttle_pool = pool.clone();
+        let throttle_vps1 = coolify_config_vps1.clone();
+        let throttle_default = coolify_config.clone();
         tokio::spawn(async move {
-            bandwidth_enforcement_loop(
-                bandwidth_pool,
-                bandwidth_client,
-                bandwidth_vps1,
-                bandwidth_default,
-            )
-            .await;
+            bandwidth_throttle_loop(throttle_pool, throttle_vps1, throttle_default).await;
         });
     } else {
         tracing::warn!("[infra-metrics] Coolify no configurado — sampler desactivado");

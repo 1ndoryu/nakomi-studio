@@ -28,6 +28,7 @@ mod payment;
 mod payment_method;
 mod seed;
 pub mod storage_enforcement;
+pub mod tc_throttle;
 mod test_checkout;
 pub mod vps_monitor;
 mod vps_stripe;

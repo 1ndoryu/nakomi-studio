@@ -36,9 +36,9 @@ pub use domain::{CreateDomainOrderParams, DomainOrderRepository};
 pub use fixture::{FixtureRepository, FixtureTableStat};
 pub use hosting::{CreateHostingParams, HostingRepository, ServerInfo, UpdateHostingParams};
 pub use infrastructure::{
-    BandwidthEnforcementCandidate, BandwidthSnapshotInput, ConfiguredServerInput,
-    HostingResourceAllocation, InfrastructureRepository, InfrastructureServerRecord,
-    ResourceSampleInput,
+    BandwidthEnforcementCandidate, BandwidthSnapshotInput, BandwidthThrottleCandidate,
+    ConfiguredServerInput, HostingResourceAllocation, InfrastructureRepository,
+    InfrastructureServerRecord, ResourceSampleInput,
 };
 pub use note::NoteRepository;
 pub use notification::NotificationRepository;
