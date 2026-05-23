@@ -109,6 +109,40 @@ impl InfrastructureRepository {
         pool: &PgPool,
         input: ConfiguredServerInput<'_>,
     ) -> Result<InfrastructureServerRecord, AppError> {
+        /* [225A-4] Dos-step: primero buscar por coolify_server_uuid (para cubrir cambios
+         * de server_ip/coolify_base_url), luego upsert por (server_ip, coolify_base_url).
+         * Sin esto, cambiar coolify_base_url (ej: 66.94.100.241:8000 → coolify:8080) causa
+         * que ON CONFLICT no detecte el match y se inserte un duplicado de coolify_server_uuid. */
+        if !input.config.server_uuid.is_empty() {
+            let existing = sqlx::query_as::<_, InfrastructureServerRecord>(
+                r"UPDATE infrastructure_servers
+                     SET label = $2,
+                         server_ip = $3,
+                         coolify_base_url = $4,
+                         coolify_project_uuid = $5,
+                         secret_ref = $6,
+                         ssh_secret_ref = $7,
+                         is_active = TRUE,
+                         updated_at = NOW()
+                   WHERE coolify_server_uuid = $1
+                  RETURNING id, label, server_ip, coolify_server_uuid",
+            )
+            .bind(&input.config.server_uuid)
+            .bind(input.label)
+            .bind(&input.config.server_ip)
+            .bind(&input.config.base_url)
+            .bind(&input.config.project_uuid)
+            .bind(input.secret_ref)
+            .bind(input.ssh_secret_ref)
+            .fetch_optional(pool)
+            .await
+            .map_err(AppError::from)?;
+
+            if let Some(record) = existing {
+                return Ok(record);
+            }
+        }
+
         sqlx::query_as::<_, InfrastructureServerRecord>(
             r"INSERT INTO infrastructure_servers
                     (label, provider, server_ip, coolify_base_url, coolify_server_uuid,
