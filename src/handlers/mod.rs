@@ -507,6 +507,11 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
                 ))
                 .service(ServeDir::new("uploads")),
         )
+        /* [235A-2][235A-3] Montar /api/img como ruta absoluta en el router raíz.
+         * Con dos `nest("/api", ...)` Axum seguía dejando el proxy bajo el árbol
+         * rate-limited en producción. La ruta debe vivir fuera de api_routes() de
+         * forma estructural, no solo en un router anidado paralelo. */
+        .merge(image_proxy::routes())
         .nest("/api", api_routes())
         .merge(spa_shell_routes())
         .layer(TraceLayer::new_for_http())
@@ -672,7 +677,6 @@ fn api_routes() -> Router<AppState> {
         .merge(cancellation::cancellation_routes())
         .merge(wallet::withdrawal_admin_routes())
         .merge(uploads::routes())
-        .merge(image_proxy::routes())
         .layer(GovernorLayer {
             config: std::sync::Arc::new(api_governor),
         })

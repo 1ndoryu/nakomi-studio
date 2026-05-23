@@ -237,7 +237,7 @@ fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
-fn storage_targets(
+pub(crate) fn storage_targets(
     site_name: &str,
     service_uuid: Option<&str>,
     plan: &str,

@@ -178,5 +178,5 @@ fn resolve_source_path(state: &AppState, path: &str) -> (PathBuf, PathBuf) {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/img/*path", get(image_proxy))
+    Router::new().route("/api/img/*path", get(image_proxy))
 }

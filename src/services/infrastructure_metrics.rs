@@ -4,6 +4,8 @@
  * dispare SSH en cada render. */
 
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::fmt::Write as _;
 use std::process::Stdio;
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -18,12 +20,15 @@ use crate::repositories::{
     InfrastructureServerRecord, ResourceSampleInput,
 };
 use crate::services::coolify::{CoolifyConfig, CoolifyServiceSummary};
+use crate::services::docker_stats::storage_targets;
 use crate::services::docker_stats::{parse_docker_stats_public, ContainerStats};
 use crate::services::infrastructure::coolify_server_targets;
 use crate::services::CoolifyService;
 
 const SAMPLER_INTERVAL: Duration = Duration::from_mins(10);
+const SAMPLER_STARTUP_RETRY_INTERVAL: Duration = Duration::from_secs(45);
 const SSH_TIMEOUT: Duration = Duration::from_secs(20);
+const STORAGE_PROBE_TIMEOUT: Duration = Duration::from_secs(45);
 
 #[derive(Debug, Clone, Copy)]
 struct CpuCounters {
@@ -43,7 +48,15 @@ struct ServerSshSnapshot {
     storage_by_uuid: HashMap<String, i64>,
 }
 
+#[derive(Debug, Clone)]
+struct ServiceStorageProbe {
+    deployment_uuid: String,
+    container_name: String,
+    path: &'static str,
+}
+
 static CPU_HISTORY: OnceLock<RwLock<HashMap<String, CpuCounters>>> = OnceLock::new();
+static STORAGE_HISTORY: OnceLock<RwLock<HashSet<String>>> = OnceLock::new();
 
 #[must_use]
 fn secret_ref_for(label: &str) -> &'static str {
@@ -68,6 +81,21 @@ fn ssh_secret_ref_for(label: &str, config: &CoolifyConfig) -> Option<&'static st
 fn current_hourly_storage_window() -> bool {
     let ten_minute_window = Utc::now().timestamp() / 600;
     ten_minute_window % 6 == 0
+}
+
+async fn should_collect_storage(server_ip: &str) -> bool {
+    if current_hourly_storage_window() {
+        return true;
+    }
+
+    let history = STORAGE_HISTORY.get_or_init(|| RwLock::new(HashSet::new()));
+    let guard = history.read().await;
+    !guard.contains(server_ip)
+}
+
+async fn mark_storage_collected(server_ip: &str) {
+    let history = STORAGE_HISTORY.get_or_init(|| RwLock::new(HashSet::new()));
+    history.write().await.insert(server_ip.to_string());
 }
 
 fn sampler_command(include_storage: bool) -> String {
@@ -197,6 +225,138 @@ fn parse_storage_line(line: &str, storage_by_uuid: &mut HashMap<String, i64>) {
     }
 }
 
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn storage_probe_targets_for_service(
+    service: &CoolifyServiceSummary,
+    subscription: Option<&HostingSubscription>,
+) -> Vec<ServiceStorageProbe> {
+    let site_name = subscription
+        .and_then(|sub| sub.coolify_site_name.as_deref())
+        .unwrap_or(service.name.as_str());
+
+    /* [235A-3] No confiar solo en `subscription.plan` para deducir contenedores de storage.
+     * Hay hostings legacy marcados como `normal-*` cuya topología real sigue siendo
+     * `wordpress-{uuid}` + `mariadb-{uuid}`. Si limitamos el probe al plan guardado,
+     * el sampler vuelve a escribir `disk_used_mb = NULL` aunque el sitio tenga datos. */
+    let mut seen = HashSet::new();
+    let mut probes = Vec::new();
+    let mut push_plan_targets = |plan: &str| {
+        for (container_name, path) in storage_targets(site_name, Some(service.uuid.as_str()), plan)
+        {
+            let dedupe_key = format!("{container_name}\n{path}");
+            if seen.insert(dedupe_key) {
+                probes.push(ServiceStorageProbe {
+                    deployment_uuid: service.uuid.clone(),
+                    container_name,
+                    path,
+                });
+            }
+        }
+    };
+
+    push_plan_targets("normal-unknown");
+    push_plan_targets("wp-unknown");
+
+    if let Some(subscription) = subscription {
+        push_plan_targets(subscription.plan.as_str());
+    }
+
+    probes
+}
+
+fn build_service_storage_command(probes: &[ServiceStorageProbe]) -> Option<String> {
+    if probes.is_empty() {
+        return None;
+    }
+
+    let mut command = String::from("set +e");
+    for probe in probes {
+        let _ = write!(
+            command,
+            "; if docker inspect {container} >/dev/null 2>&1; then value=$(docker exec {container} du -sm {path} 2>/dev/null | awk '{{print $1}}' || true); case \"$value\" in ''|*[!0-9]* ) ;; *) printf '%s\\t%s\\n' {deployment_uuid} \"$value\" ;; esac; fi",
+            container = shell_quote(&probe.container_name),
+            path = shell_quote(probe.path),
+            deployment_uuid = shell_quote(&probe.deployment_uuid),
+        );
+    }
+
+    Some(command)
+}
+
+fn parse_service_storage_output(output: &str) -> HashMap<String, i64> {
+    let mut storage_by_uuid = HashMap::new();
+
+    for raw_line in output.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let mut parts = line.split_whitespace();
+        let Some(deployment_uuid) = parts.next() else {
+            continue;
+        };
+        let Some(value) = parts.next() else {
+            continue;
+        };
+        let Ok(mb) = value.parse::<i64>() else {
+            continue;
+        };
+
+        *storage_by_uuid
+            .entry(deployment_uuid.to_string())
+            .or_insert(0) += mb;
+    }
+
+    storage_by_uuid
+}
+
+async fn fetch_service_storage_overrides(
+    server_ip: &str,
+    ssh_key_path: &str,
+    probes: &[ServiceStorageProbe],
+) -> Result<HashMap<String, i64>, String> {
+    let Some(command) = build_service_storage_command(probes) else {
+        return Ok(HashMap::new());
+    };
+
+    let mut ssh_command = tokio::process::Command::new("ssh");
+    ssh_command
+        .args([
+            "-i",
+            ssh_key_path,
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "BatchMode=yes",
+            &format!("root@{server_ip}"),
+            &command,
+        ])
+        .stdin(Stdio::null());
+
+    let output = tokio::time::timeout(STORAGE_PROBE_TIMEOUT, ssh_command.output())
+        .await
+        .map_err(|_| format!("Timeout SSH storage probe para {server_ip}"))?
+        .map_err(|error| format!("SSH storage probe fallo para {server_ip}: {error}"))?;
+
+    if !output.status.success() && output.stdout.is_empty() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "SSH storage probe exit {}: {stderr}",
+            output.status
+        ));
+    }
+
+    Ok(parse_service_storage_output(&String::from_utf8_lossy(
+        &output.stdout,
+    )))
+}
+
 fn f64_to_i64_rounded(value: f64) -> i64 {
     if !value.is_finite() {
         return 0;
@@ -322,17 +482,45 @@ async fn sample_target(
         );
         return Ok(());
     };
+    let include_storage = should_collect_storage(&config.server_ip).await;
     let sampled_at = Utc::now();
-    let snapshot = fetch_server_snapshot(
-        &config.server_ip,
-        ssh_key_path,
-        current_hourly_storage_window(),
-    )
-    .await
-    .map_err(|error| {
-        tracing::warn!("[infra-metrics] {error}");
-        crate::errors::AppError::ServiceUnavailable(error)
-    })?;
+    let mut snapshot = fetch_server_snapshot(&config.server_ip, ssh_key_path, include_storage)
+        .await
+        .map_err(|error| {
+            tracing::warn!("[infra-metrics] {error}");
+            crate::errors::AppError::ServiceUnavailable(error)
+        })?;
+
+    if include_storage {
+        let storage_probes: Vec<ServiceStorageProbe> = services
+            .iter()
+            .flat_map(|service| {
+                let subscription = subscriptions_by_uuid
+                    .get(&service.uuid)
+                    .or_else(|| subscriptions_by_name.get(&service.name));
+                storage_probe_targets_for_service(service, subscription)
+            })
+            .collect();
+
+        match fetch_service_storage_overrides(&config.server_ip, ssh_key_path, &storage_probes)
+            .await
+        {
+            Ok(storage_overrides) => {
+                for (deployment_uuid, used_mb) in storage_overrides {
+                    snapshot.storage_by_uuid.insert(deployment_uuid, used_mb);
+                }
+            }
+            Err(error) => tracing::warn!("[infra-metrics] {error}"),
+        }
+
+        if snapshot.storage_by_uuid.is_empty() {
+            tracing::warn!(
+                "[infra-metrics] {label} sin lecturas de storage; se reintentará en el próximo ciclo"
+            );
+        } else {
+            mark_storage_collected(&config.server_ip).await;
+        }
+    }
 
     let cpu_percent = compute_server_cpu_percent(&config.server_ip, snapshot.cpu_counters).await;
     InfrastructureRepository::insert_sample(
@@ -504,6 +692,7 @@ pub async fn infrastructure_metrics_loop(
     vps1_config: Option<CoolifyConfig>,
     default_config: Option<CoolifyConfig>,
 ) {
+    let mut startup_retry_pending = true;
     loop {
         if let Err(error) = sample_infrastructure_once(
             pool.clone(),
@@ -515,6 +704,13 @@ pub async fn infrastructure_metrics_loop(
         {
             tracing::warn!("[infra-metrics] ciclo incompleto: {error}");
         }
-        tokio::time::sleep(SAMPLER_INTERVAL).await;
+
+        let next_interval = if startup_retry_pending {
+            startup_retry_pending = false;
+            SAMPLER_STARTUP_RETRY_INTERVAL
+        } else {
+            SAMPLER_INTERVAL
+        };
+        tokio::time::sleep(next_interval).await;
     }
 }

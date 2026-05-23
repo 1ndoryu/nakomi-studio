@@ -8,6 +8,13 @@ use crate::repositories::InfrastructureRepository;
 use crate::services::infrastructure::{configured_server_summaries, InfrastructureServerSummary};
 use crate::AppState;
 
+fn f64_to_i32_rounded(value: f64) -> Option<i32> {
+    if !value.is_finite() {
+        return None;
+    }
+    format!("{value:.0}").parse::<i32>().ok()
+}
+
 pub(super) fn map_contabo_error(message: &str) -> AppError {
     let lower = message.to_ascii_lowercase();
     tracing::warn!("Contabo request failed: {message}");
@@ -100,6 +107,15 @@ async fn enrich_configured_metrics(
     let metrics = InfrastructureRepository::list_servers_with_metrics(&state.pool).await?;
     for server in servers.iter_mut() {
         if let Some(metric) = metrics.iter().find(|metric| metric.server_ip == server.ip) {
+            if server.cpu_cores.is_none() {
+                server.cpu_cores = metric.cpu_cores.and_then(f64_to_i32_rounded);
+            }
+            if server.ram_mb.is_none() {
+                server.ram_mb = metric.ram_mb.map(i64::from);
+            }
+            if server.disk_mb.is_none() {
+                server.disk_mb = metric.disk_mb.map(i64::from);
+            }
             server.cpu_avg_1h = metric.cpu_avg_1h;
             server.ram_used_mb = metric.ram_used_mb;
             server.ram_limit_mb = metric.ram_limit_mb;

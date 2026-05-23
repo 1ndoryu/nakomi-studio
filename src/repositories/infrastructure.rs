@@ -271,11 +271,28 @@ impl InfrastructureRepository {
         deployment_uuid: &str,
     ) -> Result<Option<ResourceMetricPoint>, AppError> {
         sqlx::query_as::<_, ResourceMetricPoint>(
-            r"SELECT sampled_at, cpu_percent, ram_used_mb, ram_limit_mb, disk_used_mb, disk_limit_mb
-               FROM infrastructure_resource_samples
-               WHERE entity_kind = 'deployment' AND deployment_uuid = $1
-               ORDER BY sampled_at DESC
-               LIMIT 1",
+            r"SELECT latest.sampled_at,
+                      latest.cpu_percent,
+                      latest.ram_used_mb,
+                      latest.ram_limit_mb,
+                      COALESCE(latest.disk_used_mb, latest_storage.disk_used_mb) AS disk_used_mb,
+                      COALESCE(latest.disk_limit_mb, latest_storage.disk_limit_mb) AS disk_limit_mb
+               FROM LATERAL (
+                   SELECT sampled_at, cpu_percent, ram_used_mb, ram_limit_mb, disk_used_mb, disk_limit_mb
+                   FROM infrastructure_resource_samples
+                   WHERE entity_kind = 'deployment' AND deployment_uuid = $1
+                   ORDER BY sampled_at DESC
+                   LIMIT 1
+               ) latest
+               LEFT JOIN LATERAL (
+                   SELECT disk_used_mb, disk_limit_mb
+                   FROM infrastructure_resource_samples
+                   WHERE entity_kind = 'deployment'
+                     AND deployment_uuid = $1
+                     AND (disk_used_mb IS NOT NULL OR disk_limit_mb IS NOT NULL)
+                   ORDER BY sampled_at DESC
+                   LIMIT 1
+               ) latest_storage ON TRUE",
         )
         .bind(deployment_uuid)
         .fetch_optional(pool)

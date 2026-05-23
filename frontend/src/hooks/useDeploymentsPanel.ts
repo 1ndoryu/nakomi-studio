@@ -8,12 +8,16 @@ import {useQuery} from '@tanstack/react-query';
 import {apiGetDeploymentMetrics, apiListDeployments, apiListVps, type CoolifyDeployment, type DeploymentMetricsResponse, type VpsSummary} from '../api/hosting';
 
 export const DEPLOYMENTS_QUERY_KEY = ['deployments'] as const;
+const INFRA_REFETCH_INTERVAL_MS = 30_000;
 
 export function useDeploymentsPanel() {
     const {data: deployments = [], isLoading: isLoadingDeployments, error: deploymentsError} = useQuery<CoolifyDeployment[]>({
         queryKey: DEPLOYMENTS_QUERY_KEY,
         queryFn: apiListDeployments,
         staleTime: 60_000,
+        refetchInterval: INFRA_REFETCH_INTERVAL_MS,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true,
         retry: 1,
     });
 
@@ -22,6 +26,9 @@ export function useDeploymentsPanel() {
         queryKey: ['vps-instances'],
         queryFn: apiListVps,
         staleTime: 60_000,
+        refetchInterval: INFRA_REFETCH_INTERVAL_MS,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true,
         retry: 1,
     });
 
@@ -36,6 +43,8 @@ export function useDeploymentMetrics(deploymentUuid: string, enabled: boolean) {
         queryFn: () => apiGetDeploymentMetrics(deploymentUuid, '24h'),
         enabled,
         staleTime: 120_000,
+        refetchInterval: INFRA_REFETCH_INTERVAL_MS,
+        refetchOnWindowFocus: true,
         retry: 1,
     });
 }
