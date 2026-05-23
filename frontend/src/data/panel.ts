@@ -168,11 +168,11 @@ const TABS_ADMIN: TabConfig[] = [
         label: 'Problemas',
         descripcion: 'Reportes de problemas en órdenes. Revisa, resuelve o descarta tickets de clientes y empleados.'
     },
-    /* [304A-1] Infraestructura: despliegues Coolify VPS2 y servidores Contabo — solo admin */
+    /* [304A-1] Infraestructura: despliegues Coolify y servidores VPS — solo admin */
     {
         id: 'infraestructura',
         label: 'Infraestructura',
-        descripcion: 'Despliegues activos en VPS2 (Coolify) y servidores Contabo. Monitoreo y auditoría de infraestructura real.'
+        descripcion: 'Despliegues activos en Coolify y servidores VPS configurados. Monitoreo y auditoría de infraestructura real.'
     },
     /* [304A-3] Dominios Contabo: gestión de dominios registrados */
     {

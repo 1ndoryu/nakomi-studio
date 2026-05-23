@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {Globe, MoreVertical, PlusCircle, Server, Trash2} from 'lucide-react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import type {CoolifyDeployment} from '../../api/hosting';
-import {HOSTING_PLAN_LABELS, apiCreateHostingSubscription, apiDeleteVps2Deployment} from '../../api/hosting';
+import {HOSTING_PLAN_LABELS, apiCreateHostingSubscription, apiDeleteDeployment} from '../../api/hosting';
+import {DEPLOYMENTS_QUERY_KEY} from '../../hooks/useDeploymentsPanel';
 import {toast} from '../../stores/toastStore';
 import {Button} from '../ui/Button';
 import {MenuContextual, type MenuContextualItem} from '../ui/ContextMenu';
@@ -98,17 +99,17 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
         onSuccess: () => {
             toast.success('Suscripción creada y vinculada al despliegue');
             void queryClient.invalidateQueries({queryKey: ['hosting-subscriptions']});
-            void queryClient.invalidateQueries({queryKey: ['vps2-deployments']});
+            void queryClient.invalidateQueries({queryKey: DEPLOYMENTS_QUERY_KEY});
             setShowCreateForm(false);
         },
         onError: error => toast.error(getDeploymentPanelErrorMessage(error)),
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (uuid: string) => apiDeleteVps2Deployment(uuid),
+        mutationFn: (uuid: string) => apiDeleteDeployment(uuid),
         onSuccess: () => {
             toast.success('Despliegue eliminado de Coolify');
-            void queryClient.invalidateQueries({queryKey: ['vps2-deployments']});
+            void queryClient.invalidateQueries({queryKey: DEPLOYMENTS_QUERY_KEY});
             setShowDeleteConfirm(false);
         },
         onError: error => toast.error(getDeploymentPanelErrorMessage(error)),

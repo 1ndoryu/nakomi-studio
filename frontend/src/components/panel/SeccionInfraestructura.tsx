@@ -1,12 +1,12 @@
 /* [304A-1] Sección Infraestructura del panel admin.
  * Agrupa los paneles de infraestructura real que antes vivían como tabs dentro
- * de SeccionHosting: despliegues Coolify (VPS2) y servidores Contabo.
+ * de SeccionHosting: despliegues Coolify y servidores VPS.
  * Separado en su propia entrada del sidebar porque no es "hosting de clientes". */
 
 import React, {useState} from 'react';
 import {Button} from '../ui/Button';
 import {VpsPanel} from './VpsPanel';
-import {Vps2DeploymentsPanel} from './Vps2DeploymentsPanel';
+import {DeploymentsPanel} from './DeploymentsPanel';
 import './SeccionInfraestructura.css';
 
 type TabInfra = 'despliegues' | 'vps';
@@ -36,7 +36,7 @@ export const SeccionInfraestructura: React.FC = () => {
             </div>
 
             {tab === 'despliegues' ? (
-                <Vps2DeploymentsPanel />
+                <DeploymentsPanel />
             ) : (
                 <VpsPanel />
             )}

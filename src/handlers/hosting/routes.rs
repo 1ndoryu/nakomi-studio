@@ -5,7 +5,7 @@ use tower_governor::GovernorLayer;
 
 use super::checkout::{admin_test_subscribe, create_checkout, subscribe_self};
 use super::control::{restart_hosting, start_hosting, stop_hosting};
-use super::deployments::{delete_deployment, list_vps2_deployments};
+use super::deployments::{delete_deployment, list_deployments};
 use super::domain::{dns_check, verify_domain};
 use super::plans::{list_plan_configs, list_public_plans, update_plan_config};
 use super::provisioning::{provision_subscription, refresh_hosting, rotate_credentials};
@@ -73,8 +73,8 @@ pub fn hosting_routes() -> Router<AppState> {
                 config: std::sync::Arc::new(subscribe_gov),
             }),
         )
-        /* [164A-19] Despliegues reales de Coolify en VPS2 */
-        .route("/hosting/deployments", get(list_vps2_deployments))
+        /* [164A-19] Despliegues reales de Coolify en servidores configurados */
+        .route("/hosting/deployments", get(list_deployments))
         .route(
             "/hosting/deployments/:deployment_uuid",
             axum::routing::delete(delete_deployment),
@@ -82,7 +82,7 @@ pub fn hosting_routes() -> Router<AppState> {
         /* [084A-24] VPS stats: proxy a Contabo API */
         .route("/hosting/vps", get(list_vps))
         .route("/hosting/vps/:instance_id", get(get_vps))
-        /* [154A-11] Provisioning real: crea servicio Nginx en Coolify VPS2 */
+        /* [154A-11] Provisioning real: crea servicio Nginx en Coolify */
         .route(
             "/hosting/subscriptions/:id/provision",
             axum::routing::post(provision_subscription),

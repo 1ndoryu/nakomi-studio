@@ -1,6 +1,6 @@
 /* [084A-24] Estilos del panel VPS admin.
- * Cards con stats de instancias Contabo.
- * [164A-19] Reutilizados tambien por el panel de despliegues reales de Coolify/VPS2. */
+ * Cards con stats de servidores VPS.
+ * [164A-19] Reutilizados tambien por el panel de despliegues reales de Coolify. */
 
 .vpsContenedor {
     display: flex;
@@ -74,7 +74,7 @@
     flex: 1;
 }
 
-/* Etiqueta discreta que indica de qué VPS proviene el despliegue (VPS Principal / VPS2) */
+/* Etiqueta discreta que indica de qué VPS proviene el despliegue */
 .vpsServerLabel {
     font-size: var(--text-xs);
     color: var(--text-tertiary);

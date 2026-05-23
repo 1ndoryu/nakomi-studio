@@ -278,7 +278,7 @@ static DEPLOYMENTS_CACHE: std::sync::OnceLock<tokio::sync::RwLock<DeploymentsCac
     tag = "hosting"
 )]
 #[allow(clippy::too_many_lines)]
-pub(super) async fn list_vps2_deployments(
+pub(super) async fn list_deployments(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<Vec<CoolifyDeploymentResponse>>, AppError> {

@@ -3,12 +3,12 @@
 
 import React from 'react';
 import {Server} from 'lucide-react';
-import {useVps2DeploymentsPanel} from '../../hooks/useVps2DeploymentsPanel';
+import {useDeploymentsPanel} from '../../hooks/useDeploymentsPanel';
 import {DeploymentRow, getDeploymentPanelErrorMessage} from './DeploymentRow';
 import './VpsPanel.css';
 
-export const Vps2DeploymentsPanel: React.FC = () => {
-    const {deployments, isLoading, error} = useVps2DeploymentsPanel();
+export const DeploymentsPanel: React.FC = () => {
+    const {deployments, isLoading, error} = useDeploymentsPanel();
 
     if (isLoading) {
         return (

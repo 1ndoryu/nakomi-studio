@@ -5,7 +5,7 @@
  * [074A-63] Tabs Activos/Inactivos como en SeccionProyectos. Titulo de card = dominio o nombre del hosting.
  *           Logica de estado extraida a useSeccionHosting. Sub-componentes en HostingSubComponents.
  * [084A-24] Tab "Servidores" para admin: muestra VPS reales de Contabo.
- * [304A-1] Tabs 'Despliegues VPS2' y 'Contabo VPS' movidos a SeccionInfraestructura (sidebar separado). */
+ * [304A-1] Tabs de infraestructura movidos a SeccionInfraestructura (sidebar separado). */
 
 import React from 'react';
 import {Server, Plus} from 'lucide-react';

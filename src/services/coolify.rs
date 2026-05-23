@@ -170,7 +170,7 @@ pub struct HostingComposeUpdate<'a> {
 }
 
 /* [164A-19] Resumen de servicios reales devueltos por Coolify.
- * Se usa para poblar el panel admin con despliegues de la VPS2, no con la lista
+ * Se usa para poblar el panel admin con despliegues reales, no con la lista
  * de instancias del proveedor. Los campos opcionales vienen de la API y no siempre
  * están presentes según la versión de Coolify o el tipo de servicio. */
 #[derive(Debug, Clone)]
@@ -1096,7 +1096,7 @@ fn build_compose_static_backup(cadence: HostingBackupCadence) -> String {
 }
 
 impl CoolifyService {
-    /* [164A-19] Lista despliegues reales visibles en Coolify para la VPS2 configurada.
+    /* [164A-19] Lista despliegues reales visibles en Coolify para un target configurado.
      * La tarea original confundía "instancia VPS" con "servicio desplegado"; este método
      * corrige esa frontera leyendo directamente `/api/v1/services` y filtrando por target. */
     pub async fn list_services(

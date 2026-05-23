@@ -438,14 +438,14 @@ export interface CoolifyDeployment {
     storage_limit_mb: number | null;
 }
 
-/* [164A-19] Despliegues reales de Coolify filtrados para la VPS2 configurada. */
-export async function apiListVps2Deployments(): Promise<CoolifyDeployment[]> {
+/* [164A-19] Despliegues reales de Coolify en todos los servidores configurados. */
+export async function apiListDeployments(): Promise<CoolifyDeployment[]> {
     const {data} = await axiosInstance.get<CoolifyDeployment[]>('/api/hosting/deployments');
     return data;
 }
 
 /* [165A-4] Elimina un despliegue huérfano real desde Coolify para limpiar el panel. */
-export async function apiDeleteVps2Deployment(uuid: string): Promise<void> {
+export async function apiDeleteDeployment(uuid: string): Promise<void> {
     await axiosInstance.delete(`/api/hosting/deployments/${encodeURIComponent(uuid)}`);
 }
 

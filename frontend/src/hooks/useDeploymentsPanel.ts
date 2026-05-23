@@ -1,21 +1,23 @@
-/* [164A-19] Hook del panel admin para despliegues reales de la VPS2.
+/* [164A-19] Hook del panel admin para despliegues reales de infraestructura.
  * Se separa de useVpsPanel porque Contabo y Coolify responden preguntas distintas:
- * proveedor de VPS vs servicios realmente desplegados dentro de la VPS2.
- * [215A-14] Combina despliegues Coolify con datos de Contabo para mostrar
- * resumen del VPS (CPU, RAM, disco) junto con los despliegues. */
+ * proveedor de VPS vs servicios realmente desplegados en servidores configurados.
+ * [215A-14] Combina despliegues Coolify con datos de VPS para mostrar
+ * resumen de infraestructura junto con los despliegues. */
 
 import {useQuery} from '@tanstack/react-query';
-import {apiListVps2Deployments, apiListVps, type CoolifyDeployment, type VpsSummary} from '../api/hosting';
+import {apiListDeployments, apiListVps, type CoolifyDeployment, type VpsSummary} from '../api/hosting';
 
-export function useVps2DeploymentsPanel() {
+export const DEPLOYMENTS_QUERY_KEY = ['deployments'] as const;
+
+export function useDeploymentsPanel() {
     const {data: deployments = [], isLoading: isLoadingDeployments, error: deploymentsError} = useQuery<CoolifyDeployment[]>({
-        queryKey: ['vps2-deployments'],
-        queryFn: apiListVps2Deployments,
+        queryKey: DEPLOYMENTS_QUERY_KEY,
+        queryFn: apiListDeployments,
         staleTime: 60_000,
         retry: 1,
     });
 
-    /* [215A-14] Datos de VPS Contabo para resumen de infraestructura */
+    /* [215A-14] Datos de VPS para resumen de infraestructura */
     const {data: vpsInstances = [], isLoading: isLoadingVps} = useQuery<VpsSummary[]>({
         queryKey: ['vps-instances'],
         queryFn: apiListVps,

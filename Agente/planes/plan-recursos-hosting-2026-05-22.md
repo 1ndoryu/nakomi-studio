@@ -33,7 +33,7 @@ Correcciones obligatorias antes de implementar:
 - Backend: creado helper `infrastructure` para generar targets Coolify deduplicados y fusionar inventario de VPS desde Coolify config + Contabo por IP.
 - Backend: `/api/hosting/vps` ya no depende exclusivamente de Contabo; si Contabo solo devuelve VPS1, VPS2 sale desde la config Coolify.
 - Backend: `/api/hosting/deployments` itera targets Coolify configurados en vez de ramas fijas VPS1/VPS2.
-- Frontend: tabs renombradas a **Despliegues** y **VPS**; eliminado `infraResumen`; fila de despliegue separada en `DeploymentRow` y menú contextual migrado a `MenuContextual`.
+- Frontend: tabs renombradas a **Despliegues** y **VPS**; eliminado `infraResumen`; fila de despliegue separada en `DeploymentRow`, menú contextual migrado a `MenuContextual` y deuda semantica `Vps2DeploymentsPanel`/`useVps2DeploymentsPanel`/`apiListVps2Deployments` renombrada a `DeploymentsPanel`/`useDeploymentsPanel`/`apiListDeployments`.
 - Tooling: `coolify-manager-rs` no inyectaba `COOLIFY_*` al compose runtime por seguridad; se corrigió para permitir solo claves `COOLIFY_VPSn_*` y mantener bloqueadas las `COOLIFY_*` planas de plataforma.
 - Pendiente del plan: sampler de promedios, graficos `uplot`, bandwidth enforcement, capacidad pre-provisioning, alertas y limites de suscripciones.
 

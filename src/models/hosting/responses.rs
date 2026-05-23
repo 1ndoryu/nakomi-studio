@@ -93,7 +93,7 @@ pub struct HostingStatsResponse {
     pub containers: Option<Vec<crate::services::docker_stats::ContainerStats>>,
 }
 
-/* [164A-19] Despliegues reales de VPS2 en el panel admin.
+/* [164A-19] Despliegues reales de infraestructura en el panel admin.
  * Expone el estado de Coolify enriquecido con el vínculo opcional a suscripciones
  * de hosting guardadas en la BD para detectar drift entre panel e infraestructura. */
 /* [215A-14] Enriquecido con recursos reales por despliegue (CPU, RAM, disco)
@@ -112,7 +112,7 @@ pub struct CoolifyDeploymentResponse {
     pub linked_subscription_domain: Option<String>,
     pub linked_subscription_status: Option<String>,
     pub linked_subscription_plan: Option<String>,
-    /// Etiqueta del servidor Coolify de origen, ej: "VPS Principal" o "VPS2".
+    /// Etiqueta del servidor Coolify de origen.
     pub server_label: String,
     /// [215A-14] Nombre del cliente dueño de la suscripción vinculada
     pub linked_subscription_client: Option<String>,
