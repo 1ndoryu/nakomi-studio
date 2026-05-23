@@ -27,7 +27,10 @@ use crate::services::CoolifyService;
 
 const SAMPLER_INTERVAL: Duration = Duration::from_mins(10);
 const SAMPLER_STARTUP_RETRY_INTERVAL: Duration = Duration::from_secs(45);
-const SSH_TIMEOUT: Duration = Duration::from_secs(20);
+/* [235A-4] En VPS1 el snapshot base (docker stats + du de volúmenes) roza los 20s
+ * cuando el host está cargado. Con 20s exactos el sampler cae en timeout y deja
+ * `disk_used_mb = NULL` aunque la lógica de storage sea correcta. */
+const SSH_TIMEOUT: Duration = Duration::from_secs(40);
 const STORAGE_PROBE_TIMEOUT: Duration = Duration::from_secs(45);
 
 #[derive(Debug, Clone, Copy)]
