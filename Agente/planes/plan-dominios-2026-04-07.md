@@ -1,7 +1,7 @@
 # Plan: Compra y Gestión de Dominios
 
 > Creado: 2026-04-07
-> Estado: Pendiente — requiere decisión de proveedor DNS y modelo de pricing
+> Estado: **Implementado parcialmente (~80%)** — Contabo integrado con endpoints `/hosting/domains/*`, `domain_orders` table, frontend SeccionDominios, DNS TXT verification. Gaps: auto-renew Stripe subscriptions, 30-day expiry reminders, visual DNS config UI. [Verificado 2026-05-23]
 
 ## Objetivo
 
@@ -86,13 +86,21 @@ CREATE TABLE domain_events (
 - Indicadores de estado (activo, expirando, expirado)
 - Configuración DNS visual (records A, CNAME, MX)
 
-## Decisiones pendientes
+## Decisiones adoptadas (2026-05-23)
 
-1. **Proveedor**: ¿Cloudflare Registrar (at-cost pricing) vs Contabo DNS vs Namecheap?
-2. **Pricing**: ¿Markup fijo ($5-10/año) o porcentaje sobre coste del proveedor?
-3. **Scope MVP**: ¿Solo .com/.dev para empezar o todos los TLDs disponibles?
-4. **Auto-config DNS**: ¿Forzar nameservers propios o permitir nameservers externos?
-5. **Bundling**: ¿Descuento si se compra dominio + hosting juntos?
+1. **Proveedor**: Contabo (integrado vía `contabo_domains.rs`)
+2. **Pricing**: Markup fijo por TLD en `base_domain_cost_cents()` para .com/.net/.org/.studio/.io
+3. **Scope MVP**: .com/.net/.org/.studio/.io — precios hardcodeados
+4. **Auto-config DNS**: TXT verification + Traefik routing automático
+5. **Bundling**: No implementado todavía
+6. **Pago**: One-time Stripe `mode=payment` (no subscriptions)
+
+## Decisiones pendientes (todavía sin resolver)
+
+1. **Auto-renew**: No hay Stripe subscriptions anuales para renovación automática
+2. **Expiry reminders**: No hay sistema de notificaciones 30 días antes del vencimiento
+3. **Visual DNS config UI**: No hay interfaz visual para records A/CNAME/MX
+4. **VPS2 custom nameservers**: ns1/ns2.nakomi.dev no implementado
 
 ## Dependencias
 

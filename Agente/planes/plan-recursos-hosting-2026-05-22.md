@@ -2,7 +2,7 @@
 
 > **Fecha:** 2026-05-22
 > **Origen:** Auditoria de gaps en `src/services/storage_enforcement.rs`, `coolify.rs`, `docker_stats.rs`, panel `/panel/?seccion=infraestructura`
-> **Estado:** Implementado en 225A-4 — queda solo observacion post-deploy y ajustes finos segun datos reales
+> **Estado:** **Implementado parcialmente (~85%)** — F0,0.5,1,2,5,6,7 completos. Pendientes reales: F3.2 (corte automático VPS por impago), F4.1 (columna `usage_alert_threshold_pct` existe pero nunca se lee en Rust — 0 referencias). [Verificado 2026-05-23]
 
 ---
 

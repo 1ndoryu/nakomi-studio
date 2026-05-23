@@ -1,7 +1,7 @@
 # Plan: Seguridad Integral del Servicio de Hosting
 
-> **Fecha:** 2026-05-16 (actualizado)
-> **Estado:** Operativo con backlog residual — 11/11 áreas originales resueltas. Pendiente: Monitoreo (5.x), endurecimiento operativo SSH/SFTP y revisión periódica (165A-18)
+> **Fecha:** 2026-05-23 (verificado)
+> **Estado:** Operativo con backlog residual — 11/11 áreas originales resueltas ✅. Pendientes confirmados [verificado 2026-05-23]: 5.1 (SSH access logging), 5.2 (per-hosting health monitoring), MaxAuthTries, fail2ban dentro del container SSH, SSH key auth. Ninguno implementado desde creación del plan.
 > **Prioridad:** Crítica — varias vulnerabilidades de nivel alto detectadas
 > **Contexto:** Auditoría de seguridad del servicio de hosting WordPress administrado (Coolify + Docker Compose)
 

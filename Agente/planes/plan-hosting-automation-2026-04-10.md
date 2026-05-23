@@ -2,7 +2,7 @@
 
 > Creado: 2026-04-10
 > Base: auditoría `Agente/documentacion/hosting/auditoria-flujo-hosting-2026-04-10.md`
-> Estado: Activo
+> Estado: **Activo (~92% implementado)** — F1 (100%), F3 (100%), F4 (100%). F2 al 66%: falta política de escalada por impago prolongado (dunning, grace period automático, cancelación tras N días). [Verificado 2026-05-23]
 
 ## Objetivo
 

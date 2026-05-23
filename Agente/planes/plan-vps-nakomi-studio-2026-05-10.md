@@ -241,6 +241,8 @@ La GUI de `coolify-manager-rs` deja de ser solo herramienta local: debe poder pu
 - No permitir deploy/restart desde navegador público sin auditoría y confirmaciones.
 - No implementar compra directa de VPS hasta confirmar proveedor, costos, cuotas y flujo antifraude.
 
-## Estado
+## Estado [verificado 2026-05-23]
 
-- Plan terminado y primer corte online implementado. Completados: 105A-28 optimización/caché, 105A-40 arquitectura técnica, 105A-43 landing/routing inicial de `vps.nakomi.studio`.
+- **~60% implementado.** Funcionalidad VPS integrada en Nakomi Studio (landing `/soluciones/vps`, auth JWT, API Contabo, configurador, checkout Stripe, panel admin).
+- **NO implementado:** deploy separado `vps.nakomi.studio` (105A-34 nunca ejecutado), granular RBAC viewer/operator/customer, auditoría VPS específica con actor/target/sitio.
+- Completados: 105A-28 optimización/caché, 105A-40 arquitectura técnica, 105A-43 landing/routing inicial.

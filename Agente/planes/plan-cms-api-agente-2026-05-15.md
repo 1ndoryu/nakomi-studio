@@ -1,7 +1,7 @@
 # Plan: API CMS privada para el agente en producción
 **Tarea:** 035A-34  
 **Fecha:** 2026-05-15  
-**Estado:** planificado
+**Estado:** Parcialmente implementado — blog CRUD existe bajo `/api/admin/blog/` (no bajo `/api/admin/cms/posts/`). Solo gap real: tabla `site_config` + endpoints. [Verificado 2026-05-23]
 
 ## Contexto
 
@@ -49,7 +49,7 @@ Endpoints ya disponibles:
 Contenido que NO tiene CRUD hoy (solo fixtures TOML):
 - Textos de landing/home (hero, about, etc.)
 - Configuración del sitio (nombre, redes sociales, etc.)
-- Blog posts (`blog.rs` tiene lectura pero no escritura)
+- Blog posts — CRUD completo bajo `/api/admin/blog/` (el plan asumía solo lectura, pero hay GET/POST/PUT/DELETE con admin JWT)
 
 Para este contenido se necesitan nuevos endpoints.
 
@@ -71,11 +71,13 @@ Endpoints nuevos:
 - `GET /api/admin/cms/config` — leer config actual
 - `PUT /api/admin/cms/config` — actualizar config
 
-#### Fase 3 — Blog posts
-- `GET /api/admin/cms/posts` — lista todos (incluyendo drafts)
-- `POST /api/admin/cms/posts` — crear post
-- `PUT /api/admin/cms/posts/:slug` — editar post
-- `DELETE /api/admin/cms/posts/:slug` — archivar
+#### Fase 3 — Blog posts (YA IMPLEMENTADO bajo `/api/admin/blog/`)
+- `GET /api/admin/blog` — lista todos (incluyendo drafts)
+- `POST /api/admin/blog` — crear post
+- `PUT /api/admin/blog/{id}` — editar post (por ID, no por slug como asumía el plan)
+- `DELETE /api/admin/blog/{id}` — archivar (soft delete)
+- `POST /api/admin/blog/{id}/destroy` — eliminación permanente
+- `PUT /api/admin/blog/reorder` — reordenar en batch
 
 #### Fase 4 — Uploads de imágenes via API
 El sistema ya tiene `POST /api/uploads` con soporte multipart. El agente puede:
@@ -101,9 +103,8 @@ Alternativamente: usar solo BD sin TOMLs para estas entidades nuevas, y no añad
 
 **Pregunta al usuario antes de implementar Fase 2+:** ¿Qué contenido específico necesitas modificar remotamente? ¿Solo servicios/planes, o también textos del landing, blog, configuración del sitio?
 
-## Próximos pasos
+## Próximos pasos (actualizado 2026-05-23)
 
-1. [ ] Confirmar con el usuario qué contenido específico necesita modificar via API
-2. [ ] Verificar que el agente puede autenticarse con credenciales admin vía JWT
-3. [ ] Si se confirma gap en config/blog: implementar Fase 2 (tabla + endpoints)
-4. [ ] Documentar el endpoint base URL y cómo autenticarse para el agente en producción
+1. [x] Blog CRUD ya existe bajo `/api/admin/blog/` — el agente ya puede gestionar posts via API
+2. [ ] El gap real es solo Fase 2: crear tabla `site_config` con endpoints `GET/PUT /api/admin/cms/config`
+3. [ ] Documentar el endpoint base URL y cómo autenticarse para el agente en producción

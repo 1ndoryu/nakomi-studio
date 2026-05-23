@@ -1,6 +1,6 @@
 # Plan Sentinel + VarSense editor-agnostico - 2026-05-04
 
-## Objetivo
+> **Estado [verificado 2026-05-23]: ~85%.** Fases 0-6 completadas con tests en ambos repos. Pendiente: Sentinel LSP (o combinado), CI formal remoto, extraer `FileWatcherProvider` en VarSense. El detalle por fase abajo es correcto y refleja el progreso real.
 
 Convertir Glory Sentinel y VarSense en herramientas con un motor real independiente del editor, manteniendo la extension de VS Code como adaptador y habilitando primero reportes por CLI y despues diagnosticos nativos en Zed mediante LSP.
 

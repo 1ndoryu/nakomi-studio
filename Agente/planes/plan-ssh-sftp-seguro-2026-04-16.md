@@ -1,7 +1,7 @@
 # Plan: SSH/SFTP Seguro por Despliegue de Hosting
 
 > Creado: 2026-04-16
-> Estado: **Casi completo** — Fases 2, 3 y 4 completadas. Pendiente: Fase 1 (verificación VFS disco — ops en VPS2) y hardening operativo 165A-18.
+> Estado: **Parcial (~70%)** — Fase 2 (compose template) y Fase 4 (migración) completadas. Fase 3 parcial: existe `/stats` con CPU/RAM/disk pero NO el endpoint `/resources` dedicado ni frontend Tab Recursos. **Fase 1 (VFS/pquota) NUNCA ejecutada.** ChrootDirectory NO implementado. Disk quota reemplazada por enforcement vía monitoreo (`storage_enforcement.rs`). [Verificado 2026-05-23]
 > Contexto: Cada hosting usa `linuxserver/openssh-server` con SSH+SFTP. Recursos configurables por plan desde BD. Refresh endpoint disponible para migrar existentes.
 
 ---

@@ -131,5 +131,5 @@ El diseño actual de la GUI no alcanza el nivel esperado: se ve como panel técn
 - Fase 2: completada. `npm run dev` abre Tauri real, la navegación quedó en Panel/Sitios/Copias/Ajustes, hay métricas por despliegue y las acciones contextuales usan comandos reales con confirmaciones.
 - Corrección 105A-23..27: completada. El navegador pasa por `gui-api`, Copias es tabla global y los menús salen del contenedor de tabla.
 - 105A-28: completada. Sitios renderiza antes de los health-checks, backups globales reutilizan cliente remoto y GUI/API cachean lecturas caras con refresco forzado.
-- Siguiente bloque 105A-29..33: selector VPS global, regla Sentinel para select nativo, modal de sitio, limpieza visual y favicons.
-- Fase 3: pendiente por alcance multi-repo. La GUI ya usa `Button/IconButton` local como puente hacia componentes compartidos en `glory-rs`.
+- 105A-29..33: **COMPLETADAS** [verificado 2026-05-23]. Selector VPS global con `SelectorPersonalizado`, modal de sitio funcional, `rutaPagina` eliminada, favicons inline con fallback, regla Sentinel para select nativo creada.
+- Fase 3: pendiente por alcance multi-repo (extraer Button/Badge/Input/Table/Shell/Icon a glory-rs). La GUI ya usa `Button/IconButton` local como puente hacia componentes compartidos en `glory-rs`.

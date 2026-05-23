@@ -1,7 +1,7 @@
-# Plan: Problemas Reales del Sentinel Report (sin ejecutar)
+# Plan: Problemas Reales del Sentinel Report
 
 > Generado: 2026-04-12. Estos son los problemas REALES (no falsos positivos) del sentinel-report.
-> Organizados por prioridad de impacto. El plan NO se ejecuta aún — queda como referencia para futuras tareas.
+> **Estado actual [verificado 2026-05-23]: ~40-50% ejecutado.** R1 (handler SQL directa) + R7 (componentes artesanales) FIXED. R3: 5 archivos reducidos pero 5 empeoraron (ai_tools 569→2504, coolify 508→2235, chat_timing 781→1129). R8/R9/R10 UI no fixed. Pendiente actualizar con métricas frescas.
 
 ## Resumen: ~126 violaciones reales de las 531 originales (tras eliminar ~405 falsos positivos)
 
