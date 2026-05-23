@@ -29,11 +29,12 @@ Correcciones obligatorias antes de implementar:
 
 ### Aplicado 2026-05-22 — bloque infraestructura produccion
 
-- Produccion: sincronizadas `COOLIFY_VPS1_BASE_URL`, `COOLIFY_VPS1_API_TOKEN`, `COOLIFY_VPS1_SERVER_UUID`, `COOLIFY_VPS1_PROJECT_UUID`, `COOLIFY_VPS1_SERVER_IP` via `coolify-manager-rs sync-env --name studio`; queda pendiente redeploy para que el contenedor las cargue.
+- Produccion: sincronizadas `COOLIFY_VPS1_BASE_URL`, `COOLIFY_VPS1_API_TOKEN`, `COOLIFY_VPS1_SERVER_UUID`, `COOLIFY_VPS1_PROJECT_UUID`, `COOLIFY_VPS1_SERVER_IP` via `coolify-manager-rs sync-env --name studio` y redeploy aplicado. Verificado en runtime: las cinco claves aparecen como `present`, health `http_ok=true app_ok=true fatal_logs=false`, logs muestran `Coolify VPS1 configurado`.
 - Backend: creado helper `infrastructure` para generar targets Coolify deduplicados y fusionar inventario de VPS desde Coolify config + Contabo por IP.
 - Backend: `/api/hosting/vps` ya no depende exclusivamente de Contabo; si Contabo solo devuelve VPS1, VPS2 sale desde la config Coolify.
 - Backend: `/api/hosting/deployments` itera targets Coolify configurados en vez de ramas fijas VPS1/VPS2.
 - Frontend: tabs renombradas a **Despliegues** y **VPS**; eliminado `infraResumen`; fila de despliegue separada en `DeploymentRow` y menú contextual migrado a `MenuContextual`.
+- Tooling: `coolify-manager-rs` no inyectaba `COOLIFY_*` al compose runtime por seguridad; se corrigió para permitir solo claves `COOLIFY_VPSn_*` y mantener bloqueadas las `COOLIFY_*` planas de plataforma.
 - Pendiente del plan: sampler de promedios, graficos `uplot`, bandwidth enforcement, capacidad pre-provisioning, alertas y limites de suscripciones.
 
 ---
