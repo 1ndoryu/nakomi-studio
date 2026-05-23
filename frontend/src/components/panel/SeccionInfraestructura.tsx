@@ -9,7 +9,7 @@ import {VpsPanel} from './VpsPanel';
 import {Vps2DeploymentsPanel} from './Vps2DeploymentsPanel';
 import './SeccionInfraestructura.css';
 
-type TabInfra = 'despliegues' | 'servidores';
+type TabInfra = 'despliegues' | 'vps';
 
 export const SeccionInfraestructura: React.FC = () => {
     const [tab, setTab] = useState<TabInfra>('despliegues');
@@ -23,15 +23,15 @@ export const SeccionInfraestructura: React.FC = () => {
                     className={`infraTab ${tab === 'despliegues' ? 'infraTab--activa' : ''}`}
                     onClick={() => setTab('despliegues')}
                 >
-                    Despliegues VPS2
+                    Despliegues
                 </Button>
                 <Button
                     type="button"
                     variante="texto"
-                    className={`infraTab ${tab === 'servidores' ? 'infraTab--activa' : ''}`}
-                    onClick={() => setTab('servidores')}
+                    className={`infraTab ${tab === 'vps' ? 'infraTab--activa' : ''}`}
+                    onClick={() => setTab('vps')}
                 >
-                    Contabo VPS
+                    VPS
                 </Button>
             </div>
 

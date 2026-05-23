@@ -1,14 +1,149 @@
 # Plan: Enforcement de recursos en hostings (ancho de banda, disco, capacidad)
 
 > **Fecha:** 2026-05-22
-> **Origen:** Auditoria de gaps en `src/services/storage_enforcement.rs`, `coolify.rs`, `docker_stats.rs`
-> **Estado:** Validado contra codigo real — listo para implementar
+> **Origen:** Auditoria de gaps en `src/services/storage_enforcement.rs`, `coolify.rs`, `docker_stats.rs`, panel `/panel/?seccion=infraestructura`
+> **Estado:** Revisado contra codigo real — corregido y complementado para multi-VPS, observabilidad y baja carga operativa
 
 ---
 
 ## Resumen del problema
 
-El sistema tiene enforcement solido para **disco en hosting administrado** (loop 6h, bloqueo SFTP, notificacion), pero **ancho de banda no se mide ni enforcea**, **VPS no tiene supervision**, y **no hay control de capacidad total del servidor** antes de provisionar.
+El sistema tiene enforcement solido para **disco en hosting administrado** (loop 6h, bloqueo SFTP, notificacion), pero **ancho de banda no se mide ni enforcea**, **VPS no tiene supervision promediada**, **la vista de infraestructura mezcla resumenes poco utiles**, y **no hay control de capacidad total del servidor** antes de provisionar.
+
+---
+
+## Revision del plan y correcciones de alcance
+
+El plan base tiene sentido para enforcement: ancho de banda, capacidad y limites por usuario son los frentes correctos. La correccion principal es separar **enforcement** de **observabilidad operativa**. El panel no necesita datos exactos en tiempo real; necesita promedios confiables para detectar anomalias sin meter carga al servidor.
+
+Correcciones obligatorias antes de implementar:
+
+- Incidente produccion 2026-05-22: en `/panel/?seccion=infraestructura`, produccion muestra despliegues de VPS2 pero no los de VPS1; local si muestra ambos porque local tiene `COOLIFY_VPS1_*` completo. La correccion no puede depender de Contabo: la tab **VPS** solo muestra `vmi3001645` (`66.94.100.241`) porque Contabo responde una instancia de esa cuenta, mientras VPS2 (`173.249.50.44`) existe como servidor Coolify configurado. El inventario debe unir Coolify configs + Contabo por IP, y los despliegues deben consultar todos los servidores configurados.
+- `infraResumen` no aporta valor y debe eliminarse del panel. Mezcla una VPS elegida de forma arbitraria con conteos globales y puede ocultar que hay dos o mas VPS configuradas.
+- Las tabs del panel `/panel/?seccion=infraestructura` deben llamarse simplemente **Despliegues** y **VPS**. Nada de `Despliegues VPS2`, `Contabo VPS` o nombres que aten la UI a una infraestructura temporal.
+- Los nombres internos `Vps2DeploymentsPanel`, `useVps2DeploymentsPanel`, `apiListVps2Deployments` y comentarios equivalentes son deuda semantica. El endpoint ya intenta listar todas las VPS, asi que la implementacion debe renombrarse a `DeploymentsPanel`, `useDeploymentsPanel`, `apiListDeployments` o equivalente.
+- El backend actual soporta como maximo dos Coolify configs (`coolify_config_vps1` y `coolify_config`). Eso no escala a futuras VPS. Hay que introducir un inventario iterable de servidores antes de seguir sumando excepciones.
+- La pestaña **VPS** debe mostrar la union de VPS del proveedor (Contabo) y servidores Coolify configurados localmente. Si Contabo no devuelve una instancia por credenciales/cuenta, una VPS configurada para despliegues no debe desaparecer del panel.
+- Las metricas de uso (CPU promedio, RAM usada, almacenamiento usado) no deben consultarse por SSH en cada render del dashboard. Deben salir de snapshots/rollups guardados por un sampler en background.
+- La biblioteca recomendada para graficos es `uplot`: minimalista, rapida, sin dependencia React pesada y suficiente para series temporales simples. `recharts` seria mas comoda, pero demasiado grande para este caso.
+
+### Aplicado 2026-05-22 — bloque infraestructura produccion
+
+- Produccion: sincronizadas `COOLIFY_VPS1_BASE_URL`, `COOLIFY_VPS1_API_TOKEN`, `COOLIFY_VPS1_SERVER_UUID`, `COOLIFY_VPS1_PROJECT_UUID`, `COOLIFY_VPS1_SERVER_IP` via `coolify-manager-rs sync-env --name studio`; queda pendiente redeploy para que el contenedor las cargue.
+- Backend: creado helper `infrastructure` para generar targets Coolify deduplicados y fusionar inventario de VPS desde Coolify config + Contabo por IP.
+- Backend: `/api/hosting/vps` ya no depende exclusivamente de Contabo; si Contabo solo devuelve VPS1, VPS2 sale desde la config Coolify.
+- Backend: `/api/hosting/deployments` itera targets Coolify configurados en vez de ramas fijas VPS1/VPS2.
+- Frontend: tabs renombradas a **Despliegues** y **VPS**; eliminado `infraResumen`; fila de despliegue separada en `DeploymentRow` y menú contextual migrado a `MenuContextual`.
+- Pendiente del plan: sampler de promedios, graficos `uplot`, bandwidth enforcement, capacidad pre-provisioning, alertas y limites de suscripciones.
+
+---
+
+## Fase 0: Inventario multi-VPS y contratos del panel
+
+### 0.1 Registro iterable de servidores
+
+- Crear un modelo `infrastructure_servers` o equivalente con datos no sensibles:
+  - `id UUID`, `label`, `provider`, `provider_instance_id`, `server_ip`, `coolify_base_url`, `coolify_server_uuid`, `is_active`, `created_at`, `updated_at`
+  - Secrets fuera de DB: guardar solo `secret_ref`/nombre de variable de entorno para token Coolify o SSH key.
+- Sembrar los dos servidores actuales:
+  - VPS Principal (`coolify_config_vps1`)
+  - VPS2 (`coolify_config`)
+- Exponer helper backend `list_infrastructure_servers()` que devuelva un `Vec<InfrastructureServerConfig>` y haga fallback temporal a las env vars actuales mientras se migra.
+- Reemplazar loops hardcodeados VPS1/VPS2 por iteracion sobre servidores activos.
+
+### 0.2 API de infraestructura
+
+- Mantener compatibilidad con `/api/hosting/deployments` y `/api/hosting/vps` si conviene, pero internamente nombrar el dominio como infraestructura.
+- Agregar o adaptar endpoints admin:
+  - `GET /api/infrastructure/servers`: lista todas las VPS conocidas con specs + ultimo promedio disponible.
+  - `GET /api/infrastructure/deployments`: lista despliegues de todas las VPS configuradas.
+  - `GET /api/infrastructure/deployments/:uuid/metrics?range=24h`: serie temporal agregada para el grafico al expandir/clickear un despliegue.
+- Cada despliegue debe incluir `server_id`, `server_label`, `server_ip` o clave estable para agrupar por VPS.
+
+### 0.3 Panel `/panel/?seccion=infraestructura`
+
+- Renombrar tabs:
+  - `Despliegues`
+  - `VPS`
+- Eliminar `infraResumen` y su CSS.
+- En **Despliegues**: tabla compacta con todos los despliegues de todas las VPS actuales y futuras, badge de VPS origen, CPU/RAM/disco actuales o ultimo promedio.
+- En **VPS**: deben salir las 2 VPS actuales y cualquier futura VPS integrada, con CPU promedio, RAM usada/total y almacenamiento usado/total.
+- Al clickear un despliegue: expandir detalle y cargar grafico de uso promedio de recursos (CPU, RAM, disco) del despliegue.
+
+### 0.R Riesgos y mitigaciones (Fase 0)
+
+| Riesgo | Prob. | Impacto | Mitigacion |
+|--------|-------|---------|------------|
+| **Duplicar VPS entre Contabo y Coolify config** — una misma VPS aparece dos veces si se cruza por IP e instance_id parcial. | Media | Medio | Deduplicar por `provider_instance_id` cuando exista; fallback por `server_ip`; si ambos faltan, mostrar como servidor configurado sin proveedor vinculado. |
+| **Guardar secretos en DB** | Baja | Alto | DB solo guarda `secret_ref`; tokens/SSH keys siguen en env o secret manager. |
+| **Romper URLs actuales del frontend** | Media | Medio | Mantener endpoints legacy como alias durante la migracion y renombrar primero internamente. |
+| **Futuras VPS requieren deploy de codigo** | Alta si no se corrige | Medio | Registro iterable + seed/admin config. Integrar nueva VPS debe ser dato/config, no nueva rama `if VPS3`. |
+
+---
+
+## Fase 0.5: Sampler de recursos y promedios de baja carga
+
+### 0.5.1 Captura por servidor, no por render
+
+- Crear `src/services/infrastructure_metrics.rs` con loop cada **10 minutos**.
+- Ejecutar **una sola SSH call por servidor activo** para recoger:
+  - CPU VPS desde `/proc/stat` por delta entre muestras.
+  - RAM VPS desde `free -m`.
+  - disco VPS desde `df -Pm /` o mount principal configurado.
+  - CPU/RAM por despliegue desde `docker stats --no-stream --format`.
+  - disco por despliegue con `du -sm` solo cada **1 hora** o reutilizando el dato de storage enforcement; no correr `du` pesado cada 10 minutos.
+- Si una muestra falla, conservar el ultimo snapshot y registrar evento; no bloquear el panel.
+
+### 0.5.2 Persistencia y rollups
+
+- Tabla `infrastructure_resource_samples`:
+  - `id UUID PK`
+  - `entity_kind TEXT CHECK IN ('server', 'deployment')`
+  - `server_id UUID NOT NULL`
+  - `deployment_uuid TEXT NULL`
+  - `sampled_at TIMESTAMPTZ NOT NULL`
+  - `cpu_percent DOUBLE PRECISION NULL`
+  - `ram_used_mb DOUBLE PRECISION NULL`
+  - `ram_limit_mb DOUBLE PRECISION NULL`
+  - `disk_used_mb DOUBLE PRECISION NULL`
+  - `disk_limit_mb DOUBLE PRECISION NULL`
+  - `source TEXT NOT NULL DEFAULT 'ssh_sampler'`
+- Indices:
+  - `(entity_kind, server_id, sampled_at DESC)`
+  - `(deployment_uuid, sampled_at DESC) WHERE deployment_uuid IS NOT NULL`
+- Retencion:
+  - muestras de 10 min por 7 dias.
+  - rollups horarios por 90 dias si se necesita historico.
+- El dashboard lee promedios con ventanas simples (`last_1h`, `last_24h`) desde DB, nunca dispara SSH directo.
+
+### 0.5.3 Semantica de promedios
+
+- CPU promedio VPS: promedio de deltas `/proc/stat` validos en la ventana.
+- CPU promedio despliegue: promedio de `docker stats` de los contenedores cuyo nombre contiene uuid/nombre del despliegue.
+- RAM: ultimo valor y promedio de ventana; para alerta visual usar ultimo valor, para grafico usar promedio por bucket.
+- Disco: valor lento; basta con ultima muestra horaria porque no cambia segundo a segundo.
+- Si no hay suficientes muestras, mostrar `Sin datos todavia` y no inventar porcentajes.
+
+### 0.5.4 Graficos frontend
+
+- Instalar `uplot` en `frontend/`.
+- Crear componente atomico `ResourceUsageChart` con CSS separado.
+- Renderizar solo cuando el despliegue este expandido/clickeado para evitar multiples charts invisibles.
+- Series minimas:
+  - CPU promedio `%`
+  - RAM usada `%` o MB
+  - Disco usado `%` o MB
+- El endpoint debe devolver buckets ya agregados para que el frontend no procese muestras crudas grandes.
+
+### 0.5.R Riesgos y mitigaciones (Fase 0.5)
+
+| Riesgo | Prob. | Impacto | Mitigacion |
+|--------|-------|---------|------------|
+| **Carga por SSH** — muchas VPS futuras pueden multiplicar conexiones. | Media | Medio | Intervalo 10 min, una SSH por servidor, jitter de 0-60s, timeout 10-15s y cache de ultimo snapshot. |
+| **`du` caro en volumenes grandes** | Alta | Medio | Ejecutar disco por despliegue cada 1h, no cada 10 min; usar `df` para disco VPS general. |
+| **Datos no exactos** | Alta | Bajo | Aceptado: el objetivo es detectar tendencias/anomalias, no facturacion exacta. Mostrar copy interno como promedio/estimado. |
+| **Primer CPU sample sin delta** | Alta | Bajo | Guardar referencia y mostrar CPU como `null` hasta la segunda muestra. |
+| **Charts pesados en tabla** | Media | Bajo | Cargar serie solo al expandir despliegue y limitar rango por defecto a 24h. |
 
 ---
 
@@ -63,13 +198,13 @@ El sistema tiene enforcement solido para **disco en hosting administrado** (loop
 - VPS usa Contabo API, no Docker stats
 - Opcion A: confiar en Contabo API si expone trafico (no documentado)
 - Opcion B: no medir, solo registrar el plan contratado y notificar si Contabo reporta uso
-- Por ahora: el label "Tráfico ilimitado" se mantiene, sin enforcement hasta que Contablo lo requiera
+- Por ahora: el label "Tráfico ilimitado" se mantiene, sin enforcement hasta que Contabo lo requiera
 
 ### 1.R Riesgos y mitigaciones (Fase 1)
 
 | Riesgo | Prob. | Impacto | Mitigacion |
 |--------|-------|---------|------------|
-| **SSH overhead 24x** — 15min vs 6h actual de storage = paso de ~4 SSH calls/hora a ~96/hora. Cada una: TCP + key auth + exec. | Alta | Medio | (a) **Batch por server**: un solo SSH por server ejecuta `docker stats` filtrado por todas las subs de ese server, en vez de uno por sub. (b) **Considerar 1h** en vez de 15min — para limites de 50-500GB/mes, un abuse tarda horas en exceder; 1h de retraso es aceptable. (c) **Stagger start**: no arrancar todas las conexiones al mismo tick, distribuir en ventana de 60s. |
+| **SSH overhead 24x** — 15min vs 6h actual de storage = paso de ~4 SSH calls/hora a ~96/hora. Cada una: TCP + key auth + exec. | Alta | Medio | (a) **Batch por server**: un solo SSH por server ejecuta `docker stats` filtrado por todas las subs de ese server, en vez de uno por sub. (b) **Considerar 1h** en vez de 15min — para limites de 50-500GB/mes, un abuse tarda horas en exceder; 1h de retraso es aceptable. (c) **Stagger start**: no arrancar todas las conexiones al mismo tick, distribuir en ventana de 60s. (d) Reutilizar el sampler de Fase 0.5 para no duplicar SSH. |
 | **Thundering herd SSH** — 50+ conexiones simultaneas al mismo server podrian saturar `max_startups` o `MaxSessions` del SSHD | Media | Alto | Stagger + `ControlMaster auto` en SSH config para reutilizar conexion existente al mismo server. Header `-o ControlMaster=auto -o ControlPath=...` |
 | **Datos incorrectos al reiniciar contenedor** — delta negativo por reinicio | Media | Bajo | Descartar muestras con delta negativo. Perder 15min de datos post-reboot es aceptable. |
 | **Contador en memoria volatil** — perdida de snapshot al reiniciar el servicio | Baja | Bajo | Peor caso: perder hasta 15min de delta. La ventana es pequena. Opcional: persistir snapshot en `bandwidth_snapshots` DB (1 write/sub cada 15 min). |
@@ -115,7 +250,7 @@ El sistema tiene enforcement solido para **disco en hosting administrado** (loop
 ### 3.1 Loop de health para VPS
 
 - **Archivo nuevo:** `src/services/vps_monitor.rs`
-- Cada 30 min: consultar Contabo API (`GET /vps/instances/{instance_id}`)
+- Cada 30-60 min: consultar Contabo API (`GET /compute/instances/{instance_id}`) solo para estado/proveedor, no para CPU/RAM/disco usados
 - Comparar estado reportado vs. DB
 - Si Contabo reporta `status != 'running'`: crear evento y notificar
 
@@ -134,6 +269,8 @@ El sistema tiene enforcement solido para **disco en hosting administrado** (loop
 | **Falsos positivos por timeout de red** — Contabo API temporalmente caida, marcar instancias como "no running" incorrectamente | Media | Medio | No cambiar estado con una sola falla. Requerir 3 fallas consecutivas (45 min ventana) antes de marcar como inactiva y notificar. |
 | **Carrera entre monitor y webhook Stripe** — webhook de pago fallido corre al mismo tiempo que el monitor, ambos cambian status | Baja | Bajo | Operaciones atomicas: `UPDATE vps_subscriptions SET status = $1 WHERE id = $2 AND status IN ('active', 'payment_overdue')`. Si la segunda UPDATE rows_affected == 0, ignorar. |
 | **Contabo API costos** — si Contabo cobra por llamada API (no documentado) | Baja | Medio | Reducir intervalo a 1h tras periodo de observacion. Monitorear costo. Si es gratis, mantener 30min. |
+
+**Nota:** el uso real de recursos VPS no debe depender de Contabo API porque la respuesta actual expone specs/estado, no promedios de CPU/RAM/disco usados. Para eso se usa el sampler SSH de Fase 0.5.
 
 ---
 
@@ -208,6 +345,11 @@ El sistema tiene enforcement solido para **disco en hosting administrado** (loop
 
 | Tarea                                   | Archivos                                     | Esfuerzo | Depende de   |
 | --------------------------------------- | -------------------------------------------- | -------- | ------------ |
+| 0.1 Inventario multi-VPS                | migracion SQL, config/app state, repos       | 2-3h     | —            |
+| 0.2 API infraestructura generica        | handlers/routes/modelos                      | 1-2h     | 0.1          |
+| 0.3 Panel tabs + quitar infraResumen    | componentes/hooks/CSS panel                  | 1-2h     | 0.2          |
+| 0.5 Sampler + snapshots + rollups       | `infrastructure_metrics.rs`, migracion SQL   | 3-5h     | 0.1          |
+| 0.5 Charts de recursos con `uplot`      | frontend dep + componente chart              | 1-2h     | 0.5          |
 | 1.1 Bandwidth tracker + delta + tabla   | `docker_stats.rs`, `bandwidth_snapshots`     | 2-3h     | —            |
 | 1.2 Copiar bandwidth_limit_gb a sub     | migracion SQL, `stripe.rs` checkout          | 0.5h     | —            |
 | 1.3 Background loop enforcement         | `bandwidth_enforcement.rs` (nuevo)           | 2-3h     | 1.1, 1.2     |
@@ -220,17 +362,18 @@ El sistema tiene enforcement solido para **disco en hosting administrado** (loop
 | 5.1 Ajustar rate limit global existente | `src/handlers/mod.rs`                        | 0.5h     | —            |
 | 6.1-2 Limite por usuario                | migracion SQL (columna), provisioning check  | 0.5h     | —            |
 
-**Total estimado:** 14-20h
+**Total estimado:** 22-34h
 
 ---
 
 ## Orden sugerido de implementacion
 
-1. **Fase 5** (rate limit global) — 0.5h, impacto inmediato, sin dependencias — solo reemplazar valores existentes
-2. **Fase 6** (limite por usuario) — 0.5h, bajo esfuerzo, sin dependencias
-3. **Fase 1** (bandwidth) — 6-7h, gap critico con `bandwidth_limit_gb` ya modelado en DB
-   - 1.2 (copiar a subscription) y 1.1 (tracker + delta) pueden ir juntos
-   - 1.3 (enforcement loop) y 1.4 (API) pueden ir juntos
-4. **Fase 2** (capacidad servidor) — 3-4h, evita oversubscription
-5. **Fase 3** (VPS monitor) — 3-4h, gap de visibilidad — simplificado (sin nuevo campo)
-6. **Fase 4** (alertas proactivas) — 1h, polishing
+1. **Fase 0** (inventario multi-VPS + contratos genericos) — desbloquea que salgan las 2 VPS actuales y futuras sin hardcodear VPS3/VPS4.
+2. **Fase 0.5** (sampler + snapshots + UI de promedios) — resuelve la necesidad operativa inmediata: CPU promedio, RAM usada, almacenamiento y graficos por despliegue con baja carga.
+3. **Fase 1** (bandwidth) — reutiliza el sampler/batch por servidor para no duplicar SSH.
+   - 1.2 (copiar a subscription) y 1.1 (tracker + delta) pueden ir juntos.
+   - 1.3 (enforcement loop) y 1.4 (API) pueden ir juntos.
+4. **Fase 2** (capacidad servidor) — evita oversubscription antes de provisionar nuevos hostings.
+5. **Fase 3** (VPS monitor proveedor) — estado Contabo y corte por impago, separado de metricas de uso.
+6. **Fase 4** (alertas proactivas) — usar promedios/snapshots existentes.
+7. **Fase 5** (rate limit global) y **Fase 6** (limite por usuario) — tareas pequeñas, aplicar cuando no interfieran con la base multi-VPS.

@@ -154,6 +154,7 @@ pub async fn fetch_docker_stats(
 
 /// Wrapper público del parser de docker stats para uso desde handlers.
 /// Parsea la salida completa de `docker stats --no-stream` en formato tab-separated.
+#[must_use]
 pub fn parse_docker_stats_public(output: &str) -> Vec<ContainerStats> {
     parse_docker_stats(output)
 }

@@ -291,42 +291,6 @@
     color: var(--color-error);
 }
 
-/* ── [215A-14] Resumen VPS ── */
-
-.infraResumen {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-sm);
-}
-
-.infraResumenItem {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--brand-white);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    min-width: 100px;
-}
-
-.infraResumenItem--warning {
-    border-color: var(--color-warning);
-}
-
-.infraResumenLabel {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.infraResumenValor {
-    font-size: var(--text-sm);
-    color: var(--brand-black);
-    font-weight: 500;
-}
-
 /* ── [215A-14] Tabla minimalista ── */
 
 .infraTablaWrapper {

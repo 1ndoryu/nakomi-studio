@@ -7,9 +7,14 @@ import {useVpsPanel} from '../../hooks/useVpsPanel';
 import type {VpsSummary} from '../../api/hosting';
 import './VpsPanel.css';
 
-function formatMb(mb: number): string {
+function formatMb(mb: number | null | undefined): string {
+    if (mb == null) return '—';
     if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
     return `${mb} MB`;
+}
+
+function formatCpu(cpu: number | null | undefined): string {
+    return cpu == null ? '—' : `${cpu} vCPU`;
 }
 
 function getVpsErrorMessage(error: unknown): string {
@@ -29,7 +34,7 @@ function getVpsErrorMessage(error: unknown): string {
 }
 
 function VpsCard({instance}: {instance: VpsSummary}) {
-    const statusClass = instance.status === 'running'
+    const statusClass = instance.status === 'running' || instance.status === 'configured'
         ? 'vpsStatus--running'
         : instance.status === 'stopped'
             ? 'vpsStatus--stopped'
@@ -39,7 +44,7 @@ function VpsCard({instance}: {instance: VpsSummary}) {
         <div className="vpsCard">
             <div className="vpsCardHeader">
                 <Server size={20} strokeWidth={1.4} />
-                <h4 className="vpsCardNombre">{instance.name || `VPS #${instance.instance_id}`}</h4>
+                <h4 className="vpsCardNombre">{instance.label || instance.name || `VPS #${instance.instance_id ?? 'configurada'}`}</h4>
                 <span className={`vpsStatus ${statusClass}`}>
                     {instance.status}
                 </span>
@@ -53,13 +58,13 @@ function VpsCard({instance}: {instance: VpsSummary}) {
                 </div>
                 <div className="vpsStat">
                     <Activity size={14} />
-                    <span className="vpsStatLabel">Región</span>
+                    <span className="vpsStatLabel">Origen</span>
                     <span className="vpsStatValor">{instance.region}</span>
                 </div>
                 <div className="vpsStat">
                     <Cpu size={14} />
                     <span className="vpsStatLabel">CPU</span>
-                    <span className="vpsStatValor">{instance.cpu_cores} vCPU</span>
+                    <span className="vpsStatValor">{formatCpu(instance.cpu_cores)}</span>
                 </div>
                 <div className="vpsStat">
                     <MemoryStick size={14} />
@@ -109,7 +114,7 @@ export const VpsPanel: React.FC = () => {
         <div className="vpsContenedor">
             <div className="vpsLista">
                 {instances.map(inst => (
-                    <VpsCard key={inst.instance_id} instance={inst} />
+                    <VpsCard key={inst.inventory_id} instance={inst} />
                 ))}
             </div>
         </div>

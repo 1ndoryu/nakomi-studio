@@ -17,6 +17,7 @@ pub mod email;
 mod google_auth;
 mod hosting_stripe;
 pub mod image_processing;
+pub mod infrastructure;
 mod note;
 mod notification;
 mod order;

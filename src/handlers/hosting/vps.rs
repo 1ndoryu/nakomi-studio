@@ -4,6 +4,7 @@ use axum::Json;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::UserRole;
+use crate::services::infrastructure::{configured_server_summaries, InfrastructureServerSummary};
 use crate::AppState;
 
 pub(super) fn map_contabo_error(message: &str) -> AppError {
@@ -59,17 +60,55 @@ pub(super) async fn list_vps(
 ) -> Result<Json<serde_json::Value>, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    let service = state
-        .contabo_service
-        .as_ref()
-        .ok_or_else(|| AppError::ServiceUnavailable("Contabo API no configurada".into()))?;
+    let mut instances = configured_server_summaries(
+        state.coolify_config_vps1.as_ref(),
+        state.coolify_config.as_ref(),
+    );
 
-    let instances = service
-        .list_instances()
-        .await
-        .map_err(|error| map_contabo_error(&error))?;
+    if let Some(service) = state.contabo_service.as_ref() {
+        match service.list_instances().await {
+            Ok(contabo_instances) => merge_contabo_instances(&mut instances, contabo_instances),
+            Err(error) if instances.is_empty() => return Err(map_contabo_error(&error)),
+            Err(error) => tracing::warn!(
+                "Contabo no disponible para enriquecer VPS; se devuelve inventario Coolify: {error}"
+            ),
+        }
+    } else if instances.is_empty() {
+        return Err(AppError::ServiceUnavailable(
+            "No hay VPS configuradas: faltan Contabo y Coolify".into(),
+        ));
+    }
+
+    instances.sort_by(|left, right| {
+        right
+            .is_configured
+            .cmp(&left.is_configured)
+            .then(left.label.cmp(&right.label))
+            .then(left.ip.cmp(&right.ip))
+    });
 
     Ok(Json(serde_json::json!({ "data": instances })))
+}
+
+fn merge_contabo_instances(
+    servers: &mut Vec<InfrastructureServerSummary>,
+    contabo_instances: Vec<crate::services::contabo::VpsSummary>,
+) {
+    for instance in contabo_instances {
+        if let Some(server) = servers.iter_mut().find(|server| server.ip == instance.ip) {
+            server.instance_id = Some(instance.instance_id);
+            server.status = instance.status;
+            server.region = instance.region;
+            server.cpu_cores = Some(instance.cpu_cores);
+            server.ram_mb = Some(instance.ram_mb);
+            server.disk_mb = Some(instance.disk_mb);
+            server.provider = "coolify+contabo".to_string();
+            server.source = "coolify_config+contabo".to_string();
+            continue;
+        }
+
+        servers.push(InfrastructureServerSummary::from_contabo(instance));
+    }
 }
 
 /// Obtener instancia VPS por ID (admin only)

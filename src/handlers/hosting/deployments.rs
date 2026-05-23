@@ -10,6 +10,7 @@ use crate::models::{CoolifyDeploymentResponse, UserRole};
 use crate::repositories::HostingRepository;
 use crate::services::coolify::CoolifyServiceSummary;
 use crate::services::docker_stats::ContainerStats;
+use crate::services::infrastructure::coolify_server_targets;
 use crate::services::{CoolifyConfig, CoolifyService};
 use crate::AppState;
 
@@ -58,19 +59,24 @@ fn map_coolify_services(
 }
 
 /* [225A-1] Obtiene stats de TODOS los contenedores y el uso de disco de TODAS las apps/servicios
- * en una sola SSH call. Retorna (Vec<ContainerStats>, HashMap<String, i64>) con {uuid: mb}. 
+ * en una sola SSH call. Retorna (Vec<ContainerStats>, HashMap<String, i64>) con {uuid: mb}.
  * Utiliza un caché local de 30 segundos para evitar llamadas SSH excesivas. */
-async fn fetch_all_container_stats(server_ip: &str, ssh_key: &str) -> (Vec<ContainerStats>, HashMap<String, i64>) {
+async fn fetch_all_container_stats(
+    server_ip: &str,
+    ssh_key: &str,
+) -> (Vec<ContainerStats>, HashMap<String, i64>) {
     struct CacheEntry {
         fetched_at: std::time::Instant,
         containers: Vec<ContainerStats>,
         storage: HashMap<String, i64>,
     }
 
-    static SERVER_STATS_CACHE: std::sync::OnceLock<tokio::sync::RwLock<HashMap<String, CacheEntry>>> = std::sync::OnceLock::new();
+    static SERVER_STATS_CACHE: std::sync::OnceLock<
+        tokio::sync::RwLock<HashMap<String, CacheEntry>>,
+    > = std::sync::OnceLock::new();
 
     let cache = SERVER_STATS_CACHE.get_or_init(|| tokio::sync::RwLock::new(HashMap::new()));
-    
+
     // 1. Intentar leer del caché
     {
         let cache_guard = cache.read().await;
@@ -99,7 +105,8 @@ async fn fetch_all_container_stats(server_ip: &str, ssh_key: &str) -> (Vec<Conta
         ])
         .stdin(std::process::Stdio::null());
 
-    let output_result = tokio::time::timeout(std::time::Duration::from_secs(15), command.output()).await;
+    let output_result =
+        tokio::time::timeout(std::time::Duration::from_secs(15), command.output()).await;
 
     let output = match output_result {
         Ok(Ok(output)) => output,
@@ -108,30 +115,34 @@ async fn fetch_all_container_stats(server_ip: &str, ssh_key: &str) -> (Vec<Conta
             return (vec![], HashMap::new());
         }
         Err(_) => {
-            tracing::warn!("[deployments] Timeout: SSH a {server_ip} tomó más de 15 segundos y fue cancelado");
+            tracing::warn!(
+                "[deployments] Timeout: SSH a {server_ip} tomó más de 15 segundos y fue cancelado"
+            );
             return (vec![], HashMap::new());
         }
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut parts = stdout.split("===STORAGE===");
-    
+
     let stats_part = parts.next().unwrap_or("").trim();
     let storage_part = parts.next().unwrap_or("").trim();
 
     let containers = crate::services::docker_stats::parse_docker_stats_public(stats_part);
-    
+
     let mut storage_map = HashMap::new();
     for line in storage_part.lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
-        
+        if line.is_empty() {
+            continue;
+        }
+
         let cols: Vec<&str> = line.split_whitespace().collect();
         if cols.len() >= 2 {
             if let Ok(mb) = cols[0].parse::<i64>() {
                 // cols[1] es como "/var/lib/docker/volumes/uuid_data/_data"
                 if let Some(folder_path) = cols[1].strip_suffix("/_data") {
-                    if let Some(volume_name) = folder_path.split('/').last() {
+                    if let Some(volume_name) = folder_path.split('/').next_back() {
                         let uuid = volume_name.split('_').next().unwrap_or(volume_name);
                         *storage_map.entry(uuid.to_string()).or_insert(0) += mb;
                     }
@@ -143,11 +154,14 @@ async fn fetch_all_container_stats(server_ip: &str, ssh_key: &str) -> (Vec<Conta
     // 2. Guardar en el caché
     {
         let mut cache_guard = cache.write().await;
-        cache_guard.insert(server_ip.to_string(), CacheEntry {
-            fetched_at: std::time::Instant::now(),
-            containers: containers.clone(),
-            storage: storage_map.clone(),
-        });
+        cache_guard.insert(
+            server_ip.to_string(),
+            CacheEntry {
+                fetched_at: std::time::Instant::now(),
+                containers: containers.clone(),
+                storage: storage_map.clone(),
+            },
+        );
     }
 
     (containers, storage_map)
@@ -159,50 +173,57 @@ async fn enrich_deployment_resources(
     state: &AppState,
     deployments: &mut [CoolifyDeploymentResponse],
 ) {
-    /* Fase 1: obtener docker stats de cada VPS en paralelo */
-    let vps1_fut = async {
-        if let Some(cfg) = state.coolify_config_vps1.as_ref() {
-            if let Some(ssh_key) = resolve_ssh_key(state, &cfg.server_ip) {
-                let (stats, storage) = fetch_all_container_stats(&cfg.server_ip, ssh_key).await;
-                return Some((cfg.server_ip.clone(), stats, storage));
-            }
-        }
-        None
-    };
-    let vps2_fut = async {
-        if let Some(cfg) = state.coolify_config.as_ref() {
-            if let Some(ssh_key) = resolve_ssh_key(state, &cfg.server_ip) {
-                let (stats, storage) = fetch_all_container_stats(&cfg.server_ip, ssh_key).await;
-                return Some((cfg.server_ip.clone(), stats, storage));
-            }
-        }
-        None
-    };
+    let targets = coolify_server_targets(
+        state.coolify_config_vps1.as_ref(),
+        state.coolify_config.as_ref(),
+    );
+    let mut fetches = Vec::new();
+    let server_ip_by_uuid: HashMap<String, String> = targets
+        .iter()
+        .map(|target| {
+            (
+                target.config.server_uuid.clone(),
+                target.config.server_ip.clone(),
+            )
+        })
+        .collect();
 
-    let (res1, res2) = tokio::join!(vps1_fut, vps2_fut);
-    let mut stats_by_server: HashMap<String, (Vec<ContainerStats>, HashMap<String, i64>)> = HashMap::new();
-    if let Some((ip, s, disk)) = res1 {
-        tracing::info!("[deployments] VPS1 ({ip}): {} contenedores, {} carpetas disco", s.len(), disk.len());
-        stats_by_server.insert(ip, (s, disk));
+    for target in &targets {
+        if let Some(ssh_key) = resolve_ssh_key(state, &target.config.server_ip) {
+            let server_ip = target.config.server_ip.clone();
+            let label = target.label.clone();
+            fetches.push(async move {
+                let (container_stats, storage) =
+                    fetch_all_container_stats(&server_ip, ssh_key).await;
+                (label, server_ip, container_stats, storage)
+            });
+        }
     }
-    if let Some((ip, s, disk)) = res2 {
-        tracing::info!("[deployments] VPS2 ({ip}): {} contenedores, {} carpetas disco", s.len(), disk.len());
-        stats_by_server.insert(ip, (s, disk));
+
+    let results = futures::future::join_all(fetches).await;
+    let mut stats_by_server: HashMap<String, (Vec<ContainerStats>, HashMap<String, i64>)> =
+        HashMap::new();
+    for (label, ip, stats, disk) in results {
+        tracing::info!(
+            "[deployments] {label} ({ip}): {} contenedores, {} carpetas disco",
+            stats.len(),
+            disk.len()
+        );
+        stats_by_server.insert(ip, (stats, disk));
     }
 
     /* Fase 2: cruzar CPU/RAM y Disco en memoria */
     for deployment in deployments {
-        let server_ip = if deployment.server_label == "VPS Principal" {
-            state
-                .coolify_config_vps1
-                .as_ref()
-                .map(|c| c.server_ip.as_str())
-        } else {
-            state
-                .coolify_config
-                .as_ref()
-                .map(|c| c.server_ip.as_str())
-        };
+        let server_ip = deployment
+            .server_uuid
+            .as_deref()
+            .and_then(|server_uuid| server_ip_by_uuid.get(server_uuid).map(String::as_str))
+            .or_else(|| {
+                targets
+                    .iter()
+                    .find(|target| target.label == deployment.server_label)
+                    .map(|target| target.config.server_ip.as_str())
+            });
 
         if let Some(server_ip) = server_ip {
             if let Some((containers, storage_map)) = stats_by_server.get(server_ip) {
@@ -210,10 +231,6 @@ async fn enrich_deployment_resources(
                 let mut ram_used = 0.0_f64;
                 let mut ram_limit = 0.0_f64;
                 let mut found = false;
-
-                if deployment.server_label == "VPS2" {
-                    tracing::info!("[deployments/debug] Checking VPS2 deployment: name='{}', uuid='{}'", deployment.name, deployment.uuid);
-                }
 
                 for c in containers {
                     // Coolify nombra los contenedores con el UUID del recurso (ej: app-do8k... o wordpress-u00g...)
@@ -230,7 +247,7 @@ async fn enrich_deployment_resources(
                     deployment.ram_used_mb = Some(ram_used);
                     deployment.ram_limit_mb = Some(ram_limit);
                 }
-                
+
                 // Si la carpeta del despliegue existe en el storage map, asignarlo
                 if let Some(&mb) = storage_map.get(&deployment.uuid) {
                     deployment.storage_used_mb = Some(mb);
@@ -245,7 +262,8 @@ struct DeploymentsCacheEntry {
     deployments: Vec<CoolifyDeploymentResponse>,
 }
 
-static DEPLOYMENTS_CACHE: std::sync::OnceLock<tokio::sync::RwLock<DeploymentsCacheEntry>> = std::sync::OnceLock::new();
+static DEPLOYMENTS_CACHE: std::sync::OnceLock<tokio::sync::RwLock<DeploymentsCacheEntry>> =
+    std::sync::OnceLock::new();
 
 /// Listar despliegues reales de todas las VPS configuradas en Coolify (admin only)
 #[utoipa::path(
@@ -266,7 +284,12 @@ pub(super) async fn list_vps2_deployments(
 ) -> Result<Json<Vec<CoolifyDeploymentResponse>>, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    if state.coolify_config.is_none() && state.coolify_config_vps1.is_none() {
+    if coolify_server_targets(
+        state.coolify_config_vps1.as_ref(),
+        state.coolify_config.as_ref(),
+    )
+    .is_empty()
+    {
         return Err(AppError::ServiceUnavailable(
             "Coolify no está configurado para listar despliegues".into(),
         ));
@@ -275,7 +298,9 @@ pub(super) async fn list_vps2_deployments(
     let cache = DEPLOYMENTS_CACHE.get_or_init(|| {
         tokio::sync::RwLock::new(DeploymentsCacheEntry {
             // Empezar con una fecha antigua para forzar el primer refresh
-            fetched_at: std::time::Instant::now() - std::time::Duration::from_secs(9999),
+            fetched_at: std::time::Instant::now()
+                .checked_sub(std::time::Duration::from_secs(9999))
+                .unwrap_or_else(std::time::Instant::now),
             deployments: Vec::new(),
         })
     });
@@ -284,12 +309,12 @@ pub(super) async fn list_vps2_deployments(
     let mut current_deployments = Vec::new();
     {
         let cache_guard = cache.read().await;
-        if !cache_guard.deployments.is_empty() {
+        if cache_guard.deployments.is_empty() {
+            needs_refresh = true;
+        } else {
             current_deployments = cache_guard.deployments.clone();
             // Stale-while-revalidate: cache dura 30 segundos, pero devolvemos viejo mientras carga el nuevo
             needs_refresh = cache_guard.fetched_at.elapsed() > std::time::Duration::from_secs(30);
-        } else {
-            needs_refresh = true;
         }
     }
 
@@ -298,18 +323,25 @@ pub(super) async fn list_vps2_deployments(
             tracing::info!("[deployments] Primer carga, esperando datos...");
             current_deployments = build_deployments(state.clone()).await?;
             let mut cache_guard = cache.write().await;
-            cache_guard.deployments = current_deployments.clone();
+            cache_guard.deployments.clone_from(&current_deployments);
             cache_guard.fetched_at = std::time::Instant::now();
         } else {
-            tracing::info!("[deployments] Devolviendo de caché (stale), refrescando en background...");
+            tracing::info!(
+                "[deployments] Devolviendo de caché (stale), refrescando en background..."
+            );
             let state_clone = state.clone();
             tokio::spawn(async move {
                 if let Ok(new_deployments) = build_deployments(state_clone).await {
-                    let cache = DEPLOYMENTS_CACHE.get().unwrap();
-                    let mut cache_guard = cache.write().await;
-                    cache_guard.deployments = new_deployments;
-                    cache_guard.fetched_at = std::time::Instant::now();
-                    tracing::info!("[deployments] Caché refrescado en background");
+                    if let Some(cache) = DEPLOYMENTS_CACHE.get() {
+                        let mut cache_guard = cache.write().await;
+                        cache_guard.deployments = new_deployments;
+                        cache_guard.fetched_at = std::time::Instant::now();
+                        tracing::info!("[deployments] Caché refrescado en background");
+                    } else {
+                        tracing::warn!(
+                            "[deployments] Cache no inicializado al refrescar background"
+                        );
+                    }
                 } else {
                     tracing::warn!("[deployments] Falló el refresco en background");
                 }
@@ -348,35 +380,28 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
 
     let mut deployments: Vec<CoolifyDeploymentResponse> = Vec::new();
 
-    tracing::info!("[deployments] Consultando VPS1 en Coolify...");
-    if let Some(cfg) = state.coolify_config_vps1.as_ref() {
-        match CoolifyService::list_services(&state.http_client, cfg).await {
-            Ok(services) => {
-                tracing::info!("[deployments] VPS1 devolvió {} servicios", services.len());
-                deployments.extend(map_coolify_services(
-                    services,
-                    "VPS Principal",
-                    &subscriptions_by_uuid,
-                    &subscriptions_by_name,
-                ))
-            },
-            Err(error) => tracing::warn!("[deployments] Error listando VPS1: {error}"),
-        }
-    }
+    let targets = coolify_server_targets(
+        state.coolify_config_vps1.as_ref(),
+        state.coolify_config.as_ref(),
+    );
 
-    tracing::info!("[deployments] Consultando VPS2 en Coolify...");
-    if let Some(cfg) = state.coolify_config.as_ref() {
-        match CoolifyService::list_services(&state.http_client, cfg).await {
+    for target in &targets {
+        tracing::info!("[deployments] Consultando {} en Coolify...", target.label);
+        match CoolifyService::list_services(&state.http_client, target.config).await {
             Ok(services) => {
-                tracing::info!("[deployments] VPS2 devolvió {} servicios", services.len());
+                tracing::info!(
+                    "[deployments] {} devolvió {} servicios",
+                    target.label,
+                    services.len()
+                );
                 deployments.extend(map_coolify_services(
                     services,
-                    "VPS2",
+                    &target.label,
                     &subscriptions_by_uuid,
                     &subscriptions_by_name,
-                ))
-            },
-            Err(error) => tracing::warn!("[deployments] Error listando VPS2: {error}"),
+                ));
+            }
+            Err(error) => tracing::warn!("[deployments] Error listando {}: {error}", target.label),
         }
     }
 
@@ -420,7 +445,12 @@ pub(super) async fn delete_deployment(
 ) -> Result<StatusCode, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    if state.coolify_config.is_none() && state.coolify_config_vps1.is_none() {
+    let targets = coolify_server_targets(
+        state.coolify_config_vps1.as_ref(),
+        state.coolify_config.as_ref(),
+    );
+
+    if targets.is_empty() {
         return Err(AppError::ServiceUnavailable(
             "Coolify no está configurado para eliminar despliegues".into(),
         ));
@@ -431,48 +461,26 @@ pub(super) async fn delete_deployment(
     let mut target_config: Option<&CoolifyConfig> = None;
     let mut target_name: Option<String> = None;
 
-    if let Some(cfg) = state.coolify_config_vps1.as_ref() {
-        match CoolifyService::list_services(&state.http_client, cfg).await {
+    for target in &targets {
+        match CoolifyService::list_services(&state.http_client, target.config).await {
             Ok(services) => {
                 if let Some(service) = services
                     .into_iter()
                     .find(|service| service.uuid == deployment_uuid)
                 {
                     target_name = Some(service.name);
-                    target_config = Some(cfg);
+                    target_config = Some(target.config);
+                    break;
                 }
             }
             Err(error) => {
                 lookup_failed = true;
                 tracing::warn!(
-                    "[deployments] Error buscando despliegue {} en VPS Principal: {}",
+                    "[deployments] Error buscando despliegue {} en {}: {}",
                     deployment_uuid,
+                    target.label,
                     error
                 );
-            }
-        }
-    }
-
-    if target_config.is_none() {
-        if let Some(cfg) = state.coolify_config.as_ref() {
-            match CoolifyService::list_services(&state.http_client, cfg).await {
-                Ok(services) => {
-                    if let Some(service) = services
-                        .into_iter()
-                        .find(|service| service.uuid == deployment_uuid)
-                    {
-                        target_name = Some(service.name);
-                        target_config = Some(cfg);
-                    }
-                }
-                Err(error) => {
-                    lookup_failed = true;
-                    tracing::warn!(
-                        "[deployments] Error buscando despliegue {} en VPS2: {}",
-                        deployment_uuid,
-                        error
-                    );
-                }
             }
         }
     }

@@ -9,16 +9,15 @@ use crate::repositories::HostingRepository;
 use crate::AppState;
 
 pub(super) fn resolve_ssh_key<'a>(state: &'a AppState, server_ip: &str) -> Option<&'a str> {
-    if let Some(cfg) = state.coolify_config.as_ref() {
-        if cfg.server_ip == server_ip {
-            return cfg.ssh_key_path.as_deref();
+    for target in crate::services::infrastructure::coolify_server_targets(
+        state.coolify_config_vps1.as_ref(),
+        state.coolify_config.as_ref(),
+    ) {
+        if target.config.server_ip == server_ip {
+            return target.config.ssh_key_path.as_deref();
         }
     }
-    if let Some(cfg) = state.coolify_config_vps1.as_ref() {
-        if cfg.server_ip == server_ip {
-            return cfg.ssh_key_path.as_deref();
-        }
-    }
+
     state
         .coolify_config
         .as_ref()

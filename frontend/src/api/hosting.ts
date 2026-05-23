@@ -450,14 +450,21 @@ export async function apiDeleteVps2Deployment(uuid: string): Promise<void> {
 }
 
 export interface VpsSummary {
-    instance_id: number;
+    inventory_id: string;
+    instance_id: number | null;
     name: string;
+    label: string;
     ip: string;
     status: string;
     region: string;
-    cpu_cores: number;
-    ram_mb: number;
-    disk_mb: number;
+    cpu_cores: number | null;
+    ram_mb: number | null;
+    disk_mb: number | null;
+    provider: string;
+    source: string;
+    is_configured: boolean;
+    coolify_server_uuid: string | null;
+    ssh_available: boolean;
 }
 
 export async function apiListVps(): Promise<VpsSummary[]> {
