@@ -275,8 +275,8 @@ impl InfrastructureRepository {
                       latest.cpu_percent,
                       latest.ram_used_mb,
                       latest.ram_limit_mb,
-                      COALESCE(latest.disk_used_mb, latest_storage.disk_used_mb) AS disk_used_mb,
-                      COALESCE(latest.disk_limit_mb, latest_storage.disk_limit_mb) AS disk_limit_mb
+                                            COALESCE(latest.disk_used_mb, latest_storage_used.disk_used_mb) AS disk_used_mb,
+                                            COALESCE(latest.disk_limit_mb, latest_storage_limit.disk_limit_mb) AS disk_limit_mb
                FROM LATERAL (
                    SELECT sampled_at, cpu_percent, ram_used_mb, ram_limit_mb, disk_used_mb, disk_limit_mb
                    FROM infrastructure_resource_samples
@@ -285,14 +285,23 @@ impl InfrastructureRepository {
                    LIMIT 1
                ) latest
                LEFT JOIN LATERAL (
-                   SELECT disk_used_mb, disk_limit_mb
+                                     SELECT disk_used_mb
                    FROM infrastructure_resource_samples
                    WHERE entity_kind = 'deployment'
                      AND deployment_uuid = $1
-                     AND (disk_used_mb IS NOT NULL OR disk_limit_mb IS NOT NULL)
+                                         AND disk_used_mb IS NOT NULL
+                                     ORDER BY sampled_at DESC
+                                     LIMIT 1
+                             ) latest_storage_used ON TRUE
+                             LEFT JOIN LATERAL (
+                                     SELECT disk_limit_mb
+                                     FROM infrastructure_resource_samples
+                                     WHERE entity_kind = 'deployment'
+                                         AND deployment_uuid = $1
+                                         AND disk_limit_mb IS NOT NULL
                    ORDER BY sampled_at DESC
                    LIMIT 1
-               ) latest_storage ON TRUE",
+                             ) latest_storage_limit ON TRUE",
         )
         .bind(deployment_uuid)
         .fetch_optional(pool)
@@ -626,26 +635,28 @@ impl InfrastructureRepository {
                       hs.plan,
                       hs.status,
                       hs.storage_limit_mb,
-                      latest.disk_used_mb AS storage_used_mb,
+                      latest_storage.disk_used_mb AS storage_used_mb,
                       hs.bandwidth_limit_gb,
                       ((bu.bytes_rx + bu.bytes_tx)::float8 / 1000000000.0) AS bandwidth_used_gb,
-                      CASE WHEN hs.storage_limit_mb > 0 AND latest.disk_used_mb IS NOT NULL
-                           THEN latest.disk_used_mb / hs.storage_limit_mb * 100.0 END AS storage_usage_pct,
+                      CASE WHEN hs.storage_limit_mb > 0 AND latest_storage.disk_used_mb IS NOT NULL
+                           THEN latest_storage.disk_used_mb / hs.storage_limit_mb * 100.0 END AS storage_usage_pct,
                       CASE WHEN hs.bandwidth_limit_gb > 0 AND bu.bytes_rx IS NOT NULL
                            THEN ((bu.bytes_rx + bu.bytes_tx)::float8 / 1000000000.0) / hs.bandwidth_limit_gb * 100.0 END AS bandwidth_usage_pct
                FROM hosting_subscriptions hs
                LEFT JOIN LATERAL (
                    SELECT disk_used_mb
                    FROM infrastructure_resource_samples sample
-                   WHERE sample.deployment_uuid = hs.server_uuid
+                   WHERE sample.entity_kind = 'deployment'
+                     AND sample.deployment_uuid = hs.server_uuid
+                     AND sample.disk_used_mb IS NOT NULL
                    ORDER BY sampled_at DESC
                    LIMIT 1
-               ) latest ON TRUE
+               ) latest_storage ON TRUE
                LEFT JOIN bandwidth_usage bu
                       ON bu.subscription_id = hs.id
                      AND bu.month_start = date_trunc('month', NOW())::date
                ORDER BY GREATEST(
-                   COALESCE(CASE WHEN hs.storage_limit_mb > 0 THEN latest.disk_used_mb / hs.storage_limit_mb * 100.0 ELSE 0 END, 0),
+                   COALESCE(CASE WHEN hs.storage_limit_mb > 0 THEN latest_storage.disk_used_mb / hs.storage_limit_mb * 100.0 ELSE 0 END, 0),
                    COALESCE(CASE WHEN hs.bandwidth_limit_gb > 0 THEN ((bu.bytes_rx + bu.bytes_tx)::float8 / 1000000000.0) / hs.bandwidth_limit_gb * 100.0 ELSE 0 END, 0)
                ) DESC",
         )
