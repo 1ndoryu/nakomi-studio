@@ -13,7 +13,6 @@ mod billing;
 mod blog;
 mod cancellation;
 mod chat;
-mod configuracion;
 mod dashboard;
 mod deliverables;
 mod health;
@@ -190,8 +189,6 @@ impl utoipa::Modify for SecurityAddon {
         wallet::list_withdrawals,
         wallet::admin_list_withdrawals,
         wallet::admin_resolve_withdrawal,
-        configuracion::get_rotation_status,
-        configuracion::toggle_rotation,
     ),
     components(schemas(
         health::HealthResponse,
@@ -295,8 +292,6 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::WithdrawalRequestsPage,
         crate::models::CreateWithdrawalRequest,
         crate::models::ResolveWithdrawalRequest,
-        configuracion::RotacionStatusResponse,
-        configuracion::ToggleRotacionRequest,
         order_lifecycle::ActivityEntry,
         profile::AvatarResponse,
         public_config::PublicConfigResponse,
@@ -668,7 +663,6 @@ fn api_routes() -> Router<AppState> {
         .merge(admin_client_bootstrap::routes())
         .merge(admin_fixtures::routes())
         .merge(admin_seed::seed_routes())
-        .merge(configuracion::configuracion_routes())
         .merge(hosting::hosting_routes())
         .merge(vps::routes())
         .merge(hosting_domains::domain_routes())

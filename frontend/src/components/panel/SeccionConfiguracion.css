@@ -64,43 +64,7 @@
     color: var(--color-error-text);
 }
 
-/* [114A-12] Rotación de API keys */
-.configRotacionStatus {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md);
-    border-radius: var(--radius-md);
-    background: var(--bg-accent);
-}
-
-.configRotacionIndicador {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-}
-
-.configRotacionDot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.configRotacionDotActivo {
-    background: var(--color-success-text);
-}
-
-.configRotacionDotInactivo {
-    background: var(--color-error-text);
-}
-
-.configRotacionLabel {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--brand-black);
-}
-
+/* [114A-12] Rotación de API keys eliminada 2026-05-23. Solo queda configRotacionDetalles (reusado). */
 .configRotacionDetalles {
     display: flex;
     flex-wrap: wrap;
@@ -108,11 +72,6 @@
     font-size: var(--text-xs);
     color: var(--brand-black);
     opacity: 0.7;
-}
-
-.configRotacionFallback {
-    color: var(--color-success-text);
-    font-weight: 500;
 }
 
 .configConfirmContenido {
@@ -137,4 +96,6 @@
         flex-direction: column;
         gap: var(--spacing-xs);
     }
+
+
 }

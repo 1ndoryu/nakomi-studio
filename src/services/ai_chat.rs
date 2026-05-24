@@ -1,10 +1,9 @@
 /* [064A-29] AI Chat Service: integración con Groq API (OpenAI-compatible).
- * Rotacion de 3 API keys por mensaje (round-robin via AtomicUsize).
+ * [114A-12] Rotación de API keys eliminada 2026-05-23. Siempre usa la primera key.
  * System prompt dinámico: pre-venta (servicios, precios) vs soporte de orden
  * (contexto de orden, fase actual, historial). Usa reqwest HTTP client. */
 
 use std::fmt::Write;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::OnceLock;
 
 use regex::Regex;
@@ -31,14 +30,8 @@ pub(crate) fn sanitize_for_prompt(input: &str, max_len: usize) -> String {
         .replace("SYSTEM", "")
 }
 
-/* [064A-29] Contador global para rotacion round-robin de API keys.
- * Cada llamada a generate_response incrementa y usa mod num_keys. */
-static KEY_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-/* [114A-12] Toggle global de rotación de API keys.
- * Si está desactivado, siempre se usa la primera key (sin round-robin).
- * Controlado desde el panel admin via endpoint PATCH /api/admin/configuracion/rotacion. */
-static ROTATION_ENABLED: AtomicBool = AtomicBool::new(true);
+/* [114A-12] Rotación de API keys eliminada 2026-05-23.
+ * next_key() siempre retorna la primera key disponible. */
 
 /// Configuracion del servicio de IA con soporte multi-proveedor.
 /// `DeepSeek` como primario, `Groq` como fallback y `Gemini` como ultimo respaldo.
@@ -142,20 +135,6 @@ impl AiChatConfig {
             tracing::info!("AI: Gemini configurado como proveedor secundario");
         }
 
-        /* [025B-1] Inicializa el estado de rotación desde env var AI_ROTATION_ENABLED.
-         * Default true. Añadir AI_ROTATION_ENABLED=false en .env para desactivarla al arrancar.
-         * Sin esto, el AtomicBool se resetea a true en cada reinicio del servidor. */
-        let rotation_from_env = std::env::var("AI_ROTATION_ENABLED")
-            .map_or(true, |v| !v.eq_ignore_ascii_case("false") && v != "0");
-        ROTATION_ENABLED.store(rotation_from_env, Ordering::Relaxed);
-        tracing::info!(
-            "AI: rotación de API keys {}",
-            if rotation_from_env {
-                "activada"
-            } else {
-                "desactivada (AI_ROTATION_ENABLED=false)"
-            }
-        );
 
         Self {
             deepseek_key,
@@ -174,40 +153,9 @@ impl AiChatConfig {
         self.deepseek_key.is_some() || !self.api_keys.is_empty() || self.gemini_key.is_some()
     }
 
-    /* [064A-29] Selecciona la siguiente API key en rotacion round-robin.
-     * [114A-12] Si la rotación está desactivada, siempre retorna la primera key. */
+    /* [114A-12] Rotación eliminada. Siempre retorna la primera key. */
     pub(crate) fn next_key(&self) -> Option<&str> {
-        if self.api_keys.is_empty() {
-            return None;
-        }
-        if !ROTATION_ENABLED.load(Ordering::Relaxed) {
-            return Some(&self.api_keys[0]);
-        }
-        let idx = KEY_COUNTER.fetch_add(1, Ordering::Relaxed) % self.api_keys.len();
-        Some(&self.api_keys[idx])
-    }
-
-    /* [114A-12] Control de rotación desde el panel admin */
-    pub fn set_rotation_enabled(enabled: bool) {
-        ROTATION_ENABLED.store(enabled, Ordering::Relaxed);
-        tracing::info!(
-            "Rotación de API keys: {}",
-            if enabled { "activada" } else { "desactivada" }
-        );
-    }
-
-    #[must_use]
-    pub fn is_rotation_enabled() -> bool {
-        ROTATION_ENABLED.load(Ordering::Relaxed)
-    }
-
-    /// Retorna el índice actual del contador de rotación (mod total keys)
-    #[must_use]
-    pub fn current_key_index(&self) -> usize {
-        if self.api_keys.is_empty() {
-            return 0;
-        }
-        KEY_COUNTER.load(Ordering::Relaxed) % self.api_keys.len()
+        self.api_keys.first().map(String::as_str)
     }
 
     /// Numero total de API keys configuradas
@@ -884,16 +832,10 @@ mod tests {
     }
 
     #[test]
-    fn round_robin_key_rotation() {
+    fn next_key_returns_first_always() {
         let config = test_config(vec!["key_a".into(), "key_b".into(), "key_c".into()], "test");
-        let k1 = config.next_key().unwrap().to_string();
-        let k2 = config.next_key().unwrap().to_string();
-        let k3 = config.next_key().unwrap().to_string();
-        let k4 = config.next_key().unwrap().to_string();
-        /* k4 == k1 (round-robin wrap-around) */
-        assert_eq!(k1, k4);
-        assert_ne!(k1, k2);
-        assert_ne!(k2, k3);
+        assert_eq!(config.next_key(), Some("key_a"));
+        assert_eq!(config.next_key(), Some("key_a"));
     }
 
     #[test]
