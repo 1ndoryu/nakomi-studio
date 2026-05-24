@@ -218,6 +218,11 @@
 - Un `404` en checkout puede venir de un contrato de dominio equivocado: en este caso `service_slug = hosting` no existia en el catalogo de ordenes, asi que la solucion correcta fue mover el flujo al endpoint real de hosting, no inventar aliases en orders.
 
 ## Infra admin - proveedor no equivale a deployment
+
+## Hosting runtime — abrir el seam antes de tocar SQLx
+- Si el dominio de hosting está acoplado a un proveedor concreto, el primer corte correcto no es una migración masiva de columnas ni renombrar toda la persistencia legacy. Primero hay que extraer una fachada de runtime y recablear altas, control, bajas y listado al nuevo boundary.
+- Exponer `runtime_kind` y `deployment_id` derivados de los campos legacy permite preparar frontend y handlers sin disparar todavía cambios de `sqlx::query!` ni regeneración de `.sqlx/` en el mismo bloque.
+
 - Si el panel pide “despliegues reales”, la fuente correcta es la capa de orquestacion (Coolify, Kubernetes, etc.), no la API del proveedor de VPS.
 - Contabo responde “que servidores existen”; Coolify responde “que servicios estan desplegados”. Mezclar ambas capas permite cerrar tareas en falso y oculta orfandades reales entre deployment y suscripcion.
 - Para recursos de infraestructura, el dashboard tampoco debe abrir SSH en render. Meter un sampler de baja frecuencia + snapshots DB evita carga, timeouts y variaciones raras de UI; hasta que exista una muestra, mostrar `null`/guiones es la opcion correcta.

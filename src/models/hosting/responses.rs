@@ -15,6 +15,8 @@ pub struct HostingSubscriptionResponse {
     pub domain_verification_status: String,
     pub domain_verification_token: Option<String>,
     pub domain_verified_at: Option<DateTime<Utc>>,
+    pub runtime_kind: Option<String>,
+    pub deployment_id: Option<String>,
     pub coolify_site_name: Option<String>,
     pub status: String,
     pub monthly_price_cents: i32,
@@ -32,6 +34,13 @@ pub struct HostingSubscriptionResponse {
 
 impl From<HostingSubscription> for HostingSubscriptionResponse {
     fn from(s: HostingSubscription) -> Self {
+        let deployment_id = s.server_uuid.clone();
+        let runtime_kind = if deployment_id.is_some() || s.coolify_site_name.is_some() {
+            Some("coolify".to_string())
+        } else {
+            None
+        };
+
         Self {
             id: s.id,
             user_id: s.user_id,
@@ -42,6 +51,8 @@ impl From<HostingSubscription> for HostingSubscriptionResponse {
             domain_verification_status: s.domain_verification_status,
             domain_verification_token: s.domain_verification_token,
             domain_verified_at: s.domain_verified_at,
+            runtime_kind,
+            deployment_id,
             coolify_site_name: s.coolify_site_name,
             status: s.status,
             monthly_price_cents: s.monthly_price_cents,
@@ -103,6 +114,8 @@ pub struct HostingStatsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CoolifyDeploymentResponse {
     pub uuid: String,
+    pub runtime_kind: String,
+    pub deployment_id: String,
     pub name: String,
     pub status: String,
     pub fqdn: Option<String>,

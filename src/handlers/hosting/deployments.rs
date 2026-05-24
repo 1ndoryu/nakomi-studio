@@ -7,13 +7,14 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{CoolifyDeploymentResponse, UserRole};
 use crate::repositories::{HostingRepository, InfrastructureRepository};
-use crate::services::coolify::CoolifyServiceSummary;
 use crate::services::infrastructure::coolify_server_targets;
-use crate::services::{CoolifyConfig, CoolifyService};
+use crate::services::{
+    CoolifyConfig, HostingRuntimeDeploymentSummary, HostingRuntimeService,
+};
 use crate::AppState;
 
-fn map_coolify_services(
-    services: Vec<CoolifyServiceSummary>,
+fn map_runtime_deployments(
+    services: Vec<HostingRuntimeDeploymentSummary>,
     label: &str,
     subscriptions_by_uuid: &HashMap<&str, &crate::models::HostingSubscription>,
     subscriptions_by_name: &HashMap<&str, &crate::models::HostingSubscription>,
@@ -22,18 +23,20 @@ fn map_coolify_services(
         .into_iter()
         .map(|service| {
             let linked_subscription = subscriptions_by_uuid
-                .get(service.uuid.as_str())
+                .get(service.deployment_id.as_str())
                 .copied()
                 .or_else(|| subscriptions_by_name.get(service.name.as_str()).copied());
 
             CoolifyDeploymentResponse {
-                uuid: service.uuid,
+                uuid: service.deployment_id.clone(),
+                runtime_kind: service.runtime_kind.as_str().to_string(),
+                deployment_id: service.deployment_id,
                 name: service.name,
                 status: service.status,
                 fqdn: service.fqdn,
-                server_uuid: service.server_uuid,
-                server_name: service.server_name,
-                project_uuid: service.project_uuid,
+                server_uuid: service.target_id,
+                server_name: service.target_name,
+                project_uuid: service.project_id,
                 environment_name: service.environment_name,
                 linked_subscription_id: linked_subscription.map(|subscription| subscription.id),
                 linked_subscription_domain: linked_subscription
@@ -219,14 +222,14 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
 
     for target in &targets {
         tracing::info!("[deployments] Consultando {} en Coolify...", target.label);
-        match CoolifyService::list_services(&state.http_client, target.config).await {
+        match HostingRuntimeService::list_deployments(&state.http_client, Some(target.config)).await {
             Ok(services) => {
                 tracing::info!(
                     "[deployments] {} devolvió {} servicios",
                     target.label,
                     services.len()
                 );
-                deployments.extend(map_coolify_services(
+                deployments.extend(map_runtime_deployments(
                     services,
                     &target.label,
                     &subscriptions_by_uuid,
@@ -294,11 +297,11 @@ pub(super) async fn delete_deployment(
     let mut target_name: Option<String> = None;
 
     for target in &targets {
-        match CoolifyService::list_services(&state.http_client, target.config).await {
+        match HostingRuntimeService::list_deployments(&state.http_client, Some(target.config)).await {
             Ok(services) => {
                 if let Some(service) = services
                     .into_iter()
-                    .find(|service| service.uuid == deployment_uuid)
+                    .find(|service| service.deployment_id == deployment_uuid)
                 {
                     target_name = Some(service.name);
                     target_config = Some(target.config);
@@ -345,8 +348,13 @@ pub(super) async fn delete_deployment(
         )));
     }
 
-    CoolifyService::delete_service(&state.http_client, target_config, &deployment_uuid, true)
-        .await?;
+    HostingRuntimeService::delete_deployment(
+        &state.http_client,
+        Some(target_config),
+        &deployment_uuid,
+        true,
+    )
+    .await?;
     tracing::info!(
         "[deployments] Despliegue huérfano {} ({}) eliminado desde el panel admin.",
         target_name,

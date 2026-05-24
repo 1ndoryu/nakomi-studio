@@ -8,8 +8,7 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{HostingPlanConfig, UserRole};
 use crate::repositories::HostingRepository;
-use crate::services::coolify::HostingComposeUpdate;
-use crate::services::{CoolifyConfig, CoolifyService};
+use crate::services::{CoolifyConfig, HostingRuntimeService, HostingRuntimeUpdate};
 use crate::AppState;
 
 /* [165A-21] Los dominios custom ya no se activan en Coolify en cuanto se guardan.
@@ -104,23 +103,23 @@ async fn lookup_txt_records(record_name: &str) -> Result<Vec<String>, String> {
 pub(super) async fn sync_custom_domain_route(
     http_client: &reqwest::Client,
     config: &CoolifyConfig,
-    update: HostingComposeUpdate<'_>,
+    update: HostingRuntimeUpdate<'_>,
 ) -> Result<(), AppError> {
-    CoolifyService::update_compose_and_restart(http_client, config, update).await
+    HostingRuntimeService::update_deployment(http_client, Some(config), update).await
 }
 
 pub(super) fn compose_update_from_subscription<'a>(
     sub: &'a crate::models::HostingSubscription,
     custom_domain: Option<&'a str>,
     plan_config: &'a HostingPlanConfig,
-) -> Option<HostingComposeUpdate<'a>> {
-    Some(HostingComposeUpdate {
-        service_uuid: sub.server_uuid.as_deref()?,
-        service_name: sub.coolify_site_name.as_deref()?,
+) -> Option<HostingRuntimeUpdate<'a>> {
+    Some(HostingRuntimeUpdate {
+        deployment_id: sub.server_uuid.as_deref()?,
+        deployment_name: sub.coolify_site_name.as_deref()?,
         custom_domain,
-        sftp_user: sub.sftp_user.as_deref()?,
-        sftp_password: sub.sftp_password.as_deref()?,
-        sftp_port: sub.sftp_port?,
+        access_user: sub.sftp_user.as_deref()?,
+        access_password: sub.sftp_password.as_deref()?,
+        access_port: sub.sftp_port?,
         plan_config,
     })
 }
@@ -140,7 +139,7 @@ pub(super) struct DomainActivation<'a> {
     pub subscription_id: Uuid,
     pub token: Option<&'a str>,
     pub verified_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub update: HostingComposeUpdate<'a>,
+    pub update: HostingRuntimeUpdate<'a>,
 }
 
 fn domain_verification_response(payload: &DomainVerificationResponse<'_>) -> serde_json::Value {
@@ -240,7 +239,10 @@ pub(super) async fn activate_domain_route(
     let Some(custom_domain) = activation.update.custom_domain else {
         return false;
     };
-    let Some(config) = state.coolify_config.as_ref() else {
+    let Ok(config) = HostingRuntimeService::require_target_config(
+        state.coolify_config.as_ref(),
+        "activar dominios custom",
+    ) else {
         return false;
     };
 

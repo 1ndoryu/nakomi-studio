@@ -16,6 +16,7 @@ pub mod docker_stats;
 mod domain_stripe;
 pub mod email;
 mod google_auth;
+pub mod hosting_runtime;
 mod hosting_stripe;
 pub mod image_processing;
 pub mod infrastructure;
@@ -47,6 +48,10 @@ pub use coolify::{CoolifyConfig, CoolifyService};
 pub use domain_stripe::{DomainCheckoutParams, DomainStripeService};
 pub use email::{EmailConfig, EmailService};
 pub use google_auth::GoogleAuthService;
+pub use hosting_runtime::{
+	HostingRuntimeDeploymentSummary, HostingRuntimeKind, HostingRuntimeProvisionResult,
+	HostingRuntimeService, HostingRuntimeUpdate,
+};
 pub use hosting_stripe::{CheckoutParams, HostingStripeService};
 pub use note::NoteService;
 pub use notification::NotificationHub;

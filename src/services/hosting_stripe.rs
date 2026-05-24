@@ -16,8 +16,9 @@ use crate::models::{
     NOTIF_HOSTING_SUSPENDED,
 };
 use crate::repositories::{HostingRepository, NotificationRepository, ServerInfo};
-use crate::services::coolify::{
-    CoolifyConfig, CoolifyProvisionResult, CoolifyService, HostingProvisionPreferences,
+use crate::services::coolify::HostingProvisionPreferences;
+use crate::services::{
+    CoolifyConfig, HostingRuntimeProvisionResult, HostingRuntimeService,
 };
 
 /* Respuesta mínima de Stripe Checkout Session */
@@ -105,7 +106,7 @@ async fn load_auto_provision_request(
     activation_source: &str,
 ) -> Option<(String, i32, HostingPlanConfig)> {
     let hosting_id = subscription.id;
-    let service_name = CoolifyService::service_name_for(&hosting_id);
+    let service_name = HostingRuntimeService::deployment_name_for(&hosting_id);
     let sftp_port = match HostingRepository::find_available_sftp_port(pool).await {
         Ok(port) => port,
         Err(error) => {
@@ -141,18 +142,18 @@ async fn record_auto_provision_success(
     hosting_id: Uuid,
     service_name: &str,
     activation_source: &str,
-    result: &CoolifyProvisionResult,
+    result: &HostingRuntimeProvisionResult,
 ) {
     if let Err(error) = HostingRepository::update_server_info(
         pool,
         hosting_id,
         &ServerInfo {
             coolify_site_name: service_name,
-            server_uuid: &result.service_uuid,
+            server_uuid: &result.deployment_id,
             server_ip: &result.server_ip,
-            sftp_user: &result.sftp_user,
-            sftp_password: &result.sftp_password,
-            sftp_port: result.sftp_port,
+            sftp_user: &result.access_user,
+            sftp_password: &result.access_password,
+            sftp_port: result.access_port,
         },
     )
     .await
@@ -168,8 +169,9 @@ async fn record_auto_provision_success(
         hosting_id,
         "coolify_provisioned",
         Some(serde_json::json!({
-            "service_uuid": result.service_uuid,
-            "domain": result.domain,
+            "runtime_kind": result.runtime_kind.as_str(),
+            "deployment_id": result.deployment_id,
+            "public_url": result.public_url,
             "server_ip": result.server_ip,
             "wordpress_ready": result.wordpress_ready,
             "wordpress_install_error": result.wordpress_install_error,
@@ -247,62 +249,53 @@ impl HostingStripeService {
         activation_source: &str,
     ) {
         let hosting_id = subscription.id;
+        let Some((service_name, sftp_port, plan_config)) =
+            load_auto_provision_request(pool, subscription, activation_source).await
+        else {
+            return;
+        };
+        let preferences = Self::load_provision_preferences(pool, hosting_id).await;
 
-        if let Some(config) = coolify_config {
-            let Some((service_name, sftp_port, plan_config)) =
-                load_auto_provision_request(pool, subscription, activation_source).await
-            else {
-                return;
-            };
-            let preferences = Self::load_provision_preferences(pool, hosting_id).await;
-
-            match CoolifyService::provision_hosting(
-                http_client,
-                config,
-                &service_name,
-                sftp_port,
-                &plan_config,
-                &subscription.client_name,
-                &subscription.client_email,
-                preferences.as_ref(),
-            )
-            .await
-            {
-                Ok(result) => {
-                    tracing::info!(
-                        "Hosting {} provisionado en Coolify via {}: uuid={}, domain={}, ip={}",
-                        hosting_id,
-                        activation_source,
-                        result.service_uuid,
-                        result.domain,
-                        result.server_ip
-                    );
-                    record_auto_provision_success(
-                        pool,
-                        hosting_id,
-                        &service_name,
-                        activation_source,
-                        &result,
-                    )
-                    .await;
-                }
-                Err(error) => {
-                    tracing::warn!(
-                        "Coolify provisioning falló para hosting {} via {} (error: {}). Requiere setup manual.",
-                        hosting_id,
-                        activation_source,
-                        error
-                    );
-                    record_auto_provision_failure(pool, hosting_id, activation_source, &error)
-                        .await;
-                }
+        match HostingRuntimeService::provision_hosting(
+            http_client,
+            coolify_config,
+            &service_name,
+            sftp_port,
+            &plan_config,
+            &subscription.client_name,
+            &subscription.client_email,
+            preferences.as_ref(),
+        )
+        .await
+        {
+            Ok(result) => {
+                tracing::info!(
+                    "Hosting {} provisionado en runtime {} via {}: deployment={}, url={}, ip={}",
+                    hosting_id,
+                    result.runtime_kind.as_str(),
+                    activation_source,
+                    result.deployment_id,
+                    result.public_url,
+                    result.server_ip
+                );
+                record_auto_provision_success(
+                    pool,
+                    hosting_id,
+                    &service_name,
+                    activation_source,
+                    &result,
+                )
+                .await;
             }
-        } else {
-            tracing::warn!(
-                "Coolify no configurado — hosting {} activado sin provisioning automático (source={}).",
-                hosting_id,
-                activation_source
-            );
+            Err(error) => {
+                tracing::warn!(
+                    "El provisioning automático falló para hosting {} via {} (error: {}). Requiere setup manual.",
+                    hosting_id,
+                    activation_source,
+                    error
+                );
+                record_auto_provision_failure(pool, hosting_id, activation_source, &error).await;
+            }
         }
     }
 
@@ -559,19 +552,25 @@ impl HostingStripeService {
 
         HostingRepository::update_status(pool, hosting.id, "cancelled").await?;
 
-        /* [104A-42] Eliminar servicio Coolify al cancelar — no-fatal */
-        if let (Some(config), Some(service_uuid)) = (coolify_config, &hosting.server_uuid) {
+        /* [104A-42] Eliminar despliegue del runtime al cancelar — no-fatal */
+        if let Some(service_uuid) = &hosting.server_uuid {
             if let Err(e) =
-                CoolifyService::delete_service(http_client, config, service_uuid, false).await
+                HostingRuntimeService::delete_deployment(
+                    http_client,
+                    coolify_config,
+                    service_uuid,
+                    false,
+                )
+                .await
             {
                 tracing::warn!(
-                    "Error eliminando servicio Coolify {} para hosting {}: {e}",
+                    "Error eliminando despliegue {} para hosting {}: {e}",
                     service_uuid,
                     hosting.id
                 );
             } else {
                 tracing::info!(
-                    "Servicio Coolify {} eliminado por cancelación de hosting {}",
+                    "Despliegue {} eliminado por cancelación de hosting {}",
                     service_uuid,
                     hosting.id
                 );

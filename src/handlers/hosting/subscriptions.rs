@@ -18,7 +18,7 @@ use crate::models::{
 use crate::repositories::{
     CreateHostingParams, HostingRepository, UpdateHostingParams, UserRepository,
 };
-use crate::services::CoolifyService;
+use crate::services::HostingRuntimeService;
 use crate::AppState;
 
 /// Listar suscripciones de hosting (admin: todas, cliente: las suyas)
@@ -378,8 +378,13 @@ pub(super) async fn delete_subscription(
         (&sub.server_uuid, &state.coolify_config)
     {
         if let Err(e) =
-            CoolifyService::delete_service(&state.http_client, coolify_config, server_uuid, true)
-                .await
+            HostingRuntimeService::delete_deployment(
+                &state.http_client,
+                Some(coolify_config),
+                server_uuid,
+                true,
+            )
+            .await
         {
             tracing::warn!(
                 "Error eliminando servicio Coolify {} para suscripción {id}: {e}",

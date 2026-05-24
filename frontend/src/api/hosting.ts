@@ -19,6 +19,8 @@ export interface HostingSubscription {
     domain_verification_status: 'none' | 'pending_verification' | 'verified' | 'active';
     domain_verification_token: string | null;
     domain_verified_at: string | null;
+    runtime_kind: string | null;
+    deployment_id: string | null;
     coolify_site_name: string | null;
     status: string;
     monthly_price_cents: number;
@@ -420,6 +422,8 @@ export async function apiGetHostingStats(id: string): Promise<HostingStatsData> 
 /* [215A-14] Enriquecido con recursos reales y nombre del cliente dueño */
 export interface CoolifyDeployment {
     uuid: string;
+    runtime_kind: string;
+    deployment_id: string;
     name: string;
     status: string;
     fqdn: string | null;

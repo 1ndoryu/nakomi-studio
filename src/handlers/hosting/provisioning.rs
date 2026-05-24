@@ -12,11 +12,13 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{HostingSubscriptionResponse, UserRole};
 use crate::repositories::{HostingRepository, InfrastructureRepository, ServerInfo};
-use crate::services::coolify::{CoolifyProvisionResult, HostingComposeUpdate};
-use crate::services::{CoolifyService, HostingStripeService};
+use crate::services::{
+    HostingRuntimeProvisionResult, HostingRuntimeService, HostingRuntimeUpdate,
+    HostingStripeService,
+};
 use crate::AppState;
 
-/// Provisionar un hosting: crea servicio Nginx/WordPress en Coolify y actualiza la suscripción.
+/// Provisionar un hosting: crea el despliegue Nginx/WordPress en el runtime activo y actualiza la suscripción.
 /// Solo admin. La suscripción debe estar en estado "pending" o "provisioning".
 #[utoipa::path(
     post,
@@ -51,13 +53,14 @@ pub(super) async fn provision_subscription(
         )));
     }
 
-    let config = state.coolify_config.as_ref().ok_or_else(|| {
-        AppError::ServiceUnavailable("Coolify no configurado. Variables COOLIFY_* ausentes.".into())
-    })?;
+    let config = HostingRuntimeService::require_target_config(
+        state.coolify_config.as_ref(),
+        "provisionar hostings",
+    )?;
 
     HostingRepository::update_status(&state.pool, id, "provisioning").await?;
 
-    let service_name = CoolifyService::service_name_for(&id);
+    let service_name = HostingRuntimeService::deployment_name_for(&id);
     let sftp_port = HostingRepository::find_available_sftp_port(&state.pool).await?;
     let plan_config = HostingRepository::get_plan_config(&state.pool, &sub.plan)
         .await?
@@ -83,9 +86,9 @@ pub(super) async fn provision_subscription(
     let provision_preferences =
         HostingStripeService::load_provision_preferences(&state.pool, id).await;
 
-    let result = match CoolifyService::provision_hosting(
+    let result = match HostingRuntimeService::provision_hosting(
         &state.http_client,
-        config,
+        Some(config),
         &service_name,
         sftp_port,
         &plan_config,
@@ -117,11 +120,11 @@ pub(super) async fn provision_subscription(
         id,
         &ServerInfo {
             coolify_site_name: &service_name,
-            server_uuid: &result.service_uuid,
+            server_uuid: &result.deployment_id,
             server_ip: &result.server_ip,
-            sftp_user: &result.sftp_user,
-            sftp_password: &result.sftp_password,
-            sftp_port: result.sftp_port,
+            sftp_user: &result.access_user,
+            sftp_password: &result.access_password,
+            sftp_port: result.access_port,
         },
     )
     .await?;
@@ -133,13 +136,13 @@ pub(super) async fn provision_subscription(
                 subscription_id: id,
                 token: sub.domain_verification_token.as_deref(),
                 verified_at: sub.domain_verified_at,
-                update: HostingComposeUpdate {
-                    service_uuid: &result.service_uuid,
-                    service_name: &service_name,
+                update: HostingRuntimeUpdate {
+                    deployment_id: &result.deployment_id,
+                    deployment_name: &service_name,
                     custom_domain: Some(custom_domain),
-                    sftp_user: &result.sftp_user,
-                    sftp_password: &result.sftp_password,
-                    sftp_port: result.sftp_port,
+                    access_user: &result.access_user,
+                    access_password: &result.access_password,
+                    access_port: result.access_port,
                     plan_config: &plan_config,
                 },
             },
@@ -163,15 +166,16 @@ async fn record_provisioned_event(
     id: Uuid,
     actor_id: Uuid,
     service_name: &str,
-    result: &CoolifyProvisionResult,
+    result: &HostingRuntimeProvisionResult,
 ) {
     if let Err(e) = HostingRepository::add_event(
         &state.pool,
         id,
         "provisioned",
         Some(serde_json::json!({
-            "coolify_uuid": result.service_uuid,
-            "domain": result.domain,
+            "runtime_kind": result.runtime_kind.as_str(),
+            "deployment_id": result.deployment_id,
+            "public_url": result.public_url,
             "server_ip": result.server_ip,
             "service_name": service_name,
             "wordpress_ready": result.wordpress_ready,
@@ -225,10 +229,10 @@ pub(super) async fn rotate_credentials(
         AppError::Internal("Nombre de servicio Coolify ausente en suscripción provisionada".into())
     })?;
 
-    let config = state
-        .coolify_config
-        .as_ref()
-        .ok_or_else(|| AppError::ServiceUnavailable("Coolify no configurado".into()))?;
+    let config = HostingRuntimeService::require_target_config(
+        state.coolify_config.as_ref(),
+        "rotar credenciales",
+    )?;
 
     let new_password: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
@@ -244,16 +248,16 @@ pub(super) async fn rotate_credentials(
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
 
-    CoolifyService::update_compose_and_restart(
+    HostingRuntimeService::update_deployment(
         &state.http_client,
-        config,
-        HostingComposeUpdate {
-            service_uuid: server_uuid,
-            service_name,
+        Some(config),
+        HostingRuntimeUpdate {
+            deployment_id: server_uuid,
+            deployment_name: service_name,
             custom_domain: domain_ready_for_route(&sub),
-            sftp_user,
-            sftp_password: &new_password,
-            sftp_port,
+            access_user: sftp_user,
+            access_password: &new_password,
+            access_port: sftp_port,
             plan_config: &plan_config,
         },
     )
@@ -321,10 +325,10 @@ pub(super) async fn refresh_hosting(
         AppError::Internal("Nombre de servicio Coolify ausente en suscripción provisionada".into())
     })?;
 
-    let coolify = state
-        .coolify_config
-        .as_ref()
-        .ok_or_else(|| AppError::ServiceUnavailable("Coolify no configurado".into()))?;
+    let config = HostingRuntimeService::require_target_config(
+        state.coolify_config.as_ref(),
+        "refrescar hostings",
+    )?;
 
     let plan_config = HostingRepository::get_plan_config(&state.pool, &sub.plan)
         .await?
@@ -332,16 +336,16 @@ pub(super) async fn refresh_hosting(
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
 
-    CoolifyService::update_compose_and_restart(
+    HostingRuntimeService::update_deployment(
         &state.http_client,
-        coolify,
-        HostingComposeUpdate {
-            service_uuid: server_uuid,
-            service_name,
+        Some(config),
+        HostingRuntimeUpdate {
+            deployment_id: server_uuid,
+            deployment_name: service_name,
             custom_domain: domain_ready_for_route(&sub),
-            sftp_user,
-            sftp_password,
-            sftp_port,
+            access_user: sftp_user,
+            access_password: sftp_password,
+            access_port: sftp_port,
             plan_config: &plan_config,
         },
     )
