@@ -103,7 +103,7 @@ pub(super) async fn fetch_storage_used(
         server_ip,
         ssh_key,
         coolify_name,
-        sub.server_uuid.as_deref(),
+        sub.deployment_id_or_legacy(),
         &sub.plan,
     )
     .await
@@ -240,7 +240,7 @@ pub(super) async fn get_hosting_stats(
         .with_ymd_and_hms(next_month_year, next_month, 1, 0, 0, 0)
         .single()
         .unwrap_or(now);
-    let latest_sample = if let Some(deployment_uuid) = sub.server_uuid.as_deref() {
+    let latest_sample = if let Some(deployment_uuid) = sub.deployment_id_or_legacy() {
         InfrastructureRepository::latest_deployment_sample(&state.pool, deployment_uuid).await?
     } else {
         None

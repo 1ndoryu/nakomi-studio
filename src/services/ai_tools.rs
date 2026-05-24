@@ -623,6 +623,8 @@ async fn create_chat_hosting_subscription(
             domain_verification_status: &domain_verification_status,
             domain_verification_token: domain_verification_token.as_deref(),
             domain_verified_at: None,
+            runtime_kind: crate::services::HostingRuntimeKind::from_env().as_str(),
+            deployment_id: None,
             coolify_site_name: None,
             monthly_price_cents: plan_config.monthly_price_cents,
             storage_limit_mb: plan_config.storage_limit_mb,

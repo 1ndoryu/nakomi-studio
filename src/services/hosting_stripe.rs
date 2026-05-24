@@ -148,6 +148,8 @@ async fn record_auto_provision_success(
         pool,
         hosting_id,
         &ServerInfo {
+            runtime_kind: result.runtime_kind.as_str(),
+            deployment_id: &result.deployment_id,
             coolify_site_name: service_name,
             server_uuid: &result.deployment_id,
             server_ip: &result.server_ip,
@@ -553,25 +555,27 @@ impl HostingStripeService {
         HostingRepository::update_status(pool, hosting.id, "cancelled").await?;
 
         /* [104A-42] Eliminar despliegue del runtime al cancelar — no-fatal */
-        if let Some(service_uuid) = &hosting.server_uuid {
+        if let Some(deployment_id) = hosting.deployment_id_or_legacy() {
+            let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&hosting.runtime_kind);
             if let Err(e) =
                 HostingRuntimeService::delete_deployment(
                     http_client,
                     coolify_config,
-                    service_uuid,
+                    Some(runtime_kind),
+                    deployment_id,
                     false,
                 )
                 .await
             {
                 tracing::warn!(
                     "Error eliminando despliegue {} para hosting {}: {e}",
-                    service_uuid,
+                    deployment_id,
                     hosting.id
                 );
             } else {
                 tracing::info!(
                     "Despliegue {} eliminado por cancelación de hosting {}",
-                    service_uuid,
+                    deployment_id,
                     hosting.id
                 );
             }

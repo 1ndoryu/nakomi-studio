@@ -270,7 +270,7 @@ pub async fn run_storage_check(pool: &PgPool, coolify_config: &CoolifyConfig) {
         ) else {
             continue;
         };
-        let service_uuid = h.server_uuid.as_deref();
+        let service_uuid = h.deployment_id_or_legacy();
 
         check_and_enforce_one(
             pool,

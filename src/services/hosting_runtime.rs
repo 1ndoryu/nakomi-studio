@@ -1,8 +1,8 @@
 /* [245A-3] Fachada de runtime de hosting para desacoplar el dominio de la API
  * directa de Coolify. En este bloque el provider `lightweight` queda declarado
  * pero no implementado para no mezclar la abstracción con el runtime nuevo.
- * Gotcha: la persistencia sigue usando campos legacy (`coolify_site_name`,
- * `server_uuid`) hasta abrir la migración de datos del siguiente bloque. */
+ * [245A-6] `runtime_kind` y `deployment_id` ya se persisten en la suscripción,
+ * así que control, borrado y refresh pueden despacharse por runtime guardado. */
 
 use reqwest::Client;
 use uuid::Uuid;
@@ -35,23 +35,35 @@ impl HostingRuntimeKind {
     }
 
     #[must_use]
+    pub fn parse(raw_value: &str) -> Option<Self> {
+        match raw_value.trim().to_ascii_lowercase().as_str() {
+            "" => None,
+            HOSTING_RUNTIME_COOLIFY => Some(Self::Coolify),
+            HOSTING_RUNTIME_LIGHTWEIGHT => Some(Self::Lightweight),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn from_persisted(raw_value: &str) -> Self {
+        Self::parse(raw_value).unwrap_or(Self::Coolify)
+    }
+
+    #[must_use]
     pub fn from_env() -> Self {
         let Ok(raw_value) = std::env::var(HOSTING_RUNTIME_PROVIDER_ENV) else {
             return Self::Coolify;
         };
 
-        let normalized = raw_value.trim().to_ascii_lowercase();
-        match normalized.as_str() {
-            "" | HOSTING_RUNTIME_COOLIFY => Self::Coolify,
-            HOSTING_RUNTIME_LIGHTWEIGHT => Self::Lightweight,
-            other => {
-                tracing::warn!(
-                    "Runtime de hosting desconocido '{}' en {}. Se usa 'coolify'.",
-                    other,
-                    HOSTING_RUNTIME_PROVIDER_ENV
-                );
-                Self::Coolify
-            }
+        if let Some(kind) = Self::parse(&raw_value) {
+            kind
+        } else {
+            tracing::warn!(
+                "Runtime de hosting desconocido '{}' en {}. Se usa 'coolify'.",
+                raw_value,
+                HOSTING_RUNTIME_PROVIDER_ENV
+            );
+            Self::Coolify
         }
     }
 }
@@ -151,7 +163,9 @@ impl HostingRuntimeService {
                     ))
                 })
             }
-            HostingRuntimeKind::Lightweight => Err(Self::unsupported(operation)),
+            HostingRuntimeKind::Lightweight => {
+                Err(Self::unsupported(HostingRuntimeKind::Lightweight, operation))
+            }
         }
     }
 
@@ -168,7 +182,10 @@ impl HostingRuntimeService {
                     .map(Into::into)
                     .collect())
             }
-            HostingRuntimeKind::Lightweight => Err(Self::unsupported("listar despliegues")),
+            HostingRuntimeKind::Lightweight => Err(Self::unsupported(
+                HostingRuntimeKind::Lightweight,
+                "listar despliegues",
+            )),
         }
     }
 
@@ -199,16 +216,21 @@ impl HostingRuntimeService {
                 .await?
                 .into())
             }
-            HostingRuntimeKind::Lightweight => Err(Self::unsupported("provisionar hostings")),
+            HostingRuntimeKind::Lightweight => Err(Self::unsupported(
+                HostingRuntimeKind::Lightweight,
+                "provisionar hostings",
+            )),
         }
     }
 
     pub async fn update_deployment(
         http_client: &Client,
         coolify_config: Option<&CoolifyConfig>,
+        runtime_kind: Option<HostingRuntimeKind>,
         update: HostingRuntimeUpdate<'_>,
     ) -> Result<(), AppError> {
-        match Self::current_kind() {
+        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        match runtime_kind {
             HostingRuntimeKind::Coolify => {
                 let config =
                     Self::require_target_config(coolify_config, "actualizar despliegues")?;
@@ -227,73 +249,91 @@ impl HostingRuntimeService {
                 )
                 .await
             }
-            HostingRuntimeKind::Lightweight => Err(Self::unsupported("actualizar despliegues")),
+            HostingRuntimeKind::Lightweight => {
+                Err(Self::unsupported(runtime_kind, "actualizar despliegues"))
+            }
         }
     }
 
     pub async fn delete_deployment(
         http_client: &Client,
         coolify_config: Option<&CoolifyConfig>,
+        runtime_kind: Option<HostingRuntimeKind>,
         deployment_id: &str,
         delete_volumes: bool,
     ) -> Result<(), AppError> {
-        match Self::current_kind() {
+        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        match runtime_kind {
             HostingRuntimeKind::Coolify => {
                 let config = Self::require_target_config(coolify_config, "eliminar despliegues")?;
                 CoolifyService::delete_service(http_client, config, deployment_id, delete_volumes)
                     .await
             }
-            HostingRuntimeKind::Lightweight => Err(Self::unsupported("eliminar despliegues")),
+            HostingRuntimeKind::Lightweight => {
+                Err(Self::unsupported(runtime_kind, "eliminar despliegues"))
+            }
         }
     }
 
     pub async fn stop_deployment(
         http_client: &Client,
         coolify_config: Option<&CoolifyConfig>,
+        runtime_kind: Option<HostingRuntimeKind>,
         deployment_id: &str,
     ) -> Result<(), AppError> {
-        match Self::current_kind() {
+        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        match runtime_kind {
             HostingRuntimeKind::Coolify => {
                 let config = Self::require_target_config(coolify_config, "detener despliegues")?;
                 CoolifyService::stop_service(http_client, config, deployment_id).await
             }
-            HostingRuntimeKind::Lightweight => Err(Self::unsupported("detener despliegues")),
+            HostingRuntimeKind::Lightweight => {
+                Err(Self::unsupported(runtime_kind, "detener despliegues"))
+            }
         }
     }
 
     pub async fn start_deployment(
         http_client: &Client,
         coolify_config: Option<&CoolifyConfig>,
+        runtime_kind: Option<HostingRuntimeKind>,
         deployment_id: &str,
     ) -> Result<(), AppError> {
-        match Self::current_kind() {
+        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        match runtime_kind {
             HostingRuntimeKind::Coolify => {
                 let config = Self::require_target_config(coolify_config, "iniciar despliegues")?;
                 CoolifyService::start_service(http_client, config, deployment_id).await
             }
-            HostingRuntimeKind::Lightweight => Err(Self::unsupported("iniciar despliegues")),
+            HostingRuntimeKind::Lightweight => {
+                Err(Self::unsupported(runtime_kind, "iniciar despliegues"))
+            }
         }
     }
 
     pub async fn restart_deployment(
         http_client: &Client,
         coolify_config: Option<&CoolifyConfig>,
+        runtime_kind: Option<HostingRuntimeKind>,
         deployment_id: &str,
     ) -> Result<(), AppError> {
-        match Self::current_kind() {
+        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        match runtime_kind {
             HostingRuntimeKind::Coolify => {
                 let config =
                     Self::require_target_config(coolify_config, "reiniciar despliegues")?;
                 CoolifyService::restart_service(http_client, config, deployment_id).await
             }
-            HostingRuntimeKind::Lightweight => Err(Self::unsupported("reiniciar despliegues")),
+            HostingRuntimeKind::Lightweight => {
+                Err(Self::unsupported(runtime_kind, "reiniciar despliegues"))
+            }
         }
     }
 
-    fn unsupported(operation: &str) -> AppError {
+    fn unsupported(runtime_kind: HostingRuntimeKind, operation: &str) -> AppError {
         AppError::ServiceUnavailable(format!(
             "El runtime de hosting '{}' aún no implementa {}.",
-            Self::current_kind().as_str(),
+            runtime_kind.as_str(),
             operation
         ))
     }

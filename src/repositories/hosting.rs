@@ -15,6 +15,8 @@ use crate::models::{
 /* [164A-6] Struct para agrupar datos del servidor tras provisioning.
  * Evita pasar 8 argumentos sueltos a update_server_info (clippy::too_many_arguments). */
 pub struct ServerInfo<'a> {
+    pub runtime_kind: &'a str,
+    pub deployment_id: &'a str,
     pub coolify_site_name: &'a str,
     pub server_uuid: &'a str,
     pub server_ip: &'a str,
@@ -35,6 +37,8 @@ pub struct CreateHostingParams<'a> {
     pub domain_verification_status: &'a str,
     pub domain_verification_token: Option<&'a str>,
     pub domain_verified_at: Option<DateTime<Utc>>,
+    pub runtime_kind: &'a str,
+    pub deployment_id: Option<&'a str>,
     /* [304A-3] Permite vincular a despliegue Coolify existente al crear suscripción */
     pub coolify_site_name: Option<&'a str>,
     pub monthly_price_cents: i32,
@@ -57,6 +61,7 @@ impl HostingRepository {
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     domain_verification_status, domain_verification_token, domain_verified_at,
+                    runtime_kind, deployment_id,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
                     server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
@@ -77,6 +82,7 @@ impl HostingRepository {
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     domain_verification_status, domain_verification_token, domain_verified_at,
+                    runtime_kind, deployment_id,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
                     server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
@@ -98,6 +104,7 @@ impl HostingRepository {
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     domain_verification_status, domain_verification_token, domain_verified_at,
+                    runtime_kind, deployment_id,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
                     server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
@@ -119,11 +126,13 @@ impl HostingRepository {
             "INSERT INTO hosting_subscriptions (
                 user_id, client_name, client_email, plan, domain,
                 domain_verification_status, domain_verification_token, domain_verified_at,
-                coolify_site_name, monthly_price_cents, storage_limit_mb
+                runtime_kind, deployment_id, coolify_site_name,
+                monthly_price_cents, storage_limit_mb
              )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        domain_verification_status, domain_verification_token, domain_verified_at,
+                       runtime_kind, deployment_id,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
                        server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
@@ -135,6 +144,8 @@ impl HostingRepository {
             params.domain_verification_status,
             params.domain_verification_token,
             params.domain_verified_at,
+            params.runtime_kind,
+            params.deployment_id,
             params.coolify_site_name,
             params.monthly_price_cents,
             params.storage_limit_mb
@@ -175,6 +186,7 @@ impl HostingRepository {
              WHERE id = $8
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        domain_verification_status, domain_verification_token, domain_verified_at,
+                       runtime_kind, deployment_id,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
                        server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
@@ -249,6 +261,7 @@ impl HostingRepository {
             HostingSubscription,
             "SELECT id, user_id, client_name, client_email, plan, domain,
                     domain_verification_status, domain_verification_token, domain_verified_at,
+                    runtime_kind, deployment_id,
                     coolify_site_name, status, stripe_subscription_id,
                     monthly_price_cents, storage_limit_mb,
                     server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at
@@ -275,6 +288,7 @@ impl HostingRepository {
              WHERE id = $2
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        domain_verification_status, domain_verification_token, domain_verified_at,
+                       runtime_kind, deployment_id,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
                        server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",
@@ -302,7 +316,7 @@ impl HostingRepository {
         Ok(())
     }
 
-    /* [104A-42] Guardar datos del servidor Coolify tras provisioning exitoso.
+    /* [245A-6] Guardar identidad del runtime y datos de acceso tras provisioning.
      * [104A-18] También guarda credenciales SFTP generadas al provisionar. */
     pub async fn update_server_info(
         pool: &PgPool,
@@ -311,9 +325,12 @@ impl HostingRepository {
     ) -> Result<(), AppError> {
         sqlx::query!(
             "UPDATE hosting_subscriptions
-             SET coolify_site_name = $1, server_uuid = $2, server_ip = $3,
-                 sftp_user = $4, sftp_password = $5, sftp_port = $6, updated_at = NOW()
-             WHERE id = $7",
+             SET runtime_kind = $1, deployment_id = $2,
+                 coolify_site_name = $3, server_uuid = $4, server_ip = $5,
+                 sftp_user = $6, sftp_password = $7, sftp_port = $8, updated_at = NOW()
+             WHERE id = $9",
+            info.runtime_kind,
+            info.deployment_id,
             info.coolify_site_name,
             info.server_uuid,
             info.server_ip,
@@ -385,6 +402,7 @@ impl HostingRepository {
              WHERE id = $4
              RETURNING id, user_id, client_name, client_email, plan, domain,
                        domain_verification_status, domain_verification_token, domain_verified_at,
+                       runtime_kind, deployment_id,
                        coolify_site_name, status, stripe_subscription_id,
                        monthly_price_cents, storage_limit_mb,
                        server_uuid, server_ip, sftp_user, sftp_password, sftp_port, created_at, updated_at",

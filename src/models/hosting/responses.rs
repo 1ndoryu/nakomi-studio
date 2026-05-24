@@ -34,12 +34,8 @@ pub struct HostingSubscriptionResponse {
 
 impl From<HostingSubscription> for HostingSubscriptionResponse {
     fn from(s: HostingSubscription) -> Self {
-        let deployment_id = s.server_uuid.clone();
-        let runtime_kind = if deployment_id.is_some() || s.coolify_site_name.is_some() {
-            Some("coolify".to_string())
-        } else {
-            None
-        };
+        let deployment_id = s.deployment_id_or_legacy().map(str::to_owned);
+        let runtime_kind = Some(s.runtime_kind.clone());
 
         Self {
             id: s.id,

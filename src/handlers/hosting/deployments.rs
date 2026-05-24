@@ -198,9 +198,8 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
         .iter()
         .filter_map(|subscription| {
             subscription
-                .server_uuid
-                .as_deref()
-                .map(|server_uuid| (server_uuid, subscription))
+                .deployment_id_or_legacy()
+                .map(|deployment_id| (deployment_id, subscription))
         })
         .collect();
     let subscriptions_by_name: HashMap<&str, _> = subscriptions
@@ -336,7 +335,7 @@ pub(super) async fn delete_deployment(
 
     let target_name = target_name.expect("deployment name must exist when config is found");
     let linked_subscription = subscriptions.iter().find(|subscription| {
-        subscription.server_uuid.as_deref() == Some(deployment_uuid.as_str())
+        subscription.deployment_id_or_legacy() == Some(deployment_uuid.as_str())
             || subscription.coolify_site_name.as_deref() == Some(target_name.as_str())
     });
 
@@ -351,6 +350,7 @@ pub(super) async fn delete_deployment(
     HostingRuntimeService::delete_deployment(
         &state.http_client,
         Some(target_config),
+        None,
         &deployment_uuid,
         true,
     )

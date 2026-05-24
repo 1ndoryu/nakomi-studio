@@ -119,6 +119,8 @@ pub(super) async fn provision_subscription(
         &state.pool,
         id,
         &ServerInfo {
+            runtime_kind: result.runtime_kind.as_str(),
+            deployment_id: &result.deployment_id,
             coolify_site_name: &service_name,
             server_uuid: &result.deployment_id,
             server_ip: &result.server_ip,
@@ -134,6 +136,7 @@ pub(super) async fn provision_subscription(
             &state,
             DomainActivation {
                 subscription_id: id,
+                runtime_kind: result.runtime_kind,
                 token: sub.domain_verification_token.as_deref(),
                 verified_at: sub.domain_verified_at,
                 update: HostingRuntimeUpdate {
@@ -216,7 +219,7 @@ pub(super) async fn rotate_credentials(
         .await?
         .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
 
-    let server_uuid = sub.server_uuid.as_ref().ok_or_else(|| {
+    let deployment_id = sub.deployment_id_or_legacy().ok_or_else(|| {
         AppError::Validation("Hosting no provisionado — no se pueden rotar credenciales".into())
     })?;
     let sftp_user = sub.sftp_user.as_ref().ok_or_else(|| {
@@ -247,12 +250,14 @@ pub(super) async fn rotate_credentials(
         .ok_or_else(|| {
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
+    let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
 
     HostingRuntimeService::update_deployment(
         &state.http_client,
         Some(config),
+        Some(runtime_kind),
         HostingRuntimeUpdate {
-            deployment_id: server_uuid,
+            deployment_id,
             deployment_name: service_name,
             custom_domain: domain_ready_for_route(&sub),
             access_user: sftp_user,
@@ -309,7 +314,7 @@ pub(super) async fn refresh_hosting(
         .await?
         .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
 
-    let server_uuid = sub.server_uuid.as_ref().ok_or_else(|| {
+    let deployment_id = sub.deployment_id_or_legacy().ok_or_else(|| {
         AppError::Validation("Hosting no provisionado — no se puede refrescar".into())
     })?;
     let sftp_user = sub.sftp_user.as_ref().ok_or_else(|| {
@@ -335,12 +340,14 @@ pub(super) async fn refresh_hosting(
         .ok_or_else(|| {
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
+    let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
 
     HostingRuntimeService::update_deployment(
         &state.http_client,
         Some(config),
+        Some(runtime_kind),
         HostingRuntimeUpdate {
-            deployment_id: server_uuid,
+            deployment_id,
             deployment_name: service_name,
             custom_domain: domain_ready_for_route(&sub),
             access_user: sftp_user,

@@ -240,6 +240,8 @@ mod tests {
             domain_verification_status: "active".to_string(),
             domain_verification_token: Some("nakomi-verification=abc123".to_string()),
             domain_verified_at: Some(now),
+            runtime_kind: "coolify".to_string(),
+            deployment_id: Some("deploy-123".to_string()),
             coolify_site_name: Some("hosting-abc123".to_string()),
             status: "active".to_string(),
             stripe_subscription_id: Some("sub_123".to_string()),
@@ -265,6 +267,8 @@ mod tests {
             Some("nakomi-verification=abc123")
         );
         assert_eq!(resp.domain_verified_at, Some(now));
+        assert_eq!(resp.runtime_kind.as_deref(), Some("coolify"));
+        assert_eq!(resp.deployment_id.as_deref(), Some("deploy-123"));
         assert_eq!(resp.status, "active");
         assert_eq!(resp.monthly_price_cents, 1000);
         assert_eq!(resp.storage_limit_mb, 20480);

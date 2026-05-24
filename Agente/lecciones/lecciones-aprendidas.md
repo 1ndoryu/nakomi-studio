@@ -45,6 +45,11 @@
 - Si la query nueva depende de una columna recién agregada, primero correr `cargo sqlx migrate run` contra la base local de `DATABASE_URL`; si no, `cargo sqlx prepare` falla aunque el código esté bien.
 - Si la base local principal tiene checksums viejos de migraciones ya aplicadas, no fuerces esa BD para regenerar `.sqlx/`: crea una base temporal limpia, corre ahí `cargo sqlx migrate run` y luego `cargo sqlx prepare`.
 
+## Hosting runtime — persistir antes de cambiar el dispatch
+- Si el dominio de hosting ya tiene una fachada de runtime pero las operaciones críticas siguen despachando por `HOSTING_RUNTIME_PROVIDER`, cambiar el provider global rompe el control de despliegues legacy.
+- El siguiente corte correcto no es implementar primero el runtime nuevo: primero persistir `runtime_kind` + `deployment_id` por suscripción y hacer que start/stop/restart/delete/update lean esa identidad guardada.
+- `server_uuid` puede seguir como compatibilidad, pero no debe seguir siendo la única fuente de verdad para operaciones de runtime.
+
 ## PowerShell + cargo
 - cargo escribe progreso en stderr. PowerShell interpreta stderr como error.
 - `2>&1 | ForEach-Object { $_.ToString() }` y luego `$LASTEXITCODE` es el patrón correcto.

@@ -100,6 +100,12 @@ pub(super) async fn create_subscription(
             domain_verification_status: &domain_verification_status,
             domain_verification_token: domain_verification_token.as_deref(),
             domain_verified_at,
+            runtime_kind: if req.coolify_site_name.is_some() {
+                "coolify"
+            } else {
+                crate::services::HostingRuntimeKind::from_env().as_str()
+            },
+            deployment_id: None,
             coolify_site_name: req.coolify_site_name.as_deref(),
             monthly_price_cents: price,
             storage_limit_mb: storage,
@@ -301,7 +307,8 @@ pub(super) async fn update_subscription(
             state.coolify_config.as_ref(),
             compose_update_from_subscription(&sub, None, &plan_config),
         ) {
-            sync_custom_domain_route(&state.http_client, config, update).await?;
+            let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
+            sync_custom_domain_route(&state.http_client, config, runtime_kind, update).await?;
         }
     }
 
@@ -374,21 +381,23 @@ pub(super) async fn delete_subscription(
         .await?
         .ok_or(AppError::NotFound("Suscripción no encontrada".into()))?;
 
-    if let (Some(ref server_uuid), Some(ref coolify_config)) =
-        (&sub.server_uuid, &state.coolify_config)
+    if let (Some(deployment_id), Some(ref coolify_config)) =
+        (sub.deployment_id_or_legacy(), &state.coolify_config)
     {
+        let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
         if let Err(e) =
             HostingRuntimeService::delete_deployment(
                 &state.http_client,
                 Some(coolify_config),
-                server_uuid,
+                Some(runtime_kind),
+                deployment_id,
                 true,
             )
             .await
         {
             tracing::warn!(
-                "Error eliminando servicio Coolify {} para suscripción {id}: {e}",
-                server_uuid
+                "Error eliminando despliegue {} para suscripción {id}: {e}",
+                deployment_id
             );
         }
     }

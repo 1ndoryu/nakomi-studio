@@ -8,7 +8,9 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{HostingPlanConfig, UserRole};
 use crate::repositories::HostingRepository;
-use crate::services::{CoolifyConfig, HostingRuntimeService, HostingRuntimeUpdate};
+use crate::services::{
+    CoolifyConfig, HostingRuntimeKind, HostingRuntimeService, HostingRuntimeUpdate,
+};
 use crate::AppState;
 
 /* [165A-21] Los dominios custom ya no se activan en Coolify en cuanto se guardan.
@@ -103,9 +105,11 @@ async fn lookup_txt_records(record_name: &str) -> Result<Vec<String>, String> {
 pub(super) async fn sync_custom_domain_route(
     http_client: &reqwest::Client,
     config: &CoolifyConfig,
+    runtime_kind: HostingRuntimeKind,
     update: HostingRuntimeUpdate<'_>,
 ) -> Result<(), AppError> {
-    HostingRuntimeService::update_deployment(http_client, Some(config), update).await
+    HostingRuntimeService::update_deployment(http_client, Some(config), Some(runtime_kind), update)
+        .await
 }
 
 pub(super) fn compose_update_from_subscription<'a>(
@@ -114,7 +118,7 @@ pub(super) fn compose_update_from_subscription<'a>(
     plan_config: &'a HostingPlanConfig,
 ) -> Option<HostingRuntimeUpdate<'a>> {
     Some(HostingRuntimeUpdate {
-        deployment_id: sub.server_uuid.as_deref()?,
+        deployment_id: sub.deployment_id_or_legacy()?,
         deployment_name: sub.coolify_site_name.as_deref()?,
         custom_domain,
         access_user: sub.sftp_user.as_deref()?,
@@ -137,6 +141,7 @@ struct DomainVerificationResponse<'a> {
 
 pub(super) struct DomainActivation<'a> {
     pub subscription_id: Uuid,
+    pub runtime_kind: HostingRuntimeKind,
     pub token: Option<&'a str>,
     pub verified_at: Option<chrono::DateTime<chrono::Utc>>,
     pub update: HostingRuntimeUpdate<'a>,
@@ -199,6 +204,7 @@ async fn resolve_domain_activation(
         state,
         DomainActivation {
             subscription_id,
+            runtime_kind: HostingRuntimeKind::from_persisted(&sub.runtime_kind),
             token: Some(expected_token),
             verified_at: Some(verified_at),
             update,
@@ -246,7 +252,14 @@ pub(super) async fn activate_domain_route(
         return false;
     };
 
-    match sync_custom_domain_route(&state.http_client, config, activation.update).await {
+    match sync_custom_domain_route(
+        &state.http_client,
+        config,
+        activation.runtime_kind,
+        activation.update,
+    )
+    .await
+    {
         Ok(()) => {
             mark_domain_active(
                 state,

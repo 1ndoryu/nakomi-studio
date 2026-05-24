@@ -175,6 +175,8 @@ pub(super) async fn subscribe_self(
             domain_verification_status: &domain_verification_status,
             domain_verification_token: domain_verification_token.as_deref(),
             domain_verified_at,
+            runtime_kind: crate::services::HostingRuntimeKind::from_env().as_str(),
+            deployment_id: None,
             coolify_site_name: None,
             monthly_price_cents: price,
             storage_limit_mb: storage,
@@ -304,7 +306,7 @@ async fn complete_test_hosting_checkout(
 }
 
 /* [165A-1] Los hostings de prueba creados antes del fix quedaron `active` pero sin
- * `server_uuid` ni credenciales SFTP. Cuando el cliente test vuelve al panel,
+ * `deployment_id` ni credenciales SFTP. Cuando el cliente test vuelve al panel,
  * intentamos provisionarlos una sola vez usando el mismo flujo automático. */
 pub(super) async fn maybe_backfill_test_hosting_access(
     state: &AppState,
@@ -312,7 +314,7 @@ pub(super) async fn maybe_backfill_test_hosting_access(
     source: &str,
 ) -> Result<crate::models::HostingSubscription, AppError> {
     if sub.status != "active"
-        || sub.server_uuid.is_some()
+        || sub.deployment_id_or_legacy().is_some()
         || !is_checkout_bypass_email(&sub.client_email)
     {
         return Ok(sub);
@@ -458,6 +460,8 @@ pub(super) async fn admin_test_subscribe(
             domain_verification_status: &domain_verification_status,
             domain_verification_token: domain_verification_token.as_deref(),
             domain_verified_at,
+            runtime_kind: crate::services::HostingRuntimeKind::from_env().as_str(),
+            deployment_id: None,
             coolify_site_name: None,
             monthly_price_cents: plan_config.monthly_price_cents,
             storage_limit_mb: plan_config.storage_limit_mb,

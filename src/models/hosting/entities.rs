@@ -18,6 +18,10 @@ pub struct HostingSubscription {
     pub domain_verification_token: Option<String>,
     #[sqlx(default)]
     pub domain_verified_at: Option<DateTime<Utc>>,
+    /* [245A-6] Identidad del runtime persistida para no depender del fallback
+     * a columnas legacy al operar sobre despliegues existentes. */
+    pub runtime_kind: String,
+    pub deployment_id: Option<String>,
     pub coolify_site_name: Option<String>,
     pub status: String,
     pub stripe_subscription_id: Option<String>,
@@ -38,6 +42,13 @@ pub struct HostingSubscription {
     pub sftp_port: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl HostingSubscription {
+    #[must_use]
+    pub fn deployment_id_or_legacy(&self) -> Option<&str> {
+        self.deployment_id.as_deref().or(self.server_uuid.as_deref())
+    }
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
