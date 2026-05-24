@@ -232,7 +232,9 @@ pub(super) async fn rotate_credentials(
         AppError::Internal("Nombre de servicio Coolify ausente en suscripción provisionada".into())
     })?;
 
-    let config = HostingRuntimeService::require_target_config(
+    let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
+    let config = HostingRuntimeService::require_target_config_for(
+        runtime_kind,
         state.coolify_config.as_ref(),
         "rotar credenciales",
     )?;
@@ -250,8 +252,6 @@ pub(super) async fn rotate_credentials(
         .ok_or_else(|| {
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
-    let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
-
     HostingRuntimeService::update_deployment(
         &state.http_client,
         Some(config),
@@ -330,7 +330,9 @@ pub(super) async fn refresh_hosting(
         AppError::Internal("Nombre de servicio Coolify ausente en suscripción provisionada".into())
     })?;
 
-    let config = HostingRuntimeService::require_target_config(
+    let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
+    let config = HostingRuntimeService::require_target_config_for(
+        runtime_kind,
         state.coolify_config.as_ref(),
         "refrescar hostings",
     )?;
@@ -340,8 +342,6 @@ pub(super) async fn refresh_hosting(
         .ok_or_else(|| {
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
-    let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
-
     HostingRuntimeService::update_deployment(
         &state.http_client,
         Some(config),

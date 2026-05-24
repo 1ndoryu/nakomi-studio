@@ -250,7 +250,8 @@ pub async fn run_storage_check(pool: &PgPool, coolify_config: &CoolifyConfig) {
     let candidates: Vec<_> = all
         .into_iter()
         .filter(|h| {
-            h.status == "active"
+            h.is_coolify_runtime()
+                && h.status == "active"
                 && h.server_ip.is_some()
                 && h.coolify_site_name.is_some()
                 && h.user_id.is_some()

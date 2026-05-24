@@ -49,6 +49,12 @@ impl HostingSubscription {
     pub fn deployment_id_or_legacy(&self) -> Option<&str> {
         self.deployment_id.as_deref().or(self.server_uuid.as_deref())
     }
+
+    #[must_use]
+    pub fn is_coolify_runtime(&self) -> bool {
+        let runtime_kind = self.runtime_kind.trim();
+        runtime_kind.is_empty() || runtime_kind.eq_ignore_ascii_case("coolify")
+    }
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]

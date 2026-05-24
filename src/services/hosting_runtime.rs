@@ -144,6 +144,14 @@ impl HostingRuntimeService {
         HostingRuntimeKind::from_env()
     }
 
+    /* [245A-7] El runtime persistido debe gobernar las operaciones legacy.
+     * Gotcha: si se resuelve por env global, cambiar a `lightweight` rompe
+     * listados y controles sobre despliegues viejos aún gestionados por Coolify. */
+    #[must_use]
+    fn resolved_kind(runtime_kind: Option<HostingRuntimeKind>) -> HostingRuntimeKind {
+        runtime_kind.unwrap_or_else(Self::current_kind)
+    }
+
     #[must_use]
     pub fn deployment_name_for(subscription_id: &Uuid) -> String {
         let id_str = subscription_id.to_string();
@@ -155,7 +163,15 @@ impl HostingRuntimeService {
         coolify_config: Option<&'a CoolifyConfig>,
         operation: &str,
     ) -> Result<&'a CoolifyConfig, AppError> {
-        match Self::current_kind() {
+        Self::require_target_config_for(Self::current_kind(), coolify_config, operation)
+    }
+
+    pub fn require_target_config_for<'a>(
+        runtime_kind: HostingRuntimeKind,
+        coolify_config: Option<&'a CoolifyConfig>,
+        operation: &str,
+    ) -> Result<&'a CoolifyConfig, AppError> {
+        match runtime_kind {
             HostingRuntimeKind::Coolify => {
                 coolify_config.ok_or_else(|| {
                     AppError::ServiceUnavailable(format!(
@@ -172,10 +188,13 @@ impl HostingRuntimeService {
     pub async fn list_deployments(
         http_client: &Client,
         coolify_config: Option<&CoolifyConfig>,
+        runtime_kind: Option<HostingRuntimeKind>,
     ) -> Result<Vec<HostingRuntimeDeploymentSummary>, AppError> {
-        match Self::current_kind() {
+        let runtime_kind = Self::resolved_kind(runtime_kind);
+        match runtime_kind {
             HostingRuntimeKind::Coolify => {
-                let config = Self::require_target_config(coolify_config, "listar despliegues")?;
+                let config =
+                    Self::require_target_config_for(runtime_kind, coolify_config, "listar despliegues")?;
                 Ok(CoolifyService::list_services(http_client, config)
                     .await?
                     .into_iter()
@@ -200,9 +219,14 @@ impl HostingRuntimeService {
         client_email: &str,
         preferences: Option<&HostingProvisionPreferences>,
     ) -> Result<HostingRuntimeProvisionResult, AppError> {
-        match Self::current_kind() {
+        let runtime_kind = Self::current_kind();
+        match runtime_kind {
             HostingRuntimeKind::Coolify => {
-                let config = Self::require_target_config(coolify_config, "provisionar hostings")?;
+                let config = Self::require_target_config_for(
+                    runtime_kind,
+                    coolify_config,
+                    "provisionar hostings",
+                )?;
                 Ok(CoolifyService::provision_hosting(
                     http_client,
                     config,
@@ -229,11 +253,14 @@ impl HostingRuntimeService {
         runtime_kind: Option<HostingRuntimeKind>,
         update: HostingRuntimeUpdate<'_>,
     ) -> Result<(), AppError> {
-        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        let runtime_kind = Self::resolved_kind(runtime_kind);
         match runtime_kind {
             HostingRuntimeKind::Coolify => {
-                let config =
-                    Self::require_target_config(coolify_config, "actualizar despliegues")?;
+                let config = Self::require_target_config_for(
+                    runtime_kind,
+                    coolify_config,
+                    "actualizar despliegues",
+                )?;
                 CoolifyService::update_compose_and_restart(
                     http_client,
                     config,
@@ -262,10 +289,14 @@ impl HostingRuntimeService {
         deployment_id: &str,
         delete_volumes: bool,
     ) -> Result<(), AppError> {
-        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        let runtime_kind = Self::resolved_kind(runtime_kind);
         match runtime_kind {
             HostingRuntimeKind::Coolify => {
-                let config = Self::require_target_config(coolify_config, "eliminar despliegues")?;
+                let config = Self::require_target_config_for(
+                    runtime_kind,
+                    coolify_config,
+                    "eliminar despliegues",
+                )?;
                 CoolifyService::delete_service(http_client, config, deployment_id, delete_volumes)
                     .await
             }
@@ -281,10 +312,14 @@ impl HostingRuntimeService {
         runtime_kind: Option<HostingRuntimeKind>,
         deployment_id: &str,
     ) -> Result<(), AppError> {
-        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        let runtime_kind = Self::resolved_kind(runtime_kind);
         match runtime_kind {
             HostingRuntimeKind::Coolify => {
-                let config = Self::require_target_config(coolify_config, "detener despliegues")?;
+                let config = Self::require_target_config_for(
+                    runtime_kind,
+                    coolify_config,
+                    "detener despliegues",
+                )?;
                 CoolifyService::stop_service(http_client, config, deployment_id).await
             }
             HostingRuntimeKind::Lightweight => {
@@ -299,10 +334,14 @@ impl HostingRuntimeService {
         runtime_kind: Option<HostingRuntimeKind>,
         deployment_id: &str,
     ) -> Result<(), AppError> {
-        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        let runtime_kind = Self::resolved_kind(runtime_kind);
         match runtime_kind {
             HostingRuntimeKind::Coolify => {
-                let config = Self::require_target_config(coolify_config, "iniciar despliegues")?;
+                let config = Self::require_target_config_for(
+                    runtime_kind,
+                    coolify_config,
+                    "iniciar despliegues",
+                )?;
                 CoolifyService::start_service(http_client, config, deployment_id).await
             }
             HostingRuntimeKind::Lightweight => {
@@ -317,11 +356,14 @@ impl HostingRuntimeService {
         runtime_kind: Option<HostingRuntimeKind>,
         deployment_id: &str,
     ) -> Result<(), AppError> {
-        let runtime_kind = runtime_kind.unwrap_or_else(Self::current_kind);
+        let runtime_kind = Self::resolved_kind(runtime_kind);
         match runtime_kind {
             HostingRuntimeKind::Coolify => {
-                let config =
-                    Self::require_target_config(coolify_config, "reiniciar despliegues")?;
+                let config = Self::require_target_config_for(
+                    runtime_kind,
+                    coolify_config,
+                    "reiniciar despliegues",
+                )?;
                 CoolifyService::restart_service(http_client, config, deployment_id).await
             }
             HostingRuntimeKind::Lightweight => {

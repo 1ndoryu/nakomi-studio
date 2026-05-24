@@ -49,6 +49,7 @@
 - Si el dominio de hosting ya tiene una fachada de runtime pero las operaciones críticas siguen despachando por `HOSTING_RUNTIME_PROVIDER`, cambiar el provider global rompe el control de despliegues legacy.
 - El siguiente corte correcto no es implementar primero el runtime nuevo: primero persistir `runtime_kind` + `deployment_id` por suscripción y hacer que start/stop/restart/delete/update lean esa identidad guardada.
 - `server_uuid` puede seguir como compatibilidad, pero no debe seguir siendo la única fuente de verdad para operaciones de runtime.
+- Después de persistir esa identidad, hay que llevar la misma regla al inventario y observabilidad. Si el panel o los loops background siguen resolviendo por provider global, el cambio a `lightweight` rompe Coolify legacy aunque el CRUD principal ya esté corregido.
 
 ## PowerShell + cargo
 - cargo escribe progreso en stderr. PowerShell interpreta stderr como error.

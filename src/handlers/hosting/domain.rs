@@ -245,7 +245,8 @@ pub(super) async fn activate_domain_route(
     let Some(custom_domain) = activation.update.custom_domain else {
         return false;
     };
-    let Ok(config) = HostingRuntimeService::require_target_config(
+    let Ok(config) = HostingRuntimeService::require_target_config_for(
+        activation.runtime_kind,
         state.coolify_config.as_ref(),
         "activar dominios custom",
     ) else {

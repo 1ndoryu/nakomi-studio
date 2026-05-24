@@ -651,15 +651,16 @@ pub async fn sample_infrastructure_once(
     let subscriptions = HostingRepository::list_all(&pool).await?;
     let subscriptions_by_uuid: HashMap<String, HostingSubscription> = subscriptions
         .iter()
+        .filter(|subscription| subscription.is_coolify_runtime())
         .filter_map(|subscription| {
             subscription
-                .server_uuid
-                .as_ref()
-                .map(|server_uuid| (server_uuid.clone(), subscription.clone()))
+                .deployment_id_or_legacy()
+                .map(|deployment_id| (deployment_id.to_string(), subscription.clone()))
         })
         .collect();
     let subscriptions_by_name: HashMap<String, HostingSubscription> = subscriptions
         .iter()
+        .filter(|subscription| subscription.is_coolify_runtime())
         .filter_map(|subscription| {
             subscription
                 .coolify_site_name

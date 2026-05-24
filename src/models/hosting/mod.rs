@@ -276,4 +276,35 @@ mod tests {
         assert_eq!(resp.sftp_user.as_deref(), Some("user"));
         assert_eq!(resp.sftp_port, Some(10001));
     }
+
+    #[test]
+    fn subscription_runtime_defaults_empty_to_coolify() {
+        let sub = HostingSubscription {
+            id: Uuid::new_v4(),
+            user_id: None,
+            client_name: "Test Client".to_string(),
+            client_email: "test@test.com".to_string(),
+            plan: "pro".to_string(),
+            domain: None,
+            domain_verification_status: "none".to_string(),
+            domain_verification_token: None,
+            domain_verified_at: None,
+            runtime_kind: String::new(),
+            deployment_id: None,
+            coolify_site_name: None,
+            status: "pending".to_string(),
+            stripe_subscription_id: None,
+            monthly_price_cents: 1000,
+            storage_limit_mb: 20480,
+            server_uuid: None,
+            server_ip: None,
+            sftp_user: None,
+            sftp_password: None,
+            sftp_port: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        assert!(sub.is_coolify_runtime());
+    }
 }

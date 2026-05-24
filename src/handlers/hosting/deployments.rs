@@ -9,7 +9,7 @@ use crate::models::{CoolifyDeploymentResponse, UserRole};
 use crate::repositories::{HostingRepository, InfrastructureRepository};
 use crate::services::infrastructure::coolify_server_targets;
 use crate::services::{
-    CoolifyConfig, HostingRuntimeDeploymentSummary, HostingRuntimeService,
+    CoolifyConfig, HostingRuntimeDeploymentSummary, HostingRuntimeKind, HostingRuntimeService,
 };
 use crate::AppState;
 
@@ -196,6 +196,7 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
     let subscriptions = HostingRepository::list_all(&state.pool).await?;
     let subscriptions_by_uuid: HashMap<&str, _> = subscriptions
         .iter()
+        .filter(|subscription| subscription.is_coolify_runtime())
         .filter_map(|subscription| {
             subscription
                 .deployment_id_or_legacy()
@@ -204,6 +205,7 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
         .collect();
     let subscriptions_by_name: HashMap<&str, _> = subscriptions
         .iter()
+        .filter(|subscription| subscription.is_coolify_runtime())
         .filter_map(|subscription| {
             subscription
                 .coolify_site_name
@@ -221,7 +223,13 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
 
     for target in &targets {
         tracing::info!("[deployments] Consultando {} en Coolify...", target.label);
-        match HostingRuntimeService::list_deployments(&state.http_client, Some(target.config)).await {
+        match HostingRuntimeService::list_deployments(
+            &state.http_client,
+            Some(target.config),
+            Some(HostingRuntimeKind::Coolify),
+        )
+        .await
+        {
             Ok(services) => {
                 tracing::info!(
                     "[deployments] {} devolvió {} servicios",
@@ -296,7 +304,13 @@ pub(super) async fn delete_deployment(
     let mut target_name: Option<String> = None;
 
     for target in &targets {
-        match HostingRuntimeService::list_deployments(&state.http_client, Some(target.config)).await {
+        match HostingRuntimeService::list_deployments(
+            &state.http_client,
+            Some(target.config),
+            Some(HostingRuntimeKind::Coolify),
+        )
+        .await
+        {
             Ok(services) => {
                 if let Some(service) = services
                     .into_iter()
@@ -350,7 +364,7 @@ pub(super) async fn delete_deployment(
     HostingRuntimeService::delete_deployment(
         &state.http_client,
         Some(target_config),
-        None,
+        Some(HostingRuntimeKind::Coolify),
         &deployment_uuid,
         true,
     )
