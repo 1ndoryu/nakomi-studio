@@ -216,6 +216,11 @@ async fn record_auto_provision_failure(
 }
 
 impl HostingStripeService {
+    #[must_use]
+    pub fn runtime_kind_for_plan(plan: &str) -> crate::services::HostingRuntimeKind {
+        HostingRuntimeService::runtime_kind_for_plan(plan)
+    }
+
     pub async fn load_provision_preferences(
         pool: &PgPool,
         hosting_id: Uuid,
@@ -251,6 +256,7 @@ impl HostingStripeService {
         activation_source: &str,
     ) {
         let hosting_id = subscription.id;
+        let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&subscription.runtime_kind);
         let Some((service_name, sftp_port, plan_config)) =
             load_auto_provision_request(pool, subscription, activation_source).await
         else {
@@ -261,6 +267,7 @@ impl HostingStripeService {
         match HostingRuntimeService::provision_hosting(
             http_client,
             coolify_config,
+            Some(runtime_kind),
             &service_name,
             sftp_port,
             &plan_config,

@@ -20,6 +20,15 @@ El resultado buscado no es solo "que funcione". El objetivo es que cada hosting 
 - WordPress optimizado por defecto
 - politica de admision que rechace VPS lentas aunque tengan RAM libre
 
+## Estado de avance 2026-05-24
+
+- `245A-6`: `hosting_subscriptions` ya persiste `runtime_kind` y `deployment_id`, asi que el backend dejo de depender solo de identidad Coolify.
+- `245A-7`: panel admin, loops legacy e inventario ya respetan el runtime persistido y no se rompen al mover el provider global.
+- `245A-8`: el runtime `lightweight` ya tiene bridge real backend ↔ manager para `inventory-light`, `light-site` y `provision-static`; el producto `normal-*` ya puede provisionarse, listarse, arrancarse, detenerse, borrarse y reconfigurarse sin Coolify.
+- `245A-9`: el manager y el backend ya exponen `light-backup`/`light-restore` y endpoints por suscripcion para listar, crear y restaurar backups remotos de sitios lightweight, incluyendo resincronizacion de password SFTP si el restore la regenera.
+- `245A-10`: el checkout deja de elegir runtime por `HOSTING_RUNTIME_PROVIDER`; las compras nuevas fijan `runtime_kind` segun el plan (`normal-*` a `lightweight` solo si el target existe, WordPress a `coolify`). En `studio` tambien se corrigio el acceso runtime a Coolify para compras reales usando `COOLIFY_BASE_URL=http://coolify:8080` y se vacio `GLORY_TEST_CHECKOUT_EMAILS` antes del smoke comercial.
+- Pendiente real tras este corte: smoke operativo del restore sobre un target real, receta WordPress premium, observabilidad/recursos del runtime lightweight y migracion comercial de sitios legacy.
+
 ---
 
 ## Por que cambiar

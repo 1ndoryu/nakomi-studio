@@ -28,6 +28,11 @@ Rama: glory-rust-nakomi
 
 Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se integra en frontend/src/. El backend Rust sirve API + SPA.
 
+## Estado interno reciente
+
+- `245A-9`: el runtime de hosting `lightweight` ya expone backup/restore remoto por manager y por API de suscripciones (`/api/hosting/subscriptions/{id}/backups`, `/api/hosting/subscriptions/{id}/restore`). Pendiente siguiente del frente: smoke operativo real del restore, observabilidad/panel lightweight y receta WordPress premium.
+- `245A-10`: la compra de hosting ya deja fijado el runtime por plan en vez de depender del provider global; `normal-*` solo cae en `lightweight` cuando el target está configurado, WordPress sigue en Coolify, y en producción se corrigió `COOLIFY_BASE_URL` al alias interno de Coolify con el bypass de checkout test desactivado antes de la compra real.
+
 ---
 
 ## Tareas pendientes

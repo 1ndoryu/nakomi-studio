@@ -1,3 +1,4 @@
+mod backups;
 mod checkout;
 mod control;
 mod deployments;

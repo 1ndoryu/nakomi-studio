@@ -50,6 +50,16 @@
 - El siguiente corte correcto no es implementar primero el runtime nuevo: primero persistir `runtime_kind` + `deployment_id` por suscripción y hacer que start/stop/restart/delete/update lean esa identidad guardada.
 - `server_uuid` puede seguir como compatibilidad, pero no debe seguir siendo la única fuente de verdad para operaciones de runtime.
 - Después de persistir esa identidad, hay que llevar la misma regla al inventario y observabilidad. Si el panel o los loops background siguen resolviendo por provider global, el cambio a `lightweight` rompe Coolify legacy aunque el CRUD principal ya esté corregido.
+- Cuando conviven `normal-*` en `lightweight` y WordPress en Coolify, el alta comercial tampoco puede seguir leyendo `HOSTING_RUNTIME_PROVIDER`: el runtime debe fijarse por plan al crear la suscripción y el provisioning posterior debe obedecer el `runtime_kind` persistido.
+
+## Hosting runtime lightweight — un provider no existe hasta que reconfigura
+- Que `provision_hosting()` cree el sitio no alcanza: si refresh, rotación de credenciales o dominio custom siguen atados a `CoolifyConfig`, el runtime nuevo queda operativo solo en el alta inicial.
+- El corte mínimo vendible para `normal-*` exige cuatro superficies reales y coherentes entre backend y manager: inventario, control, provisioning y reconfigure.
+- En el runtime lightweight actual, `access_user` no debe mutarse en caliente: cambiarlo sin rehacer ownership/jail del host compartido deja el sitio en un estado ambiguo aunque el panel diga éxito.
+
+## Hosting runtime lightweight — restore debe cerrar el contrato de credenciales
+- Un backup lightweight no queda realmente operativo cuando solo empaqueta `/srv/hosting/{site}`. El restore tiene que rehidratar Caddy/SSH, arrancar el compose y devolver por JSON cualquier password SFTP regenerada.
+- Si el backend no persiste esa password nueva en `hosting_subscriptions` al restaurar, el runtime revive pero el panel queda con credenciales obsoletas y el recovery se percibe como fallo parcial.
 
 ## PowerShell + cargo
 - cargo escribe progreso en stderr. PowerShell interpreta stderr como error.
@@ -70,6 +80,10 @@
 - Para `POST /api/v1/services` de stacks compose, el payload debe incluir `instant_deploy: true` si el cliente operativo ya lo usa. Sin ese flag, Coolify puede responder `500 Internal Server Error` aunque el compose sea válido, y el error queda engañosamente asociado al provisioning en lugar del contrato HTTP.
 - Si el compose se genera por concatenación/manual string building y contiene `dockerfile_inline`, no alcanza con tests de `contains(...)`: hay que parsear el YAML completo en tests (`serde_yaml`) o un bloque mal indentado llega a producción y Coolify revienta con un `Unable to parse at line ...` opaco.
 - En `coolify-manager-rs deploy-service`, la fase `[3/6] Construyendo imagen nueva...` puede quedarse silenciosa hasta imprimir `Build completado en ...`. No intervenir manualmente con `docker compose up` mientras ese comando siga vivo: el swap posterior puede chocar con nombres de contenedor. Si el build ya terminó y el manager quedó muerto, recién ahí verificar imagen + bind mount y hacer recovery manual.
+- En `studio`, el backend no alcanzó `COOLIFY_BASE_URL=http://173.249.50.44:8000` desde dentro del contenedor aunque sí alcanzó `http://coolify:8080`. Para provisioning/compras reales, la app debe hablar con Coolify por el alias interno del stack, no por la IP pública del host.
+
+## Checkout de prueba — limpiar antes del smoke comercial
+- Antes de abrir una compra real, no basta con borrar el usuario test en BD: también hay que vaciar `GLORY_TEST_CHECKOUT_EMAILS` para impedir bypass nuevos y retirar cualquier hosting/VPS de prueba que siga activo en infraestructura.
 
 ## Checkout de prueba — no mezclar escrow real con bypass
 - Los pagos sintéticos `test_bypass_*` no deben mostrarse como “retenidos” al usuario ni intentar capturarse contra Stripe al completar la orden. El backend debe exponer `bypassed` en el historial y la UI debe etiquetarlos como `Sin cobro`.

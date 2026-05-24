@@ -17,6 +17,8 @@ mod domain_stripe;
 pub mod email;
 mod google_auth;
 pub mod hosting_runtime;
+mod hosting_runtime_backups;
+mod hosting_runtime_lightweight_types;
 mod hosting_stripe;
 pub mod image_processing;
 pub mod infrastructure;
@@ -49,7 +51,8 @@ pub use domain_stripe::{DomainCheckoutParams, DomainStripeService};
 pub use email::{EmailConfig, EmailService};
 pub use google_auth::GoogleAuthService;
 pub use hosting_runtime::{
-	HostingRuntimeDeploymentSummary, HostingRuntimeKind, HostingRuntimeProvisionResult,
+	HostingRuntimeBackupEntry, HostingRuntimeBackupReport, HostingRuntimeDeploymentSummary,
+	HostingRuntimeKind, HostingRuntimeProvisionResult, HostingRuntimeRestoreReport,
 	HostingRuntimeService, HostingRuntimeUpdate,
 };
 pub use hosting_stripe::{CheckoutParams, HostingStripeService};

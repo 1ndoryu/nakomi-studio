@@ -18,7 +18,7 @@ use crate::services::{
 };
 use crate::AppState;
 
-/// Provisionar un hosting: crea el despliegue Nginx/WordPress en el runtime activo y actualiza la suscripción.
+/// Provisionar un hosting: crea el despliegue Nginx/WordPress en el runtime persistido y actualiza la suscripción.
 /// Solo admin. La suscripción debe estar en estado "pending" o "provisioning".
 #[utoipa::path(
     post,
@@ -53,7 +53,12 @@ pub(super) async fn provision_subscription(
         )));
     }
 
-    let config = HostingRuntimeService::require_target_config(
+    /* [245A-10] El provisioning manual debe respetar el runtime persistido en la suscripción.
+     * Si aquí se resuelve por env global, un checkout mixto normal/lightweight + WordPress/Coolify
+     * acaba desplegando en el runtime equivocado según quién cambió la variable global. */
+    let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
+    let config = HostingRuntimeService::optional_target_config_for(
+        runtime_kind,
         state.coolify_config.as_ref(),
         "provisionar hostings",
     )?;
@@ -67,28 +72,38 @@ pub(super) async fn provision_subscription(
         .ok_or_else(|| {
             AppError::Internal(format!("Plan config '{}' no encontrado en BD", sub.plan))
         })?;
-    let allocation =
-        InfrastructureRepository::hosting_allocation_for_plan(&state.pool, &sub.plan).await?;
-    let capacity_reserved = InfrastructureRepository::reserve_capacity_if_known(
-        &state.pool,
-        &config.server_uuid,
-        &allocation,
-    )
-    .await?;
-    if !capacity_reserved {
-        HostingRepository::update_status(&state.pool, id, "pending")
-            .await
-            .ok();
-        return Err(AppError::Validation(
-            "La VPS no tiene capacidad suficiente para provisionar este plan".into(),
-        ));
+    let allocation = if config.is_some() {
+        Some(InfrastructureRepository::hosting_allocation_for_plan(
+            &state.pool,
+            &sub.plan,
+        )
+        .await?)
+    } else {
+        None
+    };
+    if let (Some(config), Some(allocation)) = (config, allocation.as_ref()) {
+        let capacity_reserved = InfrastructureRepository::reserve_capacity_if_known(
+            &state.pool,
+            &config.server_uuid,
+            allocation,
+        )
+        .await?;
+        if !capacity_reserved {
+            HostingRepository::update_status(&state.pool, id, "pending")
+                .await
+                .ok();
+            return Err(AppError::Validation(
+                "La VPS no tiene capacidad suficiente para provisionar este plan".into(),
+            ));
+        }
     }
     let provision_preferences =
         HostingStripeService::load_provision_preferences(&state.pool, id).await;
 
     let result = match HostingRuntimeService::provision_hosting(
         &state.http_client,
-        Some(config),
+        config,
+        Some(runtime_kind),
         &service_name,
         sftp_port,
         &plan_config,
@@ -101,13 +116,15 @@ pub(super) async fn provision_subscription(
         Ok(result) => result,
         Err(error) => {
             tracing::error!("[Provision] Falló para {id}: {error}");
-            InfrastructureRepository::release_capacity(
-                &state.pool,
-                &config.server_uuid,
-                &allocation,
-            )
-            .await
-            .ok();
+            if let (Some(config), Some(allocation)) = (config, allocation.as_ref()) {
+                InfrastructureRepository::release_capacity(
+                    &state.pool,
+                    &config.server_uuid,
+                    allocation,
+                )
+                .await
+                .ok();
+            }
             HostingRepository::update_status(&state.pool, id, "pending")
                 .await
                 .ok();
@@ -233,7 +250,7 @@ pub(super) async fn rotate_credentials(
     })?;
 
     let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
-    let config = HostingRuntimeService::require_target_config_for(
+    let config = HostingRuntimeService::optional_target_config_for(
         runtime_kind,
         state.coolify_config.as_ref(),
         "rotar credenciales",
@@ -254,7 +271,7 @@ pub(super) async fn rotate_credentials(
         })?;
     HostingRuntimeService::update_deployment(
         &state.http_client,
-        Some(config),
+        config,
         Some(runtime_kind),
         HostingRuntimeUpdate {
             deployment_id,
@@ -331,7 +348,7 @@ pub(super) async fn refresh_hosting(
     })?;
 
     let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
-    let config = HostingRuntimeService::require_target_config_for(
+    let config = HostingRuntimeService::optional_target_config_for(
         runtime_kind,
         state.coolify_config.as_ref(),
         "refrescar hostings",
@@ -344,7 +361,7 @@ pub(super) async fn refresh_hosting(
         })?;
     HostingRuntimeService::update_deployment(
         &state.http_client,
-        Some(config),
+        config,
         Some(runtime_kind),
         HostingRuntimeUpdate {
             deployment_id,

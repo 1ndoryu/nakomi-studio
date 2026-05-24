@@ -104,11 +104,11 @@ async fn lookup_txt_records(record_name: &str) -> Result<Vec<String>, String> {
 
 pub(super) async fn sync_custom_domain_route(
     http_client: &reqwest::Client,
-    config: &CoolifyConfig,
+    config: Option<&CoolifyConfig>,
     runtime_kind: HostingRuntimeKind,
     update: HostingRuntimeUpdate<'_>,
 ) -> Result<(), AppError> {
-    HostingRuntimeService::update_deployment(http_client, Some(config), Some(runtime_kind), update)
+    HostingRuntimeService::update_deployment(http_client, config, Some(runtime_kind), update)
         .await
 }
 
@@ -245,7 +245,7 @@ pub(super) async fn activate_domain_route(
     let Some(custom_domain) = activation.update.custom_domain else {
         return false;
     };
-    let Ok(config) = HostingRuntimeService::require_target_config_for(
+    let Ok(config) = HostingRuntimeService::optional_target_config_for(
         activation.runtime_kind,
         state.coolify_config.as_ref(),
         "activar dominios custom",

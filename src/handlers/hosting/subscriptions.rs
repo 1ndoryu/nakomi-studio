@@ -103,7 +103,7 @@ pub(super) async fn create_subscription(
             runtime_kind: if req.coolify_site_name.is_some() {
                 "coolify"
             } else {
-                crate::services::HostingRuntimeKind::from_env().as_str()
+                HostingRuntimeService::runtime_kind_for_plan(&req.plan).as_str()
             },
             deployment_id: None,
             coolify_site_name: req.coolify_site_name.as_deref(),
@@ -303,11 +303,13 @@ pub(super) async fn update_subscription(
     let domain_changed = requested_domain != current_domain;
 
     if domain_changed && active_custom_domain(&sub).is_some() {
-        if let (Some(config), Some(update)) = (
-            state.coolify_config.as_ref(),
-            compose_update_from_subscription(&sub, None, &plan_config),
-        ) {
+        if let Some(update) = compose_update_from_subscription(&sub, None, &plan_config) {
             let runtime_kind = crate::services::HostingRuntimeKind::from_persisted(&sub.runtime_kind);
+            let config = HostingRuntimeService::optional_target_config_for(
+                runtime_kind,
+                state.coolify_config.as_ref(),
+                "retirar dominios custom",
+            )?;
             sync_custom_domain_route(&state.http_client, config, runtime_kind, update).await?;
         }
     }

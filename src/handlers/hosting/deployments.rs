@@ -16,16 +16,25 @@ use crate::AppState;
 fn map_runtime_deployments(
     services: Vec<HostingRuntimeDeploymentSummary>,
     label: &str,
-    subscriptions_by_uuid: &HashMap<&str, &crate::models::HostingSubscription>,
-    subscriptions_by_name: &HashMap<&str, &crate::models::HostingSubscription>,
+    subscriptions_by_uuid: &HashMap<String, &crate::models::HostingSubscription>,
+    subscriptions_by_name: &HashMap<String, &crate::models::HostingSubscription>,
 ) -> Vec<CoolifyDeploymentResponse> {
     services
         .into_iter()
         .map(|service| {
             let linked_subscription = subscriptions_by_uuid
-                .get(service.deployment_id.as_str())
+                .get(&runtime_link_key(service.runtime_kind, &service.deployment_id))
                 .copied()
-                .or_else(|| subscriptions_by_name.get(service.name.as_str()).copied());
+                .or_else(|| {
+                    subscriptions_by_name
+                        .get(&runtime_link_key(service.runtime_kind, &service.name))
+                        .copied()
+                });
+
+            let server_label = service
+                .target_name
+                .clone()
+                .unwrap_or_else(|| label.to_string());
 
             CoolifyDeploymentResponse {
                 uuid: service.deployment_id.clone(),
@@ -45,7 +54,6 @@ fn map_runtime_deployments(
                     .map(|subscription| subscription.status.clone()),
                 linked_subscription_plan: linked_subscription
                     .map(|subscription| subscription.plan.clone()),
-                server_label: label.to_string(),
                 linked_subscription_client: linked_subscription
                     .map(|subscription| subscription.client_name.clone()),
                 storage_limit_mb: linked_subscription
@@ -54,9 +62,21 @@ fn map_runtime_deployments(
                 ram_used_mb: None,
                 ram_limit_mb: None,
                 storage_used_mb: None,
+                server_label,
             }
         })
         .collect()
+}
+
+fn runtime_link_key(runtime_kind: HostingRuntimeKind, identifier: &str) -> String {
+    format!("{}::{identifier}", runtime_kind.as_str())
+}
+
+fn runtime_link_key_for_subscription(
+    subscription: &crate::models::HostingSubscription,
+    identifier: &str,
+) -> String {
+    runtime_link_key(HostingRuntimeKind::from_persisted(&subscription.runtime_kind), identifier)
 }
 
 fn f64_to_i64_rounded(value: f64) -> Option<i64> {
@@ -100,14 +120,14 @@ struct DeploymentsCacheEntry {
 static DEPLOYMENTS_CACHE: std::sync::OnceLock<tokio::sync::RwLock<DeploymentsCacheEntry>> =
     std::sync::OnceLock::new();
 
-/// Listar despliegues reales de todas las VPS configuradas en Coolify (admin only)
+/// Listar despliegues reales de infraestructura por runtime (admin only)
 #[utoipa::path(
     get,
     path = "/api/hosting/deployments",
     responses(
-        (status = 200, description = "Lista de despliegues reales en Coolify (todas las VPS)", body = Vec<CoolifyDeploymentResponse>),
+        (status = 200, description = "Lista de despliegues reales de infraestructura", body = Vec<CoolifyDeploymentResponse>),
         (status = 403, description = "Sin permisos"),
-        (status = 503, description = "Coolify no configurado"),
+        (status = 503, description = "Ningun runtime configurado"),
     ),
     security(("bearer_auth" = [])),
     tag = "hosting"
@@ -124,9 +144,10 @@ pub(super) async fn list_deployments(
         state.coolify_config.as_ref(),
     )
     .is_empty()
+        && !HostingRuntimeService::lightweight_manager_configured()
     {
         return Err(AppError::ServiceUnavailable(
-            "Coolify no está configurado para listar despliegues".into(),
+            "No hay runtimes configurados para listar despliegues".into(),
         ));
     }
 
@@ -194,23 +215,31 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
 
     tracing::info!("[deployments] Consultando repositorios...");
     let subscriptions = HostingRepository::list_all(&state.pool).await?;
-    let subscriptions_by_uuid: HashMap<&str, _> = subscriptions
+    let subscriptions_by_uuid: HashMap<String, _> = subscriptions
         .iter()
-        .filter(|subscription| subscription.is_coolify_runtime())
         .filter_map(|subscription| {
             subscription
                 .deployment_id_or_legacy()
-                .map(|deployment_id| (deployment_id, subscription))
+                .map(|deployment_id| {
+                    (
+                        runtime_link_key_for_subscription(subscription, deployment_id),
+                        subscription,
+                    )
+                })
         })
         .collect();
-    let subscriptions_by_name: HashMap<&str, _> = subscriptions
+    let subscriptions_by_name: HashMap<String, _> = subscriptions
         .iter()
-        .filter(|subscription| subscription.is_coolify_runtime())
         .filter_map(|subscription| {
             subscription
                 .coolify_site_name
                 .as_deref()
-                .map(|site_name| (site_name, subscription))
+                .map(|site_name| {
+                    (
+                        runtime_link_key_for_subscription(subscription, site_name),
+                        subscription,
+                    )
+                })
         })
         .collect();
 
@@ -247,6 +276,31 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
         }
     }
 
+    if HostingRuntimeService::lightweight_manager_configured() {
+        tracing::info!("[deployments] Consultando runtime ligero...");
+        match HostingRuntimeService::list_deployments(
+            &state.http_client,
+            None,
+            Some(HostingRuntimeKind::Lightweight),
+        )
+        .await
+        {
+            Ok(services) => {
+                tracing::info!(
+                    "[deployments] Runtime ligero devolvió {} servicios",
+                    services.len()
+                );
+                deployments.extend(map_runtime_deployments(
+                    services,
+                    "Runtime ligero",
+                    &subscriptions_by_uuid,
+                    &subscriptions_by_name,
+                ));
+            }
+            Err(error) => tracing::warn!("[deployments] Error listando runtime ligero: {error}"),
+        }
+    }
+
     tracing::info!("[deployments] Iniciando enrich_deployment_resources...");
     enrich_deployment_resources(&state, &mut deployments).await;
     tracing::info!("[deployments] Finalizó enrich_deployment_resources");
@@ -265,7 +319,9 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
 }
 
 /* [165A-4] Permite limpiar despliegues huérfanos desde el panel admin.
- * Solo borra stacks sin vínculo en BD para evitar desalinear suscripciones reales. */
+ * Solo borra stacks sin vínculo en BD para evitar desalinear suscripciones reales.
+ * [245A-8] Ahora resuelve el runtime antes de borrar para soportar coexistencia
+ * entre Coolify legacy y runtime lightweight sin mezclar identidades. */
 #[utoipa::path(
     delete,
     path = "/api/hosting/deployments/{deployment_uuid}",
@@ -275,11 +331,12 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
         (status = 403, description = "Sin permisos"),
         (status = 404, description = "Despliegue no encontrado"),
         (status = 409, description = "El despliegue ya está vinculado a una suscripción"),
-        (status = 503, description = "Coolify no configurado o no disponible"),
+        (status = 503, description = "Runtime no configurado o no disponible"),
     ),
     security(("bearer_auth" = [])),
     tag = "hosting"
 )]
+#[allow(clippy::too_many_lines)]
 pub(super) async fn delete_deployment(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -292,9 +349,9 @@ pub(super) async fn delete_deployment(
         state.coolify_config.as_ref(),
     );
 
-    if targets.is_empty() {
+    if targets.is_empty() && !HostingRuntimeService::lightweight_manager_configured() {
         return Err(AppError::ServiceUnavailable(
-            "Coolify no está configurado para eliminar despliegues".into(),
+            "No hay runtimes configurados para eliminar despliegues".into(),
         ));
     }
 
@@ -302,6 +359,7 @@ pub(super) async fn delete_deployment(
     let mut lookup_failed = false;
     let mut target_config: Option<&CoolifyConfig> = None;
     let mut target_name: Option<String> = None;
+    let mut runtime_kind: Option<HostingRuntimeKind> = None;
 
     for target in &targets {
         match HostingRuntimeService::list_deployments(
@@ -318,6 +376,7 @@ pub(super) async fn delete_deployment(
                 {
                     target_name = Some(service.name);
                     target_config = Some(target.config);
+                    runtime_kind = Some(HostingRuntimeKind::Coolify);
                     break;
                 }
             }
@@ -333,24 +392,54 @@ pub(super) async fn delete_deployment(
         }
     }
 
-    let target_config = match target_config {
-        Some(config) => config,
+    if runtime_kind.is_none() && HostingRuntimeService::lightweight_manager_configured() {
+        match HostingRuntimeService::list_deployments(
+            &state.http_client,
+            None,
+            Some(HostingRuntimeKind::Lightweight),
+        )
+        .await
+        {
+            Ok(services) => {
+                if let Some(service) = services
+                    .into_iter()
+                    .find(|service| service.deployment_id == deployment_uuid)
+                {
+                    target_name = Some(service.name);
+                    runtime_kind = Some(HostingRuntimeKind::Lightweight);
+                }
+            }
+            Err(error) => {
+                lookup_failed = true;
+                tracing::warn!(
+                    "[deployments] Error buscando despliegue {} en runtime ligero: {}",
+                    deployment_uuid,
+                    error
+                );
+            }
+        }
+    }
+
+    let runtime_kind = match runtime_kind {
+        Some(runtime_kind) => runtime_kind,
         None if lookup_failed => {
             return Err(AppError::ServiceUnavailable(
-                "No se pudo consultar Coolify para ubicar el despliegue".into(),
+                "No se pudo consultar la infraestructura para ubicar el despliegue".into(),
             ));
         }
         None => {
             return Err(AppError::NotFound(
-                "Despliegue no encontrado en Coolify".into(),
+                "Despliegue no encontrado en la infraestructura".into(),
             ));
         }
     };
 
     let target_name = target_name.expect("deployment name must exist when config is found");
     let linked_subscription = subscriptions.iter().find(|subscription| {
-        subscription.deployment_id_or_legacy() == Some(deployment_uuid.as_str())
+        HostingRuntimeKind::from_persisted(&subscription.runtime_kind) == runtime_kind
+            && (subscription.deployment_id_or_legacy() == Some(deployment_uuid.as_str())
             || subscription.coolify_site_name.as_deref() == Some(target_name.as_str())
+            )
     });
 
     if let Some(subscription) = linked_subscription {
@@ -363,8 +452,8 @@ pub(super) async fn delete_deployment(
 
     HostingRuntimeService::delete_deployment(
         &state.http_client,
-        Some(target_config),
-        Some(HostingRuntimeKind::Coolify),
+        target_config,
+        Some(runtime_kind),
         &deployment_uuid,
         true,
     )
