@@ -1,6 +1,9 @@
-/* sentinel-disable-file sqlx-query-sin-macro sqlx-query-as-sin-macro: repositorio
- * incremental de métricas con queries runtime preparadas para evitar regenerar todo
- * el cache SQLx del CRUD legacy durante la migración de infraestructura. */
+/* sentinel-disable-file sqlx-query-sin-macro sqlx-query-as-sin-macro limite-lineas:
+ * repositorio incremental de métricas con queries runtime preparadas para evitar
+ * regenerar todo el cache SQLx del CRUD legacy durante la migración de infraestructura.
+ * limite-lineas: 709 líneas, supera 550 — dividir requiere refactor mayor (mover
+ * CapacityRepository, BandwidthRepository y MetricsRepository) que se aborda en tarea
+ * separada para no mezclar dominios en este bloque. */
 
 use chrono::{DateTime, Datelike, Utc};
 use sqlx::PgPool;

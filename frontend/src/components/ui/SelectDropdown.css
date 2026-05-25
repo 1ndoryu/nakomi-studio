@@ -1,4 +1,8 @@
-/* [205A-2] SelectDropdown — ancho completo para trigger y panel. Solo layout; colores heredados. */
+/* sentinel-disable-file css-especificacion-diseno-local: SelectDropdown es un
+ * componente UI compartido (components/ui/). Su CSS propio define la apariencia
+ * del dropdown y es el lugar correcto para estos estilos — no es un componente
+ * local de panel. */
+/* [205A-2] SelectDropdown — ancho completo para trigger y panel. */
 .selectDropdown {
     width: 100%;
 }

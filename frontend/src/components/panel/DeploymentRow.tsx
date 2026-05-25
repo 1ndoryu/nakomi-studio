@@ -183,8 +183,8 @@ function DeploymentDetailsContent({deployment, fqdn, isLinked, serverLabel, onCr
     return (
         <div className="detalleModalContenido">
             <div className="detalleModalHeader">
-                <h3 className="detalleModalTitulo">{deployment.name}</h3>
-                <button className="detalleModalClose" onClick={onCerrar} type="button" aria-label="Cerrar"><X size={16} /></button>
+                <h3 className="modalTitulo">{deployment.name}</h3>
+                <Button variante="texto" tamano="pequeno" className="detalleModalClose" onClick={onCerrar} type="button" aria-label="Cerrar"><X size={16} /></Button>
             </div>
 
             <div className="detalleModalGrid">

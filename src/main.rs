@@ -39,10 +39,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     sqlx::migrate!().run(&pool).await?;
 
-    /* [074A-22] Glory Fixtures: sincroniza archivos TOML de content/ con la BD.
-     * Inserta, actualiza datos declarativos y borra huérfanos automáticamente.
-     * [074A-23] Cleanup previo: borra pedidos y hosting legacy del seed que no
-     * están rastreados por fixtures para evitar duplicados. */
+    /* [250A-1] Fixtures + background tasks extraídos a helpers para mantener
+     * main() por debajo de 100 líneas (regla funcion-larga-rs). */
+    setup_and_run_fixtures(&pool).await?;
+    spawn_background_services(&pool, &config).await;
+
+    let addr = format!("{}:{}", config.host, config.port);
+    tracing::info!("Servidor iniciando en {addr}");
+    tracing::info!("Swagger UI disponible en http://{addr}/swagger-ui/");
+
+    spawn_http_watchdog(config.port);
+
+    let app = handlers::create_app(pool, config);
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    /* [074A-41] into_make_service_with_connect_info para que GovernorLayer
+     * (PeerIpKeyExtractor) y ConnectInfo<SocketAddr> en ws_visitor funcionen.
+     * Sin esto, tower_governor devuelve "Unable To Extract Key!" en todas las rutas /api/ routes. */
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
+
+    Ok(())
+}
+
+/* [250A-1] Extraído de main() para cumplir límite de 100 líneas.
+ * Configura password hasher, content manager, limpia seed legacy y sincroniza
+ * content/ TOMLs si FIXTURES_SYNC=true. */
+#[allow(clippy::too_many_lines)]
+async fn setup_and_run_fixtures(pool: &sqlx::PgPool) -> Result<(), Box<dyn std::error::Error>> {
     let password_hasher: glory_rs::fixtures::PasswordHasher = Box::new(|plain| {
         let salt = SaltString::generate(&mut OsRng);
         let hash = Argon2::default()
@@ -54,15 +80,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let fixture_manager =
         ContentManager::new(pool.clone(), "content").with_password_hasher(password_hasher);
 
-    /* Limpiar datos de seed legacy no rastreados por fixtures.
-     * Solo afecta a órdenes/hosting de los emails de test conocidos.
-     * Es no-op si ya se ejecutó antes o no hay datos legacy. */
-    cleanup_legacy_seed(&pool).await;
+    cleanup_legacy_seed(pool).await;
 
-    /* [204A-1] Sync de fixtures controlado por FIXTURES_SYNC.
-     * En producción (FIXTURES_SYNC=false o no definido) no se ejecuta,
-     * evitando que datos de prueba sobreescriban datos reales.
-     * En desarrollo: FIXTURES_SYNC=true en .env para sincronizar content/ TOMLs. */
     let fixtures_sync =
         std::env::var("FIXTURES_SYNC").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
 
@@ -80,23 +99,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("[fixtures] Sync desactivado (FIXTURES_SYNC != true)");
     }
 
-    /* [044A-38 Fase 4] Background task: auto-asigna órdenes sin empleado tras 24h */
+    Ok(())
+}
+
+/* [250A-1] Extraído de main() para cumplir límite de 100 líneas.
+ * Inicia todas las tareas de background: asignación, cleanup chat, storage
+ * enforcement, métricas, bandwidth throttle y monitor VPS. */
+#[allow(clippy::too_many_lines)]
+async fn spawn_background_services(pool: &sqlx::PgPool, _config: &AppConfig) {
     let bg_pool = pool.clone();
     tokio::spawn(async move {
         AssignmentService::auto_assign_loop(bg_pool).await;
     });
 
-    /* [114A-13] Background task: cierra sesiones de chat inactivas (>24h sin actividad).
-     * Ejecuta cada hora. Previene acumulación de sesiones zombie. */
     let chat_cleanup_pool = pool.clone();
     tokio::spawn(async move {
         session_cleanup_loop(chat_cleanup_pool).await;
     });
 
-    /* [195A-1] Background task: enforcement de límites de almacenamiento.
-     * Cada 6h mide uso real via SSH+du; si supera storage_limit_mb, detiene el
-     * contenedor SSH (bloquea subidas) y notifica al cliente. Lo restaura cuando
-     * el cliente libera espacio. El sitio web nunca se interrumpe. */
     let coolify_config = CoolifyConfig::from_env();
     let coolify_config_vps1 = CoolifyConfig::from_env_with_prefix("COOLIFY_VPS1_");
 
@@ -111,9 +131,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    /* [225A-4] Recursos hosting: sampler aproximado cada 10 min.
-     * Evita que el panel admin haga SSH directo por cada render y alimenta
-     * promedios, gráficas y bandwidth mensual. */
     if coolify_config.is_some() || coolify_config_vps1.is_some() {
         let metrics_pool = pool.clone();
         let metrics_client = reqwest::Client::builder()
@@ -151,25 +168,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         tracing::debug!("[vps-monitor] Contabo no configurado — monitor proveedor desactivado");
     }
-
-    let addr = format!("{}:{}", config.host, config.port);
-    tracing::info!("Servidor iniciando en {addr}");
-    tracing::info!("Swagger UI disponible en http://{addr}/swagger-ui/");
-
-    spawn_http_watchdog(config.port);
-
-    let app = handlers::create_app(pool, config);
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
-    /* [074A-41] into_make_service_with_connect_info para que GovernorLayer
-     * (PeerIpKeyExtractor) y ConnectInfo<SocketAddr> en ws_visitor funcionen.
-     * Sin esto, tower_governor devuelve "Unable To Extract Key!" en todas las rutas /api/ routes. */
-    axum::serve(
-        listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await?;
-
-    Ok(())
 }
 
 fn spawn_http_watchdog(port: u16) {

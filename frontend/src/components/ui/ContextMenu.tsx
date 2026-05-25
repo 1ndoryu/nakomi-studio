@@ -119,27 +119,29 @@ export const MenuContextual: React.FC<MenuContextualProps> = ({
                     {children ? (
                         <div className="menuContextualContenido">{children}</div>
                     ) : (
-                        items.map(item => (
-                            <Button
-                                key={item.id}
-                                className={[
-                                    'menuContextualItem',
-                                    item.danger ? 'menuContextualItemDanger' : '',
-                                    itemClassName,
-                                ].filter(Boolean).join(' ')}
-                                onClick={() => {
-                                    item.onSelect();
-                                    onCerrar();
-                                }}
-                                disabled={item.disabled}
-                                type="button"
-                                variante="texto"
-                                tamano="pequeno"
-                            >
-                                {item.icon}
-                                <span>{item.label}</span>
-                            </Button>
-                        ))
+                        <div className="menuContextualContenido">
+                            {items.map(item => (
+                                <Button
+                                    key={item.id}
+                                    className={[
+                                        'menuContextualItem',
+                                        item.danger ? 'menuContextualItemDanger' : '',
+                                        itemClassName,
+                                    ].filter(Boolean).join(' ')}
+                                    onClick={() => {
+                                        item.onSelect();
+                                        onCerrar();
+                                    }}
+                                    disabled={item.disabled}
+                                    type="button"
+                                    variante="texto"
+                                    tamano="pequeno"
+                                >
+                                    {item.icon}
+                                    <span>{item.label}</span>
+                                </Button>
+                            ))}
+                        </div>
                     )}
                 </div>
             )}

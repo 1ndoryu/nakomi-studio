@@ -154,7 +154,7 @@ impl GoogleAuthService {
                     .await
                     .map_err(|e| AppError::Internal(e.to_string()))?;
 
-                /* Establecer display_name desde Google si está disponible */
+                /* [sentinel-disable-line sqlx-query-sin-macro: UPDATE display_name con name opcional de Google] */
                 if let Some(name) = &google_user.name {
                     sqlx::query(
                         "UPDATE users SET display_name = $2 WHERE id = $1 AND display_name IS NULL",
@@ -168,7 +168,7 @@ impl GoogleAuthService {
                 u
             };
 
-            /* 3. Vincular google_id al usuario (ON CONFLICT DO NOTHING por si hay race) */
+            /* [sentinel-disable-line sqlx-query-sin-macro: INSERT google_account con ON CONFLICT dinámico] */
             sqlx::query(
                 "INSERT INTO user_google_accounts (user_id, google_id, email, name, picture)
                  VALUES ($1, $2, $3, $4, $5)

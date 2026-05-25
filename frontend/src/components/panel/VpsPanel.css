@@ -419,72 +419,24 @@
     border-bottom: 1px solid var(--border-default);
 }
 
-/* ── Fila expandible de detalle ── */
+/* ── Modal de detalle de despliegue ── */
 
-.infraFilaDetalle td {
-    padding: 0;
-    border-bottom: 1px solid var(--border-default);
-}
-
-.infraDetalleContenido {
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-card-subtle);
-}
-
-.infraDetalleGrid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-md) var(--spacing-lg);
-}
-
-.infraDetalleCampo {
+.detalleModalContenido {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--spacing-lg);
 }
 
-.infraDetalleLabel {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-}
-
-.infraDetalleValor {
-    font-size: var(--text-sm);
-    color: var(--brand-black);
-    overflow-wrap: anywhere;
-}
-
-.infraDetalleLink {
-    display: inline-flex;
+.detalleModalHeader {
+    display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: var(--text-sm);
-    color: var(--brand-black);
-    text-decoration: none;
-    overflow-wrap: anywhere;
+    justify-content: space-between;
 }
 
-.infraDetalleLink:hover {
-    opacity: 0.72;
-}
+/* [250A-1] .detalleModalTitulo eliminado — usar .modalTitulo del sistema Modal (Modal.css).
+ * La única diferencia era font-weight:500 que se agregó a .modalTitulo como default. */
 
-.infraDetalleAlerta {
-    margin-top: var(--spacing-sm);
-    font-size: var(--text-xs);
-    color: var(--color-warning-text);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--color-warning-bg);
-    border-radius: var(--radius-sm);
-}
-
-/* ── Menú contextual de 3 puntos ── */
-
-.infraMenuContenedor {
-    position: relative;
-    display: inline-flex;
-}
-
-.infraMenuBoton {
+.detalleModalClose {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -498,50 +450,88 @@
     transition: background var(--transicion-rapida), color var(--transicion-rapida);
 }
 
-.infraMenuBoton:hover {
+.detalleModalClose:hover {
     background: var(--bg-item-active);
     color: var(--brand-black);
 }
 
-.infraMenuDropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    z-index: 50;
-    min-width: 200px;
-    background: var(--brand-white);
-    border: 1px solid var(--border-default);
+.detalleModalGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-card-subtle);
     border-radius: var(--radius-md);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    padding: var(--spacing-2xs) 0;
 }
 
-.infraMenuItem {
+.detalleModalCampo {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    width: 100%;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border: none;
-    background: transparent;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.detalleModalLabel {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.detalleModalValor {
     font-size: var(--text-sm);
     color: var(--brand-black);
-    cursor: pointer;
-    text-align: left;
-    transition: background var(--transicion-rapida);
+    overflow-wrap: anywhere;
 }
 
-.infraMenuItem:hover {
-    background: var(--bg-item-hover);
+.detalleModalLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-sm);
+    color: var(--brand-black);
+    text-decoration: none;
+    overflow-wrap: anywhere;
 }
 
-.infraMenuItem--peligro {
-    color: var(--color-error-text);
+.detalleModalLink:hover {
+    opacity: 0.72;
 }
 
-.infraMenuItem--peligro:hover {
-    background: var(--color-error-bg-soft);
+.detalleModalGrafico {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
 }
+
+.detalleModalGraficoLabel {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.detalleModalOrphan {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    color: var(--color-warning-text);
+}
+
+.detalleModalOrphanActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-left: auto;
+}
+
+/* [250A-1] Clases .infraMenu* eliminadas: eran de una implementación anterior
+ * de menú contextual manual. El componente actual usa <MenuContextual> de
+ * components/ui/ContextMenu.css que ya tiene sus propios estilos. */
 
 /* ── Responsive ── */
 

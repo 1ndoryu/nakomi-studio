@@ -49,7 +49,7 @@
  * Si falta una receta compartida, se agrega aqui antes de crear clases por modal. */
 .modalTitulo {
     font-size: var(--text-lg);
-    
+    font-weight: 500;
     color: var(--brand-black);
     margin: 0;
     font-family: var(--font-primary);

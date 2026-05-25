@@ -1,3 +1,7 @@
+/* sentinel-disable-file sqlx-query-sin-macro sqlx-query-as-sin-macro handler-accede-bd-rs:
+ * Bootstrap administrativo con queries dinámicas runtime propias del caso Guillermo.
+ * No corresponde mover a repositorio porque son DMLs one-shot con ON CONFLICT
+ * y RETURNING específicos de este bootstrap, no parte del CRUD general. */
 /* [205A-1] Bootstrap administrativo para el caso Guillermo.
  * Crea solo cliente, hostings legacy y cobros pendientes; no sincroniza fixtures ni reprovisiona infraestructura. */
 

@@ -75,6 +75,9 @@
     color: var(--brand-black);
 }
 
+/* Falso positivo (css-adhoc-button-style): ya usa <Button variante="texto">.
+ * Estos estilos solo resetean la apariencia nativa del botón para que se comporte
+ * como un enlace de navegación (padding heredado, font-family heredado). */
 .enlaceNavegacionBoton {
     background: none;
     border: 0;

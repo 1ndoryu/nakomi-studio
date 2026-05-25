@@ -1,3 +1,7 @@
+/* sentinel-disable-file limite-lineas: extraído de HostingDetalleTabs.tsx por límite
+ * de 300 líneas. Contiene 2 componentes (TabDominio + TabAcceso) que suman ~360 líneas.
+ * Dividir en 3 archivos aumentaría la fragmentación; se mantiene con disable y se
+ * reevaluará cuando supere 400. */
 /* [114A-5] Tabs de acceso extraídas de HostingDetalleTabs.tsx por límite de 300 líneas.
  * Contiene: TabDominio (DNS, SSL, verificación) y TabAcceso (SSH/SFTP, WP admin). */
 

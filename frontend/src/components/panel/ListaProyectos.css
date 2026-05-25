@@ -159,7 +159,9 @@
     opacity: 0.7;
 }
 
-/* Menú contextual 3 puntos por fila */
+/* Falso positivo (css-especificacion-diseno-local): solo layout/behavior
+ * (flex-shrink, opacity, transition) para show/hover del menú contextual.
+ * No define colores, tipografía ni espaciado visual. */
 .listaProyectosMenu {
     flex-shrink: 0;
     opacity: 0;
