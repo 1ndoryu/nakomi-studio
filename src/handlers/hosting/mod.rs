@@ -1,5 +1,6 @@
 mod backups;
 mod checkout;
+mod deployment_helpers;
 mod control;
 mod deployments;
 mod domain;

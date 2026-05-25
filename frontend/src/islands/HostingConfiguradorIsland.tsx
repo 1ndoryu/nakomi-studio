@@ -130,8 +130,7 @@ export function HostingConfiguradorIsland({kind}: HostingConfiguradorIslandProps
                                     type="text"
                                     value={form.wpAdminUser}
                                     onChange={event => updateField('wpAdminUser', event.target.value)}
-                                    placeholder="admin del sitio"
-                                    required
+                                    placeholder="Opcional"
                                 />
                             </label>
                             <label className="vpsConfiguradorCampo">
@@ -140,9 +139,8 @@ export function HostingConfiguradorIsland({kind}: HostingConfiguradorIslandProps
                                     type="password"
                                     value={form.wpAdminPassword}
                                     onChange={event => updateField('wpAdminPassword', event.target.value)}
-                                    placeholder="Mínimo 8 caracteres"
+                                    placeholder="Opcional, mínimo 8 caracteres"
                                     minLength={8}
-                                    required
                                 />
                             </label>
                             <div className="hostingConfiguradorSelectWrap">

@@ -1,40 +1,43 @@
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+use super::deployment_helpers::{
+    build_subscription_lookups, collect_pending_deployment_batches, deployments_cache,
+    duplicate_name_keys, invalidate_deployments_cache, locate_runtime_deployment,
+    resolve_server_label, runtime_link_key,
+};
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{CoolifyDeploymentResponse, UserRole};
 use crate::repositories::{HostingRepository, InfrastructureRepository};
 use crate::services::infrastructure::coolify_server_targets;
-use crate::services::{
-    CoolifyConfig, HostingRuntimeDeploymentSummary, HostingRuntimeKind, HostingRuntimeService,
-};
+use crate::services::{HostingRuntimeDeploymentSummary, HostingRuntimeKind, HostingRuntimeService};
 use crate::AppState;
 
 fn map_runtime_deployments(
     services: Vec<HostingRuntimeDeploymentSummary>,
-    label: &str,
+    fallback_label: &str,
+    duplicate_name_keys: &HashSet<String>,
     subscriptions_by_uuid: &HashMap<String, &crate::models::HostingSubscription>,
     subscriptions_by_name: &HashMap<String, &crate::models::HostingSubscription>,
 ) -> Vec<CoolifyDeploymentResponse> {
     services
         .into_iter()
         .map(|service| {
+            let deployment_key = runtime_link_key(service.runtime_kind, &service.deployment_id);
+            let name_key = runtime_link_key(service.runtime_kind, &service.name);
             let linked_subscription = subscriptions_by_uuid
-                .get(&runtime_link_key(service.runtime_kind, &service.deployment_id))
+                .get(&deployment_key)
                 .copied()
                 .or_else(|| {
-                    subscriptions_by_name
-                        .get(&runtime_link_key(service.runtime_kind, &service.name))
-                        .copied()
+                    (!duplicate_name_keys.contains(&name_key))
+                        .then(|| subscriptions_by_name.get(&name_key).copied())
+                        .flatten()
                 });
 
-            let server_label = service
-                .target_name
-                .clone()
-                .unwrap_or_else(|| label.to_string());
+            let server_label = resolve_server_label(&service, fallback_label);
 
             CoolifyDeploymentResponse {
                 uuid: service.deployment_id.clone(),
@@ -44,7 +47,7 @@ fn map_runtime_deployments(
                 status: service.status,
                 fqdn: service.fqdn,
                 server_uuid: service.target_id,
-                server_name: service.target_name,
+                server_name: Some(server_label.clone()),
                 project_uuid: service.project_id,
                 environment_name: service.environment_name,
                 linked_subscription_id: linked_subscription.map(|subscription| subscription.id),
@@ -66,17 +69,6 @@ fn map_runtime_deployments(
             }
         })
         .collect()
-}
-
-fn runtime_link_key(runtime_kind: HostingRuntimeKind, identifier: &str) -> String {
-    format!("{}::{identifier}", runtime_kind.as_str())
-}
-
-fn runtime_link_key_for_subscription(
-    subscription: &crate::models::HostingSubscription,
-    identifier: &str,
-) -> String {
-    runtime_link_key(HostingRuntimeKind::from_persisted(&subscription.runtime_kind), identifier)
 }
 
 fn f64_to_i64_rounded(value: f64) -> Option<i64> {
@@ -112,14 +104,6 @@ async fn enrich_deployment_resources(
     }
 }
 
-struct DeploymentsCacheEntry {
-    fetched_at: std::time::Instant,
-    deployments: Vec<CoolifyDeploymentResponse>,
-}
-
-static DEPLOYMENTS_CACHE: std::sync::OnceLock<tokio::sync::RwLock<DeploymentsCacheEntry>> =
-    std::sync::OnceLock::new();
-
 /// Listar despliegues reales de infraestructura por runtime (admin only)
 #[utoipa::path(
     get,
@@ -151,15 +135,7 @@ pub(super) async fn list_deployments(
         ));
     }
 
-    let cache = DEPLOYMENTS_CACHE.get_or_init(|| {
-        tokio::sync::RwLock::new(DeploymentsCacheEntry {
-            // Empezar con una fecha antigua para forzar el primer refresh
-            fetched_at: std::time::Instant::now()
-                .checked_sub(std::time::Duration::from_secs(9999))
-                .unwrap_or_else(std::time::Instant::now),
-            deployments: Vec::new(),
-        })
-    });
+    let cache = deployments_cache();
 
     let needs_refresh;
     let mut current_deployments = Vec::new();
@@ -188,16 +164,11 @@ pub(super) async fn list_deployments(
             let state_clone = state.clone();
             tokio::spawn(async move {
                 if let Ok(new_deployments) = build_deployments(state_clone).await {
-                    if let Some(cache) = DEPLOYMENTS_CACHE.get() {
-                        let mut cache_guard = cache.write().await;
-                        cache_guard.deployments = new_deployments;
-                        cache_guard.fetched_at = std::time::Instant::now();
-                        tracing::info!("[deployments] Caché refrescado en background");
-                    } else {
-                        tracing::warn!(
-                            "[deployments] Cache no inicializado al refrescar background"
-                        );
-                    }
+                    let cache = deployments_cache();
+                    let mut cache_guard = cache.write().await;
+                    cache_guard.deployments = new_deployments;
+                    cache_guard.fetched_at = std::time::Instant::now();
+                    tracing::info!("[deployments] Caché refrescado en background");
                 } else {
                     tracing::warn!("[deployments] Falló el refresco en background");
                 }
@@ -215,91 +186,24 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
 
     tracing::info!("[deployments] Consultando repositorios...");
     let subscriptions = HostingRepository::list_all(&state.pool).await?;
-    let subscriptions_by_uuid: HashMap<String, _> = subscriptions
-        .iter()
-        .filter_map(|subscription| {
-            subscription
-                .deployment_id_or_legacy()
-                .map(|deployment_id| {
-                    (
-                        runtime_link_key_for_subscription(subscription, deployment_id),
-                        subscription,
-                    )
-                })
+    let (subscriptions_by_uuid, subscriptions_by_name) =
+        build_subscription_lookups(&subscriptions);
+
+    let pending_batches = collect_pending_deployment_batches(&state).await;
+
+    let duplicate_name_keys = duplicate_name_keys(&pending_batches);
+    let mut deployments: Vec<CoolifyDeploymentResponse> = pending_batches
+        .into_iter()
+        .flat_map(|batch| {
+            map_runtime_deployments(
+                batch.services,
+                &batch.fallback_label,
+                &duplicate_name_keys,
+                &subscriptions_by_uuid,
+                &subscriptions_by_name,
+            )
         })
         .collect();
-    let subscriptions_by_name: HashMap<String, _> = subscriptions
-        .iter()
-        .filter_map(|subscription| {
-            subscription
-                .coolify_site_name
-                .as_deref()
-                .map(|site_name| {
-                    (
-                        runtime_link_key_for_subscription(subscription, site_name),
-                        subscription,
-                    )
-                })
-        })
-        .collect();
-
-    let mut deployments: Vec<CoolifyDeploymentResponse> = Vec::new();
-
-    let targets = coolify_server_targets(
-        state.coolify_config_vps1.as_ref(),
-        state.coolify_config.as_ref(),
-    );
-
-    for target in &targets {
-        tracing::info!("[deployments] Consultando {} en Coolify...", target.label);
-        match HostingRuntimeService::list_deployments(
-            &state.http_client,
-            Some(target.config),
-            Some(HostingRuntimeKind::Coolify),
-        )
-        .await
-        {
-            Ok(services) => {
-                tracing::info!(
-                    "[deployments] {} devolvió {} servicios",
-                    target.label,
-                    services.len()
-                );
-                deployments.extend(map_runtime_deployments(
-                    services,
-                    &target.label,
-                    &subscriptions_by_uuid,
-                    &subscriptions_by_name,
-                ));
-            }
-            Err(error) => tracing::warn!("[deployments] Error listando {}: {error}", target.label),
-        }
-    }
-
-    if HostingRuntimeService::lightweight_manager_configured() {
-        tracing::info!("[deployments] Consultando runtime ligero...");
-        match HostingRuntimeService::list_deployments(
-            &state.http_client,
-            None,
-            Some(HostingRuntimeKind::Lightweight),
-        )
-        .await
-        {
-            Ok(services) => {
-                tracing::info!(
-                    "[deployments] Runtime ligero devolvió {} servicios",
-                    services.len()
-                );
-                deployments.extend(map_runtime_deployments(
-                    services,
-                    "Runtime ligero",
-                    &subscriptions_by_uuid,
-                    &subscriptions_by_name,
-                ));
-            }
-            Err(error) => tracing::warn!("[deployments] Error listando runtime ligero: {error}"),
-        }
-    }
 
     tracing::info!("[deployments] Iniciando enrich_deployment_resources...");
     enrich_deployment_resources(&state, &mut deployments).await;
@@ -344,123 +248,43 @@ pub(super) async fn delete_deployment(
 ) -> Result<StatusCode, AppError> {
     auth.require_role(&[UserRole::Admin])?;
 
-    let targets = coolify_server_targets(
-        state.coolify_config_vps1.as_ref(),
-        state.coolify_config.as_ref(),
-    );
-
-    if targets.is_empty() && !HostingRuntimeService::lightweight_manager_configured() {
-        return Err(AppError::ServiceUnavailable(
-            "No hay runtimes configurados para eliminar despliegues".into(),
-        ));
-    }
-
     let subscriptions = HostingRepository::list_all(&state.pool).await?;
-    let mut lookup_failed = false;
-    let mut target_config: Option<&CoolifyConfig> = None;
-    let mut target_name: Option<String> = None;
-    let mut runtime_kind: Option<HostingRuntimeKind> = None;
+    let located = locate_runtime_deployment(&state, &deployment_uuid).await?;
 
-    for target in &targets {
-        match HostingRuntimeService::list_deployments(
-            &state.http_client,
-            Some(target.config),
-            Some(HostingRuntimeKind::Coolify),
-        )
-        .await
-        {
-            Ok(services) => {
-                if let Some(service) = services
-                    .into_iter()
-                    .find(|service| service.deployment_id == deployment_uuid)
-                {
-                    target_name = Some(service.name);
-                    target_config = Some(target.config);
-                    runtime_kind = Some(HostingRuntimeKind::Coolify);
-                    break;
-                }
-            }
-            Err(error) => {
-                lookup_failed = true;
-                tracing::warn!(
-                    "[deployments] Error buscando despliegue {} en {}: {}",
-                    deployment_uuid,
-                    target.label,
-                    error
-                );
-            }
-        }
-    }
-
-    if runtime_kind.is_none() && HostingRuntimeService::lightweight_manager_configured() {
-        match HostingRuntimeService::list_deployments(
-            &state.http_client,
-            None,
-            Some(HostingRuntimeKind::Lightweight),
-        )
-        .await
-        {
-            Ok(services) => {
-                if let Some(service) = services
-                    .into_iter()
-                    .find(|service| service.deployment_id == deployment_uuid)
-                {
-                    target_name = Some(service.name);
-                    runtime_kind = Some(HostingRuntimeKind::Lightweight);
-                }
-            }
-            Err(error) => {
-                lookup_failed = true;
-                tracing::warn!(
-                    "[deployments] Error buscando despliegue {} en runtime ligero: {}",
-                    deployment_uuid,
-                    error
-                );
-            }
-        }
-    }
-
-    let runtime_kind = match runtime_kind {
-        Some(runtime_kind) => runtime_kind,
-        None if lookup_failed => {
-            return Err(AppError::ServiceUnavailable(
-                "No se pudo consultar la infraestructura para ubicar el despliegue".into(),
-            ));
-        }
-        None => {
-            return Err(AppError::NotFound(
-                "Despliegue no encontrado en la infraestructura".into(),
-            ));
-        }
-    };
-
-    let target_name = target_name.expect("deployment name must exist when config is found");
+    let can_link_by_name = located
+        .deployment_name_counts
+        .get(&runtime_link_key(located.runtime_kind, &located.target_name))
+        .copied()
+        .unwrap_or(0)
+        <= 1;
     let linked_subscription = subscriptions.iter().find(|subscription| {
-        HostingRuntimeKind::from_persisted(&subscription.runtime_kind) == runtime_kind
+        HostingRuntimeKind::from_persisted(&subscription.runtime_kind) == located.runtime_kind
             && (subscription.deployment_id_or_legacy() == Some(deployment_uuid.as_str())
-            || subscription.coolify_site_name.as_deref() == Some(target_name.as_str())
-            )
+                || (can_link_by_name
+                    && subscription.coolify_site_name.as_deref()
+                        == Some(located.target_name.as_str())))
     });
 
     if let Some(subscription) = linked_subscription {
         return Err(AppError::Conflict(format!(
             "El despliegue {} ya está vinculado a la suscripción {}. Elimínalo desde la suscripción para no dejar datos huérfanos.",
-            target_name,
+            located.target_name,
             subscription.id
         )));
     }
 
     HostingRuntimeService::delete_deployment(
         &state.http_client,
-        target_config,
-        Some(runtime_kind),
+        located.target_config,
+        Some(located.runtime_kind),
         &deployment_uuid,
         true,
     )
     .await?;
+    invalidate_deployments_cache(Some(&deployment_uuid)).await;
     tracing::info!(
         "[deployments] Despliegue huérfano {} ({}) eliminado desde el panel admin.",
-        target_name,
+        located.target_name,
         deployment_uuid
     );
 

@@ -102,12 +102,8 @@ export function useHostingConfiguradorIsland(kind: HostingConfiguradorKind, init
     };
 
     const validateTechnicalFields = (): boolean => {
-        if (kind === 'wordpress' && form.wpAdminPassword.trim().length < 8) {
+        if (kind === 'wordpress' && form.wpAdminPassword.trim() && form.wpAdminPassword.trim().length < 8) {
             setStatus({submitting: false, error: 'La contraseña de wp-admin debe tener al menos 8 caracteres.'});
-            return false;
-        }
-        if (kind === 'wordpress' && !form.wpAdminUser.trim()) {
-            setStatus({submitting: false, error: 'El usuario de wp-admin es obligatorio.'});
             return false;
         }
         if ((form.sftpUser.trim() && form.sftpPassword.trim().length < 12) || (!form.sftpUser.trim() && form.sftpPassword.trim())) {
