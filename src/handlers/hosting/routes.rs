@@ -1,6 +1,7 @@
 use axum::routing::get;
 use axum::Router;
 use tower_governor::governor::GovernorConfigBuilder;
+use tower_governor::key_extractor::SmartIpKeyExtractor;
 use tower_governor::GovernorLayer;
 
 use super::backups::{create_backup, list_backups, restore_backup};
@@ -23,12 +24,16 @@ use super::vps::{get_vps, list_vps};
 use crate::AppState;
 
 fn subscription_routes() -> Router<AppState> {
+    /* [255A-1] Checkout/suscripción también debe usar la IP real del cliente.
+     * Si se limita por la IP interna del proxy, un pico ajeno puede bloquear compras. */
     let subscribe_gov = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
         .per_second(1200)
         .burst_size(3)
         .finish()
         .expect("subscribe rate limit config");
     let checkout_gov = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
         .per_second(720)
         .burst_size(5)
         .finish()

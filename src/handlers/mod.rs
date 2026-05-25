@@ -46,7 +46,11 @@ use axum::http::{header, HeaderName, HeaderValue, Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
-use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower_governor::{
+    governor::GovernorConfigBuilder,
+    key_extractor::SmartIpKeyExtractor,
+    GovernorLayer,
+};
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::normalize_path::NormalizePathLayer;
@@ -617,16 +621,18 @@ async fn spa_index(State(state): State<AppState>) -> Response {
 }
 
 fn api_routes() -> Router<AppState> {
-    /* [064A-73][225A-4] Rate limiting: auth estricto, API general menos restrictiva
-     * para dashboards con varias consultas concurrentes. Endpoints sensibles
-     * (subscribe/checkout) conservan límites específicos en hosting::routes. */
+    /* [064A-73][225A-4][255A-1] Rate limiting: detrás de Coolify/Traefik la IP
+     * peer puede ser la del proxy compartido. SmartIpKeyExtractor usa los headers
+     * forwarded antes de caer al peer IP y evita 429 cruzados entre usuarios. */
     let auth_governor = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
         .per_second(12)
         .burst_size(5)
         .finish()
         .expect("rate limit config válida");
 
     let api_governor = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
         .per_second(600)
         .burst_size(60)
         .finish()
