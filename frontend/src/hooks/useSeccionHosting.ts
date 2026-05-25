@@ -26,12 +26,16 @@ export function useSeccionHosting() {
     const effectiveRole = useAuthStore(s => s.user?.effectiveRole) ?? 'client';
     const isAdmin = effectiveRole === 'admin';
 
-    /* [084A-24] Detectar retorno de Stripe Checkout (?hosting=success/cancelled) */
+    /* [084A-24] Detectar retorno de Stripe Checkout (?hosting=success/cancelled).
+     * [245A-11] El bypass de test vuelve con `hosting=test-bypass&subscription_id=...`;
+     * mostrar feedback y dejar que panelUrlState canonice a `hostingId`. */
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const hostingResult = params.get('hosting');
         if (hostingResult === 'success') {
             toast.success('¡Pago completado! Tu hosting se activará en breve.');
+        } else if (hostingResult === 'test-bypass') {
+            toast.success('Hosting de prueba activado. Ya puedes revisar sus accesos y estado.');
         } else if (hostingResult === 'cancelled') {
             toast.warning('Checkout cancelado. Puedes intentarlo de nuevo.');
         }

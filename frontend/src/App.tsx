@@ -199,6 +199,7 @@ function App() {
                     <Route path="/politica-privacidad" element={<Suspense fallback={null}><PrivacidadIsland /></Suspense>} />
                     <Route path="/usuario/:username" element={<Suspense fallback={null}><UsuarioPublicoIsland /></Suspense>} />
                     <Route path="/panel" element={<Suspense fallback={<div className="panelCargando" />}><PanelIsland /></Suspense>} />
+                    <Route path="/panel/" element={<Suspense fallback={<div className="panelCargando" />}><PanelIsland /></Suspense>} />
                     <Route path="/panel/chat" element={<Suspense fallback={<div className="panelCargando" />}><PanelIsland /></Suspense>} />
                     {/* [044A-28] Página 404 real en vez de redirigir silenciosamente al home */}
                     <Route path="*" element={<Suspense fallback={null}><NotFoundIsland /></Suspense>} />

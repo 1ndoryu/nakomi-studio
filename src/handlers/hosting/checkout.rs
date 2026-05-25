@@ -156,7 +156,9 @@ pub(super) async fn subscribe_self(
 
     let user = UserRepository::find_by_id(&state.pool, auth.user_id)
         .await?
-        .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+        .ok_or(AppError::Internal(
+            "Estado inconsistente: tu sesión es válida pero tu cuenta no se encontró en la base de datos. Contacta a soporte.".into(),
+        ))?;
 
     let client_name = user.display_name.unwrap_or_else(|| user.email.clone());
     let client_email = user.email;
@@ -295,7 +297,7 @@ async fn complete_test_hosting_checkout(
         .await?
         .unwrap_or(sub);
     let checkout_url = format!(
-        "{base_url}/panel?hosting=test-bypass&subscription_id={}",
+        "{base_url}/panel?seccion=hosting&hostingId={}&hosting=test-bypass",
         subscription.id
     );
 
@@ -385,7 +387,10 @@ pub(super) async fn create_checkout(
             );
         }
         return Ok(Json(serde_json::json!({
-            "checkout_url": format!("{base_url}/panel?hosting=test-bypass&subscription_id={}", sub.id)
+            "checkout_url": format!(
+                "{base_url}/panel?seccion=hosting&hostingId={}&hosting=test-bypass",
+                sub.id
+            )
         })));
     }
 
@@ -444,7 +449,9 @@ pub(super) async fn admin_test_subscribe(
 
     let user = UserRepository::find_by_id(&state.pool, auth.user_id)
         .await?
-        .ok_or(AppError::NotFound("Usuario no encontrado".into()))?;
+        .ok_or(AppError::Internal(
+            "Estado inconsistente: tu sesión es válida pero tu cuenta no se encontró en la base de datos. Contacta a soporte.".into(),
+        ))?;
     let requested_domain = normalize_domain(req.domain.as_deref());
     let (domain_verification_status, domain_verification_token, domain_verified_at) =
         build_domain_verification_state(requested_domain.as_deref());

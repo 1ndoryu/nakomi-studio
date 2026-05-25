@@ -23,9 +23,11 @@ export function getPanelOrderIdFromUrl(): string | null {
 
 export function getPanelHostingIdFromUrl(): string | null {
     const params = readSearchParams();
+    const seccion = params.get('seccion');
     return params.get('hostingId')
-        ?? ((params.get('seccion') === 'hosting' || params.get('seccion') === 'hostings')
-            ? params.get('id')
+        ?? (params.get('hosting') === 'test-bypass' ? params.get('subscription_id') : null)
+        ?? ((seccion === 'hosting' || seccion === 'hostings')
+            ? (params.get('subscription_id') ?? params.get('id'))
             : null);
 }
 
@@ -81,6 +83,8 @@ export function syncPanelHostingInUrl(hostingId: string | null): void {
     replaceSearch(params => {
         params.set('seccion', 'hosting');
         params.delete('id');
+        params.delete('hosting');
+        params.delete('subscription_id');
         if (hostingId) {
             params.set('hostingId', hostingId);
         } else {
@@ -102,23 +106,26 @@ export function syncPanelChatInUrl(chatId: string | null): void {
 
 function normalizePanelLink(rawLink: string): string {
     const url = new URL(rawLink, window.location.origin);
+    const normalizedPath = url.pathname !== '/'
+        ? url.pathname.replace(/\/+$/, '') || '/'
+        : url.pathname;
     const sessionId = url.searchParams.get('session');
     const legacySection = url.searchParams.get('seccion');
     const legacyId = url.searchParams.get('id');
 
-    if (url.pathname === '/panel/chat') {
+    if (normalizedPath === '/panel/chat') {
         return sessionId ? `/panel?seccion=mensajes&chat=${sessionId}` : '/panel?seccion=mensajes';
     }
 
-    if (url.pathname === '/panel' && legacySection === 'ordenes' && legacyId) {
+    if (normalizedPath === '/panel' && legacySection === 'ordenes' && legacyId) {
         return `/panel?order=${legacyId}`;
     }
 
-    if (url.pathname === '/panel' && legacySection === 'hosting' && legacyId) {
+    if (normalizedPath === '/panel' && legacySection === 'hosting' && legacyId) {
         return `/panel?seccion=hosting&hostingId=${legacyId}`;
     }
 
-    return `${url.pathname}${url.search}${url.hash}`;
+    return `${normalizedPath}${url.search}${url.hash}`;
 }
 
 export function buildPanelNotificationTarget(notification: NotificationResponse): string | null {

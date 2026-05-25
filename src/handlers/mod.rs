@@ -587,6 +587,7 @@ fn spa_shell_routes() -> Router<AppState> {
         .route("/politica-privacidad", get(spa_index))
         .route("/usuario/:username", get(spa_index))
         .route("/panel", get(spa_index))
+        .route("/panel/", get(spa_index))
         .route("/panel/chat", get(spa_index))
 }
 

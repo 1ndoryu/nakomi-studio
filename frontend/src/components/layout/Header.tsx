@@ -59,7 +59,7 @@ export const Header: React.FC = () => {
 
     /* Texto y destino del botón de sesión / panel */
     const textoAccion = logueado ? (enPanel ? t('nav.back') : t('nav.panel')) : null;
-    const hrefAccion = logueado ? (enPanel ? '/' : '/panel/') : null;
+    const hrefAccion = logueado ? (enPanel ? '/' : '/panel') : null;
 
     /* [074A-22] Avatar con dropdown para cerrar sesión */
     const logout = useAuthStore(s => s.logout);
