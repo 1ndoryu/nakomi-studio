@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Globe, MoreVertical, PlusCircle, Server, Trash2} from 'lucide-react';
+import {Globe, MoreVertical, PlusCircle, Server, Trash2, X} from 'lucide-react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import type {CoolifyDeployment} from '../../api/hosting';
 import {HOSTING_PLAN_LABELS, apiCreateHostingSubscription, apiDeleteDeployment} from '../../api/hosting';
@@ -98,7 +98,7 @@ function DeploymentContextMenu({deployment, onCreateSubscription, onDeleteDeploy
 }
 
 export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
-    const [expandido, setExpandido] = useState(false);
+    const [detalleAbierto, setDetalleAbierto] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const queryClient = useQueryClient();
@@ -138,7 +138,7 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
 
     return (
         <>
-            <tr className={`infraFila ${expandido ? 'infraFila--expandida' : ''} ${!isLinked ? 'infraFila--huerfana' : ''}`} onClick={() => setExpandido(!expandido)}>
+            <tr className={`infraFila ${!isLinked ? 'infraFila--huerfana' : ''}`} onClick={() => setDetalleAbierto(true)}>
                 <td className="infraCelda infraCelda--tipo"><span className="infraTipoIcono" title={isWp ? 'WordPress' : 'Hosting'}>{deployment.linked_subscription_plan ? (isWp ? <WordPressIcon /> : <HostingIcon />) : <Server size={14} />}</span></td>
                 <td className="infraCelda"><div className="infraCeldaNombre"><span className="infraNombreTexto">{deployment.name}</span><span className="infraServerBadge">{serverLabel}</span></div></td>
                 <td className="infraCelda"><span className={`vpsStatus ${getDeploymentStatusClass(deployment.status)}`}>{formatStatus(deployment.status)}</span></td>
@@ -150,7 +150,9 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
                 <td className="infraCelda infraCelda--acciones" onClick={event => event.stopPropagation()}><DeploymentContextMenu deployment={deployment} onCreateSubscription={() => setShowCreateForm(true)} onDeleteDeployment={() => setShowDeleteConfirm(true)} isDeleting={deleteMutation.isPending} /></td>
             </tr>
 
-            {expandido && <DeploymentDetails deployment={deployment} fqdn={fqdn} isLinked={isLinked} serverLabel={serverLabel} onCreateSubscription={() => setShowCreateForm(true)} onDeleteDeployment={() => setShowDeleteConfirm(true)} isDeleting={deleteMutation.isPending} />}
+            <Modal abierto={detalleAbierto} onCerrar={() => setDetalleAbierto(false)} className="modalMedio">
+                <DeploymentDetailsContent deployment={deployment} fqdn={fqdn} isLinked={isLinked} serverLabel={serverLabel} onCreateSubscription={() => setShowCreateForm(true)} onDeleteDeployment={() => setShowDeleteConfirm(true)} isDeleting={deleteMutation.isPending} onCerrar={() => setDetalleAbierto(false)} />
+            </Modal>
 
             <Modal abierto={showCreateForm} onCerrar={closeCreateForm}>
                 <CreateHostingForm initialCoolifyName={deployment.name} submitting={createMutation.isPending} onSubmit={req => createMutation.mutate(req)} />
@@ -169,38 +171,52 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
     );
 }
 
-function DeploymentDetails({deployment, fqdn, isLinked, serverLabel, onCreateSubscription, onDeleteDeployment, isDeleting}: {deployment: CoolifyDeployment; fqdn: string | null; isLinked: boolean; serverLabel: string; onCreateSubscription: () => void; onDeleteDeployment: () => void; isDeleting: boolean}) {
+function DeploymentDetailsContent({deployment, fqdn, isLinked, serverLabel, onCreateSubscription, onDeleteDeployment, isDeleting, onCerrar}: {deployment: CoolifyDeployment; fqdn: string | null; isLinked: boolean; serverLabel: string; onCreateSubscription: () => void; onDeleteDeployment: () => void; isDeleting: boolean; onCerrar: () => void}) {
     const {data: metrics, isLoading, error} = useDeploymentMetrics(deployment.uuid, true);
 
     return (
-        <tr className="infraFilaDetalle">
-            <td colSpan={9}>
-                <div className="infraDetalleContenido">
-                    <div className="infraDetalleGrid">
-                        <div className="infraDetalleCampo"><span className="infraDetalleLabel">UUID</span><span className="infraDetalleValor">{deployment.uuid}</span></div>
-                        <div className="infraDetalleCampo"><span className="infraDetalleLabel">Entorno</span><span className="infraDetalleValor">{deployment.environment_name || 'production'}</span></div>
-                        <div className="infraDetalleCampo"><span className="infraDetalleLabel">Servidor</span><span className="infraDetalleValor">{serverLabel}</span></div>
-                        {deployment.ram_limit_mb != null && <div className="infraDetalleCampo"><span className="infraDetalleLabel">RAM límite</span><span className="infraDetalleValor">{formatMb(deployment.ram_limit_mb)}</span></div>}
-                        {deployment.storage_limit_mb != null && <div className="infraDetalleCampo"><span className="infraDetalleLabel">Disco límite</span><span className="infraDetalleValor">{formatMb(deployment.storage_limit_mb)}</span></div>}
-                        {fqdn && <div className="infraDetalleCampo"><span className="infraDetalleLabel">FQDN</span><a href={fqdn} target="_blank" rel="noopener noreferrer" className="infraDetalleLink" onClick={event => event.stopPropagation()}><Globe size={12} />{fqdn}</a></div>}
-                    </div>
-                    {!isLinked && (
-                        <div className="vpsDeploymentAudit vpsDeploymentAudit--orphan">
-                            <span>Despliegue sin suscripción vinculada en el panel.</span>
-                            <div className="vpsOrphanActions">
-                                <Button variante="secundario" tamano="pequeno" className="vpsOrphanLinkBtn" onClick={onCreateSubscription} type="button">Crear suscripción</Button>
-                                <Button variante="outline" tamano="pequeno" className="vpsOrphanDeleteBtn" onClick={onDeleteDeployment} disabled={isDeleting} type="button">{isDeleting ? 'Eliminando...' : 'Eliminar despliegue'}</Button>
-                            </div>
-                        </div>
-                    )}
-                    <div className="infraDetalleGrafico">
-                        <span className="infraDetalleLabel">Uso 24h</span>
-                        {isLoading && <div className="graficoRecursosVacio">Cargando muestras...</div>}
-                        {error && <div className="graficoRecursosVacio">No se pudieron cargar las muestras</div>}
-                        {!isLoading && !error && <ResourceUsageChart points={metrics?.points ?? []} />}
+        <div className="detalleModalContenido">
+            <div className="detalleModalHeader">
+                <h3 className="detalleModalTitulo">{deployment.name}</h3>
+                <button className="detalleModalClose" onClick={onCerrar} type="button" aria-label="Cerrar"><X size={16} /></button>
+            </div>
+
+            <div className="detalleModalGrid">
+                <div className="detalleModalCampo"><span className="detalleModalLabel">UUID</span><span className="detalleModalValor">{deployment.uuid}</span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">Estado</span><span className="detalleModalValor"><span className={`vpsStatus ${getDeploymentStatusClass(deployment.status)}`}>{deployment.status}</span></span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">Runtime</span><span className="detalleModalValor">{deployment.runtime_kind}</span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">Entorno</span><span className="detalleModalValor">{deployment.environment_name || 'production'}</span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">Servidor</span><span className="detalleModalValor">{serverLabel}</span></div>
+                {deployment.server_uuid && <div className="detalleModalCampo"><span className="detalleModalLabel">Servidor UUID</span><span className="detalleModalValor">{deployment.server_uuid}</span></div>}
+                {deployment.linked_subscription_plan && <div className="detalleModalCampo"><span className="detalleModalLabel">Plan</span><span className="detalleModalValor">{getDeploymentTypeLabel(deployment.linked_subscription_plan)}</span></div>}
+                {deployment.linked_subscription_domain && <div className="detalleModalCampo"><span className="detalleModalLabel">Dominio</span><span className="detalleModalValor">{deployment.linked_subscription_domain}</span></div>}
+                {fqdn && <div className="detalleModalCampo"><span className="detalleModalLabel">FQDN</span><a href={fqdn} target="_blank" rel="noopener noreferrer" className="detalleModalLink" onClick={e => e.stopPropagation()}><Globe size={12} />{fqdn}</a></div>}
+            </div>
+
+            <div className="detalleModalGrid">
+                <div className="detalleModalCampo"><span className="detalleModalLabel">CPU</span><span className="detalleModalValor">{formatCpu(deployment.cpu_percent)}</span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">RAM</span><span className="detalleModalValor">{formatMb(deployment.ram_used_mb)}{deployment.ram_limit_mb != null ? ` / ${formatMb(deployment.ram_limit_mb)}` : ''}</span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">Disco</span><span className="detalleModalValor">{formatMb(deployment.storage_used_mb)}{deployment.storage_limit_mb != null ? ` / ${formatMb(deployment.storage_limit_mb)}` : ''}</span></div>
+                {deployment.project_uuid && <div className="detalleModalCampo"><span className="detalleModalLabel">Proyecto</span><span className="detalleModalValor">{deployment.project_uuid}</span></div>}
+                {deployment.linked_subscription_status && <div className="detalleModalCampo"><span className="detalleModalLabel">Estado suscripción</span><span className="detalleModalValor">{deployment.linked_subscription_status}</span></div>}
+            </div>
+
+            <div className="detalleModalGrafico">
+                <span className="detalleModalGraficoLabel">Uso 24h</span>
+                {isLoading && <div className="graficoRecursosVacio">Cargando muestras...</div>}
+                {error && <div className="graficoRecursosVacio">No se pudieron cargar las muestras</div>}
+                {!isLoading && !error && <ResourceUsageChart points={metrics?.points ?? []} />}
+            </div>
+
+            {!isLinked && (
+                <div className="detalleModalOrphan">
+                    <span>Despliegue sin suscripción vinculada en el panel.</span>
+                    <div className="detalleModalOrphanActions">
+                        <Button variante="secundario" tamano="pequeno" onClick={onCreateSubscription} type="button">Crear suscripción</Button>
+                        <Button variante="outline" tamano="pequeno" onClick={onDeleteDeployment} disabled={isDeleting} type="button">{isDeleting ? 'Eliminando...' : 'Eliminar despliegue'}</Button>
                     </div>
                 </div>
-            </td>
-        </tr>
+            )}
+        </div>
     );
 }
