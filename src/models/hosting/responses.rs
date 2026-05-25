@@ -137,4 +137,16 @@ pub struct CoolifyDeploymentResponse {
     pub storage_used_mb: Option<i64>,
     /// [215A-14] Límite de almacenamiento del plan en MB (null si no vinculado)
     pub storage_limit_mb: Option<i32>,
+    /// [255A-1] CPU millicores del plan para WordPress/site (null si no vinculado)
+    pub plan_wp_cpu_millicores: Option<i32>,
+    /// [255A-1] CPU millicores del plan para base de datos (null si no vinculado)
+    pub plan_db_cpu_millicores: Option<i32>,
+    /// [255A-1] CPU millicores del plan para SSH (null si no vinculado)
+    pub plan_ssh_cpu_millicores: Option<i32>,
+    /// [255A-1] RAM MB del plan para WordPress/site (null si no vinculado)
+    pub plan_wp_memory_mb: Option<i32>,
+    /// [255A-1] RAM MB del plan para base de datos (null si no vinculado)
+    pub plan_db_memory_mb: Option<i32>,
+    /// [255A-1] RAM MB del plan para SSH (null si no vinculado)
+    pub plan_ssh_memory_mb: Option<i32>,
 }

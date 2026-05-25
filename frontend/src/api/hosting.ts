@@ -442,6 +442,12 @@ export interface CoolifyDeployment {
     ram_limit_mb: number | null;
     storage_used_mb: number | null;
     storage_limit_mb: number | null;
+    plan_wp_cpu_millicores: number | null;
+    plan_db_cpu_millicores: number | null;
+    plan_ssh_cpu_millicores: number | null;
+    plan_wp_memory_mb: number | null;
+    plan_db_memory_mb: number | null;
+    plan_ssh_memory_mb: number | null;
 }
 
 /* [164A-19] Despliegues reales de Coolify en todos los servidores configurados. */

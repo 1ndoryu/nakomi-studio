@@ -52,6 +52,12 @@ function formatCpu(percent: number | null | undefined): string {
     return percent == null ? '—' : `${percent.toFixed(2)}%`;
 }
 
+function formatMillicores(millicores: number | null | undefined): string {
+    if (millicores == null) return '—';
+    const cores = millicores / 1000;
+    return `${cores.toFixed(2)} CPU`;
+}
+
 function WordPressIcon() {
     return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h4l3 8 4-16 3 8h4" /></svg>;
 }
@@ -194,12 +200,23 @@ function DeploymentDetailsContent({deployment, fqdn, isLinked, serverLabel, onCr
             </div>
 
             <div className="detalleModalGrid">
-                <div className="detalleModalCampo"><span className="detalleModalLabel">CPU</span><span className="detalleModalValor">{formatCpu(deployment.cpu_percent)}</span></div>
-                <div className="detalleModalCampo"><span className="detalleModalLabel">RAM</span><span className="detalleModalValor">{formatMb(deployment.ram_used_mb)}{deployment.ram_limit_mb != null ? ` / ${formatMb(deployment.ram_limit_mb)}` : ''}</span></div>
-                <div className="detalleModalCampo"><span className="detalleModalLabel">Disco</span><span className="detalleModalValor">{formatMb(deployment.storage_used_mb)}{deployment.storage_limit_mb != null ? ` / ${formatMb(deployment.storage_limit_mb)}` : ''}</span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">CPU actual</span><span className="detalleModalValor">{formatCpu(deployment.cpu_percent)}</span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">RAM actual</span><span className="detalleModalValor">{formatMb(deployment.ram_used_mb)}{deployment.ram_limit_mb != null ? ` / ${formatMb(deployment.ram_limit_mb)}` : ''}</span></div>
+                <div className="detalleModalCampo"><span className="detalleModalLabel">Disco actual</span><span className="detalleModalValor">{formatMb(deployment.storage_used_mb)}{deployment.storage_limit_mb != null ? ` / ${formatMb(deployment.storage_limit_mb)}` : ''}</span></div>
                 {deployment.project_uuid && <div className="detalleModalCampo"><span className="detalleModalLabel">Proyecto</span><span className="detalleModalValor">{deployment.project_uuid}</span></div>}
                 {deployment.linked_subscription_status && <div className="detalleModalCampo"><span className="detalleModalLabel">Estado suscripción</span><span className="detalleModalValor">{deployment.linked_subscription_status}</span></div>}
             </div>
+
+            {(deployment.plan_wp_cpu_millicores != null || deployment.plan_wp_memory_mb != null) && (
+                <div className="detalleModalGrid">
+                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite WP CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_wp_cpu_millicores)}</span></div>
+                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite WP RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_wp_memory_mb)}</span></div>
+                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite DB CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_db_cpu_millicores)}</span></div>
+                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite DB RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_db_memory_mb)}</span></div>
+                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite SSH CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_ssh_cpu_millicores)}</span></div>
+                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite SSH RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_ssh_memory_mb)}</span></div>
+                </div>
+            )}
 
             <div className="detalleModalGrafico">
                 <span className="detalleModalGraficoLabel">Uso 24h</span>

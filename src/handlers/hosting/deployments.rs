@@ -22,6 +22,7 @@ fn map_runtime_deployments(
     duplicate_name_keys: &HashSet<String>,
     subscriptions_by_uuid: &HashMap<String, &crate::models::HostingSubscription>,
     subscriptions_by_name: &HashMap<String, &crate::models::HostingSubscription>,
+    plan_configs_by_name: &HashMap<String, crate::models::HostingPlanConfig>,
 ) -> Vec<CoolifyDeploymentResponse> {
     services
         .into_iter()
@@ -38,6 +39,8 @@ fn map_runtime_deployments(
                 });
 
             let server_label = resolve_server_label(&service, fallback_label);
+            let plan_config = linked_subscription
+                .and_then(|sub| plan_configs_by_name.get(&sub.plan));
 
             CoolifyDeploymentResponse {
                 uuid: service.deployment_id.clone(),
@@ -61,6 +64,12 @@ fn map_runtime_deployments(
                     .map(|subscription| subscription.client_name.clone()),
                 storage_limit_mb: linked_subscription
                     .map(|subscription| subscription.storage_limit_mb),
+                plan_wp_cpu_millicores: plan_config.map(|c| c.wp_cpu_millicores),
+                plan_db_cpu_millicores: plan_config.map(|c| c.db_cpu_millicores),
+                plan_ssh_cpu_millicores: plan_config.map(|c| c.ssh_cpu_millicores),
+                plan_wp_memory_mb: plan_config.map(|c| c.wp_memory_mb),
+                plan_db_memory_mb: plan_config.map(|c| c.db_memory_mb),
+                plan_ssh_memory_mb: plan_config.map(|c| c.ssh_memory_mb),
                 cpu_percent: None,
                 ram_used_mb: None,
                 ram_limit_mb: None,
@@ -189,6 +198,12 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
     let (subscriptions_by_uuid, subscriptions_by_name) =
         build_subscription_lookups(&subscriptions);
 
+    let plan_configs = HostingRepository::list_plan_configs(&state.pool).await?;
+    let plan_configs_by_name: HashMap<String, _> = plan_configs
+        .into_iter()
+        .map(|config| (config.plan_name.clone(), config))
+        .collect();
+
     let pending_batches = collect_pending_deployment_batches(&state).await;
 
     let duplicate_name_keys = duplicate_name_keys(&pending_batches);
@@ -201,6 +216,7 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
                 &duplicate_name_keys,
                 &subscriptions_by_uuid,
                 &subscriptions_by_name,
+                &plan_configs_by_name,
             )
         })
         .collect();
