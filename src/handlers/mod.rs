@@ -49,6 +49,7 @@ use axum::Router;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::normalize_path::NormalizePathLayer;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
@@ -510,6 +511,10 @@ pub fn create_router(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Ro
         .nest("/api", api_routes())
         .merge(spa_shell_routes())
         .layer(TraceLayer::new_for_http())
+        /* [255A-1] Canonizar rutas publicas con slash final (`/panel/` -> `/panel`).
+         * Axum caia al SPA fallback estatico y devolvia `index.html` con estado 404.
+         * La normalizacion corrige el caso de forma estructural para toda la app. */
+        .layer(NormalizePathLayer::trim_trailing_slash())
         /* [154A-6] Compresión HTTP gzip+brotli — reduce transferencia ~70% */
         .layer(CompressionLayer::new())
         .layer(cors)
