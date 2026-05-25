@@ -1,20 +1,20 @@
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::Json;
 use std::collections::{HashMap, HashSet};
 
 use super::deployment_helpers::{
-    build_subscription_lookups, collect_pending_deployment_batches, deployments_cache,
-    duplicate_name_keys, invalidate_deployments_cache, locate_runtime_deployment,
-    resolve_server_label, runtime_link_key,
+    FailedRuntimeLookup, build_subscription_lookups, collect_pending_deployment_batches,
+    deployments_cache, duplicate_name_keys, invalidate_deployments_cache,
+    locate_runtime_deployment, resolve_server_label, runtime_link_key,
 };
+use crate::AppState;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
-use crate::models::{CoolifyDeploymentResponse, UserRole};
+use crate::models::{CoolifyDeploymentResponse, HostingSubscription, UserRole};
 use crate::repositories::{HostingRepository, InfrastructureRepository};
 use crate::services::infrastructure::coolify_server_targets;
 use crate::services::{HostingRuntimeDeploymentSummary, HostingRuntimeKind, HostingRuntimeService};
-use crate::AppState;
 
 fn map_runtime_deployments(
     services: Vec<HostingRuntimeDeploymentSummary>,
@@ -29,18 +29,19 @@ fn map_runtime_deployments(
         .map(|service| {
             let deployment_key = runtime_link_key(service.runtime_kind, &service.deployment_id);
             let name_key = runtime_link_key(service.runtime_kind, &service.name);
-            let linked_subscription = subscriptions_by_uuid
-                .get(&deployment_key)
-                .copied()
-                .or_else(|| {
-                    (!duplicate_name_keys.contains(&name_key))
-                        .then(|| subscriptions_by_name.get(&name_key).copied())
-                        .flatten()
-                });
+            let linked_subscription =
+                subscriptions_by_uuid
+                    .get(&deployment_key)
+                    .copied()
+                    .or_else(|| {
+                        (!duplicate_name_keys.contains(&name_key))
+                            .then(|| subscriptions_by_name.get(&name_key).copied())
+                            .flatten()
+                    });
 
             let server_label = resolve_server_label(&service, fallback_label);
-            let plan_config = linked_subscription
-                .and_then(|sub| plan_configs_by_name.get(&sub.plan));
+            let plan_config =
+                linked_subscription.and_then(|sub| plan_configs_by_name.get(&sub.plan));
 
             CoolifyDeploymentResponse {
                 uuid: service.deployment_id.clone(),
@@ -85,6 +86,138 @@ fn f64_to_i64_rounded(value: f64) -> Option<i64> {
         return None;
     }
     format!("{value:.0}").parse::<i64>().ok()
+}
+
+fn should_include_subscription_fallback(subscription: &HostingSubscription) -> bool {
+    subscription.deployment_id_or_legacy().is_some()
+        && !subscription.status.trim().eq_ignore_ascii_case("cancelled")
+}
+
+fn subscription_fallback_name(subscription: &HostingSubscription, deployment_id: &str) -> String {
+    subscription
+        .coolify_site_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            subscription
+                .domain
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToOwned::to_owned)
+        })
+        .unwrap_or_else(|| deployment_id.to_string())
+}
+
+fn subscription_matches_failed_lookup(
+    subscription: &HostingSubscription,
+    failed_lookup: &FailedRuntimeLookup,
+    failed_lookup_count: usize,
+) -> bool {
+    if HostingRuntimeKind::from_persisted(&subscription.runtime_kind) != failed_lookup.runtime_kind
+        || !should_include_subscription_fallback(subscription)
+    {
+        return false;
+    }
+
+    match (
+        failed_lookup.target_server_ip.as_deref(),
+        subscription.server_ip.as_deref(),
+    ) {
+        (Some(expected_ip), Some(actual_ip)) => actual_ip == expected_ip,
+        (Some(_), None) => failed_lookup_count == 1,
+        (None, _) => true,
+    }
+}
+
+/* [255A-2] Cuando Coolify responde 500, el panel no debe degradar a "cero despliegues".
+ * Si un runtime concreto falla, reconstruimos un inventario mínimo desde suscripciones
+ * persistidas para conservar la tabla utilizable hasta que el proveedor vuelva. */
+fn build_failed_runtime_fallback_batches(
+    subscriptions: &[HostingSubscription],
+    failed_lookups: &[FailedRuntimeLookup],
+) -> Vec<super::deployment_helpers::PendingRuntimeDeployments> {
+    failed_lookups
+        .iter()
+        .filter_map(|failed_lookup| {
+            let failed_lookup_count = failed_lookups
+                .iter()
+                .filter(|lookup| lookup.runtime_kind == failed_lookup.runtime_kind)
+                .count();
+
+            let services: Vec<_> = subscriptions
+                .iter()
+                .filter(|subscription| {
+                    subscription_matches_failed_lookup(
+                        subscription,
+                        failed_lookup,
+                        failed_lookup_count,
+                    )
+                })
+                .filter_map(|subscription| {
+                    let deployment_id = subscription.deployment_id_or_legacy()?;
+                    Some(HostingRuntimeDeploymentSummary {
+                        runtime_kind: HostingRuntimeKind::from_persisted(
+                            &subscription.runtime_kind,
+                        ),
+                        deployment_id: deployment_id.to_string(),
+                        name: subscription_fallback_name(subscription, deployment_id),
+                        status: subscription.status.clone(),
+                        fqdn: subscription
+                            .domain
+                            .as_deref()
+                            .map(str::trim)
+                            .filter(|value| !value.is_empty())
+                            .map(ToOwned::to_owned),
+                        target_id: None,
+                        target_name: Some(failed_lookup.fallback_label.clone()),
+                        project_id: None,
+                        environment_name: None,
+                    })
+                })
+                .collect();
+
+            (!services.is_empty()).then_some(super::deployment_helpers::PendingRuntimeDeployments {
+                fallback_label: failed_lookup.fallback_label.clone(),
+                services,
+            })
+        })
+        .collect()
+}
+
+fn dedupe_deployments(
+    deployments: Vec<CoolifyDeploymentResponse>,
+) -> Vec<CoolifyDeploymentResponse> {
+    let mut seen = HashSet::new();
+
+    deployments
+        .into_iter()
+        .filter(|deployment| {
+            seen.insert(format!(
+                "{}::{}",
+                deployment.runtime_kind, deployment.deployment_id
+            ))
+        })
+        .collect()
+}
+
+fn failed_runtime_labels(failed_lookups: &[FailedRuntimeLookup]) -> String {
+    let mut seen = HashSet::new();
+
+    failed_lookups
+        .iter()
+        .filter_map(|failed_lookup| {
+            let label = format!(
+                "{} ({})",
+                failed_lookup.fallback_label,
+                failed_lookup.runtime_kind.as_str()
+            );
+            seen.insert(label.clone()).then_some(label)
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /* [225A-4] Enriquece despliegues desde snapshots del sampler, no desde SSH en render.
@@ -195,8 +328,7 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
 
     tracing::info!("[deployments] Consultando repositorios...");
     let subscriptions = HostingRepository::list_all(&state.pool).await?;
-    let (subscriptions_by_uuid, subscriptions_by_name) =
-        build_subscription_lookups(&subscriptions);
+    let (subscriptions_by_uuid, subscriptions_by_name) = build_subscription_lookups(&subscriptions);
 
     let plan_configs = HostingRepository::list_plan_configs(&state.pool).await?;
     let plan_configs_by_name: HashMap<String, _> = plan_configs
@@ -204,22 +336,49 @@ async fn build_deployments(state: AppState) -> Result<Vec<CoolifyDeploymentRespo
         .map(|config| (config.plan_name.clone(), config))
         .collect();
 
-    let pending_batches = collect_pending_deployment_batches(&state).await;
+    let batch_collection = collect_pending_deployment_batches(&state).await;
+    let mut pending_batches = batch_collection.pending_batches;
+
+    if !batch_collection.failed_lookups.is_empty() {
+        let fallback_batches =
+            build_failed_runtime_fallback_batches(&subscriptions, &batch_collection.failed_lookups);
+        let fallback_count: usize = fallback_batches
+            .iter()
+            .map(|batch| batch.services.len())
+            .sum();
+        if fallback_count > 0 {
+            tracing::warn!(
+                "[deployments] {} runtime(s) fallaron; usando {} despliegue(s) persistidos como fallback.",
+                batch_collection.failed_lookups.len(),
+                fallback_count
+            );
+            pending_batches.extend(fallback_batches);
+        }
+    }
 
     let duplicate_name_keys = duplicate_name_keys(&pending_batches);
-    let mut deployments: Vec<CoolifyDeploymentResponse> = pending_batches
-        .into_iter()
-        .flat_map(|batch| {
-            map_runtime_deployments(
-                batch.services,
-                &batch.fallback_label,
-                &duplicate_name_keys,
-                &subscriptions_by_uuid,
-                &subscriptions_by_name,
-                &plan_configs_by_name,
-            )
-        })
-        .collect();
+    let mut deployments = dedupe_deployments(
+        pending_batches
+            .into_iter()
+            .flat_map(|batch| {
+                map_runtime_deployments(
+                    batch.services,
+                    &batch.fallback_label,
+                    &duplicate_name_keys,
+                    &subscriptions_by_uuid,
+                    &subscriptions_by_name,
+                    &plan_configs_by_name,
+                )
+            })
+            .collect(),
+    );
+
+    if deployments.is_empty() && !batch_collection.failed_lookups.is_empty() {
+        return Err(AppError::ServiceUnavailable(format!(
+            "No se pudo consultar la infraestructura para listar despliegues reales. Fallaron: {}.",
+            failed_runtime_labels(&batch_collection.failed_lookups)
+        )));
+    }
 
     tracing::info!("[deployments] Iniciando enrich_deployment_resources...");
     enrich_deployment_resources(&state, &mut deployments).await;
@@ -269,7 +428,10 @@ pub(super) async fn delete_deployment(
 
     let can_link_by_name = located
         .deployment_name_counts
-        .get(&runtime_link_key(located.runtime_kind, &located.target_name))
+        .get(&runtime_link_key(
+            located.runtime_kind,
+            &located.target_name,
+        ))
         .copied()
         .unwrap_or(0)
         <= 1;
@@ -284,8 +446,7 @@ pub(super) async fn delete_deployment(
     if let Some(subscription) = linked_subscription {
         return Err(AppError::Conflict(format!(
             "El despliegue {} ya está vinculado a la suscripción {}. Elimínalo desde la suscripción para no dejar datos huérfanos.",
-            located.target_name,
-            subscription.id
+            located.target_name, subscription.id
         )));
     }
 
@@ -305,4 +466,125 @@ pub(super) async fn delete_deployment(
     );
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    use super::*;
+
+    fn sample_subscription(
+        runtime_kind: &str,
+        status: &str,
+        deployment_id: Option<&str>,
+        coolify_site_name: Option<&str>,
+        server_ip: Option<&str>,
+    ) -> HostingSubscription {
+        let now = Utc::now();
+
+        HostingSubscription {
+            id: Uuid::new_v4(),
+            user_id: None,
+            client_name: "Cliente Test".to_string(),
+            client_email: "test@example.com".to_string(),
+            plan: "normal-mini".to_string(),
+            domain: Some("example.test".to_string()),
+            domain_verification_status: "pending".to_string(),
+            domain_verification_token: None,
+            domain_verified_at: None,
+            runtime_kind: runtime_kind.to_string(),
+            deployment_id: deployment_id.map(str::to_string),
+            coolify_site_name: coolify_site_name.map(str::to_string),
+            status: status.to_string(),
+            stripe_subscription_id: None,
+            monthly_price_cents: 1000,
+            storage_limit_mb: 1024,
+            server_uuid: None,
+            server_ip: server_ip.map(str::to_string),
+            sftp_user: None,
+            sftp_password: None,
+            sftp_port: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    #[test]
+    fn build_failed_runtime_fallback_batches_filters_runtime_status_and_target() {
+        let failed_lookups = vec![FailedRuntimeLookup {
+            fallback_label: "VPS2".to_string(),
+            runtime_kind: HostingRuntimeKind::Coolify,
+            target_server_ip: Some("173.249.50.44".to_string()),
+        }];
+        let subscriptions = vec![
+            sample_subscription(
+                "coolify",
+                "active",
+                Some("dep-ok"),
+                Some("hosting-ok"),
+                Some("173.249.50.44"),
+            ),
+            sample_subscription(
+                "coolify",
+                "cancelled",
+                Some("dep-cancelled"),
+                Some("hosting-cancelled"),
+                Some("173.249.50.44"),
+            ),
+            sample_subscription(
+                "coolify",
+                "active",
+                Some("dep-other-ip"),
+                Some("hosting-other-ip"),
+                Some("66.94.100.241"),
+            ),
+            sample_subscription(
+                "lightweight",
+                "active",
+                Some("dep-lightweight"),
+                Some("hosting-lightweight"),
+                Some("173.249.50.44"),
+            ),
+            sample_subscription(
+                "coolify",
+                "active",
+                None,
+                Some("hosting-without-id"),
+                Some("173.249.50.44"),
+            ),
+        ];
+
+        let batches = build_failed_runtime_fallback_batches(&subscriptions, &failed_lookups);
+
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].fallback_label, "VPS2");
+        assert_eq!(batches[0].services.len(), 1);
+        assert_eq!(batches[0].services[0].deployment_id, "dep-ok");
+        assert_eq!(batches[0].services[0].name, "hosting-ok");
+    }
+
+    #[test]
+    fn build_failed_runtime_fallback_batches_accepts_missing_server_ip_if_runtime_failure_is_unique()
+     {
+        let failed_lookups = vec![FailedRuntimeLookup {
+            fallback_label: "VPS2".to_string(),
+            runtime_kind: HostingRuntimeKind::Coolify,
+            target_server_ip: Some("173.249.50.44".to_string()),
+        }];
+        let subscriptions = vec![sample_subscription(
+            "coolify",
+            "active",
+            Some("dep-without-ip"),
+            Some("hosting-without-ip"),
+            None,
+        )];
+
+        let batches = build_failed_runtime_fallback_batches(&subscriptions, &failed_lookups);
+
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].services.len(), 1);
+        assert_eq!(batches[0].services[0].deployment_id, "dep-without-ip");
+    }
 }

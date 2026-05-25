@@ -258,6 +258,17 @@
 
 ## Consistencia visual — leer antes de crear
 - Antes de crear o modificar CSS, leer primero `variables.css`, los componentes atómicos en `ui/` y los patrones de componentes similares. Cada clase ad-hoc que duplica un token existente es deuda visual que se acumula.
+
+## Axum detrás de proxy — el rate limit debe asumir tráfico SPA real
+- Con Coolify/Traefik, la IP `peer` no basta para bucketear usuarios; usar los headers `forwarded`/`x-forwarded-for` evita `429` cruzados cuando varios clientes salen por el mismo proxy.
+- Si la SPA hace polling y varias requests concurrentes por vista, los límites de auth/API no pueden calibrarse como si el sitio fuera navegación manual de una sola petición por segundo. En producción, los umbrales tienen que absorber concurrencia normal antes de parecer abuso.
+
+## Coolify API — un token Sanctum mal serializado rompe toda la API
+- Si Coolify 4.1.0 devuelve `500` incluso en `/api/v1/version` y el HTML menciona `in_array(): Argument #2 ($haystack) must be of type array, null given`, revisar `personal_access_tokens.abilities`.
+- El valor `[*]` guardado como `text` no equivale a JSON válido `["]*["]`; Sanctum lo castea a `null` y cae en `tokenCan()`. Corregir la fila a `["*"]` restaura `/api/v1/version` y `/api/v1/services` sin redeploy.
+
+## Panel de despliegues — runtime caído no equivale a cero inventario
+- Si `list_services()` falla para un runtime externo, el panel admin no debe responder `[]` como si no existieran hostings. Un fallback mínimo desde `hosting_subscriptions` mantiene la tabla utilizable y deja claro que cayó el proveedor, no el inventario persistido.
 - Badge siempre en grises (sin color semántico) fue una decisión de diseño Nakomi. Footers, headers, cards deben compartir un patrón unificado.
 
 ## Modales — semantica compartida primero

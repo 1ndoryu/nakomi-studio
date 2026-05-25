@@ -9,12 +9,12 @@
  * Diseño no-fatal: los errores de provisioning se loguean pero no bloquean el pago. */
 
 use base64::Engine;
-use rand::distributions::Alphanumeric;
 use rand::Rng;
+use rand::distributions::Alphanumeric;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tracing;
 
 use crate::errors::AppError;
@@ -674,8 +674,8 @@ fn build_compose_wp_db(
 ) -> String {
     let traefik_labels = build_traefik_labels(route_hosts, 4, 6, ingress_network);
     format!(
-                "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
-        )
+        "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
+    )
 }
 
 /* [155A-13] Servicio web para hosting normal: Nginx sirve el volumen editable por SFTP. */
@@ -841,7 +841,9 @@ fn build_wordpress_hosting_compose(
     let ssh = build_compose_ssh(sftp_user, sftp_password, sftp_port, &ssh_cpu, &ssh_mem);
     let backup = build_compose_wordpress_backup(backup_cadence_for_plan(&config.plan_name));
     let backup_vol = "  backup-data:\n";
-    format!("services:\n{wp_db}{ssh}{backup}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n{backup_vol}")
+    format!(
+        "services:\n{wp_db}{ssh}{backup}\nnetworks:\n  frontend_net:\n  backend_net:\n    internal: true\n  ssh_net:\nvolumes:\n  wordpress-data:\n  mariadb-data:\n{backup_vol}"
+    )
 }
 
 fn build_normal_hosting_compose(
@@ -1011,16 +1013,24 @@ fn backup_cadence_for_plan(plan_name: &str) -> HostingBackupCadence {
 
 fn wordpress_backup_command(cadence: HostingBackupCadence) -> &'static str {
     match cadence {
-                HostingBackupCadence::Weekly => "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); if [ $$DOW = 7 ]; then mysqldump -h mariadb -u wordpress wordpress > /backups/weekly_$$DT.sql 2>&1; tar czf /backups/weekly_wp_$$DT.tar.gz -C /wp-html . 2>&1; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +28 -delete; fi; sleep 86400; done",
-                HostingBackupCadence::Daily => "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); mysqldump -h mariadb -u wordpress wordpress > /backups/daily_$$DT.sql 2>&1; tar czf /backups/daily_wp_$$DT.tar.gz -C /wp-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_$$DT.sql /backups/weekly_$$DT.sql; cp /backups/daily_wp_$$DT.tar.gz /backups/weekly_wp_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done",
+        HostingBackupCadence::Weekly => {
+            "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); if [ $$DOW = 7 ]; then mysqldump -h mariadb -u wordpress wordpress > /backups/weekly_$$DT.sql 2>&1; tar czf /backups/weekly_wp_$$DT.tar.gz -C /wp-html . 2>&1; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +28 -delete; fi; sleep 86400; done"
         }
+        HostingBackupCadence::Daily => {
+            "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); mysqldump -h mariadb -u wordpress wordpress > /backups/daily_$$DT.sql 2>&1; tar czf /backups/daily_wp_$$DT.tar.gz -C /wp-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_$$DT.sql /backups/weekly_$$DT.sql; cp /backups/daily_wp_$$DT.tar.gz /backups/weekly_wp_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done"
+        }
+    }
 }
 
 fn static_backup_command(cadence: HostingBackupCadence) -> &'static str {
     match cadence {
-                HostingBackupCadence::Weekly => "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); if [ $$DOW = 7 ]; then tar czf /backups/weekly_site_$$DT.tar.gz -C /site-html . 2>&1; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +28 -delete; fi; sleep 86400; done",
-                HostingBackupCadence::Daily => "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); tar czf /backups/daily_site_$$DT.tar.gz -C /site-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_site_$$DT.tar.gz /backups/weekly_site_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done",
+        HostingBackupCadence::Weekly => {
+            "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); if [ $$DOW = 7 ]; then tar czf /backups/weekly_site_$$DT.tar.gz -C /site-html . 2>&1; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +28 -delete; fi; sleep 86400; done"
         }
+        HostingBackupCadence::Daily => {
+            "sleep 60; while true; do DT=$$(date +%Y%m%d_%H%M%S); DOW=$$(date +%u); tar czf /backups/daily_site_$$DT.tar.gz -C /site-html . 2>&1; if [ $$DOW = 7 ]; then cp /backups/daily_site_$$DT.tar.gz /backups/weekly_site_$$DT.tar.gz; fi; find /backups -maxdepth 1 -name \"daily_*\" -mtime +3 -delete; find /backups -maxdepth 1 -name \"weekly_*\" -mtime +14 -delete; sleep 86400; done"
+        }
+    }
 }
 
 /* [174A-17][215A-6] Sidecar de backup automático para WordPress.
@@ -1116,9 +1126,14 @@ impl CoolifyService {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            tracing::error!("[Coolify] Error listando servicios: {} — {}", status, body);
+            tracing::error!(
+                "[Coolify] Error listando servicios desde {}: {} — {}",
+                url,
+                status,
+                body
+            );
             return Err(AppError::Internal(format!(
-                "Coolify list services failed: {status}"
+                "Coolify list services failed ({url}): {status}"
             )));
         }
 

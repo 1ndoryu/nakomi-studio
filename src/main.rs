@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use argon2::password_hash::rand_core::OsRng;
-use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
+use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use glory_backend::config::AppConfig;
 use glory_backend::handlers;
 use glory_backend::services::bandwidth_enforcement::bandwidth_throttle_loop;
@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     /* [250A-1] Fixtures + background tasks extraídos a helpers para mantener
      * main() por debajo de 100 líneas (regla funcion-larga-rs). */
     setup_and_run_fixtures(&pool).await?;
-    spawn_background_services(&pool, &config).await;
+    spawn_background_services(&pool, &config);
 
     let addr = format!("{}:{}", config.host, config.port);
     tracing::info!("Servidor iniciando en {addr}");
@@ -106,7 +106,7 @@ async fn setup_and_run_fixtures(pool: &sqlx::PgPool) -> Result<(), Box<dyn std::
  * Inicia todas las tareas de background: asignación, cleanup chat, storage
  * enforcement, métricas, bandwidth throttle y monitor VPS. */
 #[allow(clippy::too_many_lines)]
-async fn spawn_background_services(pool: &sqlx::PgPool, _config: &AppConfig) {
+fn spawn_background_services(pool: &sqlx::PgPool, _config: &AppConfig) {
     let bg_pool = pool.clone();
     tokio::spawn(async move {
         AssignmentService::auto_assign_loop(bg_pool).await;

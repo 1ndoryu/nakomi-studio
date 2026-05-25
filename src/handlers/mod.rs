@@ -40,16 +40,14 @@ mod vps;
 mod wallet;
 
 use argon2::PasswordHasher;
+use axum::Router;
 use axum::body::Body;
 use axum::extract::State;
-use axum::http::{header, HeaderName, HeaderValue, Method, StatusCode};
+use axum::http::{HeaderName, HeaderValue, Method, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::Router;
 use tower_governor::{
-    governor::GovernorConfigBuilder,
-    key_extractor::SmartIpKeyExtractor,
-    GovernorLayer,
+    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
 };
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
@@ -621,20 +619,22 @@ async fn spa_index(State(state): State<AppState>) -> Response {
 }
 
 fn api_routes() -> Router<AppState> {
-    /* [064A-73][225A-4][255A-1] Rate limiting: detrás de Coolify/Traefik la IP
+    /* [064A-73][225A-4][255A-1][255A-3] Rate limiting: detrás de Coolify/Traefik la IP
      * peer puede ser la del proxy compartido. SmartIpKeyExtractor usa los headers
-     * forwarded antes de caer al peer IP y evita 429 cruzados entre usuarios. */
+     * forwarded antes de caer al peer IP y evita 429 cruzados entre usuarios.
+     * Límites altos (auth 120/s+40 burst, api 5000/s+500 burst) porque el backend
+     * atiende SPA con polling + múltiples endpoints concurrentes por página. */
     let auth_governor = GovernorConfigBuilder::default()
         .key_extractor(SmartIpKeyExtractor)
-        .per_second(12)
-        .burst_size(5)
+        .per_second(120)
+        .burst_size(40)
         .finish()
         .expect("rate limit config válida");
 
     let api_governor = GovernorConfigBuilder::default()
         .key_extractor(SmartIpKeyExtractor)
-        .per_second(600)
-        .burst_size(60)
+        .per_second(5000)
+        .burst_size(500)
         .finish()
         .expect("rate limit config válida");
 

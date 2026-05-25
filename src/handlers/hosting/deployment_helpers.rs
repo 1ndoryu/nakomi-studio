@@ -1,16 +1,28 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::AppState;
 use crate::errors::AppError;
 use crate::models::CoolifyDeploymentResponse;
 use crate::services::infrastructure::coolify_server_targets;
 use crate::services::{
     CoolifyConfig, HostingRuntimeDeploymentSummary, HostingRuntimeKind, HostingRuntimeService,
 };
-use crate::AppState;
 
 pub(super) struct PendingRuntimeDeployments {
     pub fallback_label: String,
     pub services: Vec<HostingRuntimeDeploymentSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct FailedRuntimeLookup {
+    pub fallback_label: String,
+    pub runtime_kind: HostingRuntimeKind,
+    pub target_server_ip: Option<String>,
+}
+
+pub(super) struct DeploymentBatchCollection {
+    pub pending_batches: Vec<PendingRuntimeDeployments>,
+    pub failed_lookups: Vec<FailedRuntimeLookup>,
 }
 
 pub(super) struct LocatedRuntimeDeployment<'a> {
@@ -20,8 +32,7 @@ pub(super) struct LocatedRuntimeDeployment<'a> {
     pub deployment_name_counts: HashMap<String, usize>,
 }
 
-pub(super) type SubscriptionLookup<'a> =
-    HashMap<String, &'a crate::models::HostingSubscription>;
+pub(super) type SubscriptionLookup<'a> = HashMap<String, &'a crate::models::HostingSubscription>;
 
 pub(super) struct DeploymentsCacheEntry {
     pub fetched_at: std::time::Instant,
@@ -70,7 +81,10 @@ pub(super) fn runtime_link_key_for_subscription(
     subscription: &crate::models::HostingSubscription,
     identifier: &str,
 ) -> String {
-    runtime_link_key(HostingRuntimeKind::from_persisted(&subscription.runtime_kind), identifier)
+    runtime_link_key(
+        HostingRuntimeKind::from_persisted(&subscription.runtime_kind),
+        identifier,
+    )
 }
 
 fn is_generic_server_name(value: &str) -> bool {
@@ -93,9 +107,7 @@ pub(super) fn resolve_server_label(
         .to_string()
 }
 
-pub(super) fn duplicate_name_keys(
-    batches: &[PendingRuntimeDeployments],
-) -> HashSet<String> {
+pub(super) fn duplicate_name_keys(batches: &[PendingRuntimeDeployments]) -> HashSet<String> {
     let mut counts = HashMap::new();
 
     for batch in batches {
@@ -112,9 +124,9 @@ pub(super) fn duplicate_name_keys(
         .collect()
 }
 
-pub(super) fn build_subscription_lookups<'a>(
-    subscriptions: &'a [crate::models::HostingSubscription],
-) -> (SubscriptionLookup<'a>, SubscriptionLookup<'a>) {
+pub(super) fn build_subscription_lookups(
+    subscriptions: &[crate::models::HostingSubscription],
+) -> (SubscriptionLookup<'_>, SubscriptionLookup<'_>) {
     let subscriptions_by_uuid = subscriptions
         .iter()
         .filter_map(|subscription| {
@@ -143,14 +155,16 @@ pub(super) fn build_subscription_lookups<'a>(
 
 pub(super) async fn collect_pending_deployment_batches(
     state: &AppState,
-) -> Vec<PendingRuntimeDeployments> {
+) -> DeploymentBatchCollection {
     let mut pending_batches = Vec::new();
+    let mut failed_lookups = Vec::new();
 
     for target in coolify_server_targets(
         state.coolify_config_vps1.as_ref(),
         state.coolify_config.as_ref(),
     ) {
-        tracing::info!("[deployments] Consultando {} en Coolify...", target.label);
+        let target_label = target.label.clone();
+        tracing::info!("[deployments] Consultando {} en Coolify...", target_label);
         match HostingRuntimeService::list_deployments(
             &state.http_client,
             Some(target.config),
@@ -161,15 +175,22 @@ pub(super) async fn collect_pending_deployment_batches(
             Ok(services) => {
                 tracing::info!(
                     "[deployments] {} devolvió {} servicios",
-                    target.label,
+                    target_label,
                     services.len()
                 );
                 pending_batches.push(PendingRuntimeDeployments {
-                    fallback_label: target.label,
+                    fallback_label: target_label,
                     services,
                 });
             }
-            Err(error) => tracing::warn!("[deployments] Error listando {}: {error}", target.label),
+            Err(error) => {
+                tracing::warn!("[deployments] Error listando {}: {error}", target_label);
+                failed_lookups.push(FailedRuntimeLookup {
+                    fallback_label: target_label,
+                    runtime_kind: HostingRuntimeKind::Coolify,
+                    target_server_ip: Some(target.config.server_ip.clone()),
+                });
+            }
         }
     }
 
@@ -192,11 +213,21 @@ pub(super) async fn collect_pending_deployment_batches(
                     services,
                 });
             }
-            Err(error) => tracing::warn!("[deployments] Error listando runtime ligero: {error}"),
+            Err(error) => {
+                tracing::warn!("[deployments] Error listando runtime ligero: {error}");
+                failed_lookups.push(FailedRuntimeLookup {
+                    fallback_label: "Runtime ligero".to_string(),
+                    runtime_kind: HostingRuntimeKind::Lightweight,
+                    target_server_ip: None,
+                });
+            }
         }
     }
 
-    pending_batches
+    DeploymentBatchCollection {
+        pending_batches,
+        failed_lookups,
+    }
 }
 
 pub(super) async fn locate_runtime_deployment<'a>(
