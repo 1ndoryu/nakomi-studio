@@ -257,6 +257,11 @@
 - El contenedor al que se le cambia CPU no se deduce por `plan`; se resuelve desde `coolify_site_name` y los servicios reales del compose (`site` para hosting normal, `wordpress` para WordPress).
 - Un balancer runtime no debe decidir contra el baseline del plan sino contra el `site_cpu_limit_cores` observado por el sampler. Si no recuerda el último target pedido, reintenta el mismo `docker update --cpus` en cada ciclo hasta que llegue la siguiente muestra.
 
+## Hosting Coolify — `docker inspect --format` no separa con tabs reales
+- En el sampler de infraestructura, `docker inspect --format '{{...}}\t{{...}}'` devuelve `\t` literales, no tabs reales. Si el parser divide solo por `\t` reales, todas las columnas de runtime limits quedan truncadas y `site_cpu_limit_cores` se persiste en `null` aunque Docker tenga caps válidos.
+- El síntoma engañoso es que `docker stats` sí muestra CPU/RAM actuales y la muestra del deployment parece fresca, pero los límites runtime siguen vacíos para todos los sitios del servidor.
+- La defensa correcta es normalizar `\t` literales antes del parseo o emitir la línea con `printf`; no asumir que el formato de Docker interpreta escapes como lo hace `printf`.
+
 ## Commit-por-tarea — no acumular cambios
 - Si el protocolo dice "un commit por tarea", cumplirlo inmediatamente después de validar, no al "final de la sesión" ni "cuando haya tiempo". Acumular 3+ tareas sin commit significa que un solo error en git rompe todo el trabajo.
 

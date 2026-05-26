@@ -246,7 +246,13 @@ fn parse_container_runtime_limit_line(
     line: &str,
     container_runtime_limits: &mut HashMap<String, ContainerRuntimeLimits>,
 ) {
-    let parts: Vec<&str> = line.split('\t').collect();
+    /* [265A-2] `docker inspect --format` devuelve `\t` literales en vez de tabs
+     * reales. El sampler antepone el nombre con `printf`, así que la salida queda
+     * mezclada: primer separador real, resto escapados. Sin normalizar esa forma,
+     * el parser pierde todos los runtime limits y el burst nunca encuentra baseline
+     * runtime en hostings existentes. */
+    let normalized_line = line.replace("\\t", "\t");
+    let parts: Vec<&str> = normalized_line.split('\t').collect();
     if parts.len() < 5 {
         return;
     }
@@ -908,5 +914,27 @@ pub async fn infrastructure_metrics_loop(
             SAMPLER_INTERVAL
         };
         tokio::time::sleep(next_interval).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_container_runtime_limit_line_accepts_literal_docker_tabs() {
+        let mut limits = HashMap::new();
+
+        parse_container_runtime_limit_line(
+            "wordpress-v77j8dfkb8rat8mlhzoid2eh\t500000000\\t268435456\\t0\\t0",
+            &mut limits,
+        );
+
+        let parsed = limits
+            .get("wordpress-v77j8dfkb8rat8mlhzoid2eh")
+            .expect("runtime limit parsed");
+
+        assert_eq!(parsed.cpu_limit_cores, Some(0.5));
+        assert_eq!(parsed.mem_limit_mb, Some(256.0));
     }
 }

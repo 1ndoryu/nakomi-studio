@@ -65,6 +65,13 @@ Correcciones obligatorias antes de implementar:
 - Observabilidad: cada cambio aplicado registra evento `cpu_burst_applied` o `cpu_burst_restored` en `hosting_subscriptions` para auditoría operativa.
 - Deuda restante del frente: persistencia explícita de overrides runtime, UI de burst activo y evaluación posterior de RAM dinámica.
 
+### Aplicado 2026-05-26 — fix del sampler para límites runtime reales
+
+- Diagnóstico de campo: `hosting-0fa1d5da` exponía caps reales en Docker (`wordpress=0.5 CPU / 256MB`, `mariadb=0.25 CPU / 256MB`, `ssh=0.25 CPU / 128MB`), pero `infrastructure_resource_samples` seguía guardando todos los límites runtime en `null`.
+- Causa raíz: el bloque `__DOCKER_LIMITS__` mezclaba un tab real del `printf` del nombre con secuencias `\t` literales emitidas por `docker inspect --format`, así que `parse_container_runtime_limit_line()` veía menos de 5 columnas y descartaba la línea completa.
+- Corrección: normalizar `\t` literales a tabs reales antes de parsear y cubrir el caso con test unitario reproducible.
+- Impacto: el burst dinámico ya puede ver `site_cpu_limit_cores` en hostings legacy/existentes y deja de depender de que el sitio se haya reprovisionado con una topología nueva.
+
 ---
 
 ## Fase 0: Inventario multi-VPS y contratos del panel
