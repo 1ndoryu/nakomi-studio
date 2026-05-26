@@ -37,8 +37,8 @@ pub use fixture::{FixtureRepository, FixtureTableStat};
 pub use hosting::{CreateHostingParams, HostingRepository, ServerInfo, UpdateHostingParams};
 pub use infrastructure::{
     BandwidthEnforcementCandidate, BandwidthSnapshotInput, BandwidthThrottleCandidate,
-    ConfiguredServerInput, HostingResourceAllocation, InfrastructureRepository,
-    InfrastructureServerRecord, ResourceSampleInput,
+    ConfiguredServerInput, CpuBurstCandidate, HostingResourceAllocation,
+    InfrastructureRepository, InfrastructureServerRecord, ResourceSampleInput,
 };
 pub use note::NoteRepository;
 pub use notification::NotificationRepository;

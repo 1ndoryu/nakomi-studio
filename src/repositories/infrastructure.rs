@@ -113,6 +113,22 @@ pub struct BandwidthThrottleCandidate {
     pub net_output_mb: f64,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct CpuBurstCandidate {
+    pub subscription_id: Uuid,
+    pub deployment_uuid: String,
+    pub coolify_site_name: String,
+    pub server_ip: String,
+    pub server_id: Uuid,
+    pub server_cpu_cores: Option<f64>,
+    pub server_cpu_percent: Option<f64>,
+    pub server_sampled_at: Option<DateTime<Utc>>,
+    pub baseline_site_cpu_cores: f64,
+    pub current_site_cpu_limit_cores: Option<f64>,
+    pub deployment_cpu_percent: Option<f64>,
+    pub deployment_sampled_at: Option<DateTime<Utc>>,
+}
+
 impl InfrastructureRepository {
     pub async fn upsert_configured_server(
         pool: &PgPool,
@@ -744,6 +760,61 @@ impl InfrastructureRepository {
         .await
         .map_err(AppError::from)
     }
+
+        pub async fn cpu_burst_candidates(pool: &PgPool) -> Result<Vec<CpuBurstCandidate>, AppError> {
+                sqlx::query_as::<_, CpuBurstCandidate>(
+                        r"SELECT hs.id AS subscription_id,
+                                            COALESCE(hs.deployment_id, hs.server_uuid) AS deployment_uuid,
+                                            hs.coolify_site_name,
+                                            hs.server_ip,
+                                            s.id AS server_id,
+                                            cap.cpu_cores AS server_cpu_cores,
+                                            server_sample.cpu_percent AS server_cpu_percent,
+                                            server_sample.sampled_at AS server_sampled_at,
+                                            plan.wp_cpu_millicores::float8 / 1000.0 AS baseline_site_cpu_cores,
+                                            deploy_sample.site_cpu_limit_cores AS current_site_cpu_limit_cores,
+                                            deploy_sample.cpu_percent AS deployment_cpu_percent,
+                                            deploy_sample.sampled_at AS deployment_sampled_at
+                             FROM hosting_subscriptions hs
+                             JOIN infrastructure_servers s
+                                 ON s.server_ip = hs.server_ip
+                                AND s.is_active = TRUE
+                             JOIN hosting_plan_configs plan
+                                 ON plan.plan_name = hs.plan
+                             LEFT JOIN LATERAL (
+                                     SELECT cpu_cores::float8 AS cpu_cores
+                                     FROM server_capacity
+                                     WHERE server_id = s.id OR server_uuid = s.coolify_server_uuid
+                                     ORDER BY updated_at DESC
+                                     LIMIT 1
+                             ) cap ON TRUE
+                             LEFT JOIN LATERAL (
+                                     SELECT cpu_percent, sampled_at
+                                     FROM infrastructure_resource_samples
+                                     WHERE entity_kind = 'server'
+                                         AND server_id = s.id
+                                     ORDER BY sampled_at DESC
+                                     LIMIT 1
+                             ) server_sample ON TRUE
+                             LEFT JOIN LATERAL (
+                                     SELECT cpu_percent, site_cpu_limit_cores, sampled_at
+                                     FROM infrastructure_resource_samples
+                                     WHERE entity_kind = 'deployment'
+                                         AND deployment_uuid = COALESCE(hs.deployment_id, hs.server_uuid)
+                                     ORDER BY sampled_at DESC
+                                     LIMIT 1
+                             ) deploy_sample ON TRUE
+                             WHERE hs.status = 'active'
+                                 AND hs.coolify_site_name IS NOT NULL
+                                 AND hs.server_ip IS NOT NULL
+                                 AND COALESCE(hs.deployment_id, hs.server_uuid) IS NOT NULL
+                                 AND COALESCE(NULLIF(lower(hs.runtime_kind), ''), 'coolify') = 'coolify'
+                             ORDER BY s.id ASC, hs.created_at ASC",
+                )
+                .fetch_all(pool)
+                .await
+                .map_err(AppError::from)
+        }
 
     pub async fn upsert_vps_monitor_state(
         pool: &PgPool,

@@ -58,6 +58,13 @@ Correcciones obligatorias antes de implementar:
 - Frontend: el detalle de despliegue ahora separa “Límites runtime detectados” de “Recursos del plan vinculado”, con estados explícitos para “sin muestra todavía” y “sin límites detectados”.
 - Corrección semántica: `ram_limit_mb` ya no debe interpretarse como límite real si el contenedor está ilimitado; en ese caso se persiste `null` y la UI evita porcentajes sintéticos.
 
+### Aplicado 2026-05-26 — burst dinámico de CPU en Coolify
+
+- Backend: nuevo loop `src/services/cpu_burst.rs` que evalúa snapshots recientes del sampler, detecta hostings saturando su cap actual y ajusta `docker update --cpus` solo sobre el contenedor principal (`site` o `wordpress`).
+- Política inicial: CPU dinámica solo para runtime `coolify`, con ventana de subida/bajada, reserva fija de CPU por VPS y restauración al baseline contractual del plan cuando desaparece la holgura o sube la presión del host.
+- Observabilidad: cada cambio aplicado registra evento `cpu_burst_applied` o `cpu_burst_restored` en `hosting_subscriptions` para auditoría operativa.
+- Deuda restante del frente: persistencia explícita de overrides runtime, UI de burst activo y evaluación posterior de RAM dinámica.
+
 ---
 
 ## Fase 0: Inventario multi-VPS y contratos del panel

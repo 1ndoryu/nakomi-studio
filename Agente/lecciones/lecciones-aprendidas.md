@@ -253,6 +253,10 @@
 - Los límites runtime reales deben salir de `docker inspect` (`HostConfig.NanoCpus`, `CpuQuota`/`CpuPeriod`, `Memory`) y persistirse como `null` cuando valen `0`.
 - En el panel de hosting, los recursos del plan comercial y los límites runtime detectados deben mostrarse separados. Mezclarlos hace que un deployment legacy parezca capado cuando en realidad está ilimitado.
 
+## Hosting Coolify — CPU burst debe seguir el runtime real
+- El contenedor al que se le cambia CPU no se deduce por `plan`; se resuelve desde `coolify_site_name` y los servicios reales del compose (`site` para hosting normal, `wordpress` para WordPress).
+- Un balancer runtime no debe decidir contra el baseline del plan sino contra el `site_cpu_limit_cores` observado por el sampler. Si no recuerda el último target pedido, reintenta el mismo `docker update --cpus` en cada ciclo hasta que llegue la siguiente muestra.
+
 ## Commit-por-tarea — no acumular cambios
 - Si el protocolo dice "un commit por tarea", cumplirlo inmediatamente después de validar, no al "final de la sesión" ni "cuando haya tiempo". Acumular 3+ tareas sin commit significa que un solo error en git rompe todo el trabajo.
 

@@ -35,6 +35,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 - `255A-2`: `/api/hosting/deployments` ya no interpreta un fallo de Coolify/runtime como inventario vacío; reconstruye un fallback mínimo desde `hosting_subscriptions` y solo devuelve `503` si ni siquiera puede recomponer una lista útil. En el diagnóstico de VPS2 también se confirmó que un `500` global de Coolify 4.1.0 podía venir de `personal_access_tokens.abilities='[*]'` en vez de JSON válido.
 - `255A-3`: los governors de auth y API se subieron a límites productivos con `SmartIpKeyExtractor` para evitar `429` cruzados detrás de Coolify/Traefik cuando la SPA abre polling y varias requests concurrentes.
 - `255A-4`: el panel de infraestructura ya separa recursos del plan vinculado de los límites runtime reales detectados. El sampler guarda límites CPU/RAM efectivos por contenedor vía `docker inspect`, así que despliegues legacy sin caps Docker dejan de mostrar valores sintéticos del plan como si fueran enforcement real.
+- `265A-1`: el primer burst dinámico de CPU para hostings Coolify ya corre en background. Usa snapshots del sampler para subir o restaurar el cap runtime del contenedor principal (`site` o `wordpress`) según holgura real de la VPS, manteniendo el plan como baseline contractual.
 
 ---
 

@@ -8,6 +8,7 @@ use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use glory_backend::config::AppConfig;
 use glory_backend::handlers;
 use glory_backend::services::bandwidth_enforcement::bandwidth_throttle_loop;
+use glory_backend::services::cpu_burst::cpu_burst_loop;
 use glory_backend::services::infrastructure_metrics::infrastructure_metrics_loop;
 use glory_backend::services::storage_enforcement::storage_enforcement_loop;
 use glory_backend::services::vps_monitor::vps_monitor_loop;
@@ -154,6 +155,13 @@ fn spawn_background_services(pool: &sqlx::PgPool, _config: &AppConfig) {
         let throttle_default = coolify_config.clone();
         tokio::spawn(async move {
             bandwidth_throttle_loop(throttle_pool, throttle_vps1, throttle_default).await;
+        });
+
+        let cpu_burst_pool = pool.clone();
+        let cpu_burst_vps1 = coolify_config_vps1.clone();
+        let cpu_burst_default = coolify_config.clone();
+        tokio::spawn(async move {
+            cpu_burst_loop(cpu_burst_pool, cpu_burst_vps1, cpu_burst_default).await;
         });
     } else {
         tracing::warn!("[infra-metrics] Coolify no configurado — sampler desactivado");

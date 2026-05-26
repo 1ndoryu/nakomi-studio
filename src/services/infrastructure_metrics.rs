@@ -231,7 +231,7 @@ fn parse_sampler_output(output: &str) -> ServerSshSnapshot {
             }
             "__DOCKER__" => docker_lines.push(line.to_string()),
             "__DOCKER_LIMITS__" => {
-                parse_container_runtime_limit_line(line, &mut snapshot.container_runtime_limits)
+                parse_container_runtime_limit_line(line, &mut snapshot.container_runtime_limits);
             }
             "__STORAGE__" => parse_storage_line(line, &mut snapshot.storage_by_uuid),
             _ => {}
@@ -657,34 +657,16 @@ async fn sample_target(
         })?;
 
     if include_storage {
-        let storage_probes: Vec<ServiceStorageProbe> = services
-            .iter()
-            .flat_map(|service| {
-                let subscription = subscriptions_by_uuid
-                    .get(&service.uuid)
-                    .or_else(|| subscriptions_by_name.get(&service.name));
-                storage_probe_targets_for_service(service, subscription)
-            })
-            .collect();
-
-        match fetch_service_storage_overrides(&config.server_ip, ssh_key_path, &storage_probes)
-            .await
-        {
-            Ok(storage_overrides) => {
-                for (deployment_uuid, used_mb) in storage_overrides {
-                    snapshot.storage_by_uuid.insert(deployment_uuid, used_mb);
-                }
-            }
-            Err(error) => tracing::warn!("[infra-metrics] {error}"),
-        }
-
-        if snapshot.storage_by_uuid.is_empty() {
-            tracing::warn!(
-                "[infra-metrics] {label} sin lecturas de storage; se reintentará en el próximo ciclo"
-            );
-        } else {
-            mark_storage_collected(&config.server_ip).await;
-        }
+        collect_storage_overrides(
+            &label,
+            &config.server_ip,
+            ssh_key_path,
+            &services,
+            &mut snapshot,
+            subscriptions_by_uuid,
+            subscriptions_by_name,
+        )
+        .await;
     }
 
     let cpu_percent = compute_server_cpu_percent(&config.server_ip, snapshot.cpu_counters).await;
@@ -735,6 +717,44 @@ async fn sample_target(
     }
 
     Ok(())
+}
+
+async fn collect_storage_overrides(
+    label: &str,
+    server_ip: &str,
+    ssh_key_path: &str,
+    services: &[CoolifyServiceSummary],
+    snapshot: &mut ServerSshSnapshot,
+    subscriptions_by_uuid: &HashMap<String, HostingSubscription>,
+    subscriptions_by_name: &HashMap<String, HostingSubscription>,
+) {
+    let storage_probes: Vec<ServiceStorageProbe> = services
+        .iter()
+        .flat_map(|service| {
+            let subscription = subscriptions_by_uuid
+                .get(&service.uuid)
+                .or_else(|| subscriptions_by_name.get(&service.name));
+            storage_probe_targets_for_service(service, subscription)
+        })
+        .collect();
+
+    match fetch_service_storage_overrides(server_ip, ssh_key_path, &storage_probes).await {
+        Ok(storage_overrides) => {
+            for (deployment_uuid, used_mb) in storage_overrides {
+                snapshot.storage_by_uuid.insert(deployment_uuid, used_mb);
+            }
+        }
+        Err(error) => tracing::warn!("[infra-metrics] {error}"),
+    }
+
+    if snapshot.storage_by_uuid.is_empty() {
+        tracing::warn!(
+            "[infra-metrics] {label} sin lecturas de storage; se reintentará en el próximo ciclo"
+        );
+        return;
+    }
+
+    mark_storage_collected(server_ip).await;
 }
 
 async fn record_deployment_sample(

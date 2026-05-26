@@ -12,6 +12,7 @@ mod chat_timing;
 pub mod contabo;
 pub mod contabo_domains;
 pub mod coolify;
+pub mod cpu_burst;
 pub mod docker_stats;
 mod domain_stripe;
 pub mod email;
