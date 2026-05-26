@@ -31,7 +31,11 @@ const SERVER_RESERVE_RATIO: f64 = 0.25;
 const SERVER_RESERVE_MIN_CORES: f64 = 1.0;
 const CPU_STEP_CORES: f64 = 0.25;
 const CPU_EPSILON: f64 = 0.01;
-const CPU_SSH_TIMEOUT: Duration = Duration::from_secs(15);
+/* [265A-4] En VPS cargados, `docker compose ps` + `docker update` puede tardar
+ * mas de 15s. Si el future de `output()` vence sin matar el proceso, el SSH
+ * sigue vivo y aplica el cambio fuera del control del loop, dejando un falso
+ * negativo en logs/eventos. */
+const CPU_SSH_TIMEOUT: Duration = Duration::from_secs(45);
 
 #[derive(Debug, Clone, Default)]
 struct CpuBurstState {
@@ -213,6 +217,7 @@ fn desired_cpu_limit(
 async fn run_ssh(server_ip: &str, ssh_key_path: &str, cmd: &str) -> Result<String, String> {
     let mut command = tokio::process::Command::new("ssh");
     command
+        .kill_on_drop(true)
         .args([
             "-i",
             ssh_key_path,
