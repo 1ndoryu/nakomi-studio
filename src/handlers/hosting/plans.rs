@@ -231,6 +231,7 @@ mod tests {
             ssh_memory_mb: 256,
             storage_limit_mb: 20_480,
             bandwidth_limit_gb: 200,
+            cpu_scaling_policy: "contention_throttle".to_string(),
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
         }

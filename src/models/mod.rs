@@ -50,10 +50,12 @@ pub use domain::{
 };
 pub use hosting::{
     sanitize_hosting_event, sanitize_hosting_event_details, AssignHostingRequest,
-    CoolifyDeploymentResponse, CreateHostingRequest, HostingEvent, HostingPlanConfig,
-    HostingStatsResponse, HostingSubscription, HostingSubscriptionResponse, PublicHostingPlan,
-    SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest, UpdateHostingStatusRequest,
-    UpdatePlanConfigRequest,
+    normalize_cpu_scaling_policy, CoolifyDeploymentResponse,
+    CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    HostingSubscription, HostingSubscriptionResponse, PublicHostingPlan,
+    SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest,
+    UpdateHostingStatusRequest, UpdatePlanConfigRequest,
+    CPU_SCALING_POLICY_BASELINE_BURST, CPU_SCALING_POLICY_CONTENTION_THROTTLE,
 };
 pub use infrastructure::{
     DeploymentMetricsResponse, InfrastructureServerMetricsResponse, ResourceMetricPoint,

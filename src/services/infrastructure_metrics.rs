@@ -281,6 +281,14 @@ fn compute_container_cpu_limit_cores(
     cpu_quota: Option<i64>,
     cpu_period: Option<i64>,
 ) -> Option<f64> {
+    /* [265A-5] `docker update --cpu-quota -1` deslimita de verdad el contenedor,
+     * pero Docker deja `NanoCpus` stale con el valor viejo del cap. Si el sampler
+     * prioriza `NanoCpus`, el backend cree falsamente que sigue en baseline y el
+     * modo de contención nunca vuelve a `unlimited`. */
+    if cpu_quota.is_some_and(|value| value < 0) {
+        return None;
+    }
+
     if let Some(nanocpus) = nanocpus.filter(|value| *value > 0) {
         return Some(i64_to_f64(nanocpus) / 1_000_000_000.0);
     }
@@ -936,5 +944,11 @@ mod tests {
 
         assert_eq!(parsed.cpu_limit_cores, Some(0.5));
         assert_eq!(parsed.mem_limit_mb, Some(256.0));
+    }
+
+    #[test]
+    fn compute_container_cpu_limit_cores_treats_negative_quota_as_unlimited() {
+        let parsed = compute_container_cpu_limit_cores(Some(500_000_000), Some(-1), Some(0));
+        assert_eq!(parsed, None);
     }
 }

@@ -124,6 +124,7 @@ pub struct CpuBurstCandidate {
     pub server_cpu_percent: Option<f64>,
     pub server_sampled_at: Option<DateTime<Utc>>,
     pub baseline_site_cpu_cores: f64,
+    pub cpu_scaling_policy: String,
     pub current_site_cpu_limit_cores: Option<f64>,
     pub deployment_cpu_percent: Option<f64>,
     pub deployment_sampled_at: Option<DateTime<Utc>>,
@@ -772,6 +773,7 @@ impl InfrastructureRepository {
                                             server_sample.cpu_percent AS server_cpu_percent,
                                             server_sample.sampled_at AS server_sampled_at,
                                             plan.wp_cpu_millicores::float8 / 1000.0 AS baseline_site_cpu_cores,
+                                            plan.cpu_scaling_policy,
                                             deploy_sample.site_cpu_limit_cores AS current_site_cpu_limit_cores,
                                             deploy_sample.cpu_percent AS deployment_cpu_percent,
                                             deploy_sample.sampled_at AS deployment_sampled_at

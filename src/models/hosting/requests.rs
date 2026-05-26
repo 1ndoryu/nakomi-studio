@@ -93,4 +93,5 @@ pub struct UpdatePlanConfigRequest {
     pub ssh_memory_mb: Option<i32>,
     pub storage_limit_mb: Option<i32>,
     pub bandwidth_limit_gb: Option<i32>,
+    pub cpu_scaling_policy: Option<String>,
 }

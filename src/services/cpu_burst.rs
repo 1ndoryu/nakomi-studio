@@ -1,8 +1,8 @@
-/* [265A-1] Burst dinamico de CPU para hostings Coolify.
- * Lee snapshots del sampler y aplica `docker update --cpus` al contenedor
- * principal (`site` o `wordpress`) solo cuando el host tiene holgura sostenida.
- * Si el host se tensiona o el sitio deja de saturar el cap actual, restaura el
- * baseline comercial del plan. */
+/* [265A-1][265A-5] Politica dinamica de CPU para hostings Coolify.
+ * `baseline_burst` mantiene el baseline comercial siempre y habilita burst con
+ * holgura sostenida. `contention_throttle` deja el sitio sin cap mientras el
+ * host esta sano y solo aplica un limite compartido cuando la VPS entra en
+ * contencion real. */
 
 use std::collections::HashMap;
 use std::process::Stdio;
@@ -15,6 +15,10 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::errors::AppError;
+use crate::models::{
+    normalize_cpu_scaling_policy, CPU_SCALING_POLICY_BASELINE_BURST,
+    CPU_SCALING_POLICY_CONTENTION_THROTTLE,
+};
 use crate::repositories::{CpuBurstCandidate, HostingRepository, InfrastructureRepository};
 use crate::services::coolify::CoolifyConfig;
 use crate::services::infrastructure::coolify_server_targets;
@@ -41,13 +45,80 @@ const CPU_SSH_TIMEOUT: Duration = Duration::from_secs(45);
 struct CpuBurstState {
     raise_since: Option<Instant>,
     lower_since: Option<Instant>,
-    last_requested_target: Option<f64>,
+    last_requested_target: Option<CpuLimitTarget>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CpuScalingPolicy {
+    BaselineBurst,
+    ContentionThrottle,
+}
+
+impl CpuScalingPolicy {
+    fn from_candidate(candidate: &CpuBurstCandidate) -> Self {
+        match normalize_cpu_scaling_policy(&candidate.cpu_scaling_policy) {
+            Some(CPU_SCALING_POLICY_BASELINE_BURST) => Self::BaselineBurst,
+            _ => Self::ContentionThrottle,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::BaselineBurst => CPU_SCALING_POLICY_BASELINE_BURST,
+            Self::ContentionThrottle => CPU_SCALING_POLICY_CONTENTION_THROTTLE,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum CpuLimitTarget {
+    Limited(f64),
+    Unlimited,
+}
+
+impl CpuLimitTarget {
+    fn limited(value: f64) -> Self {
+        Self::Limited(round_cpu_target(value.max(CPU_STEP_CORES)))
+    }
+
+    fn approx_eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Unlimited, Self::Unlimited) => true,
+            (Self::Limited(left), Self::Limited(right)) => (left - right).abs() <= CPU_EPSILON,
+            _ => false,
+        }
+    }
+
+    fn is_more_permissive_than(self, current: Self) -> bool {
+        target_rank(self) > target_rank(current) + CPU_EPSILON
+    }
+
+    fn as_limit_cores(self) -> Option<f64> {
+        match self {
+            Self::Limited(value) => Some(value),
+            Self::Unlimited => None,
+        }
+    }
+
+    fn as_state_label(self) -> &'static str {
+        match self {
+            Self::Limited(_) => "limited",
+            Self::Unlimited => "unlimited",
+        }
+    }
 }
 
 static CPU_STATE_MAP: OnceLock<RwLock<HashMap<Uuid, CpuBurstState>>> = OnceLock::new();
 
 fn state_map() -> &'static RwLock<HashMap<Uuid, CpuBurstState>> {
     CPU_STATE_MAP.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+fn target_rank(target: CpuLimitTarget) -> f64 {
+    match target {
+        CpuLimitTarget::Limited(value) => value,
+        CpuLimitTarget::Unlimited => f64::INFINITY,
+    }
 }
 
 fn ssh_key_for(
@@ -145,16 +216,30 @@ fn baseline_site_limit(candidate: &CpuBurstCandidate) -> f64 {
     round_cpu_target(candidate.baseline_site_cpu_cores.max(CPU_STEP_CORES))
 }
 
-fn is_cpu_demander(candidate: &CpuBurstCandidate) -> bool {
-    let Some(current_limit) = current_site_limit(candidate) else {
-        return false;
-    };
+fn observed_limit_target(candidate: &CpuBurstCandidate) -> CpuLimitTarget {
+    current_site_limit(candidate)
+    .map_or(CpuLimitTarget::Unlimited, CpuLimitTarget::limited)
+}
 
-    if !sample_is_fresh(candidate.deployment_sampled_at) || !server_low_pressure(candidate) {
+fn utilization_reference_limit(observed: CpuLimitTarget, baseline: f64) -> f64 {
+    observed.as_limit_cores().unwrap_or(baseline)
+}
+
+fn is_cpu_demander(candidate: &CpuBurstCandidate) -> bool {
+    if !sample_is_fresh(candidate.deployment_sampled_at) {
         return false;
     }
 
-    normalized_cpu_utilization(candidate.deployment_cpu_percent, current_limit)
+    let policy = CpuScalingPolicy::from_candidate(candidate);
+    if matches!(policy, CpuScalingPolicy::BaselineBurst) && !server_low_pressure(candidate) {
+        return false;
+    }
+
+    let baseline = baseline_site_limit(candidate);
+    let observed = observed_limit_target(candidate);
+    let reference_limit = utilization_reference_limit(observed, baseline);
+
+    normalized_cpu_utilization(candidate.deployment_cpu_percent, reference_limit)
         .is_some_and(|value| value >= CPU_ACTIVATION_UTILIZATION)
 }
 
@@ -186,19 +271,35 @@ fn compute_burst_target(
 fn desired_cpu_limit(
     candidate: &CpuBurstCandidate,
     demanders: &HashMap<Uuid, usize>,
-) -> Option<f64> {
+) -> Option<CpuLimitTarget> {
+    match CpuScalingPolicy::from_candidate(candidate) {
+        CpuScalingPolicy::BaselineBurst => desired_baseline_burst_limit(candidate, demanders),
+        CpuScalingPolicy::ContentionThrottle => {
+            desired_contention_throttle_limit(candidate, demanders)
+        }
+    }
+}
+
+fn desired_baseline_burst_limit(
+    candidate: &CpuBurstCandidate,
+    demanders: &HashMap<Uuid, usize>,
+) -> Option<CpuLimitTarget> {
     let baseline = baseline_site_limit(candidate);
-    let current_limit = current_site_limit(candidate)?;
-    let boosted = current_limit > baseline + CPU_EPSILON;
+    let current_limit = observed_limit_target(candidate);
+    let baseline_target = CpuLimitTarget::limited(baseline);
+    let boosted = !current_limit.approx_eq(baseline_target);
 
     if !sample_is_fresh(candidate.deployment_sampled_at) {
         return None;
     }
 
-    let utilization = normalized_cpu_utilization(candidate.deployment_cpu_percent, current_limit)?;
+    let utilization = normalized_cpu_utilization(
+        candidate.deployment_cpu_percent,
+        utilization_reference_limit(current_limit, baseline),
+    )?;
 
     if server_high_pressure(candidate) || utilization <= CPU_DEACTIVATION_UTILIZATION {
-        return boosted.then_some(baseline);
+        return boosted.then_some(baseline_target);
     }
 
     if !server_low_pressure(candidate) {
@@ -206,12 +307,62 @@ fn desired_cpu_limit(
     }
 
     if utilization < CPU_ACTIVATION_UTILIZATION {
-        return boosted.then_some(baseline);
+        return boosted.then_some(baseline_target);
     }
 
     let demander_count = demanders.get(&candidate.server_id).copied().unwrap_or(1).max(1);
-    let target = compute_burst_target(baseline, candidate.server_cpu_cores, demander_count);
-    ((target - current_limit).abs() > CPU_EPSILON).then_some(target)
+    let target = CpuLimitTarget::limited(compute_burst_target(
+        baseline,
+        candidate.server_cpu_cores,
+        demander_count,
+    ));
+    (!target.approx_eq(current_limit)).then_some(target)
+}
+
+fn desired_contention_throttle_limit(
+    candidate: &CpuBurstCandidate,
+    demanders: &HashMap<Uuid, usize>,
+) -> Option<CpuLimitTarget> {
+    let baseline = baseline_site_limit(candidate);
+    let current_limit = observed_limit_target(candidate);
+
+    if !sample_is_fresh(candidate.deployment_sampled_at) {
+        return None;
+    }
+
+    if server_low_pressure(candidate) {
+        return matches!(current_limit, CpuLimitTarget::Limited(_))
+            .then_some(CpuLimitTarget::Unlimited);
+    }
+
+    if !server_high_pressure(candidate) {
+        return None;
+    }
+
+    let utilization = normalized_cpu_utilization(
+        candidate.deployment_cpu_percent,
+        utilization_reference_limit(current_limit, baseline),
+    )?;
+
+    if matches!(current_limit, CpuLimitTarget::Unlimited)
+        && utilization < CPU_ACTIVATION_UTILIZATION
+    {
+        return None;
+    }
+
+    if matches!(current_limit, CpuLimitTarget::Limited(_))
+        && utilization <= CPU_DEACTIVATION_UTILIZATION
+    {
+        return Some(CpuLimitTarget::Unlimited);
+    }
+
+    let demander_count = demanders.get(&candidate.server_id).copied().unwrap_or(1).max(1);
+    let target = CpuLimitTarget::limited(compute_burst_target(
+        baseline,
+        candidate.server_cpu_cores,
+        demander_count,
+    ));
+    (!target.approx_eq(current_limit)).then_some(target)
 }
 
 async fn run_ssh(server_ip: &str, ssh_key_path: &str, cmd: &str) -> Result<String, String> {
@@ -245,15 +396,20 @@ async fn run_ssh(server_ip: &str, ssh_key_path: &str, cmd: &str) -> Result<Strin
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-fn cpu_update_script(deployment_uuid: &str, site_name: &str, cpu_cores: f64) -> String {
-        let projects = compose_project_candidates(deployment_uuid, site_name)
-                .into_iter()
-                .map(|value| shell_quote(&value))
-                .collect::<Vec<_>>()
-                .join(" ");
-    let cpu_cores = format!("{cpu_cores:.2}");
+fn cpu_update_script(deployment_uuid: &str, site_name: &str, target: CpuLimitTarget) -> String {
+    let projects = compose_project_candidates(deployment_uuid, site_name)
+        .into_iter()
+        .map(|value| shell_quote(&value))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let update_command = match target {
+        CpuLimitTarget::Limited(cpu_cores) => {
+            format!("docker update --cpus {cpu_cores:.2} \"$CID\" >/dev/null")
+        }
+        CpuLimitTarget::Unlimited => "docker update --cpu-quota -1 \"$CID\" >/dev/null".into(),
+    };
     format!(
-                r#"CID=""
+        r#"CID=""
 for PROJECT in {projects}; do
     [ -n "$PROJECT" ] || continue
     CID=$(docker compose -p "$PROJECT" ps -q site 2>/dev/null | head -1)
@@ -271,7 +427,7 @@ if [ -z "$CID" ]; then
   echo "container_not_found"
   exit 10
 fi
-docker update --cpus {cpu_cores} "$CID" >/dev/null
+{update_command}
 docker inspect -f '{{{{.Name}}}}' "$CID" 2>/dev/null | sed 's#^/##'"#,
     )
 }
@@ -281,9 +437,9 @@ async fn apply_site_cpu_limit(
     ssh_key_path: &str,
     deployment_uuid: &str,
     site_name: &str,
-    cpu_cores: f64,
+    target: CpuLimitTarget,
 ) -> Result<String, String> {
-    let script = cpu_update_script(deployment_uuid, site_name, cpu_cores);
+    let script = cpu_update_script(deployment_uuid, site_name, target);
     run_ssh(server_ip, ssh_key_path, &script).await
 }
 
@@ -291,26 +447,37 @@ async fn apply_target(
     pool: &PgPool,
     candidate: &CpuBurstCandidate,
     ssh_key: &str,
-    target_cores: f64,
+    target: CpuLimitTarget,
 ) -> bool {
     match apply_site_cpu_limit(
         &candidate.server_ip,
         ssh_key,
         &candidate.deployment_uuid,
         &candidate.coolify_site_name,
-        target_cores,
+        target,
     )
     .await
     {
         Ok(container_name) => {
             let baseline = baseline_site_limit(candidate);
-            let event_type = if target_cores <= baseline + CPU_EPSILON {
-                "cpu_burst_restored"
-            } else {
-                "cpu_burst_applied"
+            let policy = CpuScalingPolicy::from_candidate(candidate);
+            let event_type = match (policy, target) {
+                (CpuScalingPolicy::BaselineBurst, CpuLimitTarget::Limited(value))
+                    if value <= baseline + CPU_EPSILON =>
+                {
+                    "cpu_burst_restored"
+                }
+                (CpuScalingPolicy::BaselineBurst, _) => "cpu_burst_applied",
+                (CpuScalingPolicy::ContentionThrottle, CpuLimitTarget::Unlimited) => {
+                    "cpu_contention_throttle_released"
+                }
+                (CpuScalingPolicy::ContentionThrottle, _) => "cpu_contention_throttle_applied",
             };
+            let target_cpu_cores = target.as_limit_cores();
             let details = serde_json::json!({
-                "target_cpu_cores": target_cores,
+                "policy": policy.as_str(),
+                "target_state": target.as_state_label(),
+                "target_cpu_cores": target_cpu_cores,
                 "baseline_cpu_cores": baseline,
                 "observed_site_cpu_limit_cores": candidate.current_site_cpu_limit_cores,
                 "deployment_cpu_percent": candidate.deployment_cpu_percent,
@@ -318,12 +485,23 @@ async fn apply_target(
                 "container_name": container_name,
                 "site_name": candidate.coolify_site_name,
             });
-            let _ = HostingRepository::add_event(pool, candidate.subscription_id, event_type, Some(details)).await;
-            tracing::info!(
-                "[cpu-burst] {} -> {:.2} cores en {}",
+            let _ = HostingRepository::add_event(
+                pool,
                 candidate.subscription_id,
-                target_cores,
-                container_name
+                event_type,
+                Some(details),
+            )
+            .await;
+            let log_target = match target {
+                CpuLimitTarget::Limited(value) => format!("{value:.2} cores"),
+                CpuLimitTarget::Unlimited => "unlimited".to_string(),
+            };
+            tracing::info!(
+                "[cpu-burst] {} -> {} en {} ({})",
+                candidate.subscription_id,
+                log_target,
+                container_name,
+                policy.as_str()
             );
             true
         }
@@ -354,13 +532,11 @@ async fn evaluate_cpu_burst(
     let mut ssh_cache: HashMap<String, String> = HashMap::new();
 
     for candidate in &candidates {
-        let Some(current_limit) = current_site_limit(candidate) else {
-            continue;
-        };
+        let current_limit = observed_limit_target(candidate);
 
         let state = state_map.entry(candidate.subscription_id).or_default();
         if let Some(last_requested) = state.last_requested_target {
-            if (last_requested - current_limit).abs() <= CPU_EPSILON {
+            if last_requested.approx_eq(current_limit) {
                 state.last_requested_target = None;
             }
         }
@@ -373,14 +549,14 @@ async fn evaluate_cpu_burst(
 
         if state
             .last_requested_target
-            .is_some_and(|value| (value - desired_limit).abs() <= CPU_EPSILON)
+            .is_some_and(|value| value.approx_eq(desired_limit))
         {
             state.raise_since = None;
             state.lower_since = None;
             continue;
         }
 
-        let is_raise = desired_limit > current_limit + CPU_EPSILON;
+        let is_raise = desired_limit.is_more_permissive_than(current_limit);
         let timer = if is_raise {
             state.lower_since = None;
             &mut state.raise_since
@@ -453,6 +629,7 @@ mod tests {
             server_cpu_percent: Some(20.0),
             server_sampled_at: Some(Utc::now()),
             baseline_site_cpu_cores: 0.5,
+            cpu_scaling_policy: CPU_SCALING_POLICY_BASELINE_BURST.to_string(),
             current_site_cpu_limit_cores: Some(0.5),
             deployment_cpu_percent: Some(50.0),
             deployment_sampled_at: Some(Utc::now()),
@@ -478,15 +655,53 @@ mod tests {
         row.server_cpu_percent = Some(85.0);
         row.deployment_cpu_percent = Some(30.0);
         let desired = desired_cpu_limit(&row, &HashMap::new());
-        assert_eq!(desired, Some(0.5));
+        assert_eq!(desired, Some(CpuLimitTarget::Limited(0.5)));
     }
 
     #[test]
     fn desired_cpu_limit_requests_burst_when_site_hits_cap() {
         let row = candidate();
         let demanders = HashMap::from([(row.server_id, 1_usize)]);
-        let desired = desired_cpu_limit(&row, &demanders).unwrap_or_default();
-        assert_eq!(desired, 6.0);
+        let desired = desired_cpu_limit(&row, &demanders);
+        assert_eq!(desired, Some(CpuLimitTarget::Limited(6.0)));
+    }
+
+    #[test]
+    fn baseline_policy_restores_baseline_from_unlimited_runtime() {
+        let mut row = candidate();
+        row.current_site_cpu_limit_cores = None;
+        row.deployment_cpu_percent = Some(10.0);
+        let desired = desired_cpu_limit(&row, &HashMap::new());
+        assert_eq!(desired, Some(CpuLimitTarget::Limited(0.5)));
+    }
+
+    #[test]
+    fn contention_policy_throttles_only_under_high_pressure() {
+        let mut row = candidate();
+        row.cpu_scaling_policy = CPU_SCALING_POLICY_CONTENTION_THROTTLE.to_string();
+        row.current_site_cpu_limit_cores = None;
+        row.server_cpu_percent = Some(85.0);
+        row.deployment_cpu_percent = Some(75.0);
+        let demanders = HashMap::from([(row.server_id, 1_usize)]);
+        let desired = desired_cpu_limit(&row, &demanders);
+        assert_eq!(desired, Some(CpuLimitTarget::Limited(6.0)));
+    }
+
+    #[test]
+    fn contention_policy_releases_limit_when_host_recovers() {
+        let mut row = candidate();
+        row.cpu_scaling_policy = CPU_SCALING_POLICY_CONTENTION_THROTTLE.to_string();
+        row.current_site_cpu_limit_cores = Some(2.0);
+        row.server_cpu_percent = Some(20.0);
+        row.deployment_cpu_percent = Some(40.0);
+        let desired = desired_cpu_limit(&row, &HashMap::new());
+        assert_eq!(desired, Some(CpuLimitTarget::Unlimited));
+    }
+
+    #[test]
+    fn cpu_update_script_uses_negative_quota_for_unlimited_targets() {
+        let script = cpu_update_script("dep", "hosting-test", CpuLimitTarget::Unlimited);
+        assert!(script.contains("docker update --cpu-quota -1 \"$CID\" >/dev/null"));
     }
 
     #[test]

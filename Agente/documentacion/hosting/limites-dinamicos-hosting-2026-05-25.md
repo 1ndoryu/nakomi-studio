@@ -3,7 +3,7 @@
 > Fecha: 2026-05-26
 > Origen: investigacion posterior a `255A-4` sobre limites reales vs. plan comercial en `/panel?seccion=infraestructura`
 > Estado: implementado parcialmente
-> Decision vigente: CPU burst en Coolify ya implementado como fase 1; RAM dinamica sigue diferida hasta tener persistencia de overrides y observabilidad especifica
+> Decision vigente: CPU dinamica en Coolify ya implementada con dos politicas seleccionables por plan (`baseline_burst` y `contention_throttle`); RAM dinamica sigue diferida hasta tener persistencia de overrides y observabilidad especifica
 
 ## Resumen ejecutivo
 
@@ -22,6 +22,13 @@
 - La aplicación del cambio se hace en caliente con `docker update --cpus`, resolviendo el contenedor real por `deployment_uuid` y usando `coolify_site_name` solo como fallback para stacks donde ambos identificadores coinciden, siempre sobre los servicios `site` o `wordpress` del compose.
 - La política actual solo actúa sobre el contenedor principal del hosting, mantiene una reserva fija de CPU por VPS y exige ventanas de estabilidad antes de subir o bajar el cap runtime.
 - Cada ajuste deja evento operativo en la suscripción (`cpu_burst_applied` / `cpu_burst_restored`), pero todavía no existe UI dedicada para mostrar el burst activo ni persistencia separada de overrides.
+
+## Implementado 2026-05-26 — politica seleccionable por plan
+
+- `hosting_plan_configs` ahora persiste `cpu_scaling_policy`, de modo que cada plan puede usar `baseline_burst` o `contention_throttle` sin bifurcar el runtime ni el sampler.
+- `contention_throttle` pasa a ser el default comercial: fuera de contención, el sitio queda sin cap CPU; bajo presión alta sostenida, recibe un límite temporal compartido y auditable.
+- `docker update --cpus 0` no sirvió para quitar el cap. El mecanismo operativo correcto quedó validado en campo con `docker update --cpu-quota -1`.
+- Docker deja `HostConfig.NanoCpus` con el valor viejo incluso después de `cpu_quota = -1`, así que el sampler ahora prioriza `CpuQuota < 0` como señal explícita de runtime ilimitado.
 
 ## Problema de producto
 
@@ -67,7 +74,7 @@ Reescribir compose y reiniciar en cada cambio seria demasiado caro, fragil y vis
 
 ## 4. El plan no debe seguir significando "cap permanente"
 
-Para soportar burst real, el plan debe reinterpretarse como garantia minima o baseline contractual, no como techo tecnico fijo en todo momento.
+Para soportar burst real, el plan debe reinterpretarse como garantia minima o baseline contractual, no como techo tecnico fijo en todo momento. `contention_throttle` ya materializa esa idea en produccion: el plan sigue expresando garantia/comercial, pero el cap solo aparece cuando la VPS realmente entra en contención.
 
 ## Arquitectura recomendada
 
@@ -203,7 +210,7 @@ La politica de negocio debe vivir en backend agnostico. La aplicacion concreta d
 ## Recomendacion final
 
 - Mantener la correccion ya hecha: nunca volver a mostrar limites inventados cuando no haya cap runtime real.
-- Implementar primero burst dinamico de CPU para hostings Coolify, con baseline garantizado y reserva por VPS.
+- Conservar `baseline_burst` como modo optativo y usar `contention_throttle` como default cuando la prioridad sea calidad percibida del hosting por encima del cap permanente.
 - No tocar RAM dinamica en la primera fase.
 - No intentar soportar `lightweight` desde el dia uno; primero validar la politica en el runtime que hoy controla los hostings administrados mas relevantes.
 
@@ -222,7 +229,7 @@ La politica de negocio debe vivir en backend agnostico. La aplicacion concreta d
 
 Si este frente se aborda, la secuencia correcta es:
 
-1. CPU burst para Coolify.
+1. Politica CPU seleccionable por plan (`baseline_burst` vs `contention_throttle`).
 2. Persistencia y reconciliacion de overrides runtime.
-3. UI con baseline + runtime + burst.
+3. UI con garantia + runtime + burst/throttle activo.
 4. Evaluar RAM dinamica solo despues de ver estabilidad real en produccion.

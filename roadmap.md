@@ -38,6 +38,7 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 - `265A-1`: el primer burst dinámico de CPU para hostings Coolify ya corre en background. Usa snapshots del sampler para subir o restaurar el cap runtime del contenedor principal (`site` o `wordpress`) según holgura real de la VPS, manteniendo el plan como baseline contractual.
 - `265A-2`: el sampler ya normaliza los `\t` literales de `docker inspect --format` antes de parsear límites runtime. Con eso, hostings legacy como `hosting-0fa1d5da` dejan de persistir `site_cpu_limit_cores = null` cuando Docker sí tiene caps reales, y el burst puede evaluar sitios existentes además de los nuevos.
 - `265A-3`: la aplicación real del burst ya no resuelve el compose project por `coolify_site_name` a secas. En hostings legacy/runtime el project efectivo puede ser `deployment_uuid`, así que el executor ahora prueba primero ese identificador, cae al slug solo como fallback y no memoriza un target pedido cuando `docker update --cpus` falla.
+- `265A-5`: `hosting_plan_configs` ahora persiste `cpu_scaling_policy` por plan para elegir entre `baseline_burst` y `contention_throttle`. El segundo queda como default comercial: el sitio queda sin cap fuera de contención usando `docker update --cpu-quota -1`, y el sampler ya interpreta `CpuQuota < 0` como runtime ilimitado aunque Docker deje `NanoCpus` stale.
 
 ---
 

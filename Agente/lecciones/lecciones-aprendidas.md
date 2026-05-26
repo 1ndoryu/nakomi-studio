@@ -258,6 +258,11 @@
 - Un balancer runtime no debe decidir contra el baseline del plan sino contra el `site_cpu_limit_cores` observado por el sampler. Si no recuerda el último target pedido, reintenta el mismo `docker update --cpus` en cada ciclo hasta que llegue la siguiente muestra.
 - Si `docker update --cpus` falla, el loop no debe memorizar igual `last_requested_target`; hacerlo bloquea reintentos posteriores aunque el contenedor siga en el cap viejo.
 
+## Hosting Coolify — `cpu_quota=-1` deslimita aunque `NanoCpus` quede stale
+- `docker update --cpus 0` no limpia el cap CPU en contenedores ya limitados; la sonda de campo en `hosting-0fa1d5da` dejó `NanoCpus=500000000` intacto.
+- `docker update --cpu-quota -1` sí devuelve CPU efectivo ilimitado, pero `docker inspect` puede seguir mostrando `HostConfig.NanoCpus` con el valor viejo.
+- El sampler debe priorizar `CpuQuota < 0` como `sin limite`; si sigue confiando primero en `NanoCpus`, el backend cree falsamente que el sitio continúa capado y el modo de contención nunca se libera solo.
+
 ## Hosting Coolify — `docker inspect --format` no separa con tabs reales
 - En el sampler de infraestructura, `docker inspect --format '{{...}}\t{{...}}'` devuelve `\t` literales, no tabs reales. Si el parser divide solo por `\t` reales, todas las columnas de runtime limits quedan truncadas y `site_cpu_limit_cores` se persiste en `null` aunque Docker tenga caps válidos.
 - El síntoma engañoso es que `docker stats` sí muestra CPU/RAM actuales y la muestra del deployment parece fresca, pero los límites runtime siguen vacíos para todos los sitios del servidor.

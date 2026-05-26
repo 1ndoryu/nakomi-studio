@@ -4,6 +4,18 @@ use sqlx::FromRow;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+pub const CPU_SCALING_POLICY_BASELINE_BURST: &str = "baseline_burst";
+pub const CPU_SCALING_POLICY_CONTENTION_THROTTLE: &str = "contention_throttle";
+
+#[must_use]
+pub fn normalize_cpu_scaling_policy(policy: &str) -> Option<&'static str> {
+    match policy.trim().to_ascii_lowercase().as_str() {
+        CPU_SCALING_POLICY_BASELINE_BURST => Some(CPU_SCALING_POLICY_BASELINE_BURST),
+        CPU_SCALING_POLICY_CONTENTION_THROTTLE => Some(CPU_SCALING_POLICY_CONTENTION_THROTTLE),
+        _ => None,
+    }
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
 pub struct HostingSubscription {
     pub id: Uuid,
@@ -82,6 +94,7 @@ pub struct HostingPlanConfig {
     pub ssh_memory_mb: i32,
     pub storage_limit_mb: i32,
     pub bandwidth_limit_gb: i32,
+    pub cpu_scaling_policy: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

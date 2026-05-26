@@ -79,6 +79,13 @@ Correcciones obligatorias antes de implementar:
 - Corrección: resolver el project compose con `deployment_uuid` primero, dejar `coolify_site_name` como fallback y no persistir `last_requested_target` cuando `docker update --cpus` falla, para que el loop pueda reintentar.
 - Impacto: los hostings legacy que ya eran elegibles para burst dejan de quedarse atrapados en baseline por resolver el stack equivocado.
 
+### Aplicado 2026-05-26 — throttling CPU solo bajo contención seleccionable por plan
+
+- Backend: `hosting_plan_configs` ahora guarda `cpu_scaling_policy` por plan y expone el valor por API admin, permitiendo elegir entre `baseline_burst` y `contention_throttle` sin duplicar loops ni contratos.
+- Producto: `contention_throttle` pasa a ser el default para hostings administrados, dejando al sitio sin cap fuera de contención y aplicando un límite compartido temporal solo cuando la VPS entra en presión alta sostenida.
+- Runtime: el executor usa `docker update --cpu-quota -1` para volver a `unlimited`; el sampler ya trata `CpuQuota < 0` como fuente de verdad para no arrastrar el `NanoCpus` viejo de Docker como si siguiera vigente.
+- Observabilidad: el loop registra eventos específicos `cpu_contention_throttle_applied` y `cpu_contention_throttle_released`, manteniendo `cpu_burst_applied/restored` para el modo contractual anterior.
+
 ---
 
 ## Fase 0: Inventario multi-VPS y contratos del panel

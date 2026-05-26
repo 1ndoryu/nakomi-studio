@@ -10,7 +10,11 @@ mod responses;
 mod sanitization;
 mod validation;
 
-pub use entities::{HostingEvent, HostingPlanConfig, HostingSubscription, PublicHostingPlan};
+pub use entities::{
+    normalize_cpu_scaling_policy, HostingEvent, HostingPlanConfig, HostingSubscription,
+    PublicHostingPlan, CPU_SCALING_POLICY_BASELINE_BURST,
+    CPU_SCALING_POLICY_CONTENTION_THROTTLE,
+};
 pub use requests::{
     AssignHostingRequest, CreateHostingRequest, SelfSubscribeRequest, UpdateHostingRequest,
     UpdateHostingStatusRequest, UpdatePlanConfigRequest,
