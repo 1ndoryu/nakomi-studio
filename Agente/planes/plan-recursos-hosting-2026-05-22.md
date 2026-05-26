@@ -51,6 +51,13 @@ Correcciones obligatorias antes de implementar:
 - Frontend: instalado `uplot`, creado `ResourceUsageChart`, cargado bajo demanda al expandir despliegues y mostrados promedios CPU/RAM/disco en tab VPS.
 - Seguridad/operacion: rate limit global ajustado segun Fase 5, manteniendo limites especificos de checkout/subscribe.
 
+### Aplicado 2026-05-25 — límites runtime reales vs recursos del plan
+
+- Backend: `infrastructure_metrics_loop` ahora complementa `docker stats` con `docker inspect` para detectar límites CPU/RAM efectivos por contenedor (`site`, `db`, `ssh`) y persistirlos en `infrastructure_resource_samples`.
+- Backend: `/api/hosting/deployments` expone `runtime_sampled_at` y límites runtime por rol, manteniendo `plan_*` solo como metadata comercial.
+- Frontend: el detalle de despliegue ahora separa “Límites runtime detectados” de “Recursos del plan vinculado”, con estados explícitos para “sin muestra todavía” y “sin límites detectados”.
+- Corrección semántica: `ram_limit_mb` ya no debe interpretarse como límite real si el contenedor está ilimitado; en ese caso se persiste `null` y la UI evita porcentajes sintéticos.
+
 ---
 
 ## Fase 0: Inventario multi-VPS y contratos del panel

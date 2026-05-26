@@ -127,26 +127,46 @@ pub struct CoolifyDeploymentResponse {
     pub server_label: String,
     /// [215A-14] Nombre del cliente dueño de la suscripción vinculada
     pub linked_subscription_client: Option<String>,
+    /// [255A-4] Timestamp de la última muestra runtime usada para enriquecer el despliegue.
+    pub runtime_sampled_at: Option<DateTime<Utc>>,
     /// [215A-14] CPU % combinado de todos los contenedores del despliegue (null si no disponible)
     pub cpu_percent: Option<f64>,
     /// [215A-14] RAM usada en MB combinada (null si no disponible)
     pub ram_used_mb: Option<f64>,
-    /// [215A-14] RAM límite en MB combinada (null si no disponible)
+    /// [255A-4] RAM límite runtime real en MB combinada (null si no hay límite detectado)
     pub ram_limit_mb: Option<f64>,
     /// [215A-14] Almacenamiento usado en MB (null si no disponible)
     pub storage_used_mb: Option<i64>,
     /// [215A-14] Límite de almacenamiento del plan en MB (null si no vinculado)
     pub storage_limit_mb: Option<i32>,
-    /// [255A-1] CPU millicores del plan para WordPress/site (null si no vinculado)
+    /// [255A-4] CPU runtime real del contenedor web/site (null si no hay límite detectado)
+    pub runtime_site_cpu_limit_cores: Option<f64>,
+    /// [255A-4] RAM runtime real del contenedor web/site (null si no hay límite detectado)
+    pub runtime_site_ram_limit_mb: Option<f64>,
+    /// [255A-4] CPU runtime real del contenedor de base de datos (null si no hay límite detectado)
+    pub runtime_db_cpu_limit_cores: Option<f64>,
+    /// [255A-4] RAM runtime real del contenedor de base de datos (null si no hay límite detectado)
+    pub runtime_db_ram_limit_mb: Option<f64>,
+    /// [255A-4] CPU runtime real del contenedor SSH/SFTP (null si no hay límite detectado)
+    pub runtime_ssh_cpu_limit_cores: Option<f64>,
+    /// [255A-4] RAM runtime real del contenedor SSH/SFTP (null si no hay límite detectado)
+    pub runtime_ssh_ram_limit_mb: Option<f64>,
+    /// [255A-1] CPU millicores del plan vinculado para WordPress/site.
+    /// No representa un límite detectado en runtime; solo la configuración comercial persistida.
     pub plan_wp_cpu_millicores: Option<i32>,
-    /// [255A-1] CPU millicores del plan para base de datos (null si no vinculado)
+    /// [255A-1] CPU millicores del plan vinculado para base de datos.
+    /// No representa un límite detectado en runtime; solo la configuración comercial persistida.
     pub plan_db_cpu_millicores: Option<i32>,
-    /// [255A-1] CPU millicores del plan para SSH (null si no vinculado)
+    /// [255A-1] CPU millicores del plan vinculado para SSH.
+    /// No representa un límite detectado en runtime; solo la configuración comercial persistida.
     pub plan_ssh_cpu_millicores: Option<i32>,
-    /// [255A-1] RAM MB del plan para WordPress/site (null si no vinculado)
+    /// [255A-1] RAM MB del plan vinculado para WordPress/site.
+    /// No representa un límite detectado en runtime; solo la configuración comercial persistida.
     pub plan_wp_memory_mb: Option<i32>,
-    /// [255A-1] RAM MB del plan para base de datos (null si no vinculado)
+    /// [255A-1] RAM MB del plan vinculado para base de datos.
+    /// No representa un límite detectado en runtime; solo la configuración comercial persistida.
     pub plan_db_memory_mb: Option<i32>,
-    /// [255A-1] RAM MB del plan para SSH (null si no vinculado)
+    /// [255A-1] RAM MB del plan vinculado para SSH.
+    /// No representa un límite detectado en runtime; solo la configuración comercial persistida.
     pub plan_ssh_memory_mb: Option<i32>,
 }

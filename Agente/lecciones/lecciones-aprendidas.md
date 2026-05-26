@@ -248,6 +248,11 @@
 - Contabo responde “que servidores existen”; Coolify responde “que servicios estan desplegados”. Mezclar ambas capas permite cerrar tareas en falso y oculta orfandades reales entre deployment y suscripcion.
 - Para recursos de infraestructura, el dashboard tampoco debe abrir SSH en render. Meter un sampler de baja frecuencia + snapshots DB evita carga, timeouts y variaciones raras de UI; hasta que exista una muestra, mostrar `null`/guiones es la opcion correcta.
 
+## Infraestructura — `docker stats` no define límites reales
+- Si un contenedor Docker no tiene `NanoCpus` ni `Memory` configurados, `docker stats` puede mostrar la RAM total del host como `MemLimit`; eso no equivale a un cap aplicado.
+- Los límites runtime reales deben salir de `docker inspect` (`HostConfig.NanoCpus`, `CpuQuota`/`CpuPeriod`, `Memory`) y persistirse como `null` cuando valen `0`.
+- En el panel de hosting, los recursos del plan comercial y los límites runtime detectados deben mostrarse separados. Mezclarlos hace que un deployment legacy parezca capado cuando en realidad está ilimitado.
+
 ## Commit-por-tarea — no acumular cambios
 - Si el protocolo dice "un commit por tarea", cumplirlo inmediatamente después de validar, no al "final de la sesión" ni "cuando haya tiempo". Acumular 3+ tareas sin commit significa que un solo error en git rompe todo el trabajo.
 

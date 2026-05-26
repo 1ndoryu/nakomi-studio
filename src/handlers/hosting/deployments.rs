@@ -63,8 +63,15 @@ fn map_runtime_deployments(
                     .map(|subscription| subscription.plan.clone()),
                 linked_subscription_client: linked_subscription
                     .map(|subscription| subscription.client_name.clone()),
+                runtime_sampled_at: None,
                 storage_limit_mb: linked_subscription
                     .map(|subscription| subscription.storage_limit_mb),
+                runtime_site_cpu_limit_cores: None,
+                runtime_site_ram_limit_mb: None,
+                runtime_db_cpu_limit_cores: None,
+                runtime_db_ram_limit_mb: None,
+                runtime_ssh_cpu_limit_cores: None,
+                runtime_ssh_ram_limit_mb: None,
                 plan_wp_cpu_millicores: plan_config.map(|c| c.wp_cpu_millicores),
                 plan_db_cpu_millicores: plan_config.map(|c| c.db_cpu_millicores),
                 plan_ssh_cpu_millicores: plan_config.map(|c| c.ssh_cpu_millicores),
@@ -232,10 +239,17 @@ async fn enrich_deployment_resources(
             .await
         {
             Ok(Some(sample)) => {
+                deployment.runtime_sampled_at = Some(sample.sampled_at);
                 deployment.cpu_percent = sample.cpu_percent;
                 deployment.ram_used_mb = sample.ram_used_mb;
                 deployment.ram_limit_mb = sample.ram_limit_mb;
                 deployment.storage_used_mb = sample.disk_used_mb.and_then(f64_to_i64_rounded);
+                deployment.runtime_site_cpu_limit_cores = sample.site_cpu_limit_cores;
+                deployment.runtime_site_ram_limit_mb = sample.site_ram_limit_mb;
+                deployment.runtime_db_cpu_limit_cores = sample.db_cpu_limit_cores;
+                deployment.runtime_db_ram_limit_mb = sample.db_ram_limit_mb;
+                deployment.runtime_ssh_cpu_limit_cores = sample.ssh_cpu_limit_cores;
+                deployment.runtime_ssh_ram_limit_mb = sample.ssh_ram_limit_mb;
             }
             Ok(None) => {}
             Err(error) => tracing::warn!(

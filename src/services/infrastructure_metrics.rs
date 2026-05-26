@@ -39,6 +39,29 @@ struct CpuCounters {
     idle: f64,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct ContainerRuntimeLimits {
+    cpu_limit_cores: Option<f64>,
+    mem_limit_mb: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct DeploymentRuntimeLimits {
+    site_cpu_limit_cores: Option<f64>,
+    site_ram_limit_mb: Option<f64>,
+    db_cpu_limit_cores: Option<f64>,
+    db_ram_limit_mb: Option<f64>,
+    ssh_cpu_limit_cores: Option<f64>,
+    ssh_ram_limit_mb: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum DeploymentContainerRole {
+    Site,
+    Db,
+    Ssh,
+}
+
 #[derive(Debug, Clone, Default)]
 struct ServerSshSnapshot {
     cpu_counters: Option<CpuCounters>,
@@ -48,6 +71,7 @@ struct ServerSshSnapshot {
     disk_used_mb: Option<f64>,
     disk_limit_mb: Option<f64>,
     containers: Vec<ContainerStats>,
+    container_runtime_limits: HashMap<String, ContainerRuntimeLimits>,
     storage_by_uuid: HashMap<String, i64>,
 }
 
@@ -113,6 +137,10 @@ fn sampler_command(include_storage: bool) -> String {
     )
     .to_string();
 
+    command.push_str(
+        " printf '__DOCKER_LIMITS__\\n'; docker ps --format '{{.Names}}' 2>/dev/null | while IFS= read -r name; do [ -n \"$name\" ] || continue; printf '%s\\t' \"$name\"; docker inspect --format '{{.HostConfig.NanoCpus}}\\t{{.HostConfig.Memory}}\\t{{.HostConfig.CpuQuota}}\\t{{.HostConfig.CpuPeriod}}' \"$name\" 2>/dev/null || printf '0\\t0\\t0\\t0\\n'; done;",
+    );
+
     if include_storage {
         command.push_str(
             " printf '__STORAGE__\\n'; du -sm /var/lib/docker/volumes/*/_data 2>/dev/null || true;",
@@ -170,7 +198,7 @@ fn parse_sampler_output(output: &str) -> ServerSshSnapshot {
         }
 
         match line {
-            "__CPU__" | "__NPROC__" | "__MEM__" | "__DISK__" | "__DOCKER__" | "__STORAGE__" => {
+            "__CPU__" | "__NPROC__" | "__MEM__" | "__DISK__" | "__DOCKER__" | "__DOCKER_LIMITS__" | "__STORAGE__" => {
                 section = line;
                 continue;
             }
@@ -202,6 +230,9 @@ fn parse_sampler_output(output: &str) -> ServerSshSnapshot {
                 }
             }
             "__DOCKER__" => docker_lines.push(line.to_string()),
+            "__DOCKER_LIMITS__" => {
+                parse_container_runtime_limit_line(line, &mut snapshot.container_runtime_limits)
+            }
             "__STORAGE__" => parse_storage_line(line, &mut snapshot.storage_by_uuid),
             _ => {}
         }
@@ -209,6 +240,57 @@ fn parse_sampler_output(output: &str) -> ServerSshSnapshot {
 
     snapshot.containers = parse_docker_stats_public(&docker_lines.join("\n"));
     snapshot
+}
+
+fn parse_container_runtime_limit_line(
+    line: &str,
+    container_runtime_limits: &mut HashMap<String, ContainerRuntimeLimits>,
+) {
+    let parts: Vec<&str> = line.split('\t').collect();
+    if parts.len() < 5 {
+        return;
+    }
+
+    let name = parts[0].trim();
+    if name.is_empty() {
+        return;
+    }
+
+    let nanocpus = parts[1].trim().parse::<i64>().ok();
+    let memory_bytes = parts[2].trim().parse::<i64>().ok();
+    let cpu_quota = parts[3].trim().parse::<i64>().ok();
+    let cpu_period = parts[4].trim().parse::<i64>().ok();
+
+    container_runtime_limits.insert(
+        name.to_string(),
+        ContainerRuntimeLimits {
+            cpu_limit_cores: compute_container_cpu_limit_cores(nanocpus, cpu_quota, cpu_period),
+            mem_limit_mb: compute_container_memory_limit_mb(memory_bytes),
+        },
+    );
+}
+
+fn compute_container_cpu_limit_cores(
+    nanocpus: Option<i64>,
+    cpu_quota: Option<i64>,
+    cpu_period: Option<i64>,
+) -> Option<f64> {
+    if let Some(nanocpus) = nanocpus.filter(|value| *value > 0) {
+        return Some(i64_to_f64(nanocpus) / 1_000_000_000.0);
+    }
+
+    match (cpu_quota, cpu_period) {
+        (Some(quota), Some(period)) if quota > 0 && period > 0 => {
+            Some(i64_to_f64(quota) / i64_to_f64(period))
+        }
+        _ => None,
+    }
+}
+
+fn compute_container_memory_limit_mb(memory_bytes: Option<i64>) -> Option<f64> {
+    memory_bytes
+        .filter(|value| *value > 0)
+        .map(|value| i64_to_f64(value) / 1024.0 / 1024.0)
 }
 
 fn parse_storage_line(line: &str, storage_by_uuid: &mut HashMap<String, i64>) {
@@ -404,6 +486,86 @@ fn matching_containers<'a>(
         .collect()
 }
 
+fn deployment_container_role(container_name: &str) -> Option<DeploymentContainerRole> {
+    let normalized = container_name.trim().to_ascii_lowercase();
+
+    if normalized.contains("mariadb")
+        || normalized.contains("mysql")
+        || normalized.contains("postgres")
+    {
+        return Some(DeploymentContainerRole::Db);
+    }
+
+    if normalized.contains("ssh") || normalized.contains("sftp") {
+        return Some(DeploymentContainerRole::Ssh);
+    }
+
+    if normalized.contains("wordpress") || normalized.contains("site") {
+        return Some(DeploymentContainerRole::Site);
+    }
+
+    None
+}
+
+fn accumulate_limit(target: &mut Option<f64>, value: Option<f64>) {
+    let Some(value) = value else {
+        return;
+    };
+
+    *target = Some(target.unwrap_or(0.0) + value);
+}
+
+fn aggregate_runtime_limits(
+    containers: &[&ContainerStats],
+    container_runtime_limits: &HashMap<String, ContainerRuntimeLimits>,
+) -> DeploymentRuntimeLimits {
+    let mut aggregated = DeploymentRuntimeLimits::default();
+
+    for container in containers {
+        let Some(role) = deployment_container_role(&container.name) else {
+            continue;
+        };
+        let Some(limits) = container_runtime_limits.get(&container.name) else {
+            continue;
+        };
+
+        match role {
+            DeploymentContainerRole::Site => {
+                accumulate_limit(&mut aggregated.site_cpu_limit_cores, limits.cpu_limit_cores);
+                accumulate_limit(&mut aggregated.site_ram_limit_mb, limits.mem_limit_mb);
+            }
+            DeploymentContainerRole::Db => {
+                accumulate_limit(&mut aggregated.db_cpu_limit_cores, limits.cpu_limit_cores);
+                accumulate_limit(&mut aggregated.db_ram_limit_mb, limits.mem_limit_mb);
+            }
+            DeploymentContainerRole::Ssh => {
+                accumulate_limit(&mut aggregated.ssh_cpu_limit_cores, limits.cpu_limit_cores);
+                accumulate_limit(&mut aggregated.ssh_ram_limit_mb, limits.mem_limit_mb);
+            }
+        }
+    }
+
+    aggregated
+}
+
+fn total_runtime_ram_limit_mb(limits: &DeploymentRuntimeLimits) -> Option<f64> {
+    let values = [
+        limits.site_ram_limit_mb,
+        limits.db_ram_limit_mb,
+        limits.ssh_ram_limit_mb,
+    ];
+
+    let mut total = 0.0;
+    let mut has_any = false;
+
+    for value in values.into_iter().flatten() {
+        total += value;
+        has_any = true;
+    }
+
+    has_any.then_some(total)
+}
+
 async fn record_bandwidth_delta(
     pool: &PgPool,
     server: &InfrastructureServerRecord,
@@ -538,6 +700,12 @@ async fn sample_target(
             ram_limit_mb: snapshot.ram_limit_mb,
             disk_used_mb: snapshot.disk_used_mb,
             disk_limit_mb: snapshot.disk_limit_mb,
+            site_cpu_limit_cores: None,
+            site_ram_limit_mb: None,
+            db_cpu_limit_cores: None,
+            db_ram_limit_mb: None,
+            ssh_cpu_limit_cores: None,
+            ssh_ram_limit_mb: None,
         },
     )
     .await?;
@@ -595,10 +763,8 @@ async fn record_deployment_sample(
         .iter()
         .map(|container| container.mem_used_mb)
         .sum();
-    let ram_limit_mb = containers
-        .iter()
-        .map(|container| container.mem_limit_mb)
-        .sum();
+    let runtime_limits = aggregate_runtime_limits(&containers, &snapshot.container_runtime_limits);
+    let ram_limit_mb = total_runtime_ram_limit_mb(&runtime_limits);
     let storage_used_mb = snapshot
         .storage_by_uuid
         .get(&service.uuid)
@@ -614,9 +780,15 @@ async fn record_deployment_sample(
             sampled_at,
             cpu_percent: Some(cpu_percent),
             ram_used_mb: Some(ram_used_mb),
-            ram_limit_mb: Some(ram_limit_mb),
+            ram_limit_mb,
             disk_used_mb: storage_used_mb,
             disk_limit_mb: storage_limit_mb,
+            site_cpu_limit_cores: runtime_limits.site_cpu_limit_cores,
+            site_ram_limit_mb: runtime_limits.site_ram_limit_mb,
+            db_cpu_limit_cores: runtime_limits.db_cpu_limit_cores,
+            db_ram_limit_mb: runtime_limits.db_ram_limit_mb,
+            ssh_cpu_limit_cores: runtime_limits.ssh_cpu_limit_cores,
+            ssh_ram_limit_mb: runtime_limits.ssh_ram_limit_mb,
         },
     )
     .await?;

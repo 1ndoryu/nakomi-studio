@@ -510,6 +510,18 @@
     letter-spacing: 0.04em;
 }
 
+.detalleModalPlan {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.detalleModalPlanNota {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+
 .detalleModalOrphan {
     display: flex;
     align-items: flex-start;

@@ -437,11 +437,18 @@ export interface CoolifyDeployment {
     linked_subscription_plan: string | null;
     server_label: string;
     linked_subscription_client: string | null;
+    runtime_sampled_at: string | null;
     cpu_percent: number | null;
     ram_used_mb: number | null;
     ram_limit_mb: number | null;
     storage_used_mb: number | null;
     storage_limit_mb: number | null;
+    runtime_site_cpu_limit_cores: number | null;
+    runtime_site_ram_limit_mb: number | null;
+    runtime_db_cpu_limit_cores: number | null;
+    runtime_db_ram_limit_mb: number | null;
+    runtime_ssh_cpu_limit_cores: number | null;
+    runtime_ssh_ram_limit_mb: number | null;
     plan_wp_cpu_millicores: number | null;
     plan_db_cpu_millicores: number | null;
     plan_ssh_cpu_millicores: number | null;
@@ -468,6 +475,12 @@ export interface ResourceMetricPoint {
     ram_limit_mb: number | null;
     disk_used_mb: number | null;
     disk_limit_mb: number | null;
+    site_cpu_limit_cores: number | null;
+    site_ram_limit_mb: number | null;
+    db_cpu_limit_cores: number | null;
+    db_ram_limit_mb: number | null;
+    ssh_cpu_limit_cores: number | null;
+    ssh_ram_limit_mb: number | null;
 }
 
 export interface DeploymentMetricsResponse {

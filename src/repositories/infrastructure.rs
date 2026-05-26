@@ -50,6 +50,12 @@ pub struct ResourceSampleInput<'a> {
     pub ram_limit_mb: Option<f64>,
     pub disk_used_mb: Option<f64>,
     pub disk_limit_mb: Option<f64>,
+    pub site_cpu_limit_cores: Option<f64>,
+    pub site_ram_limit_mb: Option<f64>,
+    pub db_cpu_limit_cores: Option<f64>,
+    pub db_ram_limit_mb: Option<f64>,
+    pub ssh_cpu_limit_cores: Option<f64>,
+    pub ssh_ram_limit_mb: Option<f64>,
 }
 
 pub struct BandwidthSnapshotInput<'a> {
@@ -225,8 +231,10 @@ impl InfrastructureRepository {
         sqlx::query(
             r"INSERT INTO infrastructure_resource_samples
                     (entity_kind, server_id, deployment_uuid, sampled_at, cpu_percent,
-                     ram_used_mb, ram_limit_mb, disk_used_mb, disk_limit_mb)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                     ram_used_mb, ram_limit_mb, disk_used_mb, disk_limit_mb,
+                     site_cpu_limit_cores, site_ram_limit_mb, db_cpu_limit_cores,
+                     db_ram_limit_mb, ssh_cpu_limit_cores, ssh_ram_limit_mb)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
         )
         .bind(input.entity_kind)
         .bind(input.server_id)
@@ -237,6 +245,12 @@ impl InfrastructureRepository {
         .bind(input.ram_limit_mb)
         .bind(input.disk_used_mb)
         .bind(input.disk_limit_mb)
+        .bind(input.site_cpu_limit_cores)
+        .bind(input.site_ram_limit_mb)
+        .bind(input.db_cpu_limit_cores)
+        .bind(input.db_ram_limit_mb)
+        .bind(input.ssh_cpu_limit_cores)
+        .bind(input.ssh_ram_limit_mb)
         .execute(pool)
         .await
         .map_err(AppError::from)?;
@@ -254,7 +268,13 @@ impl InfrastructureRepository {
                       AVG(ram_used_mb) AS ram_used_mb,
                       MAX(ram_limit_mb) AS ram_limit_mb,
                       MAX(disk_used_mb) AS disk_used_mb,
-                      MAX(disk_limit_mb) AS disk_limit_mb
+                                            MAX(disk_limit_mb) AS disk_limit_mb,
+                                            MAX(site_cpu_limit_cores) AS site_cpu_limit_cores,
+                                            MAX(site_ram_limit_mb) AS site_ram_limit_mb,
+                                            MAX(db_cpu_limit_cores) AS db_cpu_limit_cores,
+                                            MAX(db_ram_limit_mb) AS db_ram_limit_mb,
+                                            MAX(ssh_cpu_limit_cores) AS ssh_cpu_limit_cores,
+                                            MAX(ssh_ram_limit_mb) AS ssh_ram_limit_mb
                FROM infrastructure_resource_samples
                WHERE entity_kind = 'deployment'
                  AND deployment_uuid = $1
@@ -278,33 +298,41 @@ impl InfrastructureRepository {
                       latest.cpu_percent,
                       latest.ram_used_mb,
                       latest.ram_limit_mb,
-                                            COALESCE(latest.disk_used_mb, latest_storage_used.disk_used_mb) AS disk_used_mb,
-                                            COALESCE(latest.disk_limit_mb, latest_storage_limit.disk_limit_mb) AS disk_limit_mb
+                      COALESCE(latest.disk_used_mb, latest_storage_used.disk_used_mb) AS disk_used_mb,
+                      COALESCE(latest.disk_limit_mb, latest_storage_limit.disk_limit_mb) AS disk_limit_mb,
+                      latest.site_cpu_limit_cores,
+                      latest.site_ram_limit_mb,
+                      latest.db_cpu_limit_cores,
+                      latest.db_ram_limit_mb,
+                      latest.ssh_cpu_limit_cores,
+                      latest.ssh_ram_limit_mb
                FROM LATERAL (
-                   SELECT sampled_at, cpu_percent, ram_used_mb, ram_limit_mb, disk_used_mb, disk_limit_mb
+                   SELECT sampled_at, cpu_percent, ram_used_mb, ram_limit_mb, disk_used_mb, disk_limit_mb,
+                          site_cpu_limit_cores, site_ram_limit_mb, db_cpu_limit_cores,
+                          db_ram_limit_mb, ssh_cpu_limit_cores, ssh_ram_limit_mb
                    FROM infrastructure_resource_samples
                    WHERE entity_kind = 'deployment' AND deployment_uuid = $1
                    ORDER BY sampled_at DESC
                    LIMIT 1
                ) latest
                LEFT JOIN LATERAL (
-                                     SELECT disk_used_mb
+                   SELECT disk_used_mb
                    FROM infrastructure_resource_samples
                    WHERE entity_kind = 'deployment'
                      AND deployment_uuid = $1
-                                         AND disk_used_mb IS NOT NULL
-                                     ORDER BY sampled_at DESC
-                                     LIMIT 1
-                             ) latest_storage_used ON TRUE
-                             LEFT JOIN LATERAL (
-                                     SELECT disk_limit_mb
-                                     FROM infrastructure_resource_samples
-                                     WHERE entity_kind = 'deployment'
-                                         AND deployment_uuid = $1
-                                         AND disk_limit_mb IS NOT NULL
+                     AND disk_used_mb IS NOT NULL
                    ORDER BY sampled_at DESC
                    LIMIT 1
-                             ) latest_storage_limit ON TRUE",
+               ) latest_storage_used ON TRUE
+               LEFT JOIN LATERAL (
+                   SELECT disk_limit_mb
+                   FROM infrastructure_resource_samples
+                   WHERE entity_kind = 'deployment'
+                     AND deployment_uuid = $1
+                     AND disk_limit_mb IS NOT NULL
+                   ORDER BY sampled_at DESC
+                   LIMIT 1
+               ) latest_storage_limit ON TRUE",
         )
         .bind(deployment_uuid)
         .fetch_optional(pool)

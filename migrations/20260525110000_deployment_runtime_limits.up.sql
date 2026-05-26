@@ -1,0 +1,7 @@
+ALTER TABLE infrastructure_resource_samples
+    ADD COLUMN IF NOT EXISTS site_cpu_limit_cores DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS site_ram_limit_mb DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS db_cpu_limit_cores DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS db_ram_limit_mb DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS ssh_cpu_limit_cores DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS ssh_ram_limit_mb DOUBLE PRECISION;

@@ -58,6 +58,21 @@ function formatMillicores(millicores: number | null | undefined): string {
     return `${cores.toFixed(2)} CPU`;
 }
 
+function formatCpuCores(cores: number | null | undefined): string {
+    return cores == null ? '—' : `${cores.toFixed(2)} CPU`;
+}
+
+function hasRuntimeLimitDetails(deployment: CoolifyDeployment): boolean {
+    return [
+        deployment.runtime_site_cpu_limit_cores,
+        deployment.runtime_site_ram_limit_mb,
+        deployment.runtime_db_cpu_limit_cores,
+        deployment.runtime_db_ram_limit_mb,
+        deployment.runtime_ssh_cpu_limit_cores,
+        deployment.runtime_ssh_ram_limit_mb,
+    ].some(value => value != null);
+}
+
 function WordPressIcon() {
     return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h4l3 8 4-16 3 8h4" /></svg>;
 }
@@ -179,6 +194,8 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
 
 function DeploymentDetailsContent({deployment, fqdn, isLinked, serverLabel, onCreateSubscription, onDeleteDeployment, isDeleting, onCerrar}: {deployment: CoolifyDeployment; fqdn: string | null; isLinked: boolean; serverLabel: string; onCreateSubscription: () => void; onDeleteDeployment: () => void; isDeleting: boolean; onCerrar: () => void}) {
     const {data: metrics, isLoading, error} = useDeploymentMetrics(deployment.uuid, true);
+    const hasRuntimeSample = deployment.runtime_sampled_at != null;
+    const hasRuntimeLimits = hasRuntimeLimitDetails(deployment);
 
     return (
         <div className="detalleModalContenido">
@@ -194,7 +211,7 @@ function DeploymentDetailsContent({deployment, fqdn, isLinked, serverLabel, onCr
                 <div className="detalleModalCampo"><span className="detalleModalLabel">Entorno</span><span className="detalleModalValor">{deployment.environment_name || 'production'}</span></div>
                 <div className="detalleModalCampo"><span className="detalleModalLabel">Servidor</span><span className="detalleModalValor">{serverLabel}</span></div>
                 {deployment.server_uuid && <div className="detalleModalCampo"><span className="detalleModalLabel">Servidor UUID</span><span className="detalleModalValor">{deployment.server_uuid}</span></div>}
-                {deployment.linked_subscription_plan && <div className="detalleModalCampo"><span className="detalleModalLabel">Plan</span><span className="detalleModalValor">{getDeploymentTypeLabel(deployment.linked_subscription_plan)}</span></div>}
+                {deployment.linked_subscription_plan && <div className="detalleModalCampo"><span className="detalleModalLabel">Plan vinculado</span><span className="detalleModalValor">{getDeploymentTypeLabel(deployment.linked_subscription_plan)}</span></div>}
                 {deployment.linked_subscription_domain && <div className="detalleModalCampo"><span className="detalleModalLabel">Dominio</span><span className="detalleModalValor">{deployment.linked_subscription_domain}</span></div>}
                 {fqdn && <div className="detalleModalCampo"><span className="detalleModalLabel">FQDN</span><a href={fqdn} target="_blank" rel="noopener noreferrer" className="detalleModalLink" onClick={e => e.stopPropagation()}><Globe size={12} />{fqdn}</a></div>}
             </div>
@@ -207,14 +224,38 @@ function DeploymentDetailsContent({deployment, fqdn, isLinked, serverLabel, onCr
                 {deployment.linked_subscription_status && <div className="detalleModalCampo"><span className="detalleModalLabel">Estado suscripción</span><span className="detalleModalValor">{deployment.linked_subscription_status}</span></div>}
             </div>
 
+            <div className="detalleModalPlan">
+                <span className="detalleModalGraficoLabel">Límites runtime detectados</span>
+                {!hasRuntimeSample && (
+                    <p className="detalleModalPlanNota">Sin muestra runtime todavía. El sampler rellenará esta sección cuando capture el despliegue.</p>
+                )}
+                {hasRuntimeSample && !hasRuntimeLimits && (
+                    <p className="detalleModalPlanNota">La última muestra no detectó límites CPU/RAM aplicados en los contenedores de este despliegue.</p>
+                )}
+                {hasRuntimeSample && hasRuntimeLimits && (
+                    <div className="detalleModalGrid">
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">Sitio CPU</span><span className="detalleModalValor">{formatCpuCores(deployment.runtime_site_cpu_limit_cores)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">Sitio RAM</span><span className="detalleModalValor">{formatMb(deployment.runtime_site_ram_limit_mb)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">DB CPU</span><span className="detalleModalValor">{formatCpuCores(deployment.runtime_db_cpu_limit_cores)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">DB RAM</span><span className="detalleModalValor">{formatMb(deployment.runtime_db_ram_limit_mb)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">SSH CPU</span><span className="detalleModalValor">{formatCpuCores(deployment.runtime_ssh_cpu_limit_cores)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">SSH RAM</span><span className="detalleModalValor">{formatMb(deployment.runtime_ssh_ram_limit_mb)}</span></div>
+                    </div>
+                )}
+            </div>
+
             {(deployment.plan_wp_cpu_millicores != null || deployment.plan_wp_memory_mb != null) && (
-                <div className="detalleModalGrid">
-                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite WP CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_wp_cpu_millicores)}</span></div>
-                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite WP RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_wp_memory_mb)}</span></div>
-                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite DB CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_db_cpu_millicores)}</span></div>
-                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite DB RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_db_memory_mb)}</span></div>
-                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite SSH CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_ssh_cpu_millicores)}</span></div>
-                    <div className="detalleModalCampo"><span className="detalleModalLabel">Límite SSH RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_ssh_memory_mb)}</span></div>
+                <div className="detalleModalPlan">
+                    <span className="detalleModalGraficoLabel">Recursos del plan vinculado</span>
+                    <p className="detalleModalPlanNota">Referencia comercial de la suscripción vinculada.</p>
+                    <div className="detalleModalGrid">
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">Plan WP CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_wp_cpu_millicores)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">Plan WP RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_wp_memory_mb)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">Plan DB CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_db_cpu_millicores)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">Plan DB RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_db_memory_mb)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">Plan SSH CPU</span><span className="detalleModalValor">{formatMillicores(deployment.plan_ssh_cpu_millicores)}</span></div>
+                        <div className="detalleModalCampo"><span className="detalleModalLabel">Plan SSH RAM</span><span className="detalleModalValor">{formatMb(deployment.plan_ssh_memory_mb)}</span></div>
+                    </div>
                 </div>
             )}
 

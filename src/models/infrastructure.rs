@@ -31,6 +31,12 @@ pub struct ResourceMetricPoint {
     pub ram_limit_mb: Option<f64>,
     pub disk_used_mb: Option<f64>,
     pub disk_limit_mb: Option<f64>,
+    pub site_cpu_limit_cores: Option<f64>,
+    pub site_ram_limit_mb: Option<f64>,
+    pub db_cpu_limit_cores: Option<f64>,
+    pub db_ram_limit_mb: Option<f64>,
+    pub ssh_cpu_limit_cores: Option<f64>,
+    pub ssh_ram_limit_mb: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
