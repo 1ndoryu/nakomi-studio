@@ -61,6 +61,23 @@ fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
+/* [265A-3] Coolify usa el deployment UUID como `com.docker.compose.project` en
+ * stacks runtime/legacy. El burst intenta primero ese project y solo cae al
+ * slug del sitio cuando realmente coincide con el compose project. */
+fn compose_project_candidates(deployment_uuid: &str, site_name: &str) -> Vec<String> {
+    let mut candidates = Vec::new();
+
+    for value in [deployment_uuid, site_name] {
+        let value = value.trim();
+        if value.is_empty() || candidates.iter().any(|existing| existing == value) {
+            continue;
+        }
+        candidates.push(value.to_string());
+    }
+
+    candidates
+}
+
 fn usize_to_f64(value: usize) -> f64 {
     value.to_string().parse::<f64>().unwrap_or(1.0)
 }
@@ -223,18 +240,28 @@ async fn run_ssh(server_ip: &str, ssh_key_path: &str, cmd: &str) -> Result<Strin
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-fn cpu_update_script(site_name: &str, cpu_cores: f64) -> String {
-    let site_name = shell_quote(site_name);
+fn cpu_update_script(deployment_uuid: &str, site_name: &str, cpu_cores: f64) -> String {
+        let projects = compose_project_candidates(deployment_uuid, site_name)
+                .into_iter()
+                .map(|value| shell_quote(&value))
+                .collect::<Vec<_>>()
+                .join(" ");
     let cpu_cores = format!("{cpu_cores:.2}");
     format!(
-        r#"PROJECT={site_name}
-CID=$(docker compose -p "$PROJECT" ps -q site 2>/dev/null | head -1)
-if [ -z "$CID" ]; then
-  CID=$(docker compose -p "$PROJECT" ps -q wordpress 2>/dev/null | head -1)
-fi
-if [ -z "$CID" ]; then
-  CID=$(docker compose -p "$PROJECT" ps -q app 2>/dev/null | head -1)
-fi
+                r#"CID=""
+for PROJECT in {projects}; do
+    [ -n "$PROJECT" ] || continue
+    CID=$(docker compose -p "$PROJECT" ps -q site 2>/dev/null | head -1)
+    if [ -z "$CID" ]; then
+        CID=$(docker compose -p "$PROJECT" ps -q wordpress 2>/dev/null | head -1)
+    fi
+    if [ -z "$CID" ]; then
+        CID=$(docker compose -p "$PROJECT" ps -q app 2>/dev/null | head -1)
+    fi
+    if [ -n "$CID" ]; then
+        break
+    fi
+done
 if [ -z "$CID" ]; then
   echo "container_not_found"
   exit 10
@@ -247,10 +274,11 @@ docker inspect -f '{{{{.Name}}}}' "$CID" 2>/dev/null | sed 's#^/##'"#,
 async fn apply_site_cpu_limit(
     server_ip: &str,
     ssh_key_path: &str,
+    deployment_uuid: &str,
     site_name: &str,
     cpu_cores: f64,
 ) -> Result<String, String> {
-    let script = cpu_update_script(site_name, cpu_cores);
+    let script = cpu_update_script(deployment_uuid, site_name, cpu_cores);
     run_ssh(server_ip, ssh_key_path, &script).await
 }
 
@@ -259,10 +287,11 @@ async fn apply_target(
     candidate: &CpuBurstCandidate,
     ssh_key: &str,
     target_cores: f64,
-) {
+) -> bool {
     match apply_site_cpu_limit(
         &candidate.server_ip,
         ssh_key,
+        &candidate.deployment_uuid,
         &candidate.coolify_site_name,
         target_cores,
     )
@@ -291,6 +320,7 @@ async fn apply_target(
                 target_cores,
                 container_name
             );
+            true
         }
         Err(error) => {
             tracing::warn!(
@@ -298,6 +328,7 @@ async fn apply_target(
                 candidate.subscription_id,
                 candidate.coolify_site_name
             );
+            false
         }
     }
 }
@@ -376,10 +407,11 @@ async fn evaluate_cpu_burst(
             ssh_key
         };
 
-        apply_target(pool, candidate, &ssh_key, desired_limit).await;
-        state.last_requested_target = Some(desired_limit);
-        state.raise_since = None;
-        state.lower_since = None;
+        if apply_target(pool, candidate, &ssh_key, desired_limit).await {
+            state.last_requested_target = Some(desired_limit);
+            state.raise_since = None;
+            state.lower_since = None;
+        }
     }
 
     Ok(())
@@ -450,5 +482,17 @@ mod tests {
         let demanders = HashMap::from([(row.server_id, 1_usize)]);
         let desired = desired_cpu_limit(&row, &demanders).unwrap_or_default();
         assert_eq!(desired, 6.0);
+    }
+
+    #[test]
+    fn compose_project_candidates_prefers_deployment_uuid() {
+        let candidates = compose_project_candidates("v77j8dfkb8rat8mlhzoid2eh", "hosting-0fa1d5da");
+        assert_eq!(candidates, vec!["v77j8dfkb8rat8mlhzoid2eh", "hosting-0fa1d5da"]);
+    }
+
+    #[test]
+    fn compose_project_candidates_deduplicates_identifiers() {
+        let candidates = compose_project_candidates("hosting-0fa1d5da", "hosting-0fa1d5da");
+        assert_eq!(candidates, vec!["hosting-0fa1d5da"]);
     }
 }

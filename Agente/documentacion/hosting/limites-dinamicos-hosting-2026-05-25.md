@@ -19,7 +19,7 @@
 ## Implementado 2026-05-26
 
 - Se añadió `src/services/cpu_burst.rs`, un loop en background que usa las últimas muestras persistidas para decidir si un hosting Coolify necesita más CPU o debe volver a su baseline.
-- La aplicación del cambio se hace en caliente con `docker update --cpus`, resolviendo el contenedor real por `coolify_site_name` y los servicios `site` o `wordpress` del compose.
+- La aplicación del cambio se hace en caliente con `docker update --cpus`, resolviendo el contenedor real por `deployment_uuid` y usando `coolify_site_name` solo como fallback para stacks donde ambos identificadores coinciden, siempre sobre los servicios `site` o `wordpress` del compose.
 - La política actual solo actúa sobre el contenedor principal del hosting, mantiene una reserva fija de CPU por VPS y exige ventanas de estabilidad antes de subir o bajar el cap runtime.
 - Cada ajuste deja evento operativo en la suscripción (`cpu_burst_applied` / `cpu_burst_restored`), pero todavía no existe UI dedicada para mostrar el burst activo ni persistencia separada de overrides.
 

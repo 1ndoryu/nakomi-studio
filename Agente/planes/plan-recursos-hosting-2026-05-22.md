@@ -72,6 +72,13 @@ Correcciones obligatorias antes de implementar:
 - Corrección: normalizar `\t` literales a tabs reales antes de parsear y cubrir el caso con test unitario reproducible.
 - Impacto: el burst dinámico ya puede ver `site_cpu_limit_cores` en hostings legacy/existentes y deja de depender de que el sitio se haya reprovisionado con una topología nueva.
 
+### Aplicado 2026-05-26 — fix del executor de burst por compose project real
+
+- Diagnóstico de campo: `hosting-0fa1d5da` ya aparecía como `demander` con muestras frescas y presión baja en VPS2, pero el burst seguía sin tocar `NanoCpus` porque `docker compose -p hosting-0fa1d5da ps -q ...` no encontraba ningún contenedor.
+- Causa raíz: el executor estaba usando `coolify_site_name` como compose project operativo, pero en stacks legacy/runtime Coolify etiqueta el proyecto real con `deployment_uuid` (`com.docker.compose.project=v77j8dfkb8rat8mlhzoid2eh` en la prueba).
+- Corrección: resolver el project compose con `deployment_uuid` primero, dejar `coolify_site_name` como fallback y no persistir `last_requested_target` cuando `docker update --cpus` falla, para que el loop pueda reintentar.
+- Impacto: los hostings legacy que ya eran elegibles para burst dejan de quedarse atrapados en baseline por resolver el stack equivocado.
+
 ---
 
 ## Fase 0: Inventario multi-VPS y contratos del panel

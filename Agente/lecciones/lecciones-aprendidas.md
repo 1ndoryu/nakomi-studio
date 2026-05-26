@@ -254,8 +254,9 @@
 - En el panel de hosting, los recursos del plan comercial y los límites runtime detectados deben mostrarse separados. Mezclarlos hace que un deployment legacy parezca capado cuando en realidad está ilimitado.
 
 ## Hosting Coolify — CPU burst debe seguir el runtime real
-- El contenedor al que se le cambia CPU no se deduce por `plan`; se resuelve desde `coolify_site_name` y los servicios reales del compose (`site` para hosting normal, `wordpress` para WordPress).
+- El contenedor al que se le cambia CPU no se deduce por `plan`; se resuelve desde la identidad runtime del stack. En Coolify, `com.docker.compose.project` puede ser `deployment_uuid` aunque el sitio tenga `coolify_site_name` distinto, así que el executor debe probar `deployment_uuid` primero y dejar el slug solo como fallback.
 - Un balancer runtime no debe decidir contra el baseline del plan sino contra el `site_cpu_limit_cores` observado por el sampler. Si no recuerda el último target pedido, reintenta el mismo `docker update --cpus` en cada ciclo hasta que llegue la siguiente muestra.
+- Si `docker update --cpus` falla, el loop no debe memorizar igual `last_requested_target`; hacerlo bloquea reintentos posteriores aunque el contenedor siga en el cap viejo.
 
 ## Hosting Coolify — `docker inspect --format` no separa con tabs reales
 - En el sampler de infraestructura, `docker inspect --format '{{...}}\t{{...}}'` devuelve `\t` literales, no tabs reales. Si el parser divide solo por `\t` reales, todas las columnas de runtime limits quedan truncadas y `site_cpu_limit_cores` se persiste en `null` aunque Docker tenga caps válidos.
