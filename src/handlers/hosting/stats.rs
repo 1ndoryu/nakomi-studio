@@ -9,7 +9,8 @@ use crate::models::{HostingEvent, HostingStatsResponse, UserRole};
 use crate::repositories::{HostingRepository, InfrastructureRepository};
 use crate::AppState;
 
-pub(super) fn resolve_ssh_key<'a>(state: &'a AppState, server_ip: &str) -> Option<&'a str> {
+/* [265A-6] Cambiado a pub(crate) para permitir acceso desde backups handler. */
+pub(crate) fn resolve_ssh_key<'a>(state: &'a AppState, server_ip: &str) -> Option<&'a str> {
     for target in crate::services::infrastructure::coolify_server_targets(
         state.coolify_config_vps1.as_ref(),
         state.coolify_config.as_ref(),

@@ -8,7 +8,7 @@ import {
     apiListHostingEvents,
 } from '../api/hosting';
 
-export type HostingDetalleTab = 'general' | 'recursos' | 'dominio' | 'acceso' | 'facturacion' | 'eventos';
+export type HostingDetalleTab = 'general' | 'recursos' | 'dominio' | 'acceso' | 'facturacion' | 'eventos' | 'backups';
 
 /* [094A-2] Info de acceso SSH derivada del hosting */
 interface SshInfo {

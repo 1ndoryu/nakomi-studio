@@ -663,7 +663,10 @@ async fn finalize_wordpress_install(
     (true, None)
 }
 
-/* [114A-3] Límites dinámicos por plan. WP reserva 25% de su límite, DB reserva 25% también. */
+/* [114A-3] Límites dinámicos por plan. WP reserva 25% de su límite, DB reserva 25% también.
+ * [265A-6] SMTP: si las env vars GLORY_SMTP_HOST/SMTP_HOST están disponibles,
+ * inyecta las vars WORDPRESS_SMTP_* en el container + PHP phpmailer_init en
+ * WORDPRESS_CONFIG_EXTRA para que WordPress envíe correos vía SMTP (Brevo). */
 fn build_compose_wp_db(
     wp_cpu: &str,
     wp_mem: &str,
@@ -673,8 +676,41 @@ fn build_compose_wp_db(
     ingress_network: Option<&str>,
 ) -> String {
     let traefik_labels = build_traefik_labels(route_hosts, 4, 6, ingress_network);
+
+    // SMTP injection: leer desde env vars del host (compat GLORY_SMTP_* y SMTP_*)
+    let smtp_host = std::env::var("SMTP_HOST")
+        .or_else(|_| std::env::var("GLORY_SMTP_HOST"))
+        .unwrap_or_default();
+    let smtp_has = !smtp_host.is_empty();
+    let smtp_env = if smtp_has {
+        let smtp_port = std::env::var("SMTP_PORT")
+            .or_else(|_| std::env::var("GLORY_SMTP_PORT"))
+            .unwrap_or_else(|_| "587".to_string());
+        let smtp_user = std::env::var("SMTP_USER")
+            .or_else(|_| std::env::var("GLORY_SMTP_USER"))
+            .unwrap_or_default();
+        let smtp_pass = std::env::var("SMTP_PASS")
+            .or_else(|_| std::env::var("GLORY_SMTP_PASSWORD"))
+            .unwrap_or_default();
+        let smtp_from = std::env::var("SMTP_FROM")
+            .unwrap_or_else(|_| smtp_user.clone());
+        let smtp_from_name = std::env::var("SMTP_FROM_NAME")
+            .unwrap_or_else(|_| "Nakomi Studio".to_string());
+        format!(
+            "      - WORDPRESS_SMTP_HOST={smtp_host}\n      - WORDPRESS_SMTP_PORT={smtp_port}\n      - WORDPRESS_SMTP_USER={smtp_user}\n      - WORDPRESS_SMTP_PASSWORD={smtp_pass}\n      - WORDPRESS_SMTP_FROM={smtp_from}\n      - WORDPRESS_SMTP_FROM_NAME={smtp_from_name}\n",
+        )
+    } else {
+        String::new()
+    };
+    let config_extra = if smtp_has {
+        // Minified PHP que lee WORDPRESS_SMTP_* env vars y configura phpmailer vía hook
+        "define('DISALLOW_FILE_EDIT', true);$wpg=getenv('WORDPRESS_SMTP_HOST');if($wpg){add_action('phpmailer_init',function($m){$m->isSMTP();$m->Host=$wpg;$m->Port=getenv('WORDPRESS_SMTP_PORT')?:587;$m->SMTPAuth=true;$m->Username=getenv('WORDPRESS_SMTP_USER');$m->Password=getenv('WORDPRESS_SMTP_PASSWORD');$m->From=getenv('WORDPRESS_SMTP_FROM')?:'noreply';$m->FromName=getenv('WORDPRESS_SMTP_FROM_NAME')?:'Nakomi';$m->SMTPSecure='tls';});}"
+    } else {
+        "define('DISALLOW_FILE_EDIT', true);"
+    };
+
     format!(
-        "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA=define('DISALLOW_FILE_EDIT', true);\n    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
+        "  wordpress:\n    image: 'wordpress:6.7-php8.3-apache'\n    environment:\n      - SERVICE_FQDN_WORDPRESS=\n      - WORDPRESS_DB_HOST=mariadb\n      - WORDPRESS_DB_USER=wordpress\n      - WORDPRESS_DB_PASSWORD=SERVICE_PASSWORD_DB\n      - WORDPRESS_DB_NAME=wordpress\n      - WORDPRESS_CONFIG_EXTRA={config_extra}\n{smtp_env}    volumes:\n      - 'wordpress-data:/var/www/html'\n    depends_on:\n      - mariadb\n    restart: unless-stopped\n    networks:\n      - frontend_net\n      - backend_net\n{traefik_labels}    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n      - NET_BIND_SERVICE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{wp_cpu}'\n          memory: {wp_mem}\n        reservations:\n          memory: 128M\n  mariadb:\n    image: 'mariadb:11.4'\n    environment:\n      - MYSQL_ROOT_PASSWORD=SERVICE_PASSWORD_ROOT\n      - MYSQL_DATABASE=wordpress\n      - MYSQL_USER=wordpress\n      - MYSQL_PASSWORD=SERVICE_PASSWORD_DB\n    volumes:\n      - 'mariadb-data:/var/lib/mysql'\n    restart: unless-stopped\n    networks:\n      - backend_net\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n      - SETUID\n      - SETGID\n      - DAC_OVERRIDE\n    security_opt:\n      - no-new-privileges:true\n    deploy:\n      resources:\n        limits:\n          cpus: '{db_cpu}'\n          memory: {db_mem}\n        reservations:\n          memory: 128M\n"
     )
 }
 

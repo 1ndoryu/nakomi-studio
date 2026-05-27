@@ -4,7 +4,7 @@ use tower_governor::governor::GovernorConfigBuilder;
 use tower_governor::key_extractor::SmartIpKeyExtractor;
 use tower_governor::GovernorLayer;
 
-use super::backups::{create_backup, list_backups, restore_backup};
+use super::backups::{create_backup, delete_backup, list_backups, restore_backup};
 use super::checkout::{admin_test_subscribe, create_checkout, subscribe_self};
 use super::control::{restart_hosting, start_hosting, stop_hosting};
 use super::deployments::{delete_deployment, list_deployments};
@@ -56,7 +56,7 @@ fn subscription_routes() -> Router<AppState> {
         )
         .route(
             "/hosting/subscriptions/:id/backups",
-            get(list_backups).post(create_backup),
+            get(list_backups).post(create_backup).delete(delete_backup),
         )
         .route(
             "/hosting/subscriptions/:id/assign",
