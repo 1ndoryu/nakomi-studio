@@ -65,19 +65,19 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
     const chatContext = isWordPress ? 'page:hosting-wordpress' : 'page:hosting';
     const seoTitle = isWordPress ? 'Hosting WordPress' : 'Hosting';
     const seoPath = isWordPress ? '/soluciones/hosting-wordpress' : '/soluciones/hosting';
-    const heroEtiqueta = isWordPress ? t('content.solutions.hosting.titulo', 'Hosting WordPress') : 'Hosting';
+    const heroEtiqueta = isWordPress ? t('content.solutions.hosting.titulo', 'Hosting WordPress') : t('hosting_normal_page.seo_title', 'Hosting');
     /* [155A-20] El hosting sin WordPress se presenta por caso de uso real.
      * Evita el término ambiguo "normal" y deja claro que es para sitios a medida. */
-    const heroTitulo = isWordPress ? t('hosting_page.hero_title', 'WordPress que escala contigo') : 'Hosting administrado para sitios a medida y frontends';
+    const heroTitulo = isWordPress ? t('hosting_page.hero_title', 'WordPress que escala contigo') : t('hosting_normal_page.hero_title', 'Hosting administrado para sitios a medida y frontends');
     const heroDesc = isWordPress
         ? t('hosting_page.hero_desc', 'Olvídate de la administración de servidores. WordPress pre-instalado, WP-CLI, backups automáticos y rendimiento optimizado.')
-        : 'Infraestructura Nginx administrada con SSL, SFTP y recursos aislados para publicar landings, sitios corporativos y frontends sin encargarte del servidor.';
-    const plansTitle = isWordPress ? t('hosting_page.plans_title', 'Planes de Hosting WordPress') : 'Planes de hosting';
-    const plansSubtitle = isWordPress ? t('hosting_page.plans_subtitle', 'Elige el plan que mejor se adapte a tu proyecto') : 'Elige esta opción si tu proyecto no necesita WordPress y quieres una infraestructura simple, segura y mantenida por nosotros.';
-    const featureTitle = isWordPress ? t('hosting_page.features_title', 'Todo Incluido') : 'Todo lo necesario para publicar';
+        : t('hosting_normal_page.hero_desc', 'Infraestructura Nginx administrada con SSL, SFTP y recursos aislados para publicar landings, sitios corporativos y frontends sin encargarte del servidor.');
+    const plansTitle = isWordPress ? t('hosting_page.plans_title', 'Planes de Hosting WordPress') : t('hosting_normal_page.plans_title', 'Planes de hosting');
+    const plansSubtitle = isWordPress ? t('hosting_page.plans_subtitle', 'Elige el plan que mejor se adapte a tu proyecto') : t('hosting_normal_page.plans_subtitle', 'Elige esta opción si tu proyecto no necesita WordPress y quieres una infraestructura simple, segura y mantenida por nosotros.');
+    const featureTitle = isWordPress ? t('hosting_page.features_title', 'Todo Incluido') : t('hosting_normal_page.features_title', 'Todo lo necesario para publicar');
     const featureSubtitle = isWordPress
         ? t('hosting_page.features_subtitle', 'Cada plan incluye las herramientas esenciales para mantener tu sitio rápido y seguro.')
-        : 'Cada plan incluye servidor web, SSL, SFTP y soporte operativo sin que administres contenedores.';
+        : t('hosting_normal_page.features_subtitle', 'Cada plan incluye servidor web, SSL, SFTP y soporte operativo sin que administres contenedores.');
 
     const planCards: PlanServicio[] = plans.map(plan => ({
         id: `hosting-${plan.id}`,
@@ -100,13 +100,18 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
         ? `$${lowestHostingPrice.toFixed(lowestHostingPrice % 1 === 0 ? 0 : 2)}/mes`
         : isWordPress ? '$2.48/mes' : '$3.23/mes';
 
+    const normalFeatureKeys = ['nginx', 'security', 'uptime', 'domains', 'sftp', 'support'];
     const features = isWordPress
         ? FEATURE_KEYS.map((key, i) => ({
             icono: FEATURE_ICONS[i],
             titulo: t(`content.solutions.hosting.features.${key}.titulo`, WORDPRESS_FEATURES_FALLBACK[i].titulo),
             desc: t(`content.solutions.hosting.features.${key}.desc`, WORDPRESS_FEATURES_FALLBACK[i].desc),
         }))
-        : NORMAL_FEATURES_FALLBACK;
+        : normalFeatureKeys.map((key, i) => ({
+            icono: FEATURE_ICONS[i],
+            titulo: t(`content.solutions.hosting_normal.features.${key}.titulo`, NORMAL_FEATURES_FALLBACK[i].titulo),
+            desc: t(`content.solutions.hosting_normal.features.${key}.desc`, NORMAL_FEATURES_FALLBACK[i].desc),
+        }));
 
     return (
         <LayoutPagina className="hostingPaginaMain">
@@ -114,7 +119,7 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
                 title={seoTitle}
                 description={isWordPress
                     ? `WordPress hosting optimizado con WP-CLI, backups automáticos y soporte experto. Planes desde ${lowestHostingPriceLabel} con SSL, WordPress pre-instalado y acceso SSH.`
-                    : `Hosting administrado con Nginx, SSL y SFTP. Planes desde ${lowestHostingPriceLabel} para sitios corporativos, landings y frontends sin WordPress.`}
+                    : t('hosting_normal_page.seo_desc', `Hosting administrado con Nginx, SSL y SFTP. Planes desde ${lowestHostingPriceLabel} para sitios corporativos, landings y frontends sin WordPress.`).replace('{{price}}', lowestHostingPriceLabel)}
                 path={seoPath}
             />
 
@@ -143,7 +148,7 @@ function SolucionHostingContenido({kind}: {kind: HostingSolutionKind}): JSX.Elem
 
             <SolucionHeroImagen
                 src="/assets/random/85a51ba9a4233272662e744b48f97d67.jpg"
-                alt={isWordPress ? 'Panel de hosting WordPress con infraestructura administrada.' : 'Panel de hosting con infraestructura administrada.'}
+                alt={isWordPress ? 'Panel de hosting WordPress con infraestructura administrada.' : t('hosting_normal_page.seo_title', 'Panel de hosting con infraestructura administrada.')}
                 storageKey={isWordPress ? 'nakomi-hosting-wordpress-hero-image' : 'nakomi-hosting-hero-image'}
             />
 

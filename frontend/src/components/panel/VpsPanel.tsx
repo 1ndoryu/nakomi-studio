@@ -2,6 +2,7 @@
  * Solo visible para admin. Consume GET /api/hosting/vps (proxy Contabo API). */
 
 import React from 'react';
+import {useTranslation} from 'react-i18next';
 import {Server, Cpu, HardDrive, MemoryStick, Globe, Activity} from 'lucide-react';
 import {useVpsPanel} from '../../hooks/useVpsPanel';
 import type {VpsSummary} from '../../api/hosting';
@@ -27,7 +28,7 @@ function formatUsage(used: number | null | undefined, limit: number | null | und
     return `${formatMb(used)} / ${formatMb(limit)}`;
 }
 
-function getVpsErrorMessage(error: unknown): string {
+function getVpsErrorMessage(error: unknown, t?: (key: string, fb: string) => string): string {
     const apiMessage = (error as {
         response?: {data?: {message?: string}};
     })?.response?.data?.message;
@@ -40,10 +41,11 @@ function getVpsErrorMessage(error: unknown): string {
         return error.message;
     }
 
-    return 'No se pudo conectar con la API de Contabo';
+    const fn = t || ((_: string, fb: string) => fb);
+    return fn('panel.vps_stats.error', 'No se pudo conectar con la API de Contabo');
 }
 
-function VpsCard({instance}: {instance: VpsSummary}) {
+function VpsCard({instance, t}: {instance: VpsSummary; t: (key: string, fb: string) => string}) {
     const statusClass = instance.status === 'running' || instance.status === 'configured'
         ? 'vpsStatus--running'
         : instance.status === 'stopped'
@@ -63,42 +65,42 @@ function VpsCard({instance}: {instance: VpsSummary}) {
             <div className="vpsCardStats">
                 <div className="vpsStat">
                     <Globe size={14} />
-                    <span className="vpsStatLabel">IP</span>
+                    <span className="vpsStatLabel">{t('panel.vps_stats.ip', 'IP')}</span>
                     <span className="vpsStatValor">{instance.ip}</span>
                 </div>
                 <div className="vpsStat">
                     <Activity size={14} />
-                    <span className="vpsStatLabel">Origen</span>
+                    <span className="vpsStatLabel">{t('panel.vps_stats.origin', 'Origen')}</span>
                     <span className="vpsStatValor">{instance.region}</span>
                 </div>
                 <div className="vpsStat">
                     <Cpu size={14} />
-                    <span className="vpsStatLabel">CPU</span>
+                    <span className="vpsStatLabel">{t('panel.vps_stats.cpu', 'CPU')}</span>
                     <span className="vpsStatValor">{formatCpu(instance.cpu_cores)}</span>
                 </div>
                 <div className="vpsStat">
                     <MemoryStick size={14} />
-                    <span className="vpsStatLabel">RAM</span>
+                    <span className="vpsStatLabel">{t('panel.vps_stats.ram', 'RAM')}</span>
                     <span className="vpsStatValor">{formatMb(instance.ram_mb)}</span>
                 </div>
                 <div className="vpsStat">
                     <HardDrive size={14} />
-                    <span className="vpsStatLabel">Disco</span>
+                    <span className="vpsStatLabel">{t('panel.vps_stats.disk', 'Disco')}</span>
                     <span className="vpsStatValor">{formatMb(instance.disk_mb)}</span>
                 </div>
                 <div className="vpsStat">
                     <Activity size={14} />
-                    <span className="vpsStatLabel">CPU prom.</span>
+                    <span className="vpsStatLabel">{t('panel.vps_stats.cpu_avg', 'CPU prom.')}</span>
                     <span className="vpsStatValor">{formatPercent(instance.cpu_avg_1h)}</span>
                 </div>
                 <div className="vpsStat">
                     <MemoryStick size={14} />
-                    <span className="vpsStatLabel">RAM prom.</span>
+                    <span className="vpsStatLabel">{t('panel.vps_stats.ram_avg', 'RAM prom.')}</span>
                     <span className="vpsStatValor">{formatUsage(instance.ram_used_mb, instance.ram_limit_mb)}</span>
                 </div>
                 <div className="vpsStat">
                     <HardDrive size={14} />
-                    <span className="vpsStatLabel">Disco usado</span>
+                    <span className="vpsStatLabel">{t('panel.vps_stats.disk_used', 'Disco usado')}</span>
                     <span className="vpsStatValor">{formatUsage(instance.disk_used_mb, instance.disk_limit_mb)}</span>
                 </div>
             </div>
@@ -107,13 +109,14 @@ function VpsCard({instance}: {instance: VpsSummary}) {
 }
 
 export const VpsPanel: React.FC = () => {
+    const {t} = useTranslation();
     const {instances, isLoading, error} = useVpsPanel();
 
     if (isLoading) {
         return (
             <div className="vpsLoading">
                 <Server size={28} strokeWidth={1.2} />
-                <p>Consultando VPS...</p>
+                <p>{t('panel.vps_stats.loading', 'Consultando VPS...')}</p>
             </div>
         );
     }
@@ -121,7 +124,7 @@ export const VpsPanel: React.FC = () => {
     if (error) {
         return (
             <div className="vpsError">
-                <p>{getVpsErrorMessage(error)}</p>
+                <p>{getVpsErrorMessage(error, t)}</p>
             </div>
         );
     }
@@ -139,7 +142,7 @@ export const VpsPanel: React.FC = () => {
         <div className="vpsContenedor">
             <div className="vpsLista">
                 {instances.map(inst => (
-                    <VpsCard key={inst.inventory_id} instance={inst} />
+                    <VpsCard key={inst.inventory_id} instance={inst} t={t} />
                 ))}
             </div>
         </div>

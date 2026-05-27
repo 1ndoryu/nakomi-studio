@@ -2,9 +2,11 @@
  * Inspirado en relace.ai: hero bold, demo terminal dark, features grid,
  * precios live desde useVpsCatalog, FAQ accordion.
  * [125A-5] Login como modal inline usando Modal + useAutenticacion.
- * Standalone: nav y footer propios, sin LayoutPagina. */
-
+ * Standalone: nav y footer propios, sin LayoutPagina.
+ * [i18n] Todas las cadenas hardcoded reemplazadas por t() con fallback es.
+ * Features y FAQ construidos dinámicamente desde FEATURE_KEYS/FAQ_KEYS. */
 import {useState, type ElementType} from 'react';
+import {useTranslation} from 'react-i18next';
 import {Cpu, Shield, HardDrive, TerminalSquare, Activity, Server, ChevronDown} from 'lucide-react';
 import {SEOHead} from '../components/seo/SEOHead';
 import {useVpsCatalog} from '../hooks/useVpsCatalog';
@@ -16,24 +18,34 @@ import {useAuthStore} from '../stores/authStore';
 import {navegar} from '../navegacionSPA';
 import './VpsPortalIsland.css';
 
-interface Feature { icono: ElementType; titulo: string; desc: string; }
+interface Feature {
+    icono: ElementType;
+    titulo: string;
+    desc: string;
+}
 
-const FEATURES: Feature[] = [
-    {icono: Cpu, titulo: 'Recursos dedicados', desc: 'CPU, RAM y NVMe SSD dedicados. Sin compartir nodo con otros clientes.'},
-    {icono: Shield, titulo: 'Entrega verificada', desc: 'Provisionamos el servidor después del pago y enviamos IP, usuario y acceso inicial.'},
-    {icono: HardDrive, titulo: 'NVMe o SSD', desc: 'Storage coherente con el catálogo vigente de Contabo.'},
-    {icono: TerminalSquare, titulo: 'Root + SSH', desc: 'Acceso root completo desde el día uno. Instala lo que necesites.'},
-    {icono: Activity, titulo: 'Bootstrap inicial', desc: 'Docker, firewall y hostname ya configurados. Despliega de inmediato.'},
-    {icono: Server, titulo: 'Escalado claro', desc: 'Cambia de tier cuando lo necesites. Pricing transparente sin sorpresas.'},
+/* Claves para construir features dinámicamente con i18n.
+ * Cada clave mapea a vps_portal.features.{key}.titulo / .desc */
+const FEATURE_KEYS = ['dedicated', 'verified', 'storage', 'root', 'bootstrap', 'scaling'] as const;
+const FEATURE_ICONS = [Cpu, Shield, HardDrive, TerminalSquare, Activity, Server];
+const FEATURES_FALLBACK: {titulo: string; desc: string}[] = [
+    {titulo: 'Recursos dedicados', desc: 'CPU, RAM y NVMe SSD dedicados. Sin compartir nodo con otros clientes.'},
+    {titulo: 'Entrega verificada', desc: 'Provisionamos el servidor después del pago y enviamos IP, usuario y acceso inicial.'},
+    {titulo: 'NVMe o SSD', desc: 'Storage coherente con el catálogo vigente de Contabo.'},
+    {titulo: 'Root + SSH', desc: 'Acceso root completo desde el día uno. Instala lo que necesites.'},
+    {titulo: 'Bootstrap inicial', desc: 'Docker, firewall y hostname ya configurados. Despliega de inmediato.'},
+    {titulo: 'Escalado claro', desc: 'Cambia de tier cuando lo necesites. Pricing transparente sin sorpresas.'},
 ];
 
-const FAQ_ITEMS = [
+/* FAQ construido dinámicamente con i18n. Claves q1..q5, a1..a5 */
+const FAQ_ITEMS_FALLBACK = [
     {q: '¿Cuándo se activa el VPS?', a: 'Después del pago provisionamos el servidor y enviamos los accesos cuando Contabo lo entregue. El tiempo habitual es menos de 24 h en días laborables.'},
     {q: '¿Qué incluye el bootstrap inicial?', a: 'Docker instalado y activo, firewall ufw con puertos 22, 80 y 443 abiertos, hostname configurado y MOTD con tus recursos de hardware.'},
     {q: '¿Puedo cancelar en cualquier momento?', a: 'Sí. La suscripción se cancela desde tu panel y el servidor se desprovisiona al finalizar el ciclo de facturación actual.'},
     {q: '¿Qué sistema operativo incluye?', a: 'Ubuntu 22.04 LTS por defecto. Si necesitas otra distribución contáctanos antes de completar la compra.'},
     {q: '¿Tienen IPv6?', a: 'IPv4 dedicada en todos los planes. IPv6 disponible bajo consulta para VPS 3 y VPS 4.'},
 ];
+const FAQ_KEYS = ['1', '2', '3', '4', '5'] as const;
 
 const PLANES_FALLBACK = [
     {nombre: 'Cloud VPS 10', precio: '$4.73', desc: 'Entrada dedicada para automatizaciones.', destacado: false, features: ['4 vCPU dedicados', '8 GB RAM', '75 GB NVMe o 150 GB SSD', 'Puerto de 200 Mbit/s']},
@@ -51,11 +63,11 @@ function scrollTo(id: string): void {
 }
 
 export function VpsPortalIsland(): JSX.Element {
+    const {t} = useTranslation();
     const {plans} = useVpsCatalog();
     const [faqAbierto, setFaqAbierto] = useState<number | null>(null);
     const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
     const logueado = useAuthStore(s => s.logueado);
-
     const auth = useAutenticacion(() => {
         setModalLoginAbierto(false);
         navegar('/panel');
@@ -83,14 +95,26 @@ export function VpsPortalIsland(): JSX.Element {
         }))
         : PLANES_FALLBACK;
 
+    /* Construir features con i18n — fallback español si no hay traducción */
+    const features: Feature[] = FEATURE_KEYS.map((key, i) => ({
+        icono: FEATURE_ICONS[i],
+        titulo: t(`vps_portal.features.${key}.titulo`, FEATURES_FALLBACK[i].titulo),
+        desc: t(`vps_portal.features.${key}.desc`, FEATURES_FALLBACK[i].desc),
+    }));
+
+    /* Construir FAQ con i18n */
+    const faqItems = FAQ_KEYS.map(key => ({
+        q: t(`vps_portal.faq.q${key}`, FAQ_ITEMS_FALLBACK[Number(key) - 1].q),
+        a: t(`vps_portal.faq.a${key}`, FAQ_ITEMS_FALLBACK[Number(key) - 1].a),
+    }));
+
     return (
         <div className="vpsPortal">
             <SEOHead
-                title="Nakomi VPS — Infraestructura dedicada sin intermediarios"
-                description={`Servidores VPS con recursos dedicados, root SSH, Docker listo, velocidad y tráfico visibles. Planes desde ${lowestPrice}/mes.`}
+                title={t('vps_portal.seo_title', 'Nakomi VPS — Infraestructura dedicada sin intermediarios')}
+                description={t('vps_portal.seo_desc', 'Servidores VPS con recursos dedicados, root SSH, Docker listo, velocidad y tráfico visibles. Planes desde {{price}}/mes.').replace('{{price}}', lowestPrice)}
                 path="/"
             />
-
             <nav className="vpsNavPortal">
                 <div className="vpsNavContenido">
                     <a className="vpsNavLogo" href="https://nakomi.studio">
@@ -98,52 +122,50 @@ export function VpsPortalIsland(): JSX.Element {
                         <span className="vpsNavLogoProducto">VPS</span>
                     </a>
                     <div className="vpsNavLinks">
-                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('caracteristicas')}>Características</Button>
-                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('precios')}>Precios</Button>
-                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('faq')}>FAQ</Button>
+                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('caracteristicas')}>{t('vps_portal.nav.features', 'Características')}</Button>
+                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('precios')}>{t('vps_portal.nav.pricing', 'Precios')}</Button>
+                        <Button variante="texto" className="vpsNavLink" type="button" onClick={() => scrollTo('faq')}>{t('vps_portal.nav.faq', 'FAQ')}</Button>
                     </div>
                     <div className="vpsNavAcciones">
                         <Button variante="outline" onClick={abrirPanelOLogin}>
-                            {logueado ? 'Mi panel' : 'Iniciar sesión'}
+                            {logueado ? t('vps_portal.nav.my_panel', 'Mi panel') : t('vps_portal.nav.login', 'Iniciar sesión')}
                         </Button>
-                        <Button variante="primario" onClick={() => scrollTo('precios')}>Ver planes</Button>
+                        <Button variante="primario" onClick={() => scrollTo('precios')}>{t('vps_portal.nav.view_plans', 'Ver planes')}</Button>
                     </div>
                 </div>
             </nav>
-
             <section className="vpsHero">
-                <span className="vpsHeroEtiqueta">Nakomi VPS</span>
+                <span className="vpsHeroEtiqueta">{t('vps_portal.hero.badge', 'Nakomi VPS')}</span>
                 <h1 className="vpsHeroTitulo">
-                    Infraestructura dedicada<br />
-                    <span className="vpsHeroTituloAcento">sin intermediarios.</span>
+                    {t('vps_portal.hero.title', 'Infraestructura dedicada')}<br />
+                    <span className="vpsHeroTituloAcento">{t('vps_portal.hero.title_accent', 'sin intermediarios.')}</span>
                 </h1>
                 <p className="vpsHeroSub">
-                    VPS con recursos propios, bootstrap inicial, tráfico visible y margen operativo claro.
+                    {t('vps_portal.hero.subtitle', 'VPS con recursos propios, bootstrap inicial, tráfico visible y margen operativo claro.')}
                 </p>
                 <div className="vpsHeroBotones">
-                    <Button variante="primario" onClick={() => scrollTo('precios')}>Ver planes y precios</Button>
-                    <Button variante="outline" onClick={() => scrollTo('caracteristicas')}>Características</Button>
+                    <Button variante="primario" onClick={() => scrollTo('precios')}>{t('vps_portal.hero.cta_primary', 'Ver planes y precios')}</Button>
+                    <Button variante="outline" onClick={() => scrollTo('caracteristicas')}>{t('vps_portal.hero.cta_secondary', 'Características')}</Button>
                 </div>
                 <div className="vpsHeroStats">
                     <div className="vpsHeroStat">
                         <span className="vpsHeroStatVal">100%</span>
-                        <span className="vpsHeroStatLabel">Recursos dedicados</span>
+                        <span className="vpsHeroStatLabel">{t('vps_portal.hero.stat_dedicated', 'Recursos dedicados')}</span>
                     </div>
                     <div className="vpsHeroStat">
                         <span className="vpsHeroStatVal">&lt;24h</span>
-                        <span className="vpsHeroStatLabel">Alta revisada</span>
+                        <span className="vpsHeroStatLabel">{t('vps_portal.hero.stat_provision', 'Alta revisada')}</span>
                     </div>
                     <div className="vpsHeroStat">
                         <span className="vpsHeroStatVal">desde {lowestPrice}</span>
-                        <span className="vpsHeroStatLabel">por mes</span>
+                        <span className="vpsHeroStatLabel">{t('vps_portal.hero.stat_per_month', 'por mes')}</span>
                     </div>
                 </div>
             </section>
-
             <section className="vpsDemoTerminal">
                 <div className="vpsDemoContenido">
-                    <p className="vpsDemoEtiqueta">Bootstrap inicial</p>
-                    <h2 className="vpsDemoTitulo">Tu servidor, listo para desplegar.</h2>
+                    <p className="vpsDemoEtiqueta">{t('vps_portal.demo.badge', 'Bootstrap inicial')}</p>
+                    <h2 className="vpsDemoTitulo">{t('vps_portal.demo.title', 'Tu servidor, listo para desplegar.')}</h2>
                     <div className="vpsDemoBloque" aria-label="Ejemplo de sesión SSH tras provisioning">
                         <div className="vpsDemoCabecera">
                             <span className="vpsDemoPunto vpsDemoPuntoRojo" />
@@ -153,28 +175,24 @@ export function VpsPortalIsland(): JSX.Element {
                         </div>
                         <pre className="vpsDemoCodigo">{`$ ssh root@203.0.113.42
 Ubuntu 22.04.3 LTS — Nakomi VPS 2
-
-  Docker  : ● active
-  Firewall: ● active  (22, 80, 443 open)
-  CPU     : 2 vCPU dedicated
-  RAM     : 4 GB
-  Disk    : 60 GB NVMe SSD
-
+Docker   : ● active
+Firewall : ● active (22, 80, 443 open)
+CPU      : 2 vCPU dedicated
+RAM      : 4 GB
+Disk     : 60 GB NVMe SSD
 root@nakomi-vps:~$ docker ps
 CONTAINER ID   IMAGE   STATUS
 (servidor limpio — listo para desplegar)
-
 root@nakomi-vps:~$ █`}</pre>
                     </div>
                 </div>
             </section>
-
             <section className="vpsFeatures" id="caracteristicas">
                 <div className="vpsSectionContenido">
-                    <h2 className="vpsSectionTitulo">Todo lo que necesitas para operar</h2>
-                    <p className="vpsSectionSub">Sin servicios gestionados innecesarios, sin overhead de plataforma.</p>
+                    <h2 className="vpsSectionTitulo">{t('vps_portal.features.title', 'Todo lo que necesitas para operar')}</h2>
+                    <p className="vpsSectionSub">{t('vps_portal.features.subtitle', 'Sin servicios gestionados innecesarios, sin overhead de plataforma.')}</p>
                     <div className="vpsFeaturesGrid">
-                        {FEATURES.map((f) => {
+                        {features.map((f) => {
                             const Icono = f.icono;
                             return (
                                 <div key={f.titulo} className="vpsFeatureCard">
@@ -187,37 +205,35 @@ root@nakomi-vps:~$ █`}</pre>
                     </div>
                 </div>
             </section>
-
             <section className="vpsPrecios" id="precios">
                 <div className="vpsSectionContenido">
-                    <h2 className="vpsSectionTitulo">Planes claros, recursos reales</h2>
-                    <p className="vpsSectionSub">Suscripción mensual. Sin contratos anuales. Cancela cuando quieras.</p>
+                    <h2 className="vpsSectionTitulo">{t('vps_portal.pricing.title', 'Planes claros, recursos reales')}</h2>
+                    <p className="vpsSectionSub">{t('vps_portal.pricing.subtitle', 'Suscripción mensual. Sin contratos anuales. Cancela cuando quieras.')}</p>
                     <div className="vpsPreciosGrid">
                         {preciosActivos.map((plan) => (
                             <div key={plan.nombre} className={`vpsPrecioCard${plan.destacado ? ' vpsPrecioCardDestacado' : ''}`}>
                                 <h3 className="vpsPrecioNombre">{plan.nombre}</h3>
                                 <div className="vpsPrecioValor">
                                     <span className="vpsPrecioCantidad">{plan.precio}</span>
-                                    <span className="vpsPrecioPeriodo">/mes</span>
+                                    <span className="vpsPrecioPeriodo">{t('vps_portal.pricing.per_month', '/mes')}</span>
                                 </div>
                                 <p className="vpsPrecioDesc">{plan.desc}</p>
                                 <ul className="vpsPrecioFeatures">
                                     {plan.features.map((f) => <li key={f}>{f}</li>)}
                                 </ul>
                                 <Button variante="outline" onClick={() => navegar(`/soluciones/vps/configurar/${plans.find(p => p.display_name === plan.nombre)?.tier_name ?? ''}`)}>
-                                    Configurar {plan.nombre}
+                                    {t('vps_portal.pricing.configure', 'Configurar')} {plan.nombre}
                                 </Button>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
-
             <section className="vpsFaq" id="faq">
                 <div className="vpsSectionContenido vpsSectionAngosto">
-                    <h2 className="vpsSectionTitulo">Preguntas frecuentes</h2>
+                    <h2 className="vpsSectionTitulo">{t('vps_portal.faq.title', 'Preguntas frecuentes')}</h2>
                     <div className="vpsFaqLista">
-                        {FAQ_ITEMS.map((item, i) => (
+                        {faqItems.map((item, i) => (
                             <div key={item.q} className="vpsFaqItem">
                                 <button
                                     type="button"
@@ -234,30 +250,27 @@ root@nakomi-vps:~$ █`}</pre>
                     </div>
                 </div>
             </section>
-
             <section className="vpsCtaFinal">
-                <h2 className="vpsCtaFinalTitulo">Infraestructura lista en minutos.</h2>
-                <p className="vpsCtaFinalSub">Configura tu VPS hoy y completa el checkout con los recursos visibles antes de pagar.</p>
-                <Button variante="primario" onClick={() => scrollTo('precios')}>Ver planes</Button>
+                <h2 className="vpsCtaFinalTitulo">{t('vps_portal.cta.title', 'Infraestructura lista en minutos.')}</h2>
+                <p className="vpsCtaFinalSub">{t('vps_portal.cta.subtitle', 'Configura tu VPS hoy y completa el checkout con los recursos visibles antes de pagar.')}</p>
+                <Button variante="primario" onClick={() => scrollTo('precios')}>{t('vps_portal.cta.button', 'Ver planes')}</Button>
             </section>
-
             <footer className="vpsFooterPortal">
                 <div className="vpsFooterContenido">
-                    <span className="vpsFooterMarca">Nakomi VPS</span>
+                    <span className="vpsFooterMarca">{t('vps_portal.footer.brand', 'Nakomi VPS')}</span>
                     <div className="vpsFooterLinks">
-                        <a href="https://nakomi.studio" className="vpsFooterLink">Nakomi Studio</a>
-                        <a href="/politica-privacidad" className="vpsFooterLink">Privacidad</a>
+                        <a href="https://nakomi.studio" className="vpsFooterLink">{t('vps_portal.footer.studio', 'Nakomi Studio')}</a>
+                        <a href="/politica-privacidad" className="vpsFooterLink">{t('vps_portal.footer.privacy', 'Privacidad')}</a>
                     </div>
                     <span className="vpsFooterCopy">© {new Date().getFullYear()} Nakomi Studio</span>
                 </div>
             </footer>
-
             <Modal abierto={modalLoginAbierto} onCerrar={() => setModalLoginAbierto(false)}>
                 <ModalBody as="form" onSubmit={auth.handleLogin}>
-                    <p className="modalTexto">Accede al panel para ver tus solicitudes y servidores.</p>
+                    <p className="modalTexto">{t('vps_portal.login.message', 'Accede al panel para ver tus solicitudes y servidores.')}</p>
                     {auth.error && <p className="vpsLoginError">{auth.error}</p>}
                     <div className="modalCampo">
-                        <label className="modalEtiqueta" htmlFor="vps-email">Correo</label>
+                        <label className="modalEtiqueta" htmlFor="vps-email">{t('vps_portal.login.email', 'Correo')}</label>
                         <Input
                             id="vps-email"
                             type="email"
@@ -269,7 +282,7 @@ root@nakomi-vps:~$ █`}</pre>
                         />
                     </div>
                     <div className="modalCampo">
-                        <label className="modalEtiqueta" htmlFor="vps-password">Contraseña</label>
+                        <label className="modalEtiqueta" htmlFor="vps-password">{t('vps_portal.login.password', 'Contraseña')}</label>
                         <Input
                             id="vps-password"
                             type="password"
@@ -282,10 +295,10 @@ root@nakomi-vps:~$ █`}</pre>
                     </div>
                     <div className="modalAcciones">
                         <Button type="button" variante="outline" onClick={() => setModalLoginAbierto(false)}>
-                            Cancelar
+                            {t('vps_portal.login.cancel', 'Cancelar')}
                         </Button>
                         <Button type="submit" variante="primario" disabled={auth.cargando}>
-                            {auth.cargando ? 'Entrando...' : 'Entrar'}
+                            {auth.cargando ? t('vps_portal.login.entering', 'Entrando...') : t('vps_portal.login.enter', 'Entrar')}
                         </Button>
                     </div>
                 </ModalBody>

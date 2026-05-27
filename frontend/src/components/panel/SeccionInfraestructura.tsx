@@ -4,6 +4,7 @@
  * Separado en su propia entrada del sidebar porque no es "hosting de clientes". */
 
 import React, {useState} from 'react';
+import {useTranslation} from 'react-i18next';
 import {Button} from '../ui/Button';
 import {VpsPanel} from './VpsPanel';
 import {DeploymentsPanel} from './DeploymentsPanel';
@@ -12,6 +13,7 @@ import './SeccionInfraestructura.css';
 type TabInfra = 'despliegues' | 'vps';
 
 export const SeccionInfraestructura: React.FC = () => {
+    const {t} = useTranslation();
     const [tab, setTab] = useState<TabInfra>('despliegues');
 
     return (
@@ -23,7 +25,7 @@ export const SeccionInfraestructura: React.FC = () => {
                     className={`infraTab ${tab === 'despliegues' ? 'infraTab--activa' : ''}`}
                     onClick={() => setTab('despliegues')}
                 >
-                    Despliegues
+                    {t('panel.infra.tab_deployments', 'Despliegues')}
                 </Button>
                 <Button
                     type="button"
@@ -31,7 +33,7 @@ export const SeccionInfraestructura: React.FC = () => {
                     className={`infraTab ${tab === 'vps' ? 'infraTab--activa' : ''}`}
                     onClick={() => setTab('vps')}
                 >
-                    VPS
+                    {t('panel.infra.tab_vps', 'VPS')}
                 </Button>
             </div>
 

@@ -179,7 +179,49 @@
         "social_title": "Social Networks",
         "website": "Website",
         "save": "Save changes",
-        "saved_success": "Profile updated successfully"
+        "saved_success": "Profile updated successfully",
+        "wallet": "My balance",
+        "infra": {
+            "tab_deployments": "Deployments",
+            "tab_vps": "VPS"
+        },
+        "deployments": {
+            "loading": "Querying real deployments across all VPS...",
+            "empty": "No real deployments found in any configured VPS",
+            "error": "Could not query Coolify to list real deployments",
+            "col_name": "Name",
+            "col_status": "Status",
+            "col_plan": "Plan",
+            "col_user": "User",
+            "col_cpu": "CPU",
+            "col_ram": "RAM",
+            "col_disk": "Disk",
+            "no_plan": "No plan",
+            "configured_server": "Configured server",
+            "create_subscription": "Create linked subscription",
+            "delete_deployment": "Delete deployment",
+            "actions_aria": "Deployment actions",
+            "subscription_created": "Subscription created and linked to deployment",
+            "deployment_deleted": "Deployment deleted from Coolify",
+            "confirm_delete": "Delete this deployment from Coolify?",
+            "deleting": "Deleting..."
+        },
+        "vps_stats": {
+            "ip": "IP",
+            "origin": "Origin",
+            "cpu": "CPU",
+            "ram": "RAM",
+            "disk": "Disk",
+            "cpu_avg": "CPU avg",
+            "ram_avg": "RAM avg",
+            "disk_used": "Disk used",
+            "loading": "Querying VPS...",
+            "error": "Could not connect to Contabo API"
+        },
+        "hosting_events": {
+            "loading": "Loading...",
+            "empty": "No registered events"
+        }
     },
     "accessibility": {
         "logo_home": "Nakomi - Go to home",
@@ -213,5 +255,109 @@
         "features_subtitle": "Every plan includes the essential tools to keep your site fast and secure.",
         "plans_title": "Hosting Plans",
         "plans_subtitle": "Choose the plan that best fits your project"
+    },
+    "hosting_normal_page": {
+        "hero_title": "Managed hosting for custom sites and frontends",
+        "hero_desc": "Managed Nginx infrastructure with SSL, SFTP, and isolated resources to publish landings, corporate sites, and frontends without handling the server.",
+        "view_plans": "View Plans",
+        "features_title": "Everything you need to publish",
+        "features_subtitle": "Each plan includes web server, SSL, SFTP, and operational support without managing containers.",
+        "plans_title": "Hosting plans",
+        "plans_subtitle": "Choose this option if your project doesn't need WordPress and you want simple, secure, maintained infrastructure.",
+        "seo_title": "Hosting",
+        "seo_desc": "Managed hosting with Nginx, SSL and SFTP. Plans from {{price}} for corporate sites, landings and frontends without WordPress."
+    },
+    "vps_portal": {
+        "seo_title": "Nakomi VPS — Dedicated infrastructure without middlemen",
+        "seo_desc": "VPS servers with dedicated resources, root SSH, Docker ready, speed and traffic visible. Plans from {{price}}/mo.",
+        "nav": {
+            "features": "Features",
+            "pricing": "Pricing",
+            "faq": "FAQ",
+            "my_panel": "My panel",
+            "login": "Sign in",
+            "view_plans": "View plans"
+        },
+        "hero": {
+            "badge": "Nakomi VPS",
+            "title": "Dedicated infrastructure",
+            "title_accent": "without middlemen.",
+            "subtitle": "VPS with own resources, initial bootstrap, visible traffic and clear operational margin.",
+            "cta_primary": "View plans and pricing",
+            "cta_secondary": "Features",
+            "stat_dedicated": "Dedicated resources",
+            "stat_provision": "Provisioning",
+            "stat_per_month": "per month"
+        },
+        "demo": {
+            "badge": "Initial bootstrap",
+            "title": "Your server, ready to deploy."
+        },
+        "features": {
+            "title": "Everything you need to operate",
+            "subtitle": "No unnecessary managed services, no platform overhead.",
+            "dedicated": {
+                "titulo": "Dedicated resources",
+                "desc": "Dedicated CPU, RAM and NVMe SSD. No shared nodes with other clients."
+            },
+            "verified": {
+                "titulo": "Verified delivery",
+                "desc": "We provision the server after payment and send IP, user and initial access."
+            },
+            "storage": {
+                "titulo": "NVMe or SSD",
+                "desc": "Storage consistent with the current Contabo catalog."
+            },
+            "root": {
+                "titulo": "Root + SSH",
+                "desc": "Full root access from day one. Install whatever you need."
+            },
+            "bootstrap": {
+                "titulo": "Initial bootstrap",
+                "desc": "Docker, firewall and hostname already configured. Deploy immediately."
+            },
+            "scaling": {
+                "titulo": "Clear scaling",
+                "desc": "Change tiers whenever you need. Transparent pricing with no surprises."
+            }
+        },
+        "pricing": {
+            "title": "Clear plans, real resources",
+            "subtitle": "Monthly subscription. No annual contracts. Cancel anytime.",
+            "per_month": "/mo",
+            "configure": "Configure"
+        },
+        "faq": {
+            "title": "Frequently asked questions",
+            "q1": "When is the VPS activated?",
+            "a1": "After payment we provision the server and send access once Contabo delivers it. Usual time is less than 24h on business days.",
+            "q2": "What does the initial bootstrap include?",
+            "a2": "Docker installed and active, ufw firewall with ports 22, 80 and 443 open, configured hostname and MOTD with your hardware resources.",
+            "q3": "Can I cancel anytime?",
+            "a3": "Yes. The subscription is cancelled from your panel and the server is deprovisioned at the end of the current billing cycle.",
+            "q4": "What OS is included?",
+            "a4": "Ubuntu 22.04 LTS by default. If you need another distribution, contact us before completing the purchase.",
+            "q5": "Do you have IPv6?",
+            "a5": "Dedicated IPv4 on all plans. IPv6 available on request for VPS 3 and VPS 4."
+        },
+        "cta": {
+            "title": "Infrastructure ready in minutes.",
+            "subtitle": "Configure your VPS today and complete checkout with visible resources before paying.",
+            "button": "View plans"
+        },
+        "footer": {
+            "brand": "Nakomi VPS",
+            "studio": "Nakomi Studio",
+            "privacy": "Privacy"
+        },
+        "login": {
+            "message": "Sign in to your panel to view your requests and servers.",
+            "email": "Email",
+            "password": "Password",
+            "cancel": "Cancel",
+            "entering": "Signing in...",
+            "enter": "Sign in"
+        }
     }
 }
+    

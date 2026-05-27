@@ -167,20 +167,6 @@
         "back_login": "Volver al login",
         "back_login_text": "Volver al inicio de sesión"
     },
-    "panel": {
-        "profile_intro": "Personaliza tu perfil público. Esta información se usará en tus testimonios y comentarios.",
-        "change_photo": "Cambiar foto",
-        "photo_help": "JPG, PNG. Max 2MB.",
-        "display_name": "Nombre para mostrar",
-        "display_name_placeholder": "Tu nombre público",
-        "email": "Email",
-        "bio_label": "Descripción",
-        "bio_placeholder": "Cuéntanos sobre ti...",
-        "social_title": "Redes Sociales",
-        "website": "Sitio Web",
-        "save": "Guardar cambios",
-        "saved_success": "Perfil actualizado correctamente"
-    },
     "accessibility": {
         "logo_home": "Nakomi - Ir al inicio",
         "close_menu": "Cerrar menú",
@@ -213,5 +199,164 @@
         "features_subtitle": "Cada plan incluye las herramientas esenciales para mantener tu sitio rápido y seguro.",
         "plans_title": "Planes de Hosting",
         "plans_subtitle": "Elige el plan que mejor se adapte a tu proyecto"
+    },
+    "hosting_normal_page": {
+        "hero_title": "Hosting administrado para sitios a medida y frontends",
+        "hero_desc": "Infraestructura Nginx administrada con SSL, SFTP y recursos aislados para publicar landings, sitios corporativos y frontends sin encargarte del servidor.",
+        "view_plans": "Ver Planes",
+        "features_title": "Todo lo necesario para publicar",
+        "features_subtitle": "Cada plan incluye servidor web, SSL, SFTP y soporte operativo sin que administres contenedores.",
+        "plans_title": "Planes de hosting",
+        "plans_subtitle": "Elige esta opción si tu proyecto no necesita WordPress y quieres una infraestructura simple, segura y mantenida por nosotros.",
+        "seo_title": "Hosting",
+        "seo_desc": "Hosting administrado con Nginx, SSL y SFTP. Planes desde {{price}} para sitios corporativos, landings y frontends sin WordPress."
+    },
+    "panel": {
+        "profile_intro": "Personaliza tu perfil público. Esta información se usará en tus testimonios y comentarios.",
+        "change_photo": "Cambiar foto",
+        "photo_help": "JPG, PNG. Max 2MB.",
+        "display_name": "Nombre para mostrar",
+        "display_name_placeholder": "Tu nombre público",
+        "email": "Email",
+        "bio_label": "Descripción",
+        "bio_placeholder": "Cuéntanos sobre ti...",
+        "social_title": "Redes Sociales",
+        "website": "Sitio Web",
+        "save": "Guardar cambios",
+        "saved_success": "Perfil actualizado correctamente",
+        "wallet": "Mi saldo",
+        "infra": {
+            "tab_deployments": "Despliegues",
+            "tab_vps": "VPS"
+        },
+        "deployments": {
+            "loading": "Consultando despliegues reales de todas las VPS...",
+            "empty": "No se encontraron despliegues reales en ninguna VPS configurada",
+            "error": "No se pudo consultar Coolify para listar los despliegues reales",
+            "col_name": "Nombre",
+            "col_status": "Estado",
+            "col_plan": "Plan",
+            "col_user": "Usuario",
+            "col_cpu": "CPU",
+            "col_ram": "RAM",
+            "col_disk": "Disco",
+            "no_plan": "Sin plan",
+            "configured_server": "Servidor configurado",
+            "create_subscription": "Crear suscripción vinculada",
+            "delete_deployment": "Eliminar despliegue",
+            "actions_aria": "Acciones del despliegue",
+            "subscription_created": "Suscripción creada y vinculada al despliegue",
+            "deployment_deleted": "Despliegue eliminado de Coolify",
+            "confirm_delete": "¿Eliminar este despliegue de Coolify?",
+            "deleting": "Eliminando..."
+        },
+        "vps_stats": {
+            "ip": "IP",
+            "origin": "Origen",
+            "cpu": "CPU",
+            "ram": "RAM",
+            "disk": "Disco",
+            "cpu_avg": "CPU prom.",
+            "ram_avg": "RAM prom.",
+            "disk_used": "Disco usado",
+            "loading": "Consultando VPS...",
+            "error": "No se pudo conectar con la API de Contabo"
+        },
+        "hosting_events": {
+            "loading": "Cargando...",
+            "empty": "Sin eventos registrados"
+        }
+    },
+    "vps_portal": {
+        "seo_title": "Nakomi VPS — Infraestructura dedicada sin intermediarios",
+        "seo_desc": "Servidores VPS con recursos dedicados, root SSH, Docker listo, velocidad y tráfico visibles. Planes desde {{price}}/mes.",
+        "nav": {
+            "features": "Características",
+            "pricing": "Precios",
+            "faq": "FAQ",
+            "my_panel": "Mi panel",
+            "login": "Iniciar sesión",
+            "view_plans": "Ver planes"
+        },
+        "hero": {
+            "badge": "Nakomi VPS",
+            "title": "Infraestructura dedicada",
+            "title_accent": "sin intermediarios.",
+            "subtitle": "VPS con recursos propios, bootstrap inicial, tráfico visible y margen operativo claro.",
+            "cta_primary": "Ver planes y precios",
+            "cta_secondary": "Características",
+            "stat_dedicated": "Recursos dedicados",
+            "stat_provision": "Alta revisada",
+            "stat_per_month": "por mes"
+        },
+        "demo": {
+            "badge": "Bootstrap inicial",
+            "title": "Tu servidor, listo para desplegar."
+        },
+        "features": {
+            "title": "Todo lo que necesitas para operar",
+            "subtitle": "Sin servicios gestionados innecesarios, sin overhead de plataforma.",
+            "dedicated": {
+                "titulo": "Recursos dedicados",
+                "desc": "CPU, RAM y NVMe SSD dedicados. Sin compartir nodo con otros clientes."
+            },
+            "verified": {
+                "titulo": "Entrega verificada",
+                "desc": "Provisionamos el servidor después del pago y enviamos IP, usuario y acceso inicial."
+            },
+            "storage": {
+                "titulo": "NVMe o SSD",
+                "desc": "Storage coherente con el catálogo vigente de Contabo."
+            },
+            "root": {
+                "titulo": "Root + SSH",
+                "desc": "Acceso root completo desde el día uno. Instala lo que necesites."
+            },
+            "bootstrap": {
+                "titulo": "Bootstrap inicial",
+                "desc": "Docker, firewall y hostname ya configurados. Despliega de inmediato."
+            },
+            "scaling": {
+                "titulo": "Escalado claro",
+                "desc": "Cambia de tier cuando lo necesites. Pricing transparente sin sorpresas."
+            }
+        },
+        "pricing": {
+            "title": "Planes claros, recursos reales",
+            "subtitle": "Suscripción mensual. Sin contratos anuales. Cancela cuando quieras.",
+            "per_month": "/mes",
+            "configure": "Configurar"
+        },
+        "faq": {
+            "title": "Preguntas frecuentes",
+            "q1": "¿Cuándo se activa el VPS?",
+            "a1": "Después del pago provisionamos el servidor y enviamos los accesos cuando Contabo lo entregue. El tiempo habitual es menos de 24 h en días laborables.",
+            "q2": "¿Qué incluye el bootstrap inicial?",
+            "a2": "Docker instalado y activo, firewall ufw con puertos 22, 80 y 443 abiertos, hostname configurado y MOTD con tus recursos de hardware.",
+            "q3": "¿Puedo cancelar en cualquier momento?",
+            "a3": "Sí. La suscripción se cancela desde tu panel y el servidor se desprovisiona al finalizar el ciclo de facturación actual.",
+            "q4": "¿Qué sistema operativo incluye?",
+            "a4": "Ubuntu 22.04 LTS por defecto. Si necesitas otra distribución contáctanos antes de completar la compra.",
+            "q5": "¿Tienen IPv6?",
+            "a5": "IPv4 dedicada en todos los planes. IPv6 disponible bajo consulta para VPS 3 y VPS 4."
+        },
+        "cta": {
+            "title": "Infraestructura lista en minutos.",
+            "subtitle": "Configura tu VPS hoy y completa el checkout con los recursos visibles antes de pagar.",
+            "button": "Ver planes"
+        },
+        "footer": {
+            "brand": "Nakomi VPS",
+            "studio": "Nakomi Studio",
+            "privacy": "Privacidad"
+        },
+        "login": {
+            "message": "Accede al panel para ver tus solicitudes y servidores.",
+            "email": "Correo",
+            "password": "Contraseña",
+            "cancel": "Cancelar",
+            "entering": "Entrando...",
+            "enter": "Entrar"
+        }
     }
 }

@@ -179,7 +179,49 @@
         "social_title": "ソーシャルネットワーク",
         "website": "ウェブサイト",
         "save": "変更を保存",
-        "saved_success": "プロフィールが正常に更新されました"
+        "saved_success": "プロフィールが正常に更新されました",
+        "wallet": "残高",
+        "infra": {
+            "tab_deployments": "デプロイ",
+            "tab_vps": "VPS"
+        },
+        "deployments": {
+            "loading": "全VPSの実際のデプロイを確認中...",
+            "empty": "設定済みVPSに実際のデプロイが見つかりませんでした",
+            "error": "Coolifyへの問い合わせで実際のデプロイを取得できませんでした",
+            "col_name": "名前",
+            "col_status": "ステータス",
+            "col_plan": "プラン",
+            "col_user": "ユーザー",
+            "col_cpu": "CPU",
+            "col_ram": "RAM",
+            "col_disk": "ディスク",
+            "no_plan": "プランなし",
+            "configured_server": "設定済みサーバー",
+            "create_subscription": "リンクされたサブスクリプションを作成",
+            "delete_deployment": "デプロイを削除",
+            "actions_aria": "デプロイアクション",
+            "subscription_created": "サブスクリプションを作成しデプロイにリンクしました",
+            "deployment_deleted": "デプロイをCoolifyから削除しました",
+            "confirm_delete": "このデプロイをCoolifyから削除しますか？",
+            "deleting": "削除中..."
+        },
+        "vps_stats": {
+            "ip": "IP",
+            "origin": "提供元",
+            "cpu": "CPU",
+            "ram": "RAM",
+            "disk": "ディスク",
+            "cpu_avg": "CPU平均",
+            "ram_avg": "RAM平均",
+            "disk_used": "使用中ディスク",
+            "loading": "VPSを確認中...",
+            "error": "Contabo APIに接続できませんでした"
+        },
+        "hosting_events": {
+            "loading": "読み込み中...",
+            "empty": "登録されたイベントはありません"
+        }
     },
     "accessibility": {
         "logo_home": "Nakomi - ホームに移動",
@@ -213,5 +255,109 @@
         "features_subtitle": "すべてのプランに、サイトを高速かつ安全に保つための必須ツールが含まれています。",
         "plans_title": "ホスティングプラン",
         "plans_subtitle": "プロジェクトに最適なプランをお選びください"
+    },
+    "hosting_normal_page": {
+        "hero_title": "カスタムサイトとフロントエンドのためのマネージドホスティング",
+        "hero_desc": "Nginx管理インフラにSSL、SFTP、分離リソースを備え、サーバー管理不要でランディングページ、コーポレートサイト、フロントエンドを公開できます。",
+        "view_plans": "プランを見る",
+        "features_title": "公開に必要なすべて",
+        "features_subtitle": "各プランにはウェブサーバー、SSL、SFTP、運用サポートが含まれ、コンテナ管理は不要です。",
+        "plans_title": "ホスティングプラン",
+        "plans_subtitle": "WordPressを必要とせず、シンプルで安全、メンテナンス済みのインフラをご希望の場合はこちらをお選びください。",
+        "seo_title": "ホスティング",
+        "seo_desc": "Nginx、SSL、SFTP対応のマネージドホスティング。WordPress不要のコーポレートサイト、ランディングページ、フロントエンド向けプランは{{price}}から。"
+    },
+    "vps_portal": {
+        "seo_title": "Nakomi VPS — 中介者のいない専用インフラ",
+        "seo_desc": "専用リソース、root SSH、Docker対応、速度・トラフィック可視化のVPSサーバー。{{price}}/月からのプラン。",
+        "nav": {
+            "features": "特徴",
+            "pricing": "料金",
+            "faq": "FAQ",
+            "my_panel": "マイパネル",
+            "login": "ログイン",
+            "view_plans": "プランを見る"
+        },
+        "hero": {
+            "badge": "Nakomi VPS",
+            "title": "専用インフラ",
+            "title_accent": "中介者なし。",
+            "subtitle": "独自リソース、初期ブートストラップ、トラフィック可視化、明確な運用マージンを備えたVPS。",
+            "cta_primary": "プランと料金を見る",
+            "cta_secondary": "特徴",
+            "stat_dedicated": "専用リソース",
+            "stat_provision": "プロビジョニング",
+            "stat_per_month": "月額"
+        },
+        "demo": {
+            "badge": "初期ブートストラップ",
+            "title": "デプロイ準備完了のサーバー。"
+        },
+        "features": {
+            "title": "運用に必要なすべて",
+            "subtitle": "不要なマネージドサービスなし、プラットフォームのオーバーヘッドなし。",
+            "dedicated": {
+                "titulo": "専用リソース",
+                "desc": "専用CPU、RAM、NVMe SSD。他のクライアントとのノード共有なし。"
+            },
+            "verified": {
+                "titulo": "検証済みデリバリー",
+                "desc": "支払い後にサーバーをプロビジョニングし、IP、ユーザー、初期アクセスをお送りします。"
+            },
+            "storage": {
+                "titulo": "NVMeまたはSSD",
+                "desc": "Contaboの現行カタログと一貫性のあるストレージ。"
+            },
+            "root": {
+                "titulo": "Root + SSH",
+                "desc": "初日からのフルrootアクセス。必要なものをインストール。"
+            },
+            "bootstrap": {
+                "titulo": "初期ブートストラップ",
+                "desc": "Docker、ファイアウォール、ホスト名がすでに設定済み。すぐにデプロイ。"
+            },
+            "scaling": {
+                "titulo": "明確なスケーリング",
+                "desc": "必要に応じてティアを変更。驚きのない透明な料金。"
+            }
+        },
+        "pricing": {
+            "title": "明確なプラン、リアルなリソース",
+            "subtitle": "月額サブスクリプション。年間契約なし。いつでもキャンセル可能。",
+            "per_month": "/月",
+            "configure": "設定"
+        },
+        "faq": {
+            "title": "よくある質問",
+            "q1": "VPSはいつ有効になりますか？",
+            "a1": "支払い後にサーバーをプロビジョニングし、Contaboの配達後アクセスをお送りします。通常の営業日は24時間以内。",
+            "q2": "初期ブートストラップには何が含まれますか？",
+            "a2": "Dockerインストール済み・有効化、ufwファイアウォールでポート22、80、443開放、ホスト名設定済み、ハードウェアリソース付きMOTD。",
+            "q3": "いつでもキャンセルできますか？",
+            "a3": "はい。パネルからサブスクリプションをキャンセルし、現在の請求サイクル終了時にサーバーはデプロビジョンされます。",
+            "q4": "どのOSが含まれますか？",
+            "a4": "デフォルトでUbuntu 22.04 LTS。別のディストリビューションが必要な場合は購入前にご連絡ください。",
+            "q5": "IPv6はありますか？",
+            "a5": "全プランに専用IPv4。VPS 3およびVPS 4ではリクエストによりIPv6利用可能。"
+        },
+        "cta": {
+            "title": "数分でインフラ準備完了。",
+            "subtitle": "今すぐVPSを設定し、支払い前にリソースを確認してチェックアウトを完了。",
+            "button": "プランを見る"
+        },
+        "footer": {
+            "brand": "Nakomi VPS",
+            "studio": "Nakomi Studio",
+            "privacy": "プライバシー"
+        },
+        "login": {
+            "message": "パネルにログインしてリクエストとサーバーを確認。",
+            "email": "メール",
+            "password": "パスワード",
+            "cancel": "キャンセル",
+            "entering": "ログイン中...",
+            "enter": "ログイン"
+        }
     }
 }
+    

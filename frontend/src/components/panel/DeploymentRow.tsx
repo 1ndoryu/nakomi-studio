@@ -1,4 +1,5 @@
 import {useState} from 'react';
+import {useTranslation} from 'react-i18next';
 import {Globe, MoreVertical, PlusCircle, Server, Trash2, X} from 'lucide-react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import type {CoolifyDeployment} from '../../api/hosting';
@@ -11,11 +12,12 @@ import {Modal} from '../ui/Modal';
 import {CreateHostingForm} from './HostingCreateForm';
 import {ResourceUsageChart} from './ResourceUsageChart';
 
-export function getDeploymentPanelErrorMessage(error: unknown): string {
+export function getDeploymentPanelErrorMessage(error: unknown, t?: (key: string, fallback: string) => string): string {
     const apiMessage = (error as {response?: {data?: {message?: string}}})?.response?.data?.message;
     if (typeof apiMessage === 'string' && apiMessage.trim()) return apiMessage;
     if (error instanceof Error && error.message) return error.message;
-    return 'No se pudo consultar Coolify para listar los despliegues reales';
+    const fn = t || ((_: string, fb: string) => fb);
+    return fn('panel.deployments.error', 'No se pudo consultar Coolify para listar los despliegues reales');
 }
 
 function isGenericServerLabel(value: string | null | undefined): boolean {
@@ -23,10 +25,11 @@ function isGenericServerLabel(value: string | null | undefined): boolean {
     return ['', 'localhost', '127.0.0.1', '::1', 'local'].includes(value.trim().toLowerCase());
 }
 
-function getVisibleServerLabel(deployment: CoolifyDeployment): string {
+function getVisibleServerLabel(deployment: CoolifyDeployment, t?: (key: string, fb: string) => string): string {
     if (!isGenericServerLabel(deployment.server_label)) return deployment.server_label;
     if (!isGenericServerLabel(deployment.server_name)) return deployment.server_name as string;
-    return 'Servidor configurado';
+    const fn = t || ((_: string, fb: string) => fb);
+    return fn('panel.deployments.configured_server', 'Servidor configurado');
 }
 
 function formatStatus(status: string): string {
@@ -85,8 +88,11 @@ function isWordPressDeployment(plan: string | null): boolean {
     return Boolean(plan && !plan.startsWith('normal-'));
 }
 
-function getDeploymentTypeLabel(plan: string | null): string {
-    if (!plan) return 'Sin plan';
+function getDeploymentTypeLabel(plan: string | null, t?: (key: string, fb: string) => string): string {
+    if (!plan) {
+        const fn = t || ((_: string, fb: string) => fb);
+        return fn('panel.deployments.no_plan', 'Sin plan');
+    }
     return HOSTING_PLAN_LABELS[plan] || plan;
 }
 
@@ -101,9 +107,10 @@ function DeploymentContextMenu({deployment, onCreateSubscription, onDeleteDeploy
     const [abierto, setAbierto] = useState(false);
     if (deployment.linked_subscription_id) return null;
 
+    const {t} = useTranslation();
     const items: MenuContextualItem[] = [
-        {id: 'create-subscription', label: 'Crear suscripción vinculada', icon: <PlusCircle size={14} />, onSelect: onCreateSubscription},
-        {id: 'delete-deployment', label: 'Eliminar despliegue', icon: <Trash2 size={14} />, danger: true, disabled: isDeleting, onSelect: onDeleteDeployment},
+        {id: 'create-subscription', label: t('panel.deployments.create_subscription', 'Crear suscripción vinculada'), icon: <PlusCircle size={14} />, onSelect: onCreateSubscription},
+        {id: 'delete-deployment', label: t('panel.deployments.delete_deployment', 'Eliminar despliegue'), icon: <Trash2 size={14} />, danger: true, disabled: isDeleting, onSelect: onDeleteDeployment},
     ];
 
     return (
@@ -112,7 +119,7 @@ function DeploymentContextMenu({deployment, onCreateSubscription, onDeleteDeploy
             onToggle={() => setAbierto(value => !value)}
             onCerrar={() => setAbierto(false)}
             items={items}
-            ariaLabel="Acciones del despliegue"
+            ariaLabel={t('panel.deployments.actions_aria', 'Acciones del despliegue')}
             triggerContent={<MoreVertical size={16} />}
         />
     );
@@ -126,12 +133,13 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
     const isLinked = Boolean(deployment.linked_subscription_id);
     const fqdn = deployment.fqdn?.trim() || null;
     const isWp = isWordPressDeployment(deployment.linked_subscription_plan);
-    const serverLabel = getVisibleServerLabel(deployment);
+    const {t} = useTranslation();
+    const serverLabel = getVisibleServerLabel(deployment, t);
 
     const createMutation = useMutation({
         mutationFn: apiCreateHostingSubscription,
         onSuccess: () => {
-            toast.success('Suscripción creada y vinculada al despliegue');
+            toast.success(t('panel.deployments.subscription_created', 'Suscripción creada y vinculada al despliegue'));
             void queryClient.invalidateQueries({queryKey: ['hosting-subscriptions']});
             void queryClient.invalidateQueries({queryKey: DEPLOYMENTS_QUERY_KEY});
             setShowCreateForm(false);
@@ -142,7 +150,7 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
     const deleteMutation = useMutation({
         mutationFn: (uuid: string) => apiDeleteDeployment(uuid),
         onSuccess: () => {
-            toast.success('Despliegue eliminado de Coolify');
+            toast.success(t('panel.deployments.deployment_deleted', 'Despliegue eliminado de Coolify'));
             void queryClient.invalidateQueries({queryKey: DEPLOYMENTS_QUERY_KEY});
             setShowDeleteConfirm(false);
         },
@@ -163,7 +171,7 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
                 <td className="infraCelda infraCelda--tipo"><span className="infraTipoIcono" title={isWp ? 'WordPress' : 'Hosting'}>{deployment.linked_subscription_plan ? (isWp ? <WordPressIcon /> : <HostingIcon />) : <Server size={14} />}</span></td>
                 <td className="infraCelda"><div className="infraCeldaNombre"><span className="infraNombreTexto">{deployment.name}</span><span className="infraServerBadge">{serverLabel}</span></div></td>
                 <td className="infraCelda"><span className={`vpsStatus ${getDeploymentStatusClass(deployment.status)}`}>{formatStatus(deployment.status)}</span></td>
-                <td className="infraCelda infraCelda--plan">{getDeploymentTypeLabel(deployment.linked_subscription_plan)}</td>
+                <td className="infraCelda infraCelda--plan">{getDeploymentTypeLabel(deployment.linked_subscription_plan, t)}</td>
                 <td className="infraCelda infraCelda--usuario">{deployment.linked_subscription_client || '—'}</td>
                 <td className="infraCelda infraCelda--recurso">{formatCpu(deployment.cpu_percent)}</td>
                 <td className="infraCelda infraCelda--recurso">{formatMb(deployment.ram_used_mb)}</td>
@@ -180,12 +188,10 @@ export function DeploymentRow({deployment}: {deployment: CoolifyDeployment}) {
             </Modal>
 
             <Modal abierto={showDeleteConfirm} onCerrar={closeDeleteConfirm}>
-                <p className="modalTexto">Eliminar despliegue huérfano: se eliminará {deployment.name} de Coolify junto con sus volúmenes y red del stack.</p>
-                <p className="modalTexto">Úsalo solo cuando confirmes que este UUID no corresponde a ninguna suscripción del panel.</p>
-                <p className="modalTexto vpsDeleteConfirmMeta">UUID: {deployment.uuid}</p>
+                <p className="modalTexto">{t('panel.deployments.confirm_delete', `Eliminar despliegue huérfano: se eliminará ${deployment.name} de Coolify junto con sus volúmenes y red del stack.`)}</p>
                 <div className="modalAcciones">
-                    <Button variante="secundario" tamano="pequeno" onClick={closeDeleteConfirm} disabled={deleteMutation.isPending} type="button">Cancelar</Button>
-                    <Button variante="primario" tamano="pequeno" onClick={() => deleteMutation.mutate(deployment.uuid)} disabled={deleteMutation.isPending} type="button">{deleteMutation.isPending ? 'Eliminando...' : 'Eliminar de Coolify'}</Button>
+                    <Button variante="secundario" tamano="pequeno" onClick={closeDeleteConfirm} disabled={deleteMutation.isPending} type="button">{t('nav.back', 'Cancelar')}</Button>
+                    <Button variante="primario" tamano="pequeno" onClick={() => deleteMutation.mutate(deployment.uuid)} disabled={deleteMutation.isPending} type="button">{deleteMutation.isPending ? t('panel.deployments.deleting', 'Eliminando...') : t('panel.deployments.delete_deployment', 'Eliminar de Coolify')}</Button>
                 </div>
             </Modal>
         </>
