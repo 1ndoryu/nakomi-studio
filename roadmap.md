@@ -39,10 +39,44 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 - `265A-2`: el sampler ya normaliza los `\t` literales de `docker inspect --format` antes de parsear límites runtime. Con eso, hostings legacy como `hosting-0fa1d5da` dejan de persistir `site_cpu_limit_cores = null` cuando Docker sí tiene caps reales, y el burst puede evaluar sitios existentes además de los nuevos.
 - `265A-3`: la aplicación real del burst ya no resuelve el compose project por `coolify_site_name` a secas. En hostings legacy/runtime el project efectivo puede ser `deployment_uuid`, así que el executor ahora prueba primero ese identificador, cae al slug solo como fallback y no memoriza un target pedido cuando `docker update --cpus` falla.
 - `265A-5`: `hosting_plan_configs` ahora persiste `cpu_scaling_policy` por plan para elegir entre `baseline_burst` y `contention_throttle`. El segundo queda como default comercial: el sitio queda sin cap fuera de contención usando `docker update --cpu-quota -1`, y el sampler ya interpreta `CpuQuota < 0` como runtime ilimitado aunque Docker deje `NanoCpus` stale.
+- `265A-6`: el panel de hosting ya incluye la pestaña **Respaldos** con lista, crear, restaurar y eliminar backups vía SSH para Coolify y vía manager para Lightweight. Backend: SSH al VPS para listar archivos en volumen `backup-data` del compose project. Frontend: `TabBackups.tsx` con tabla responsive, confirmaciones y estados vacío/error. Además, el compose de WordPress ahora inyecta SMTP automáticamente (`WORDPRESS_SMTP_*` env vars + `phpmailer_init` en `WORDPRESS_CONFIG_EXTRA`) si las credenciales `GLORY_SMTP_HOST`/`SMTP_HOST` están disponibles en el servidor.
+- `275A-3`: hotfix del listado de backups para WordPress/Coolify. El endpoint fallaba con 500 porque `alpine:3.20` usa BusyBox y no soporta `ls --time-style=long-iso`; ahora el listing usa `ls --full-time`, comprueba la existencia del volumen antes de montarlo y el parser acepta timestamps `HH:MM:SS +0000`. Validado con test unitario nuevo y smoke SSH contra el VPS del hosting de prueba.
 
 ---
 
 ## Tareas pendientes
+
+### 🟦 Producto de Correo para Hosting
+
+Ver análisis completo en `Agente/documentacion/hosting/producto-correo-proveedores-2026-05-26.md`.
+
+**Decisión pendiente (bloqueante):** Elegir proveedor — MXroute ($59/año, más barato, sin API) vs Migadu ($9/mes, API REST). Esto define la arquitectura de provisioning.
+
+- **265A-11 — Fase 1: Aliases/reenvíos gratis con Cloudflare Email Routing.**
+  - Configurar MX/SPF/DKIM/DMARC del dominio del cliente apuntando a Cloudflare.
+  - Solo reenvío a Gmail/Outlook del cliente (sin IMAP/SMTP).
+  - Incluir 3 alias en plan Pro, 5 alias en Avanzado.
+  - Sin costo operativo para Nakomi.
+  - Backend: `POST /api/hosting/{id}/aliases`, `DELETE /api/hosting/{id}/aliases/{alias}`.
+  - Frontend: TabCorreo con lista de aliases y estado DNS.
+  - ~8-10h estimado.
+
+- **265A-12 — Fase 2: Buzones IMAP (MXroute o Migadu).**
+  - Contratar proveedor y configurar cuenta reseller.
+  - Implementar provisioning: crear/suspender/eliminar mailbox vía API (Migadu) o automatización panel (MXroute).
+  - Modelos BD: `mail_domains`, `mailboxes`, `mail_events`.
+  - Backend: CRUD de buzones, reset password, DNS automático.
+  - Frontend: TabCorreo completo con indicadores de estado.
+  - Billing: Stripe add-on a $1.50/buzón/mes.
+  - ~20-26h estimado.
+
+- **265A-13 — Incluir 1 buzón IMAP gratis en plan Avanzado.**
+  - Modificar `hosting_plan_configs` (nuevo campo `included_mailboxes`).
+  - Actualizar pricing en frontend y catálogo.
+  - Stripe: nuevo price para el add-on.
+  - ~3-4h estimado.
+
+### 🟧 Bloqueo externo
 
 - **065A-4 — Resolver bloqueo BDP `[300035]` fuera de horario (sin escrituras reales).**
   - Estado actual: `sync-dry-run` ya valida lecturas reales; `CreateOrder` se ejecuta en `OnlyCheck` (`OrderOperationType=1`) con `escritura_real=false` y sin `Payments`.

@@ -1,5 +1,7 @@
 # Buzones de correo para clientes de hosting (2026-05-21)
 
+> **Ver también:** `producto-correo-proveedores-2026-05-26.md` — análisis de proveedores, costos, precios sugeridos y plan de implementación.
+
 ## Estado actual
 
 El proyecto solo tiene SMTP transaccional para enviar emails de la app:

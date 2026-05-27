@@ -1,5 +1,10 @@
 # Lecciones Aprendidas
 
+## Backups Coolify — Alpine usa BusyBox, no GNU coreutils
+- `alpine:3.20` no soporta `ls --time-style=long-iso`; BusyBox sí soporta `ls --full-time`. Si el parser de backups depende del formato de `ls`, validar primero el binario real del contenedor remoto en vez de asumir opciones GNU.
+- `docker run -v nombre:/ruta ...` crea el volumen si no existe. Para leer backups, primero hacer `docker volume inspect` o puedes fabricar un volumen vacío y confundir “sin backups” con “volumen recién creado”.
+- No redirigir stderr a `/dev/null` en el path diagnóstico de un listing remoto. Si el comando falla y el stderr queda vacío, el backend pierde la única pista para diferenciar incompatibilidad de shell, volumen ausente o error SSH.
+
 ## Datos reales de cliente — no van en fixtures TOML
 - Los fixtures sirven para demo/dev, no para dar de alta clientes reales en produccion. Si la carga debe tocar solo cuenta, hostings existentes y facturas, crear un bootstrap admin idempotente y ejecutarlo explicitamente.
 - Las fechas de dominios cobrables deben modelar la renovacion real (`due_at`), no la fecha de preview local; para GoDaddy usar el vencimiento/renovacion comunicado por el cliente.

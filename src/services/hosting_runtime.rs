@@ -649,8 +649,12 @@ impl HostingRuntimeService {
         deployment_id: &str,
     ) -> Result<Vec<HostingRuntimeBackupEntry>, AppError> {
         let volume_name = format!("{deployment_id}_backup-data");
+        /* [275A-3] Corregido: alpine:3.20 usa BusyBox ls que no soporta --time-style=long-iso.
+         * Usamos --full-time que sí soporta BusyBox y da formato ISO (YYYY-MM-DD HH:MM:SS +0000).
+         * Primero verificamos que el volumen existe con `docker volume inspect` para evitar
+         * crear volúmenes huérfanos vacíos en el VPS al hacer el docker run. */
         let docker_cmd = format!(
-            "docker run --rm -v {volume_name}:/backups alpine:3.20 ls -la --time-style=long-iso /backups/ 2>/dev/null"
+            "docker volume inspect {volume_name} >/dev/null 2>&1 && docker run --rm -v {volume_name}:/backups alpine:3.20 ls -la --full-time /backups/"
         );
         let output = tokio::process::Command::new("ssh")
             .args([
@@ -667,8 +671,8 @@ impl HostingRuntimeService {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            /* docker run falla si el volumen no existe — significa sin backups */
-            if stderr.contains("no such volume") || stderr.contains("not found") {
+            /* docker volume inspect falló = volumen no existe = sin backups todavía */
+            if stderr.is_empty() || stderr.contains("no such volume") || stderr.contains("not found") {
                 return Ok(vec![]);
             }
             return Err(AppError::Internal(format!(
