@@ -95,3 +95,15 @@ pub struct UpdatePlanConfigRequest {
     pub bandwidth_limit_gb: Option<i32>,
     pub cpu_scaling_policy: Option<String>,
 }
+
+/* [265A-11] Request para crear alias de correo.
+ * Alias = parte local (info, ventas, soporte). Destino = email real donde reenviar. */
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct CreateEmailAliasRequest {
+    #[validate(length(min = 1, max = 100))]
+    pub alias: String,
+    #[validate(length(min = 1, max = 253))]
+    pub domain: String,
+    #[validate(email, length(max = 254))]
+    pub destination: String,
+}

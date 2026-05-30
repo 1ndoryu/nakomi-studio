@@ -955,3 +955,238 @@
         align-items: stretch;
     }
 }
+
+/* ── Tab Correo ────────────────────────── */
+
+.tabCorreoHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-sm);
+}
+
+.tabCorreoQuota {
+    margin-bottom: var(--spacing-md);
+}
+
+.tabCorreoQuotaLabel {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.tabCorreoQuotaBar {
+    height: 6px;
+    background: var(--border-default, #e5e7eb);
+    border-radius: 4px;
+    margin-top: var(--spacing-2xs);
+    overflow: hidden;
+}
+
+.tabCorreoQuotaFill {
+    height: 100%;
+    background: var(--color-primary, #6366f1);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.tabCorreoError {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2xs);
+    padding: var(--spacing-sm);
+    background: var(--color-error-bg, #fef2f2);
+    border: 1px solid var(--color-error, #ef4444);
+    border-radius: var(--radius-md, 8px);
+    color: var(--color-error, #ef4444);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.tabCorreoForm {
+    background: var(--surface-secondary, #f9fafb);
+    border: 1px solid var(--border-default, #e5e7eb);
+    border-radius: var(--radius-md, 8px);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.tabCorreoFormRow {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2xs);
+    margin-bottom: var(--spacing-sm);
+}
+
+.tabCorreoInput {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-default, #d1d5db);
+    border-radius: var(--radius-md, 6px);
+    font-size: var(--font-size-sm);
+    background: var(--surface-primary, #fff);
+    color: var(--text-primary, #111827);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.tabCorreoInput:focus {
+    border-color: var(--color-primary, #6366f1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.tabCorreoInputAlias {
+    flex: 0 0 120px;
+}
+
+.tabCorreoArroba {
+    font-size: var(--font-size-lg);
+    color: var(--text-tertiary, #9ca3af);
+}
+
+.tabCorreoInputDomain {
+    flex: 1;
+}
+
+.tabCorreoInputDest {
+    flex: 1;
+}
+
+.tabCorreoFormActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-2xs);
+    margin-top: var(--spacing-sm);
+}
+
+.tabCorreoEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--spacing-xl) 0;
+    color: var(--text-tertiary, #9ca3af);
+    gap: var(--spacing-sm);
+    text-align: center;
+}
+
+.tabCorreoEmpty p {
+    margin: 0;
+}
+
+.tabCorreoHint {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary, #9ca3af);
+    max-width: 400px;
+}
+
+.tabCorreoSpinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.tabCorreoList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2xs);
+}
+
+.tabCorreoItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-default, #e5e7eb);
+    border-radius: var(--radius-md, 8px);
+    background: var(--surface-primary, #fff);
+    transition: border-color 0.15s ease;
+}
+
+.tabCorreoItem:hover {
+    border-color: var(--color-primary, #6366f1);
+}
+
+.tabCorreoItemInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.tabCorreoItemEmail {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--color-primary, #6366f1);
+}
+
+.tabCorreoItemArrow {
+    color: var(--text-tertiary, #9ca3af);
+    font-size: var(--font-size-sm);
+}
+
+.tabCorreoItemDest {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary, #111827);
+}
+
+.tabCorreoItemStatus {
+    font-size: var(--font-size-xs);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 500;
+}
+
+.tabCorreoItemStatus--active {
+    background: var(--color-success-bg, #f0fdf4);
+    color: var(--color-success, #22c55e);
+}
+
+.tabCorreoItemDelete {
+    color: var(--color-error, #ef4444) !important;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
+.tabCorreoItemDelete:hover {
+    opacity: 1;
+}
+
+.tabCorreoMailboxes {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-default, #e5e7eb);
+}
+
+.tabCorreoMailboxesTitle {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    margin: 0 0 var(--spacing-2xs);
+    color: var(--text-muted, #6b7280);
+}
+
+/* Tab Correo responsive */
+@media (max-width: 768px) {
+    .tabCorreoFormRow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tabCorreoInputAlias {
+        flex: 1;
+    }
+
+    .tabCorreoArroba {
+        display: none;
+    }
+
+    .tabCorreoItemInfo {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-2xs);
+    }
+
+    .tabCorreoItemArrow {
+        display: none;
+    }
+}

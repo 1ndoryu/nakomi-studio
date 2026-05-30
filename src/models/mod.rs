@@ -51,7 +51,9 @@ pub use domain::{
 pub use hosting::{
     sanitize_hosting_event, sanitize_hosting_event_details, AssignHostingRequest,
     normalize_cpu_scaling_policy, CoolifyDeploymentResponse,
-    CreateHostingRequest, HostingEvent, HostingPlanConfig, HostingStatsResponse,
+    CreateEmailAliasRequest, CreateHostingRequest, EmailAliasResponse,
+    EmailMailboxResponse, HostingEmailAlias, HostingEmailInfoResponse,
+    HostingEmailMailbox, HostingEvent, HostingPlanConfig, HostingStatsResponse,
     HostingSubscription, HostingSubscriptionResponse, PublicHostingPlan,
     SelfSubscribeRequest, SelfSubscribeResponse, UpdateHostingRequest,
     UpdateHostingStatusRequest, UpdatePlanConfigRequest,

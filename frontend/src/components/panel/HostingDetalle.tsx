@@ -7,7 +7,7 @@
 import React from 'react';
 import {
     ArrowLeft, Globe, Server, Terminal,
-    CreditCard, Clock, ExternalLink, Copy, Zap, MessageSquare, HardDrive,
+    CreditCard, Clock, ExternalLink, Copy, Zap, MessageSquare, HardDrive, Mail,
 } from 'lucide-react';
 import {useHostingDetalle, type HostingDetalleTab} from '../../hooks/useHostingDetalle';
 import {
@@ -23,6 +23,7 @@ import {
 } from './HostingDetalleTabs';
 import {TabFacturacion} from './TabFacturacion';
 import {TabBackups} from './TabBackups';
+import {TabCorreo} from './TabCorreo';
 import './HostingDetalle.css';
 
 const TABS: {key: HostingDetalleTab; label: string; icon: React.ReactNode}[] = [
@@ -30,7 +31,10 @@ const TABS: {key: HostingDetalleTab; label: string; icon: React.ReactNode}[] = [
     {key: 'recursos', label: 'Recursos', icon: <Zap size={16} />},
     {key: 'dominio', label: 'Dominio & SSL', icon: <Globe size={16} />},
     {key: 'acceso', label: 'Acceso', icon: <Terminal size={16} />},
-    {key: 'facturacion', label: 'Facturación', icon: <CreditCard size={16} />},  {key: 'backups', label: 'Respaldos', icon: <HardDrive size={16} />},    {key: 'eventos', label: 'Eventos', icon: <Clock size={16} />},
+    {key: 'facturacion', label: 'Facturación', icon: <CreditCard size={16} />},
+    {key: 'backups', label: 'Respaldos', icon: <HardDrive size={16} />},
+    {key: 'correo', label: 'Correo', icon: <Mail size={16} />},
+    {key: 'eventos', label: 'Eventos', icon: <Clock size={16} />},
 ];
 
 /* [094A-2] Copiar texto al clipboard con feedback visual.
@@ -211,6 +215,7 @@ export function HostingDetalle({
                     />
                 )}
                 {tabActiva === 'backups' && <TabBackups sub={sub} />}
+                {tabActiva === 'correo' && <TabCorreo sub={sub} />}
         {tabActiva === 'eventos' && <TabEventos hostingId={hostingId} />}
             </div>
         </div>

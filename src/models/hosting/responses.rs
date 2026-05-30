@@ -170,3 +170,65 @@ pub struct CoolifyDeploymentResponse {
     /// No representa un límite detectado en runtime; solo la configuración comercial persistida.
     pub plan_ssh_memory_mb: Option<i32>,
 }
+
+/* [265A-11] Respuesta de alias de correo para el frontend TabCorreo. */
+#[derive(Debug, Serialize, ToSchema)]
+pub struct EmailAliasResponse {
+    pub id: Uuid,
+    pub alias: String,
+    pub domain: String,
+    pub destination: String,
+    pub full_email: String,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<crate::models::HostingEmailAlias> for EmailAliasResponse {
+    fn from(a: crate::models::HostingEmailAlias) -> Self {
+        Self {
+            id: a.id,
+            alias: a.alias.clone(),
+            domain: a.domain.clone(),
+            destination: a.destination.clone(),
+            full_email: format!("{}@{}", a.alias, a.domain),
+            status: a.status.clone(),
+            created_at: a.created_at,
+        }
+    }
+}
+
+/* [265A-12] Respuesta de buzon IMAP para TabCorreo (Fase 2, NO activa). */
+#[derive(Debug, Serialize, ToSchema)]
+pub struct EmailMailboxResponse {
+    pub id: Uuid,
+    pub email: String,
+    pub provider: String,
+    pub status: String,
+    pub storage_used_mb: i32,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<crate::models::HostingEmailMailbox> for EmailMailboxResponse {
+    fn from(m: crate::models::HostingEmailMailbox) -> Self {
+        Self {
+            id: m.id,
+            email: m.email.clone(),
+            provider: m.provider.clone(),
+            status: m.status.clone(),
+            storage_used_mb: m.storage_used_mb,
+            created_at: m.created_at,
+        }
+    }
+}
+
+/* [265A-11] Info de correo por suscripcion para TabCorreo.
+ * Incluye aliases (activo) y buzones (preparado, vacio hasta Fase 2). */
+#[derive(Debug, Serialize, ToSchema)]
+pub struct HostingEmailInfoResponse {
+    pub aliases: Vec<EmailAliasResponse>,
+    pub aliases_limit: i32,
+    pub aliases_used: i32,
+    pub mailboxes: Vec<EmailMailboxResponse>,
+    pub mailboxes_limit: i32,
+    pub mailboxes_used: i32,
+}

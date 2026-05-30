@@ -21,6 +21,7 @@ use super::subscriptions::{
     list_subscriptions, request_cancel, update_status, update_subscription,
 };
 use super::vps::{get_vps, list_vps};
+use super::email_aliases::{create_alias, delete_alias, get_email_info};
 use crate::AppState;
 
 fn subscription_routes() -> Router<AppState> {
@@ -116,6 +117,19 @@ fn subscription_routes() -> Router<AppState> {
         .route(
             "/hosting/admin-test-subscribe",
             axum::routing::post(admin_test_subscribe),
+        )
+        /* [265A-11] Alias de correo: listar, crear, eliminar */
+        .route(
+            "/hosting/subscriptions/:id/email",
+            get(get_email_info),
+        )
+        .route(
+            "/hosting/subscriptions/:id/email/aliases",
+            axum::routing::post(create_alias),
+        )
+        .route(
+            "/hosting/subscriptions/:id/email/aliases/:alias_id",
+            axum::routing::delete(delete_alias),
         )
 }
 

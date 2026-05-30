@@ -15,14 +15,15 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 
 ### 1. MXroute — RECOMENDADO (más económico)
 
-| Plan | Precio/año | Precio/mes | Almacenamiento | Dominios | Cuentas |
-|------|-----------:|-----------:|:--------------:|:--------:|:-------:|
-| Small | $59 | $4.92 | 10 GB | Ilimitados | Ilimitadas |
-| Medium | $69 | $5.75 | 25 GB | Ilimitados | Ilimitadas |
-| Large | $79 | $6.58 | 50 GB | Ilimitados | Ilimitadas |
-| 100GB | $100 | $8.33 | 100 GB | Ilimitados | Ilimitadas |
+| Plan   | Precio/año | Precio/mes | Almacenamiento |  Dominios  |  Cuentas   |
+| ------ | ---------: | ---------: | :------------: | :--------: | :--------: |
+| Small  |        $59 |      $4.92 |     10 GB      | Ilimitados | Ilimitadas |
+| Medium |        $69 |      $5.75 |     25 GB      | Ilimitados | Ilimitadas |
+| Large  |        $79 |      $6.58 |     50 GB      | Ilimitados | Ilimitadas |
+| 100GB  |       $100 |      $8.33 |     100 GB     | Ilimitados | Ilimitadas |
 
 **Puntos clave:**
+
 - **Sin costo por buzón** — precio fijo anual por无限 cuentas de correo
 - SMTP/IMAP/POP3 completo
 - 400 emails/hora por cuenta
@@ -35,14 +36,15 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 
 ### 2. Migadu — Alternativa con API
 
-| Plan | Precio/año | Precio/mes | Envíos/día | Recep/día | Almacenamiento |
-|------|-----------:|-----------:|:----------:|:---------:|:--------------:|
-| Micro | $19 | — | 20 out | 200 in | 5 GB (soft) |
-| Mini | $90 | $9 | 100 out | 1000 in | 30 GB (soft) |
-| Mid | $290 | $29 | 500 out | 3000 in | 100 GB (soft) |
-| Maxi | $990 | $99 | 2000 out | 10000 in | 500 GB (soft) |
+| Plan  | Precio/año | Precio/mes | Envíos/día | Recep/día | Almacenamiento |
+| ----- | ---------: | ---------: | :--------: | :-------: | :------------: |
+| Micro |        $19 |          — |   20 out   |  200 in   |  5 GB (soft)   |
+| Mini  |        $90 |         $9 |  100 out   |  1000 in  |  30 GB (soft)  |
+| Mid   |       $290 |        $29 |  500 out   |  3000 in  | 100 GB (soft)  |
+| Maxi  |       $990 |        $99 |  2000 out  | 10000 in  | 500 GB (soft)  |
 
 **Puntos clave:**
+
 - **API REST documentada** — provisioning automático de buzones
 - Dominios y buzones ilimitados en todos los planes
 - Pensado para agencias/hosting (hosting third-party domains explícitamente permitido)
@@ -53,13 +55,14 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 
 ### 3. Forward Email
 
-| Plan | Precio/mes | Almacenamiento | Dominios |
-|------|:----------:|:--------------:|:--------:|
-| Free | $0 | Solo forwarding | Ilimitados |
-| Enhanced | $3 | 10 GB pool | Ilimitados |
-| Team | $9 | 10 GB pool | Ilimitados |
+| Plan     | Precio/mes | Almacenamiento  |  Dominios  |
+| -------- | :--------: | :-------------: | :--------: |
+| Free     |     $0     | Solo forwarding | Ilimitados |
+| Enhanced |     $3     |   10 GB pool    | Ilimitados |
+| Team     |     $9     |   10 GB pool    | Ilimitados |
 
 **Puntos clave:**
+
 - Open source, API pública
 - 9000 out/mes en Enhanced
 - Bueno pero menos maduro para reventa
@@ -67,13 +70,14 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 
 ### 4. Zoho Mail
 
-| Plan | Precio/usuario/mes | Almacenamiento |
-|------|:------------------:|:--------------:|
-| Free | $0 (5 users) | 5 GB c/u, sin IMAP |
-| Mail Lite | $1 | 5 GB |
-| Mail Premium | $4 | 50 GB |
+| Plan         | Precio/usuario/mes |   Almacenamiento   |
+| ------------ | :----------------: | :----------------: |
+| Free         |    $0 (5 users)    | 5 GB c/u, sin IMAP |
+| Mail Lite    |         $1         |        5 GB        |
+| Mail Premium |         $4         |       50 GB        |
 
 **Puntos clave:**
+
 - **Costo por usuario** — no escala bien para reventa
 - API pesada (OAuth)
 - Sin panel white-label
@@ -86,6 +90,7 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 ### Ganador: MXroute Small ($59/año)
 
 **Razones:**
+
 1. **Costo fijo más bajo del mercado**: $59/año por buzones ilimitados. No importa si son 5 o 50 clientes.
 2. **Sin costo por mailbox**: los planes de competidores cobran por usuario (Zoho $1-4/user) o tienen límites diarios muy ajustados (Migadu Micro: 20 out/día).
 3. **Almacenamiento compartido**: 10 GB inicial, Ampliable a 25 GB ($69/año) o 50 GB ($79/año).
@@ -94,6 +99,7 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 6. **Reseller plans disponibles**: para cuando crezca.
 
 **Contras:**
+
 - Sin API pública documentada para provisioning automático (habría que automatizar vía panel de management o preguntar a soporte).
 - Menos "enterprise" que Migadu.
 
@@ -109,21 +115,22 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 
 ### Incluido en planes de hosting
 
-| Plan | Alias/Reenvío | Buzón IMAP |
-|------|:-------------:|:----------:|
-| Básico ($2.48) | ❌ | ❌ |
-| Pro ($4.13) | ✅ 3 alias (info@, ventas@, soporte@) vía Cloudflare Email Routing | ❌ |
-| Avanzado ($6.19) | ✅ 5 alias + 1 buzón IMAP incluido | ✅ 1 mailbox |
+| Plan             |                           Alias/Reenvío                            |  Buzón IMAP  |
+| ---------------- | :----------------------------------------------------------------: | :----------: |
+| Básico ($2.48)   |                                 ❌                                 |      ❌      |
+| Pro ($4.13)      | ✅ 3 alias (info@, ventas@, soporte@) vía Cloudflare Email Routing |      ❌      |
+| Avanzado ($6.19) |                 ✅ 5 alias + 1 buzón IMAP incluido                 | ✅ 1 mailbox |
 
 ### Add-on para cualquier plan
 
-| Add-on | Precio sugerido | Descripción |
-|--------|:--------------:|-------------|
-| 1 buzón IMAP adicional | **$1.50/mes** | Cuenta individual IMAP/SMTP con 5 GB, webmail |
-| Pack 5 buzones | **$5/mes** | 5 cuentas, 25 GB compartidos |
-| 1 buzón + dominio extra | **$2.50/mes** | Buzón para dominio adicional del mismo cliente |
+| Add-on                  | Precio sugerido | Descripción                                    |
+| ----------------------- | :-------------: | ---------------------------------------------- |
+| 1 buzón IMAP adicional  |  **$1.50/mes**  | Cuenta individual IMAP/SMTP con 5 GB, webmail  |
+| Pack 5 buzones          |   **$5/mes**    | 5 cuentas, 25 GB compartidos                   |
+| 1 buzón + dominio extra |  **$2.50/mes**  | Buzón para dominio adicional del mismo cliente |
 
 **Justificación del precio:**
+
 - MXroute Medium ($69/año = $5.75/mes) nos da 25 GB y buzones ilimitados
 - Si 10 clientes contratan 1 mailbox cada uno a $1.50 → $15/mes ingresos vs $5.75/mes costo → **61% margen**
 - El primer buzón va incluido en Avanzado para hacer el plan más atractivo
@@ -134,6 +141,7 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 ## Lo que habría que implementar
 
 ### Fase 1 — Aliases gratis (Cloudflare Email Routing)
+
 - **Sin costo** para Nakomi
 - Configurar MX, SPF, DKIM, DMARC del dominio del cliente apuntando a Cloudflare
 - Solo reenvío a Gmail/Outlook del cliente
@@ -141,6 +149,7 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 - **Tiempo estimado:** 4-6h backend + 4h frontend
 
 ### Fase 2 — Buzones IMAP (MXroute o Migadu)
+
 - Contratar MXroute Small ($59/año) o Migadu Mini ($9/mes)
 - Implementar provisioning: crear mailbox vía API (Migadu) o automatización vía panel (MXroute)
 - TabCorreo en frontend: listar buzones, crear nuevo, reset password, eliminar
@@ -149,6 +158,7 @@ Hoy Nakomi solo tiene SMTP transaccional (Brevo via `lettre`) para emails propio
 - **Tiempo estimado:** 20-26h (backend + frontend + billing)
 
 ### Fase 3 — Reseller (crecimiento)
+
 - MXroute Reseller 75 ($30/trimestre = $10/mes)
 - Panel white-label para que clientes gestionen sus buzones
 - **Tiempo estimado:** 8-12h integración
@@ -164,3 +174,30 @@ Precio al cliente: **$1.50/buzón/mes** como add-on, con 1 buzón incluido en el
 Aliases/reenvíos via Cloudflare Email Routing son gratis y pueden incluirse en planes Pro+ sin costo para Nakomi.
 
 **Próximo paso:** Decidir proveedor (MXroute vs Migadu) y si empezamos solo con aliases (Fase 1) o vamos directo a buzones IMAP (Fase 2).
+
+---
+
+## ⚡ Decisión final — 30 mayo 2026
+
+**Estrategia adoptada:**
+
+1. **Fase 1 — ACTIVA: Aliases/reenvíos gratis con Cloudflare Email Routing.**
+   - Implementada en backend y frontend (TabCorreo, endpoints `/email/aliases`).
+   - Sin costo operativo para Nakomi.
+   - 3 alias en plan Pro, 5 alias en Avanzado. 0 en Básico.
+   - El cliente configura el reenvío MX en Cloudflare por su cuenta.
+   - TabCorreo visible en el panel de hosting.
+
+2. **Fase 2 — PREPARADA, NO ACTIVA: Buzones IMAP.**
+   - Proveedor seleccionado: **Migadu** (por su API REST pública, permite provisioning automático).
+   - Plan inicial: **Migadu Micro ($19/año)** — se activará cuando un cliente compre un buzón.
+   - Tabla `hosting_email_mailboxes` creada en BD, endpoints NO expuestos.
+   - El frontend ya tiene la sección de buzones preparada (oculta hasta activación).
+   - Modelos Rust listos (`HostingEmailMailbox`, `EmailMailboxResponse`).
+   - **Activación pendiente:** cuando el usuario dé la orden, se conecta la API Migadu y se exponen los endpoints.
+
+3. **Aliases gratuitos de por vida.** Cloudflare Email Routing no tiene costo.
+   - Los aliases son forwarding a Gmail/Outlook del cliente.
+   - No requieren configuración DNS por parte de Nakomi (el cliente configura MX/SPF/DKIM/DMARC).
+
+4. **Setup financiero:** Cuando un cliente solicite buzón real, se le cobrará setup ($5) + primer trimestre ($4.50) por adelantado. Con eso se contrata Migadu Micro por el año.

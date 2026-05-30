@@ -116,3 +116,33 @@ pub struct PublicHostingPlan {
     pub features: Vec<String>,
     pub recommended: bool,
 }
+
+/* [265A-11] Alias de correo via Cloudflare Email Routing (Opcion A).
+ * Forwarding gratuito: sin costo operativo para Nakomi. */
+#[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
+pub struct HostingEmailAlias {
+    pub id: Uuid,
+    pub subscription_id: Uuid,
+    pub alias: String,
+    pub domain: String,
+    pub destination: String,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/* [265A-12] Buzon IMAP preparado para Fase 2 (Opcion B, NO activa aun).
+ * Migadu/MXroute. Tabla existe pero sin endpoints ni UI activos. */
+#[derive(Debug, Clone, FromRow, Serialize, ToSchema)]
+pub struct HostingEmailMailbox {
+    pub id: Uuid,
+    pub subscription_id: Uuid,
+    pub email: String,
+    pub password_hash: Option<String>,
+    pub provider: String,
+    pub provider_mailbox_id: Option<String>,
+    pub status: String,
+    pub storage_used_mb: i32,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
