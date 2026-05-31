@@ -203,3 +203,62 @@ pub async fn delete_alias(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    fn make_auth(user_id: Uuid, effective_role: UserRole) -> AuthUser {
+        AuthUser {
+            user_id,
+            role: effective_role,
+            effective_role,
+            impersonator: None,
+        }
+    }
+
+    #[test]
+    fn ensure_access_client_own_subscription_allowed() {
+        let uid = Uuid::new_v4();
+        let auth = make_auth(uid, UserRole::Client);
+        assert!(ensure_subscription_access(&auth, Some(uid)).is_ok());
+    }
+
+    #[test]
+    fn ensure_access_client_other_subscription_forbidden() {
+        let auth = make_auth(Uuid::new_v4(), UserRole::Client);
+        let other_uid = Uuid::new_v4();
+        let result = ensure_subscription_access(&auth, Some(other_uid));
+        match result {
+            Err(AppError::Forbidden(msg)) => {
+                assert!(msg.contains("Sin permisos"));
+            }
+            other => panic!("expected Forbidden, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn ensure_access_client_subscription_without_user_forbidden() {
+        let auth = make_auth(Uuid::new_v4(), UserRole::Client);
+        let result = ensure_subscription_access(&auth, None);
+        match result {
+            Err(AppError::Forbidden(_)) => {} /* esperado */
+            other => panic!("expected Forbidden, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn ensure_access_admin_any_subscription_allowed() {
+        let auth = make_auth(Uuid::new_v4(), UserRole::Admin);
+        let other_uid = Uuid::new_v4();
+        assert!(ensure_subscription_access(&auth, Some(other_uid)).is_ok());
+    }
+
+    #[test]
+    fn ensure_access_employee_any_subscription_allowed() {
+        let auth = make_auth(Uuid::new_v4(), UserRole::Employee);
+        let other_uid = Uuid::new_v4();
+        assert!(ensure_subscription_access(&auth, Some(other_uid)).is_ok());
+    }
+}

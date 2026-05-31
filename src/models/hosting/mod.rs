@@ -312,4 +312,92 @@ mod tests {
 
         assert!(sub.is_coolify_runtime());
     }
+
+    /* [265A-11] Tests de validacion de CreateEmailAliasRequest */
+    #[test]
+    fn email_alias_request_valid() {
+        let req = CreateEmailAliasRequest {
+            alias: "info".to_string(),
+            domain: "nakomi.studio".to_string(),
+            destination: "cliente@gmail.com".to_string(),
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn email_alias_request_empty_alias_rejected() {
+        let req = CreateEmailAliasRequest {
+            alias: String::new(),
+            domain: "nakomi.studio".to_string(),
+            destination: "cliente@gmail.com".to_string(),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn email_alias_request_invalid_destination_rejected() {
+        let req = CreateEmailAliasRequest {
+            alias: "ventas".to_string(),
+            domain: "nakomi.studio".to_string(),
+            destination: "not-an-email".to_string(),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn email_alias_request_long_alias_rejected() {
+        let req = CreateEmailAliasRequest {
+            alias: "a".repeat(101),
+            domain: "nakomi.studio".to_string(),
+            destination: "cliente@gmail.com".to_string(),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn email_alias_request_long_domain_rejected() {
+        let req = CreateEmailAliasRequest {
+            alias: "soporte".to_string(),
+            domain: "a".repeat(254),
+            destination: "cliente@gmail.com".to_string(),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn email_alias_request_long_destination_rejected() {
+        let req = CreateEmailAliasRequest {
+            alias: "soporte".to_string(),
+            domain: "nakomi.studio".to_string(),
+            destination: "a".repeat(255),
+        };
+        assert!(req.validate().is_err());
+    }
+
+    /* [265A-11] Tests de conversion EmailAliasResponse */
+    #[test]
+    fn email_alias_response_from_entity_preserves_all_fields() {
+        let now = Utc::now();
+        let id = Uuid::new_v4();
+        let sub_id = Uuid::new_v4();
+        let entity = HostingEmailAlias {
+            id,
+            subscription_id: sub_id,
+            alias: "info".to_string(),
+            domain: "nakomi.studio".to_string(),
+            destination: "cliente@gmail.com".to_string(),
+            status: "active".to_string(),
+            created_at: now,
+            updated_at: now,
+        };
+
+        let resp = EmailAliasResponse::from(entity);
+        assert_eq!(resp.id, id);
+        assert_eq!(resp.alias, "info");
+        assert_eq!(resp.domain, "nakomi.studio");
+        assert_eq!(resp.destination, "cliente@gmail.com");
+        assert_eq!(resp.full_email, "info@nakomi.studio");
+        assert_eq!(resp.status, "active");
+        assert_eq!(resp.created_at, now);
+    }
 }
