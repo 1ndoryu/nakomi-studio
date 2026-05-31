@@ -147,7 +147,8 @@ export const Header: React.FC = () => {
                             <GloryLink to={hrefAccion!} className="enlaceAcceder">
                                 {textoAccion}
                             </GloryLink>
-                            <AppLauncher />
+                            {/* [TEMP] AppLauncher oculto temporalmente */}
+                            {false && <AppLauncher />}
                             {/* [074A-22] Avatar con MenuContextual para cerrar sesión */}
                             <MenuContextual
                                 abierto={perfilAbierto}

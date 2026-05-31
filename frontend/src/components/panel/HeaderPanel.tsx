@@ -58,7 +58,8 @@ export const HeaderPanel: React.FC = () => {
                         <Wallet size={16} />
                         <span>{formatBalance(wallet?.balance_cents ?? 0, wallet?.currency)}</span>
                     </Button>
-                    <AppLauncher />
+                    {/* [TEMP] AppLauncher oculto temporalmente */}
+                    {false && <AppLauncher />}
                     <NotificationBell />
                     {/* [074A-45] Ir a inicio sin desloguear */}
                     <GloryLink to="/" className="headerPanelEnlace">
