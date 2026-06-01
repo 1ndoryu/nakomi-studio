@@ -16,6 +16,7 @@ pub mod cpu_burst;
 pub mod docker_stats;
 mod domain_stripe;
 pub mod email;
+pub mod email_preview;
 mod google_auth;
 pub mod hosting_runtime;
 mod hosting_runtime_backups;

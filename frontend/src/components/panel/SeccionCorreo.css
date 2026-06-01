@@ -20,6 +20,40 @@
     color: var(--color-texto-primario, #1a1a1a);
 }
 
+/* Pestañas: Vista previa / Enviados */
+.correosPestanias {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--color-borde, #e0e0e0);
+    margin-bottom: 0;
+}
+
+.correosPestaniaBtn {
+    display: flex;
+    align-items: center;
+    gap: var(--espaciado-xs, 6px);
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: var(--color-texto-secundario, #888);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+
+.correosPestaniaBtn:hover {
+    color: var(--color-texto-primario, #333);
+}
+
+.correosPestaniaActiva {
+    color: var(--color-primario, #c9a84c);
+    border-bottom-color: var(--color-primario, #c9a84c);
+}
+
 /* Filtro */
 .correosFiltro {
     display: flex;

@@ -175,14 +175,14 @@ impl EmailService {
     }
 }
 
-fn html_escape(s: &str) -> String {
+pub(crate) fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
 }
 
-fn recipient_label(display_name: Option<&str>, email: &str) -> String {
+pub(crate) fn recipient_label(display_name: Option<&str>, email: &str) -> String {
     let raw = display_name
         .map(str::trim)
         .filter(|value| !value.is_empty())
@@ -190,7 +190,7 @@ fn recipient_label(display_name: Option<&str>, email: &str) -> String {
     html_escape(raw)
 }
 
-fn format_usd_cents(amount_cents: i32) -> String {
+pub(crate) fn format_usd_cents(amount_cents: i32) -> String {
     format!("${:.2} USD", f64::from(amount_cents) / 100.0)
 }
 

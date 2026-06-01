@@ -3,6 +3,7 @@
 #![allow(clippy::needless_for_each)] // Generado por utoipa OpenApi derive
 
 mod admin_client_bootstrap;
+mod admin_email_preview;
 mod admin_emails;
 mod admin_fixtures;
 mod admin_seed;
@@ -683,6 +684,7 @@ fn api_routes() -> Router<AppState> {
         .merge(team_members::admin_routes())
         .merge(public_users::public_routes())
         .merge(admin_client_bootstrap::routes())
+        .merge(admin_email_preview::routes())
         .merge(admin_emails::routes())
         .merge(admin_fixtures::routes())
         .merge(admin_seed::seed_routes())

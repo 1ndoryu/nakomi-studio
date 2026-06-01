@@ -1,18 +1,22 @@
-/* [311A-1] Sección admin para visualizar trazabilidad de correos enviados.
- * Lista paginada con filtro por tipo de plantilla.
+/* [311A-1][311A-INV] Sección admin con dos sub-vistas:
+ * - "Enviados": trazabilidad de correos enviados (logs) con filtro y paginación.
+ * - "Vista previa": galería de plantillas renderizadas con datos de muestra.
  * Sigue el patrón visual de SeccionReembolsos. */
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, AlertCircle, Mail, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, ChevronLeft, ChevronRight, Filter, Eye } from 'lucide-react';
 import { apiListEmailLogs, TEMPLATE_OPTIONS, type EmailLogItem } from '../../api/admin-email';
+import { VistaPreviaCorreos } from './VistaPreviaCorreos';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import './SeccionCorreo.css';
 
+type Pestaña = 'enviados' | 'preview';
+
 const PAGE_SIZE = 50;
 
-export function SeccionCorreo() {
+function PestañaEnviados() {
     const [filtroTemplate, setFiltroTemplate] = useState<string>('');
     const [offset, setOffset] = useState(0);
 
@@ -53,9 +57,7 @@ export function SeccionCorreo() {
     }
 
     return (
-        <div className="correosContenedor">
-            <h2 className="correosTitulo">Correos enviados</h2>
-
+        <>
             {/* Filtro por plantilla */}
             <div className="correosFiltro">
                 <Filter size={18} />
@@ -144,6 +146,35 @@ export function SeccionCorreo() {
                     </Button>
                 </div>
             )}
+        </>
+    );
+}
+
+export function SeccionCorreo() {
+    const [pestaña, setPestaña] = useState<Pestaña>('preview');
+
+    return (
+        <div className="correosContenedor">
+            {/* Pestañas */}
+            <div className="correosPestanias">
+                <button
+                    className={`correosPestaniaBtn ${pestaña === 'preview' ? 'correosPestaniaActiva' : ''}`}
+                    onClick={() => setPestaña('preview')}
+                >
+                    <Eye size={16} />
+                    Vista previa
+                </button>
+                <button
+                    className={`correosPestaniaBtn ${pestaña === 'enviados' ? 'correosPestaniaActiva' : ''}`}
+                    onClick={() => setPestaña('enviados')}
+                >
+                    <Mail size={16} />
+                    Enviados
+                </button>
+            </div>
+
+            {/* Contenido según pestaña */}
+            {pestaña === 'preview' ? <VistaPreviaCorreos /> : <PestañaEnviados />}
         </div>
     );
 }
