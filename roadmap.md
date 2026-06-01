@@ -30,16 +30,6 @@ Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se in
 
 ## Estado interno reciente
 
-- `245A-9`: el runtime de hosting `lightweight` ya expone backup/restore remoto por manager y por API de suscripciones (`/api/hosting/subscriptions/{id}/backups`, `/api/hosting/subscriptions/{id}/restore`). Pendiente siguiente del frente: smoke operativo real del restore, observabilidad/panel lightweight y receta WordPress premium.
-- `245A-10`: la compra de hosting ya deja fijado el runtime por plan en vez de depender del provider global; `normal-*` solo cae en `lightweight` cuando el target está configurado, WordPress sigue en Coolify, y en producción se corrigió `COOLIFY_BASE_URL` al alias interno de Coolify con el bypass de checkout test desactivado antes de la compra real.
-- `255A-2`: `/api/hosting/deployments` ya no interpreta un fallo de Coolify/runtime como inventario vacío; reconstruye un fallback mínimo desde `hosting_subscriptions` y solo devuelve `503` si ni siquiera puede recomponer una lista útil. En el diagnóstico de VPS2 también se confirmó que un `500` global de Coolify 4.1.0 podía venir de `personal_access_tokens.abilities='[*]'` en vez de JSON válido.
-- `255A-3`: los governors de auth y API se subieron a límites productivos con `SmartIpKeyExtractor` para evitar `429` cruzados detrás de Coolify/Traefik cuando la SPA abre polling y varias requests concurrentes.
-- `255A-4`: el panel de infraestructura ya separa recursos del plan vinculado de los límites runtime reales detectados. El sampler guarda límites CPU/RAM efectivos por contenedor vía `docker inspect`, así que despliegues legacy sin caps Docker dejan de mostrar valores sintéticos del plan como si fueran enforcement real.
-- `265A-1`: el primer burst dinámico de CPU para hostings Coolify ya corre en background. Usa snapshots del sampler para subir o restaurar el cap runtime del contenedor principal (`site` o `wordpress`) según holgura real de la VPS, manteniendo el plan como baseline contractual.
-- `265A-2`: el sampler ya normaliza los `\t` literales de `docker inspect --format` antes de parsear límites runtime. Con eso, hostings legacy como `hosting-0fa1d5da` dejan de persistir `site_cpu_limit_cores = null` cuando Docker sí tiene caps reales, y el burst puede evaluar sitios existentes además de los nuevos.
-- `265A-3`: la aplicación real del burst ya no resuelve el compose project por `coolify_site_name` a secas. En hostings legacy/runtime el project efectivo puede ser `deployment_uuid`, así que el executor ahora prueba primero ese identificador, cae al slug solo como fallback y no memoriza un target pedido cuando `docker update --cpus` falla.
-- `265A-5`: `hosting_plan_configs` ahora persiste `cpu_scaling_policy` por plan para elegir entre `baseline_burst` y `contention_throttle`. El segundo queda como default comercial: el sitio queda sin cap fuera de contención usando `docker update --cpu-quota -1`, y el sampler ya interpreta `CpuQuota < 0` como runtime ilimitado aunque Docker deje `NanoCpus` stale.
-- `265A-6`: el panel de hosting ya incluye la pestaña **Respaldos** con lista, crear, restaurar y eliminar backups vía SSH para Coolify y vía manager para Lightweight. Backend: SSH al VPS para listar archivos en volumen `backup-data` del compose project. Frontend: `TabBackups.tsx` con tabla responsive, confirmaciones y estados vacío/error. Además, el compose de WordPress ahora inyecta SMTP automáticamente (`WORDPRESS_SMTP_*` env vars + `phpmailer_init` en `WORDPRESS_CONFIG_EXTRA`) si las credenciales `GLORY_SMTP_HOST`/`SMTP_HOST` están disponibles en el servidor.
 - `275A-3`: hotfix del listado de backups para WordPress/Coolify. El endpoint fallaba con 500 porque `alpine:3.20` usa BusyBox y no soporta `ls --time-style=long-iso`; ahora el listing usa `ls --full-time`, comprueba la existencia del volumen antes de montarlo y el parser acepta timestamps `HH:MM:SS +0000`. Validado con test unitario nuevo y smoke SSH contra el VPS del hosting de prueba.
 
 ---
@@ -76,20 +66,18 @@ Ver análisis completo en `Agente/documentacion/hosting/producto-correo-proveedo
   - Stripe: nuevo price para el add-on.
   - ~3-4h estimado.
 
-### 🟧 Bloqueo externo
+--------------
 
-- **065A-4 — Resolver bloqueo BDP `[300035]` fuera de horario (sin escrituras reales).**
-  - Estado actual: `sync-dry-run` ya valida lecturas reales; `CreateOrder` se ejecuta en `OnlyCheck` (`OrderOperationType=1`) con `escritura_real=false` y sin `Payments`.
-  - Bloqueo vigente: BDP devuelve `[300035]-NO SE HA DEFINIDO UNA SERIE DE FACTURACION VALIDA`.
-  - Nota clave: no es un bug del backend Rust; es configuracion interna de BDP-Net (serie/destino para pedidos WebLink).
-  - Pendiente operativo para el usuario (cuando el restaurante no este en horas de trabajo):
-    1. Conectarse por RDP a `100.83.196.35`.
-    2. Abrir BDP-Net y entrar a `Utilidades -> Configuracion Servicios Web`.
-    3. Localizar el ajuste de serie de destino/serie para pedidos externos WebLink (o nombre equivalente).
-    4. Guardar evidencia de valores actuales antes de cambiar (captura/foto).
-    5. Asignar una serie valida de facturacion simplificada para pedidos WebLink (segun configuracion del local).
-    6. Guardar cambios y volver a la app.
-    7. Ejecutar `Probar sincronizacion segura` en produccion.
-  - Criterio de cierre: `listo_para_sincronizar=true` manteniendo `escritura_real=false`.
-  - Restriccion: no crear/modificar ventas, comandas, clientes, articulos ni pagos reales en el restaurante.
+Ve un problema, automaticamente cuando se haga un pedido, tiene que asigarse a mi, no importa que ya tenga pedidos asignados, no hay limite para el administrador
 
+el modal para asignar un empleado se ve mal no se porque no es ve como los otros modales
+
+hay un problema, no veo que despues de que tenga una orden asignada no pueda cancelar el pedido, o cambiar el empleado
+
+Donde dice "Empleado asignado" debería de decir "Freelancer asignado"
+
+otro problema grave es la cuestion de que el chat en los pedidos no funciona en tiempo real, no hubo una notificación a mi cuando probe enviar un mensaje como cliente, tambien debería llegar un correo cuando un mensaje pasa 20 minutos sin responderse, y debería mostrar un punto rojo cuando hay mensajes nuevos en el boton de sidebar de mensajes
+
+hay un problema visual con las notificaciones, el texto esta centrado, no debería
+
+otra cosa es que veo que los correos estan duplicados en el codigo para los envio y preview ¿porque? me parece mal a nivel codigo, deberia estar centralizado en plantillas, a demás de que se esta duplicando codigo innecesario

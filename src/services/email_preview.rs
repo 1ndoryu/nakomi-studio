@@ -50,11 +50,25 @@ pub fn list_templates() -> Vec<TemplateMeta> {
             recipients: "cliente",
         },
         TemplateMeta {
+            id: "order_completed_admin",
+            label: "Orden completada (admin)",
+            description: "Notifica a admins cuando una orden se completa",
+            category: "orders",
+            recipients: "admin",
+        },
+        TemplateMeta {
             id: "order_cancelled_client",
             label: "Orden cancelada (cliente)",
             description: "Se envía al cliente cuando su orden se cancela",
             category: "orders",
             recipients: "cliente",
+        },
+        TemplateMeta {
+            id: "order_cancelled_admin",
+            label: "Orden cancelada (admin)",
+            description: "Notifica a admins cuando una orden se cancela",
+            category: "orders",
+            recipients: "admin",
         },
         TemplateMeta {
             id: "phase_delivered_client",
@@ -69,6 +83,20 @@ pub fn list_templates() -> Vec<TemplateMeta> {
             description: "Se envía al cliente cuando se reporta un problema",
             category: "orders",
             recipients: "cliente",
+        },
+        TemplateMeta {
+            id: "problem_reported_admin",
+            label: "Problema reportado (admin)",
+            description: "Notifica a admins cuando se reporta un problema",
+            category: "orders",
+            recipients: "admin",
+        },
+        TemplateMeta {
+            id: "refund_requested_admin",
+            label: "Reembolso solicitado (admin)",
+            description: "Notifica a admins cuando un cliente solicita reembolso",
+            category: "orders",
+            recipients: "admin",
         },
         TemplateMeta {
             id: "escalation",
@@ -113,6 +141,13 @@ pub fn list_templates() -> Vec<TemplateMeta> {
             recipients: "cliente",
         },
         TemplateMeta {
+            id: "new_user_registered_admin",
+            label: "Nuevo usuario registrado (admin)",
+            description: "Notifica a admins cuando un nuevo usuario se registra",
+            category: "profile",
+            recipients: "admin",
+        },
+        TemplateMeta {
             id: "profile_email_changed_new",
             label: "Email cambiado (nuevo)",
             description: "Confirma al nuevo correo el cambio de email",
@@ -144,9 +179,14 @@ pub fn render_preview(config: &EmailConfig, template: &str) -> Result<String, St
         "new_order_admin" => Ok(render_new_order_admin(config)),
         "payment_received_admin" => Ok(render_payment_received_admin(config)),
         "order_completed_client" => Ok(render_order_completed_client(config)),
+        "order_completed_admin" => Ok(render_order_completed_admin(config)),
         "order_cancelled_client" => Ok(render_order_cancelled_client(config)),
+        "order_cancelled_admin" => Ok(render_order_cancelled_admin(config)),
         "phase_delivered_client" => Ok(render_phase_delivered_client(config)),
         "problem_reported_client" => Ok(render_problem_reported_client(config)),
+        "problem_reported_admin" => Ok(render_problem_reported_admin(config)),
+        "refund_requested_admin" => Ok(render_refund_requested_admin(config)),
+        "new_user_registered_admin" => Ok(render_new_user_registered_admin(config)),
         "escalation" => Ok(render_escalation(config)),
         "chat_invoice_paid_client" => Ok(render_chat_invoice_paid_client(config)),
         "chat_invoice_paid_admin" => Ok(render_chat_invoice_paid_admin(config)),
@@ -366,6 +406,82 @@ fn render_order_completed_client(_config: &EmailConfig) -> String {
     )
 }
 
+fn render_order_completed_admin(_config: &EmailConfig) -> String {
+    let escaped_client = html_escape(SAMPLE_CLIENT_NAME);
+    let escaped_email = html_escape(SAMPLE_CLIENT_EMAIL);
+    let panel_link = sample_panel_link();
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#166534;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">✅ Orden completada</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 20px;">
+      La orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}) ha sido completada.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 20px;">
+      Todas las fases fueron aprobadas. Los pagos retenidos han sido capturados.
+    </p>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ver orden
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de orden completada</p>
+  </div>
+</div>
+</body></html>"#,
+        order_number = SAMPLE_ORDER_NUMBER,
+        escaped_client = escaped_client,
+        escaped_email = escaped_email,
+        panel_link = panel_link,
+    )
+}
+
+fn render_order_cancelled_admin(_config: &EmailConfig) -> String {
+    let escaped_client = html_escape(SAMPLE_CLIENT_NAME);
+    let escaped_email = html_escape(SAMPLE_CLIENT_EMAIL);
+    let escaped_reason = html_escape(SAMPLE_REASON);
+    let panel_link = sample_panel_link();
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#991b1b;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">❌ Orden cancelada</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      La orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}) fue cancelada.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 20px;">
+      Motivo: <strong>{escaped_reason}</strong>
+    </p>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ver orden
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de cancelación</p>
+  </div>
+</div>
+</body></html>"#,
+        order_number = SAMPLE_ORDER_NUMBER,
+        escaped_client = escaped_client,
+        escaped_email = escaped_email,
+        escaped_reason = escaped_reason,
+        panel_link = panel_link,
+    )
+}
+
 fn render_order_cancelled_client(_config: &EmailConfig) -> String {
     let escaped_name = html_escape(SAMPLE_CLIENT_NAME);
     let escaped_reason = html_escape(SAMPLE_REASON);
@@ -475,6 +591,126 @@ fn render_problem_reported_client(_config: &EmailConfig) -> String {
         order_number = SAMPLE_ORDER_NUMBER,
         escaped_title = escaped_title,
         escaped_desc = escaped_desc,
+        panel_link = panel_link,
+    )
+}
+
+fn render_problem_reported_admin(_config: &EmailConfig) -> String {
+    let escaped_client = html_escape(SAMPLE_CLIENT_NAME);
+    let escaped_email = html_escape(SAMPLE_CLIENT_EMAIL);
+    let escaped_title = html_escape(SAMPLE_PROBLEM_TITLE);
+    let escaped_desc = html_escape(SAMPLE_PROBLEM_DESC);
+    let panel_link = sample_panel_link();
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#92400e;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">⚠️ Problema reportado</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Se reportó un problema en la orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}):
+    </p>
+    <div style="background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
+      <p style="margin:0 0 8px;font-weight:600;color:#333;font-size:14px;">{escaped_title}</p>
+      <p style="margin:0;color:#555;font-size:14px;line-height:1.5;">{escaped_desc}</p>
+    </div>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ver orden
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de problema</p>
+  </div>
+</div>
+</body></html>"#,
+        order_number = SAMPLE_ORDER_NUMBER,
+        escaped_client = escaped_client,
+        escaped_email = escaped_email,
+        escaped_title = escaped_title,
+        escaped_desc = escaped_desc,
+        panel_link = panel_link,
+    )
+}
+
+fn render_refund_requested_admin(_config: &EmailConfig) -> String {
+    let escaped_client = html_escape(SAMPLE_CLIENT_NAME);
+    let escaped_email = html_escape(SAMPLE_CLIENT_EMAIL);
+    let escaped_reason = html_escape(SAMPLE_REASON);
+    let panel_link = sample_panel_link();
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#b45309;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">🔄 Reembolso solicitado</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      El cliente <strong>{escaped_client}</strong> ({escaped_email}) solicitó un reembolso para la orden <strong>#{order_number}</strong>.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
+      <tr><td style="padding:6px 8px;color:#888;">Monto</td><td style="padding:6px 8px;font-weight:600;text-align:right;color:#b45309;">{amount_display}</td></tr>
+      <tr><td style="padding:6px 8px;color:#888;">Motivo</td><td style="padding:6px 8px;text-align:right;">{escaped_reason}</td></tr>
+    </table>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Revisar solicitud
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de reembolso</p>
+  </div>
+</div>
+</body></html>"#,
+        order_number = SAMPLE_ORDER_NUMBER,
+        escaped_client = escaped_client,
+        escaped_email = escaped_email,
+        amount_display = html_escape(SAMPLE_PRICE_DISPLAY),
+        escaped_reason = escaped_reason,
+        panel_link = panel_link,
+    )
+}
+
+fn render_new_user_registered_admin(_config: &EmailConfig) -> String {
+    let escaped_email = html_escape(SAMPLE_CLIENT_EMAIL);
+    let escaped_name = html_escape(SAMPLE_CLIENT_NAME);
+    let panel_link = format!("{}/panel", SAMPLE_SITE_URL);
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#1a1a1a;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#c9a84c;font-size:20px;font-weight:600;">🆕 Nuevo usuario</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Un nuevo usuario se registró en Nakomi Studio.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
+      <tr><td style="padding:6px 8px;color:#888;">Nombre</td><td style="padding:6px 8px;font-weight:500;text-align:right;">{escaped_name}</td></tr>
+      <tr><td style="padding:6px 8px;color:#888;">Email</td><td style="padding:6px 8px;font-weight:500;text-align:right;">{escaped_email}</td></tr>
+    </table>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ir al panel
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de nuevo registro</p>
+  </div>
+</div>
+</body></html>"#,
+        escaped_email = escaped_email,
+        escaped_name = escaped_name,
         panel_link = panel_link,
     )
 }

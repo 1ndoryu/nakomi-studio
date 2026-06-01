@@ -10,6 +10,7 @@ use crate::models::{
     AuthResponse, GoogleAuthUrlResponse, GoogleLoginRequest, LoginRequest, QuickRegisterRequest,
     RegisterRequest, SetPasswordRequest,
 };
+use crate::repositories::UserRepository;
 use crate::services::{AuditService, AuthService, GoogleAuthService};
 use crate::AppState;
 
@@ -32,6 +33,26 @@ pub async fn register(
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let response = AuthService::register(&state.pool, req, &state.jwt_secret).await?;
+
+    /* [011A-1] Email a admins notificando nuevo registro (non-fatal) */
+    if let Some(ref email_cfg) = state.email_config {
+        if let Ok(admin_emails) = UserRepository::admin_emails(&state.pool).await {
+            if !admin_emails.is_empty() {
+                let cfg = email_cfg.clone();
+                let pool = state.pool.clone();
+                let user_email = response.email.clone();
+                let user_name = response.email.clone();
+                let user_id = response.user_id;
+                let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                tokio::spawn(async move {
+                    crate::services::EmailService::send_new_user_registered_admin(
+                        &cfg, &pool, &admin_emails, &user_email, &user_name, user_id, &site_url,
+                    ).await;
+                });
+            }
+        }
+    }
+
     Ok((StatusCode::CREATED, Json(response)))
 }
 

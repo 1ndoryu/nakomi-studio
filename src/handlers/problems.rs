@@ -116,7 +116,29 @@ pub async fn report_problem(
             });
         }
     }
-
+    /* [011A-1] Email a admins notificando problema reportado (non-fatal) */
+    if let Some(ref email_cfg) = state.email_config {
+        if let Ok(admin_emails) = UserRepository::admin_emails(&state.pool).await {
+            if !admin_emails.is_empty() {
+                let cfg = email_cfg.clone();
+                let pool = state.pool.clone();
+                let onum = order.order_number;
+                let oid = order.id;
+                let cname = UserRepository::get_display_name(&state.pool, order.client_id).await
+                    .ok().flatten().unwrap_or_else(|| "Cliente".to_string());
+                let cemail = UserRepository::get_email(&state.pool, order.client_id).await
+                    .ok().flatten().unwrap_or_else(|| "desconocido@email.com".to_string());
+                let ptitle = req.reason.chars().take(80).collect::<String>();
+                let pdesc = req.reason.clone();
+                let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                tokio::spawn(async move {
+                    crate::services::EmailService::send_problem_reported_admin(
+                        &cfg, &pool, &admin_emails, &cname, &cemail, onum, &ptitle, &pdesc, oid, &site_url,
+                    ).await;
+                });
+            }
+        }
+    }
     let resp = ProblemResponse {
         id: problem.id,
         order_id: problem.order_id,

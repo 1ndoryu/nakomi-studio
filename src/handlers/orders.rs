@@ -11,10 +11,10 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateNotification, CreateOrderRequest, OrderResponse, UpdateOrderPhaseDefinitionRequest,
+    CreateNotification, CreateOrderRequest, OrderResponse, OrderStatus, UpdateOrderPhaseDefinitionRequest,
     UpdateOrderProjectDescriptionRequest, UserRole, NOTIF_NEW_ORDER, NOTIF_ORDER_ASSIGNED,
 };
-use crate::repositories::{ActivityLogRepository, UserRepository};
+use crate::repositories::{ActivityLogRepository, OrderRepository, UserRepository};
 use crate::services::OrderService;
 use crate::AppState;
 
@@ -46,12 +46,32 @@ pub async fn create_order(
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
-    let order = OrderService::create_order(&state.pool, auth.user_id, req).await?;
+    let mut order = OrderService::create_order(&state.pool, auth.user_id, req).await?;
 
-    /* [104A-38] Notificar a admins sobre nueva orden */
+    /* [016A-4] Auto-asignar nueva orden al primer admin disponible.
+     * El admin podrá delegar o reasignar desde el panel. */
     let admins = UserRepository::admin_ids(&state.pool)
         .await
         .unwrap_or_default();
+    if let Some(&admin_id) = admins.first() {
+        match OrderRepository::assign_order(&state.pool, order.id, admin_id).await {
+            Ok(_) => {
+                order.assigned_employee_id = Some(admin_id);
+                order.status = OrderStatus::InProgress;
+                order.started_at = Some(chrono::Utc::now().naive_utc());
+                let _ = ActivityLogRepository::log(
+                    &state.pool,
+                    admin_id,
+                    "order_assigned",
+                    "order",
+                    order.id,
+                    Some(serde_json::json!({"auto": true})),
+                )
+                .await;
+            }
+            Err(e) => tracing::error!("[016A-4] Error auto-asignando orden {}: {e}", order.id),
+        }
+    }
     let base = CreateNotification {
         user_id: Uuid::nil(),
         notification_type: NOTIF_NEW_ORDER.to_string(),
@@ -366,6 +386,45 @@ pub async fn assign_order(
     ))
 }
 
+/* [016A-5] Desasignar empleado de una orden (admin). Vuelve a awaiting_assignment. */
+#[utoipa::path(
+    post,
+    path = "/api/orders/{order_id}/unassign",
+    params(("order_id" = Uuid, Path, description = "ID de la orden")),
+    responses(
+        (status = 200, description = "Orden desasignada"),
+        (status = 401, description = "No autorizado"),
+        (status = 403, description = "Sin permisos"),
+        (status = 404, description = "No encontrada"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "orders"
+)]
+pub async fn unassign_order(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(order_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    auth.require_role(&[UserRole::Admin])?;
+
+    let order = OrderRepository::unassign_order(&state.pool, order_id).await?;
+
+    /* Registrar en activity_log */
+    let _ = ActivityLogRepository::log(
+        &state.pool,
+        auth.user_id,
+        "order_unassigned",
+        "order",
+        order_id,
+        Some(serde_json::json!({"previous_employee_id": order.assigned_employee_id})),
+    )
+    .await;
+
+    Ok(Json(
+        serde_json::json!({ "status": order.status, "assigned_employee_id": serde_json::Value::Null }),
+    ))
+}
+
 /* [035A-30] Agregar una nueva fase bloqueada al final de la orden phased. */
 pub async fn add_order_phase_handler(
     State(state): State<AppState>,
@@ -405,6 +464,7 @@ pub fn routes() -> Router<AppState> {
             patch(update_order_project_description_handler),
         )
         .route("/orders/:order_id/assign/:employee_id", put(assign_order))
+        .route("/orders/:order_id/unassign", post(unassign_order))
         .route("/orders/:order_id/phases", post(add_order_phase_handler))
         .route(
             "/orders/:order_id/phases/:phase_number",

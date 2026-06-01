@@ -218,6 +218,27 @@ impl OrderRepository {
         .await
     }
 
+    /* [016A-5] Desasignar empleado de una orden (admin). Vuelve el estado a awaiting_assignment. */
+    pub async fn unassign_order(pool: &PgPool, order_id: Uuid) -> Result<Order, sqlx::Error> {
+        sqlx::query_as!(
+            Order,
+            r#"UPDATE orders SET assigned_employee_id = NULL, assigned_at = NULL,
+             status = 'awaiting_assignment', open_to_employees = true, updated_at = NOW()
+             WHERE id = $1
+             RETURNING id, order_number, client_id, service_id, plan_id,
+               payment_mode as "payment_mode: PaymentMode",
+               base_price_cents, discount_percent, final_price_cents, currency,
+               status as "status: OrderStatus",
+               assigned_employee_id, assigned_at, auto_assign_deadline, current_phase,
+                    started_at, completed_at, cancelled_at, project_description, client_notes,
+                    internal_notes,
+               created_at, updated_at, ai_intermediary_enabled, ai_summary, open_to_employees"#,
+            order_id,
+        )
+        .fetch_one(pool)
+        .await
+    }
+
     /* ============================================================
     FASES DE ORDEN
     ============================================================ */

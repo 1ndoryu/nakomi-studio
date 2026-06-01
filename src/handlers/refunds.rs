@@ -93,6 +93,30 @@ pub async fn request_refund(
     };
     let _ = state.notification_hub.notify_many(&admins, &base).await;
 
+    /* [011A-1] Email a admins notificando solicitud de reembolso (non-fatal) */
+    if let Some(ref email_cfg) = state.email_config {
+        if let Ok(admin_email_list) = UserRepository::admin_emails(&state.pool).await {
+            if !admin_email_list.is_empty() {
+                let cfg = email_cfg.clone();
+                let pool = state.pool.clone();
+                let onum = order.order_number;
+                let rid = refund.id;
+                let cname = UserRepository::get_display_name(&state.pool, order.client_id).await
+                    .ok().flatten().unwrap_or_else(|| "Cliente".to_string());
+                let cemail = UserRepository::get_email(&state.pool, order.client_id).await
+                    .ok().flatten().unwrap_or_else(|| "desconocido@email.com".to_string());
+                let amount_display = crate::services::email::format_usd_cents(refundable_payment.amount_cents);
+                let reason = body.reason.clone();
+                let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                tokio::spawn(async move {
+                    crate::services::EmailService::send_refund_requested_admin(
+                        &cfg, &pool, &admin_email_list, &cname, &cemail, onum, &amount_display, &reason, rid, &site_url,
+                    ).await;
+                });
+            }
+        }
+    }
+
     Ok((StatusCode::CREATED, Json(RefundResponse::from(refund))))
 }
 

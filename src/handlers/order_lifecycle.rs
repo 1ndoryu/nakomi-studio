@@ -203,6 +203,29 @@ pub async fn cancel_order_handler(
         }
     }
 
+    /* [011A-1] Email a admins notificando cancelación (non-fatal) */
+    if let Some(ref email_cfg) = state.email_config {
+        if let Ok(admin_emails) = UserRepository::admin_emails(&state.pool).await {
+            if !admin_emails.is_empty() {
+                let cfg = email_cfg.clone();
+                let pool = state.pool.clone();
+                let onum = order.order_number;
+                let oid = order.id;
+                let cname = UserRepository::get_display_name(&state.pool, order.client_id).await
+                    .ok().flatten().unwrap_or_else(|| "Cliente".to_string());
+                let cemail = UserRepository::get_email(&state.pool, order.client_id).await
+                    .ok().flatten().unwrap_or_else(|| "desconocido@email.com".to_string());
+                let reason_clone = reason.clone().unwrap_or_else(|| "Sin motivo especificado".to_string());
+                let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                tokio::spawn(async move {
+                    crate::services::EmailService::send_order_cancelled_admin(
+                        &cfg, &pool, &admin_emails, &cname, &cemail, onum, &reason_clone, oid, &site_url,
+                    ).await;
+                });
+            }
+        }
+    }
+
     Ok(Json(serde_json::json!({ "status": order.status })))
 }
 
@@ -291,6 +314,28 @@ pub async fn approve_phase(
                             &cfg, &pool, &client_email, &cname, onum, &site_url, oid,
                         ).await;
                     });
+                }
+            }
+
+            /* [011A-1] Email a admins notificando orden completada (non-fatal) */
+            if let Some(ref email_cfg) = state.email_config {
+                if let Ok(admin_emails) = UserRepository::admin_emails(&state.pool).await {
+                    if !admin_emails.is_empty() {
+                        let cfg = email_cfg.clone();
+                        let pool = state.pool.clone();
+                        let onum = order.order_number;
+                        let oid = order.id;
+                        let cname = UserRepository::get_display_name(&state.pool, order.client_id).await
+                            .ok().flatten().unwrap_or_else(|| "Cliente".to_string());
+                        let cemail = UserRepository::get_email(&state.pool, order.client_id).await
+                            .ok().flatten().unwrap_or_else(|| "desconocido@email.com".to_string());
+                        let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                        tokio::spawn(async move {
+                            crate::services::EmailService::send_order_completed_admin(
+                                &cfg, &pool, &admin_emails, &cname, &cemail, onum, oid, &site_url,
+                            ).await;
+                        });
+                    }
                 }
             }
 

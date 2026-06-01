@@ -66,6 +66,14 @@ export async function apiAssignOrder(orderId: string, employeeId: string): Promi
     return data;
 }
 
+/* [016A-5] Desasignar empleado de una orden (admin) */
+export async function apiUnassignOrder(orderId: string): Promise<{ status: string; assigned_employee_id: null }> {
+    const {data} = await instance.post<{ status: string; assigned_employee_id: null }>(
+        `/api/orders/${orderId}/unassign`,
+    );
+    return data;
+}
+
 export async function apiCreateDelegation(
     orderId: string,
     req: CreateDelegationRequest,

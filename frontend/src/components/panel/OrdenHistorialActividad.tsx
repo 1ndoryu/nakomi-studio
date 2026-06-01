@@ -10,8 +10,8 @@ import './OrdenHistorialActividad.css';
 
 const ACTION_LABELS: Record<string, string> = {
     order_created: 'Orden creada',
-    order_assigned: 'Empleado asignado',
-    employee_assigned: 'Empleado asignado',
+    order_assigned: 'Freelancer asignado',
+    employee_assigned: 'Freelancer asignado',
     order_cancelled: 'Orden cancelada',
     phase_approved: 'Fase aprobada',
     revision_requested: 'Revisión solicitada',

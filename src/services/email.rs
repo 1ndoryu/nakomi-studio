@@ -1118,4 +1118,335 @@ impl EmailService {
             tracing::error!("Error enviando email problema reportado a {to_email}: {e}");
         }
     }
+
+    /* [011A-1] Email a admins notificando que una orden fue completada.
+     * Se dispara cuando el cliente aprueba la última fase. Non-fatal. */
+    #[allow(clippy::too_many_arguments)]
+    pub async fn send_order_completed_admin(
+        config: &EmailConfig,
+        pool: &PgPool,
+        admin_emails: &[String],
+        client_name: &str,
+        client_email: &str,
+        order_number: i32,
+        order_id: uuid::Uuid,
+        site_url: &str,
+    ) {
+        let subject = format!("✅ Orden #{order_number} completada — {client_name} — Nakomi Studio");
+        let escaped_client = html_escape(client_name);
+        let escaped_email = html_escape(client_email);
+        let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#166534;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">✅ Orden completada</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 20px;">
+      La orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}) ha sido completada.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 20px;">
+      Todas las fases fueron aprobadas. Los pagos retenidos han sido capturados.
+    </p>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ver orden
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de orden completada</p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        for email in admin_emails {
+            let result = Self::send(config, email, &subject, &html).await;
+            let status = if result.is_ok() { "sent" } else { "failed" };
+            let error_msg = result.as_ref().err().map(String::as_str);
+            if let Err(log_err) = EmailLogRepository::insert(
+                pool, email, &subject, "order_completed_admin",
+                Some("order"), Some(order_id), status, error_msg,
+            ).await {
+                tracing::warn!("Error registrando email_log: {log_err}");
+            }
+            if let Err(e) = result {
+                tracing::error!("Error enviando email orden completada admin a {email}: {e}");
+            }
+        }
+        if !admin_emails.is_empty() {
+            tracing::info!("Email orden completada #{order_number} enviado a {} admins", admin_emails.len());
+        }
+    }
+
+    /* [011A-1] Email a admins notificando que una orden fue cancelada.
+     * Se dispara cuando el admin cancela una orden. Non-fatal. */
+    #[allow(clippy::too_many_arguments)]
+    pub async fn send_order_cancelled_admin(
+        config: &EmailConfig,
+        pool: &PgPool,
+        admin_emails: &[String],
+        client_name: &str,
+        client_email: &str,
+        order_number: i32,
+        reason: &str,
+        order_id: uuid::Uuid,
+        site_url: &str,
+    ) {
+        let subject = format!("❌ Orden #{order_number} cancelada — {client_name} — Nakomi Studio");
+        let escaped_client = html_escape(client_name);
+        let escaped_email = html_escape(client_email);
+        let escaped_reason = html_escape(reason);
+        let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#991b1b;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">❌ Orden cancelada</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      La orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}) fue cancelada.
+    </p>
+    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 20px;">
+      Motivo: <strong>{escaped_reason}</strong>
+    </p>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ver orden
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de cancelación</p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        for email in admin_emails {
+            let result = Self::send(config, email, &subject, &html).await;
+            let status = if result.is_ok() { "sent" } else { "failed" };
+            let error_msg = result.as_ref().err().map(String::as_str);
+            if let Err(log_err) = EmailLogRepository::insert(
+                pool, email, &subject, "order_cancelled_admin",
+                Some("order"), Some(order_id), status, error_msg,
+            ).await {
+                tracing::warn!("Error registrando email_log: {log_err}");
+            }
+            if let Err(e) = result {
+                tracing::error!("Error enviando email orden cancelada admin a {email}: {e}");
+            }
+        }
+        if !admin_emails.is_empty() {
+            tracing::info!("Email orden cancelada #{order_number} enviado a {} admins", admin_emails.len());
+        }
+    }
+
+    /* [011A-1] Email a admins notificando que se reportó un problema.
+     * Se dispara cuando un cliente o admin reporta un problema en una orden. Non-fatal. */
+    #[allow(clippy::too_many_arguments)]
+    pub async fn send_problem_reported_admin(
+        config: &EmailConfig,
+        pool: &PgPool,
+        admin_emails: &[String],
+        client_name: &str,
+        client_email: &str,
+        order_number: i32,
+        problem_title: &str,
+        problem_description: &str,
+        order_id: uuid::Uuid,
+        site_url: &str,
+    ) {
+        let subject = format!("⚠️ Problema reportado — Orden #{order_number} — Nakomi Studio");
+        let escaped_client = html_escape(client_name);
+        let escaped_email = html_escape(client_email);
+        let escaped_title = html_escape(problem_title);
+        let escaped_desc = html_escape(problem_description);
+        let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#92400e;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">⚠️ Problema reportado</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Se reportó un problema en la orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}):
+    </p>
+    <div style="background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
+      <p style="margin:0 0 8px;font-weight:600;color:#333;font-size:14px;">{escaped_title}</p>
+      <p style="margin:0;color:#555;font-size:14px;line-height:1.5;">{escaped_desc}</p>
+    </div>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ver orden
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de problema</p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        for email in admin_emails {
+            let result = Self::send(config, email, &subject, &html).await;
+            let status = if result.is_ok() { "sent" } else { "failed" };
+            let error_msg = result.as_ref().err().map(String::as_str);
+            if let Err(log_err) = EmailLogRepository::insert(
+                pool, email, &subject, "problem_reported_admin",
+                Some("order"), Some(order_id), status, error_msg,
+            ).await {
+                tracing::warn!("Error registrando email_log: {log_err}");
+            }
+            if let Err(e) = result {
+                tracing::error!("Error enviando email problema reportado admin a {email}: {e}");
+            }
+        }
+        if !admin_emails.is_empty() {
+            tracing::info!("Email problema reportado orden #{order_number} enviado a {} admins", admin_emails.len());
+        }
+    }
+
+    /* [011A-1] Email a admins notificando solicitud de reembolso.
+     * Se dispara cuando un cliente solicita un reembolso. Non-fatal. */
+    #[allow(clippy::too_many_arguments)]
+    pub async fn send_refund_requested_admin(
+        config: &EmailConfig,
+        pool: &PgPool,
+        admin_emails: &[String],
+        client_name: &str,
+        client_email: &str,
+        order_number: i32,
+        amount_display: &str,
+        reason: &str,
+        refund_id: uuid::Uuid,
+        site_url: &str,
+    ) {
+        let subject = format!("🔄 Reembolso solicitado — Orden #{order_number} — Nakomi Studio");
+        let escaped_client = html_escape(client_name);
+        let escaped_email = html_escape(client_email);
+        let escaped_reason = html_escape(reason);
+        let panel_link = format!("{site_url}/panel?seccion=reembolsos&id={refund_id}");
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#b45309;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">🔄 Reembolso solicitado</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      El cliente <strong>{escaped_client}</strong> ({escaped_email}) solicitó un reembolso para la orden <strong>#{order_number}</strong>.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
+      <tr><td style="padding:6px 8px;color:#888;">Monto</td><td style="padding:6px 8px;font-weight:600;text-align:right;color:#b45309;">{amount_display}</td></tr>
+      <tr><td style="padding:6px 8px;color:#888;">Motivo</td><td style="padding:6px 8px;text-align:right;">{escaped_reason}</td></tr>
+    </table>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Revisar solicitud
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de reembolso</p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        for email in admin_emails {
+            let result = Self::send(config, email, &subject, &html).await;
+            let status = if result.is_ok() { "sent" } else { "failed" };
+            let error_msg = result.as_ref().err().map(String::as_str);
+            if let Err(log_err) = EmailLogRepository::insert(
+                pool, email, &subject, "refund_requested_admin",
+                Some("refund"), Some(refund_id), status, error_msg,
+            ).await {
+                tracing::warn!("Error registrando email_log: {log_err}");
+            }
+            if let Err(e) = result {
+                tracing::error!("Error enviando email reembolso solicitado admin a {email}: {e}");
+            }
+        }
+        if !admin_emails.is_empty() {
+            tracing::info!("Email reembolso solicitado orden #{order_number} enviado a {} admins", admin_emails.len());
+        }
+    }
+
+    /* [011A-1] Email a admins notificando que un nuevo usuario se registró.
+     * Se dispara después de un registro exitoso. Non-fatal. */
+    #[allow(clippy::too_many_arguments)]
+    pub async fn send_new_user_registered_admin(
+        config: &EmailConfig,
+        pool: &PgPool,
+        admin_emails: &[String],
+        user_email: &str,
+        user_name: &str,
+        user_id: uuid::Uuid,
+        site_url: &str,
+    ) {
+        let subject = format!("🆕 Nuevo usuario registrado — {user_email} — Nakomi Studio");
+        let escaped_email = html_escape(user_email);
+        let escaped_name = html_escape(user_name);
+        let panel_link = format!("{site_url}/panel");
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div style="background:#1a1a1a;padding:24px;text-align:center;">
+    <h1 style="margin:0;color:#c9a84c;font-size:20px;font-weight:600;">🆕 Nuevo usuario</h1>
+  </div>
+  <div style="padding:32px 24px;">
+    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Un nuevo usuario se registró en Nakomi Studio.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
+      <tr><td style="padding:6px 8px;color:#888;">Nombre</td><td style="padding:6px 8px;font-weight:500;text-align:right;">{escaped_name}</td></tr>
+      <tr><td style="padding:6px 8px;color:#888;">Email</td><td style="padding:6px 8px;font-weight:500;text-align:right;">{escaped_email}</td></tr>
+    </table>
+    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+      Ir al panel
+    </a>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de nuevo registro</p>
+  </div>
+</div>
+</body></html>"#,
+        );
+
+        for email in admin_emails {
+            let result = Self::send(config, email, &subject, &html).await;
+            let status = if result.is_ok() { "sent" } else { "failed" };
+            let error_msg = result.as_ref().err().map(String::as_str);
+            if let Err(log_err) = EmailLogRepository::insert(
+                pool, email, &subject, "new_user_registered_admin",
+                Some("user"), Some(user_id), status, error_msg,
+            ).await {
+                tracing::warn!("Error registrando email_log: {log_err}");
+            }
+            if let Err(e) = result {
+                tracing::error!("Error enviando email nuevo usuario admin a {email}: {e}");
+            }
+        }
+        if !admin_emails.is_empty() {
+            tracing::info!("Email nuevo usuario registrado ({user_email}) enviado a {} admins", admin_emails.len());
+        }
+    }
 }

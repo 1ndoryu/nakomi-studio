@@ -98,6 +98,7 @@
 .notificationBell__item {
   display: flex;
   align-items: flex-start;
+  justify-content: flex-start;
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid var(--border-default);

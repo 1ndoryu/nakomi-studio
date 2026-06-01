@@ -8,7 +8,7 @@
  * sentinel-disable-file usestate-excesivo: 5 estados necesarios para flujos independientes
  * (fases, intermediario, modal asignar); ya se usa useOrdenDetalle para el estado principal. */
 import React, {useState, useCallback} from 'react';
-import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft, UserCheck, Plus} from 'lucide-react';
+import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft, UserCheck, UserX, Plus} from 'lucide-react';
 import {
     ORDER_STATUS_LABELS,
     apiToggleAiIntermediary,
@@ -31,9 +31,11 @@ import {OrdenHistorialActividad} from './OrdenHistorialActividad';
 import {CancellationBanner} from './CancellationBanner';
 import {OrdenInfoGrid} from './OrdenInfoGrid';
 import {ModalAsignar} from './ModalAsignar';
+import {apiUnassignOrder} from '../../api/assignment';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
 import {useCancellationRequest} from '../../hooks/useCancellationRequest';
 import {useChatStore} from '../../stores/chatStore';
+import {useMutation, useQueryClient} from '@tanstack/react-query';
 import './OrdenDetalle.css';
 
 /* [104A-29] pending_payment ya no se usa a nivel de orden. payment_held es el estado inicial. */
@@ -171,7 +173,17 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
 
     /* [T2-assignment] Modal de asignación admin */
     const [modalAsignarAbierto, setModalAsignarAbierto] = useState(false);
-    const canAssign = isAdmin && (order.status === 'awaiting_assignment' || order.status === 'payment_held');
+    const canAssign = isAdmin && (order.status === 'awaiting_assignment' || order.status === 'payment_held' || order.status === 'in_progress');
+
+    /* [016A-5] Desasignar empleado (admin) */
+    const queryClient = useQueryClient();
+    const desasignar = useMutation({
+        mutationFn: () => apiUnassignOrder(order.id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+            queryClient.invalidateQueries({ queryKey: ['orden-detalle', order.id] });
+        },
+    });
 
     /* [064A-31] Chat disponible cuando hay empleado asignado y la orden está activa */
     const canChat = !!order.assigned_employee_id && isActiveOrder;
@@ -216,13 +228,24 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
         });
     }
 
-    /* [T2-assignment] Asignar: admin en órdenes sin empleado */
+    /* [T2-assignment] Asignar/reasignar: admin siempre puede asignar en estados activos */
     if (canAssign) {
         menuItems.push({
             id: 'assign-order',
-            label: 'Asignar a empleado',
+            label: order.assigned_employee_id ? 'Reasignar a empleado' : 'Asignar a empleado',
             onSelect: () => setModalAsignarAbierto(true),
             icon: <UserCheck size={16} />,
+        });
+    }
+
+    /* [016A-5] Desasignar: admin puede quitar la asignación actual */
+    if (isAdmin && order.assigned_employee_id && isActiveOrder) {
+        menuItems.push({
+            id: 'unassign-order',
+            label: 'Desasignar empleado',
+            onSelect: () => desasignar.mutate(),
+            disabled: desasignar.isPending,
+            icon: <UserX size={16} />,
         });
     }
 

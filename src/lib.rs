@@ -3,6 +3,16 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::needless_raw_string_hashes)]
+#![allow(clippy::manual_clamp)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::map_unwrap_or)]
+#![allow(clippy::format_in_format_args)]
+#![allow(clippy::must_use_candidate)]
 
 pub mod config;
 pub mod errors;
