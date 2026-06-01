@@ -52,27 +52,29 @@ Ver análisis completo en `Agente/documentacion/hosting/producto-correo-proveedo
 
 **Decisión pendiente (bloqueante):** Elegir proveedor — MXroute ($59/año, más barato, sin API) vs Migadu ($9/mes, API REST). Esto define la arquitectura de provisioning.
 
-- **265A-11 — ✅ Fase 1: Aliases/reenvíos gratis con Cloudflare Email Routing.**
-  - Implementado: migración BD, modelos, repositorio, handlers CRUD, rutas, OpenAPI.
-  - Frontend: TabCorreo con lista de aliases, crear/eliminar, cuota del plan.
-  - 3 alias en plan Pro, 5 alias en Avanzado. Plan Básico sin aliases.
+- **265A-11 — Fase 1: Aliases/reenvíos gratis con Cloudflare Email Routing.**
+  - Configurar MX/SPF/DKIM/DMARC del dominio del cliente apuntando a Cloudflare.
+  - Solo reenvío a Gmail/Outlook del cliente (sin IMAP/SMTP).
+  - Incluir 3 alias en plan Pro, 5 alias en Avanzado.
   - Sin costo operativo para Nakomi.
-  - Pendiente cliente: configurar MX/SPF/DKIM/DMARC en Cloudflare.
-  - Backend: `GET/POST /email`, `POST/DELETE /email/aliases`.
+  - Backend: `POST /api/hosting/{id}/aliases`, `DELETE /api/hosting/{id}/aliases/{alias}`.
+  - Frontend: TabCorreo con lista de aliases y estado DNS.
+  - ~8-10h estimado.
 
-- **265A-12 — 🟡 Fase 2: Buzones IMAP (Migadu) — PREPARADA, NO ACTIVA.**
-  - Proveedor: Migadu (API REST pública). Plan Micro ($19/año).
-  - Tabla `hosting_email_mailboxes` creada en BD, endpoints NO expuestos.
-  - Modelos Rust preparados (`HostingEmailMailbox`, `EmailMailboxResponse`).
-  - `hosting_plan_configs.included_mailboxes` agregado (1 en Avanzado).
-  - Frontend: sección de buzones preparada pero oculta.
-  - Pendiente: el usuario avisa → conectar API Migadu + exponer endpoints.
+- **265A-12 — Fase 2: Buzones IMAP (MXroute o Migadu).**
+  - Contratar proveedor y configurar cuenta reseller.
+  - Implementar provisioning: crear/suspender/eliminar mailbox vía API (Migadu) o automatización panel (MXroute).
+  - Modelos BD: `mail_domains`, `mailboxes`, `mail_events`.
+  - Backend: CRUD de buzones, reset password, DNS automático.
+  - Frontend: TabCorreo completo con indicadores de estado.
+  - Billing: Stripe add-on a $1.50/buzón/mes.
+  - ~20-26h estimado.
 
-- **265A-13 — ✅ Incluir 1 buzón IMAP gratis en plan Avanzado (preparado).**
-  - `hosting_plan_configs.included_mailboxes` agregado en migración.
-  - Plan Avanzado con `included_mailboxes=1`.
-  - Frontend ya muestra la sección de buzones cuando `mailboxes_limit > 0`.
-  - Stripe: pendiente crear price del add-on cuando se active Fase 2.
+- **265A-13 — Incluir 1 buzón IMAP gratis en plan Avanzado.**
+  - Modificar `hosting_plan_configs` (nuevo campo `included_mailboxes`).
+  - Actualizar pricing en frontend y catálogo.
+  - Stripe: nuevo price para el add-on.
+  - ~3-4h estimado.
 
 ### 🟧 Bloqueo externo
 

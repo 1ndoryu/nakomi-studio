@@ -65,7 +65,7 @@ impl From<EmailLogRow> for EmailLogWithLabel {
 /// Lista paginada de correos enviados, con filtro opcional por plantilla
 #[utoipa::path(
     get,
-    path = "/api/admin/email-logs",
+    path = "/admin/email-logs",
     params(
         ("template" = Option<String>, Query, description = "Filtrar por tipo de plantilla"),
         ("limit" = Option<i32>, Query, description = "Máximo 100, default 50"),
@@ -107,5 +107,5 @@ pub async fn list_email_logs(
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/api/admin/email-logs", get(list_email_logs))
+    Router::new().route("/admin/email-logs", get(list_email_logs))
 }
