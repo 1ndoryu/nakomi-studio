@@ -338,7 +338,7 @@ async fn notify_escalation(state: &AppState, session_id: Uuid, visitor: &str) {
                 let site_url = std::env::var("SITE_URL")
                     .unwrap_or_else(|_| "https://nakomi.studio".to_string());
                 crate::services::EmailService::send_escalation_emails(
-                    email_cfg, &emails, visitor, session_id, &site_url,
+                    email_cfg, &state.pool, &emails, visitor, session_id, &site_url,
                 )
                 .await;
             }

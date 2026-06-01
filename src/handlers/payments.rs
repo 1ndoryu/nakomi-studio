@@ -173,6 +173,44 @@ pub async fn stripe_webhook(
                             reference_id: Some(order.id),
                         })
                         .await;
+
+                    /* [311A-1] Email a admins notificando pago recibido */
+                    if let Some(ref email_cfg) = state.email_config {
+                        if let Ok(admin_emails) =
+                            UserRepository::admin_emails(&state.pool).await
+                        {
+                            if !admin_emails.is_empty() {
+                                let site_url = std::env::var("SITE_URL")
+                                    .unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                                let client_email = UserRepository::get_email(
+                                    &state.pool, order.client_id,
+                                )
+                                .await
+                                .ok()
+                                .flatten()
+                                .unwrap_or_else(|| "desconocido".to_string());
+                                let client_name = UserRepository::get_display_name(
+                                    &state.pool, order.client_id,
+                                )
+                                .await
+                                .ok()
+                                .flatten()
+                                .unwrap_or_else(|| "Cliente".to_string());
+                                EmailService::send_payment_received_admin(
+                                    email_cfg,
+                                    &state.pool,
+                                    &admin_emails,
+                                    &client_email,
+                                    &client_name,
+                                    order.order_number,
+                                    &amount_display,
+                                    order.id,
+                                    &site_url,
+                                )
+                                .await;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -229,6 +267,7 @@ pub async fn stripe_webhook(
                 if let Ok(admin_emails) = UserRepository::admin_emails(&state.pool).await {
                     EmailService::send_chat_invoice_paid_admin(
                         cfg,
+                        &state.pool,
                         &admin_emails,
                         &client_email,
                         amount_usd,
@@ -243,6 +282,7 @@ pub async fn stripe_webhook(
                     let register_url = format!("{site_url}/registro?email={encoded_email}");
                     EmailService::send_chat_invoice_paid_client(
                         cfg,
+                        &state.pool,
                         &client_email,
                         amount_usd,
                         &site_url,

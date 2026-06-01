@@ -24,6 +24,7 @@ import {SeccionWallet} from '../components/panel/SeccionWallet';
 import {SeccionRetiros} from '../components/panel/SeccionRetiros';
 import {SeccionInfraestructura} from '../components/panel/SeccionInfraestructura';
 import {SeccionDominios} from '../components/panel/SeccionDominios';
+import {SeccionCorreo} from '../components/panel/SeccionCorreo';
 /* [064A-34] EmployeesSection y ServicesCatalogSection eliminados del panel. */
 import {SidebarPanel} from '../components/panel/SidebarPanel';
 import {PlaceholderSeccion} from '../components/panel/PlaceholderSeccion';
@@ -164,6 +165,9 @@ export const PanelIsland: React.FC = () => {
             /* [304A-3] Dominios Contabo (admin) */
             case 'dominios':
                 return <SeccionDominios />;
+            /* [311A-1] Trazabilidad de correos enviados (admin) */
+            case 'correos':
+                return <SeccionCorreo />;
             default:
                 return <PlaceholderSeccion tab={tabActual} />;
         }

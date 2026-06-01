@@ -569,6 +569,7 @@ pub async fn approve_subscription(
     if let Some(config) = &state.email_config {
         EmailService::send_vps_approved(
             config,
+            &state.pool,
             &subscription.client_email,
             &plan_config.display_name,
             Some(&created_instance.ip),
@@ -655,6 +656,7 @@ pub async fn reject_subscription(
             .map_or_else(|| subscription.tier_name.clone(), |plan| plan.display_name);
         EmailService::send_vps_rejected(
             config,
+            &state.pool,
             &subscription.client_email,
             &plan_name,
             &req.reason,

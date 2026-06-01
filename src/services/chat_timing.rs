@@ -776,7 +776,7 @@ async fn send_escalation(
                 let site_url = std::env::var("SITE_URL")
                     .unwrap_or_else(|_| "https://nakomi.studio".to_string());
                 crate::services::EmailService::send_escalation_emails(
-                    cfg, &emails, name, session_id, &site_url,
+                    cfg, pool, &emails, name, session_id, &site_url,
                 )
                 .await;
             }

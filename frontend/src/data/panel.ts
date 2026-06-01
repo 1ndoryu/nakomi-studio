@@ -15,7 +15,9 @@ export type SeccionPanel =
     /* [304A-1] Sección separada para infraestructura (VPS reales, despliegues Coolify) */
     | 'infraestructura'
     /* [304A-3] Sección de dominios Contabo (admin only) */
-    | 'dominios';
+    | 'dominios'
+    /* [311A-1] Sección de trazabilidad de correos enviados (admin only) */
+    | 'correos';
 
 export interface TabConfig {
     id: SeccionPanel;
@@ -173,6 +175,12 @@ const TABS_ADMIN: TabConfig[] = [
         id: 'infraestructura',
         label: 'Infraestructura',
         descripcion: 'Despliegues activos en Coolify y servidores VPS configurados. Monitoreo y auditoría de infraestructura real.'
+    },
+    /* [311A-1] Trazabilidad de correos enviados */
+    {
+        id: 'correos',
+        label: 'Correos',
+        descripcion: 'Trazabilidad de todos los correos enviados desde la plataforma. Filtra por tipo de plantilla y revisa estado de entrega.'
     },
     /* [304A-3] Dominios Contabo: gestión de dominios registrados */
     {

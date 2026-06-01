@@ -235,6 +235,7 @@ pub async fn update_profile(
         if let Some(config) = &state.email_config {
             EmailService::send_profile_email_changed_new_address(
                 config,
+                &state.pool,
                 &user.email,
                 user.display_name.as_deref(),
                 &current_user.email,
@@ -243,6 +244,7 @@ pub async fn update_profile(
 
             EmailService::send_profile_email_changed_old_address(
                 config,
+                &state.pool,
                 &current_user.email,
                 current_user.display_name.as_deref(),
                 &user.email,
@@ -281,6 +283,7 @@ pub async fn change_password(
     if let Some(config) = &state.email_config {
         EmailService::send_profile_password_changed(
             config,
+            &state.pool,
             &user.email,
             user.display_name.as_deref(),
         )

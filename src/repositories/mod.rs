@@ -6,6 +6,7 @@ mod dashboard;
 mod delegation;
 mod deliverable;
 mod domain;
+mod email_log;
 mod fixture;
 mod hosting;
 mod infrastructure;
@@ -33,6 +34,7 @@ pub use dashboard::DashboardRepository;
 pub use delegation::{DelegationRepository, EmployeeListItemRow};
 pub use deliverable::{CreateDeliverableParams, DeliverableRepository};
 pub use domain::{CreateDomainOrderParams, DomainOrderRepository};
+pub use email_log::{EmailLogRepository, EmailLogRow};
 pub use fixture::{FixtureRepository, FixtureTableStat};
 pub use hosting::{CreateHostingParams, HostingRepository, ServerInfo, UpdateHostingParams};
 pub use infrastructure::{

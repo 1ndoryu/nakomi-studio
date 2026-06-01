@@ -19,7 +19,9 @@ use crate::models::{
     CreateNotification, DeliverPhaseResponse, OrderStatus, PhaseDeliverablesResponse, PhaseStatus,
     UserRole, ALLOWED_MIME_TYPES, MAX_FILES_PER_DELIVERY, MAX_FILE_SIZE, NOTIF_PHASE_DELIVERED,
 };
-use crate::repositories::{CreateDeliverableParams, DeliverableRepository, OrderRepository};
+use crate::repositories::{
+    CreateDeliverableParams, DeliverableRepository, OrderRepository, UserRepository,
+};
 use crate::AppState;
 
 /// Directorio base para uploads (relativo al CWD del servidor)
@@ -124,6 +126,25 @@ pub async fn deliver_phase_with_files(
             reference_id: Some(order.id),
         })
         .await;
+
+    /* [311A-1] Email al cliente notificando fase entregada (non-fatal) */
+    if let Some(ref email_cfg) = state.email_config {
+        if let Ok(Some(client_email)) = UserRepository::get_email(&state.pool, order.client_id).await {
+            let cfg = email_cfg.clone();
+            let pool = state.pool.clone();
+            let onum = order.order_number;
+            let oid = order.id;
+            let cname = UserRepository::get_display_name(&state.pool, order.client_id).await
+                .ok().flatten().unwrap_or_else(|| "Cliente".to_string());
+            let ptitle = phase.title.clone();
+            let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
+            tokio::spawn(async move {
+                crate::services::EmailService::send_phase_delivered_client(
+                    &cfg, &pool, &client_email, &cname, onum, &ptitle, &site_url, oid,
+                ).await;
+            });
+        }
+    }
 
     /* Actualizar estado de orden si estaba en InProgress */
     if order.status == OrderStatus::InProgress {

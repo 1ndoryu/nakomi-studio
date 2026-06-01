@@ -256,6 +256,7 @@ impl VpsStripeService {
             if let Ok(admin_emails) = UserRepository::admin_emails(pool).await {
                 EmailService::send_vps_pending_approval(
                     config,
+                    pool,
                     &admin_emails,
                     &existing.client_email,
                     humanize_tier_name(&existing.tier_name),

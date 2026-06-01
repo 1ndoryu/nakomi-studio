@@ -185,6 +185,24 @@ pub async fn cancel_order_handler(
     )
     .await;
 
+    /* [311A-1] Email al cliente notificando cancelación (non-fatal) */
+    if let Some(ref email_cfg) = state.email_config {
+        let reason_clone = reason.clone().unwrap_or_else(|| "Sin motivo especificado".to_string());
+        if let Ok(Some(client_email)) = UserRepository::get_email(&state.pool, order.client_id).await {
+            let cfg = email_cfg.clone();
+            let pool = state.pool.clone();
+            let onum = order.order_number;
+            let oid = order.id;
+            let cname = UserRepository::get_display_name(&state.pool, order.client_id).await
+                .ok().flatten().unwrap_or_else(|| "Cliente".to_string());
+            tokio::spawn(async move {
+                crate::services::EmailService::send_order_cancelled_client(
+                    &cfg, &pool, &client_email, &cname, onum, &reason_clone, oid,
+                ).await;
+            });
+        }
+    }
+
     Ok(Json(serde_json::json!({ "status": order.status })))
 }
 
@@ -257,6 +275,24 @@ pub async fn approve_phase(
                 reference_id: Some(order.id),
             };
             let _ = state.notification_hub.notify_many(&recipients, &base).await;
+
+            /* [311A-1] Email al cliente notificando orden completada (non-fatal) */
+            if let Some(ref email_cfg) = state.email_config {
+                if let Ok(Some(client_email)) = UserRepository::get_email(&state.pool, order.client_id).await {
+                    let cfg = email_cfg.clone();
+                    let pool = state.pool.clone();
+                    let onum = order.order_number;
+                    let oid = order.id;
+                    let cname = UserRepository::get_display_name(&state.pool, order.client_id).await
+                        .ok().flatten().unwrap_or_else(|| "Cliente".to_string());
+                    let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                    tokio::spawn(async move {
+                        crate::services::EmailService::send_order_completed_client(
+                            &cfg, &pool, &client_email, &cname, onum, &site_url, oid,
+                        ).await;
+                    });
+                }
+            }
 
             if let Some(ref stripe_key) = state.stripe_secret_key {
                 if let Err(e) = PaymentService::capture_held_payments(

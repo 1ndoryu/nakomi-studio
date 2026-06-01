@@ -1,0 +1,189 @@
+/* [311A-1] Estilos para la sección admin de trazabilidad de correos.
+ * Sigue el patrón visual de SeccionReembolsos. */
+
+.correosContenedor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espaciado-md, 16px);
+    padding: var(--espaciado-lg, 24px);
+    background: var(--color-fondo, #fff);
+    border-radius: var(--radio-borde, 12px);
+    box-shadow: var(--sombra-tarjeta, 0 2px 8px rgba(0, 0, 0, 0.06));
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.correosTitulo {
+    margin: 0 0 var(--espaciado-sm, 8px);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-texto-primario, #1a1a1a);
+}
+
+/* Filtro */
+.correosFiltro {
+    display: flex;
+    align-items: center;
+    gap: var(--espaciado-sm, 8px);
+    color: var(--color-texto-secundario, #666);
+    flex-wrap: wrap;
+}
+
+.correosFiltro select {
+    max-width: 280px;
+}
+
+.correosTotal {
+    font-size: 13px;
+    color: var(--color-texto-secundario, #888);
+    margin-left: auto;
+}
+
+/* Tabla */
+.correosTablaWrapper {
+    overflow-x: auto;
+    border-radius: var(--radio-borde, 8px);
+    border: 1px solid var(--color-borde, #eee);
+}
+
+.correosTabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.correosTabla th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: var(--color-texto-secundario, #666);
+    background: var(--color-fondo-secundario, #f8f8f8);
+    border-bottom: 1px solid var(--color-borde, #eee);
+    white-space: nowrap;
+}
+
+.correosTabla td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--color-borde, #eee);
+    color: var(--color-texto-primario, #333);
+}
+
+.correosFila {
+    transition: background 0.15s ease;
+}
+
+.correosFila:hover {
+    background: var(--color-fondo-hover, #fafafa);
+}
+
+.correosFila:last-child td {
+    border-bottom: none;
+}
+
+.correosTag {
+    display: inline-block;
+    background: var(--color-fondo-secundario, #f0f0f0);
+    color: var(--color-texto-primario, #333);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.correosDestinatario {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-texto-secundario, #666);
+}
+
+.correosAsunto {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.correosFecha {
+    white-space: nowrap;
+    color: var(--color-texto-secundario, #888);
+    font-size: 13px;
+}
+
+/* Badges de estado */
+.correosBadge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.correosBadge.badgeExito {
+    background: #e6f7e6;
+    color: #166534;
+}
+
+.correosBadge.badgeError {
+    background: #fde8e8;
+    color: #991b1b;
+}
+
+.correosBadge.badgeNeutral {
+    background: #f0f0f0;
+    color: #666;
+}
+
+/* Paginación */
+.correosPaginacion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--espaciado-md, 16px);
+    padding-top: var(--espaciado-sm, 8px);
+    flex-wrap: wrap;
+}
+
+.correosPagInfo {
+    font-size: 13px;
+    color: var(--color-texto-secundario, #888);
+}
+
+/* Estados vacío y carga */
+.correosVacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--espaciado-sm, 8px);
+    padding: 48px 24px;
+    color: var(--color-texto-secundario, #888);
+    text-align: center;
+}
+
+.correosVacio p {
+    margin: 0;
+    font-size: 15px;
+}
+
+.correosSpinner {
+    animation: correosSpin 1s linear infinite;
+}
+
+@keyframes correosSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.correosError {
+    display: flex;
+    align-items: center;
+    gap: var(--espaciado-sm, 8px);
+    padding: 24px;
+    color: #991b1b;
+    background: #fde8e8;
+    border-radius: var(--radio-borde, 8px);
+}

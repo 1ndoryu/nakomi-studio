@@ -23,6 +23,7 @@ use crate::AppState;
 ============================================================ */
 
 /// Crear una nueva orden (solo clientes o admin operando como cliente)
+#[allow(clippy::too_many_lines)]
 #[utoipa::path(
     post,
     path = "/api/orders",
@@ -114,6 +115,7 @@ pub async fn create_order(
 
         if let Some(email) = client_email {
             let cfg = email_cfg.clone();
+            let pool = state.pool.clone();
             let name = client_name.unwrap_or_else(|| "Cliente".to_string());
             let svc = order.service_title.clone();
             let plan = order.plan_name.clone();
@@ -122,7 +124,41 @@ pub async fn create_order(
             let order_num = order.order_number;
             tokio::spawn(async move {
                 crate::services::EmailService::send_order_confirmation(
-                    &cfg, &email, &name, order_num, &svc, &plan, &price,
+                    &cfg, &pool, &email, &name, order_num, &svc, &plan, &price,
+                )
+                .await;
+            });
+        }
+    }
+
+    /* [311A-1] Email a admins notificando nueva orden (non-fatal) */
+    if let Some(ref email_cfg) = state.email_config {
+        let admin_emails = UserRepository::admin_emails(&state.pool).await.unwrap_or_default();
+        if !admin_emails.is_empty() {
+            let cfg = email_cfg.clone();
+            let pool = state.pool.clone();
+            let client_email_for_admin = UserRepository::get_email(&state.pool, auth.user_id)
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "desconocido".to_string());
+            let client_name_for_admin =
+                UserRepository::get_display_name(&state.pool, auth.user_id)
+                    .await
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| "Cliente".to_string());
+            let svc = order.service_title.clone();
+            let plan = order.plan_name.clone();
+            let price = crate::services::format_price_cents(order.final_price_cents, &order.currency);
+            let pmode = format!("{:?}", order.payment_mode);
+            let oid = order.id;
+            let onum = order.order_number;
+            let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
+            tokio::spawn(async move {
+                crate::services::EmailService::send_new_order_admin(
+                    &cfg, &pool, &admin_emails, &client_email_for_admin, &client_name_for_admin,
+                    onum, &svc, &plan, &price, &pmode, oid, &site_url,
                 )
                 .await;
             });
