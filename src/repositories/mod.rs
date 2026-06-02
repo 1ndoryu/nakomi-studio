@@ -28,6 +28,7 @@ mod wallet;
 
 pub use activity_log::{ActivityLogRepository, ActivityRow};
 pub use billing::BillingRepository;
+pub use billing::AdminBillingItem;
 pub use blog::{BlogRepository, CreateBlogPostParams, UpdateBlogPostParams};
 pub use chat::ChatRepository;
 pub use dashboard::DashboardRepository;

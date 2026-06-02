@@ -24,6 +24,7 @@ mod vps;
 mod wallet;
 
 pub use billing::{
+    AdminBillingItemResponse, AdminUpdateBillingStatusRequest,
     BillingCheckoutMode, BillingCheckoutResponse, BillingItem, CreateBillingCheckoutRequest,
 };
 pub use blog::{

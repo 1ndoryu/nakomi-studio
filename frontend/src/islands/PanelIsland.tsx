@@ -25,6 +25,7 @@ import {SeccionRetiros} from '../components/panel/SeccionRetiros';
 import {SeccionInfraestructura} from '../components/panel/SeccionInfraestructura';
 import {SeccionDominios} from '../components/panel/SeccionDominios';
 import {SeccionCorreo} from '../components/panel/SeccionCorreo';
+import {SeccionCobros} from '../components/panel/SeccionCobros';
 /* [064A-34] EmployeesSection y ServicesCatalogSection eliminados del panel. */
 import {SidebarPanel} from '../components/panel/SidebarPanel';
 import {PlaceholderSeccion} from '../components/panel/PlaceholderSeccion';
@@ -168,6 +169,9 @@ export const PanelIsland: React.FC = () => {
             /* [311A-1] Trazabilidad de correos enviados (admin) */
             case 'correos':
                 return <SeccionCorreo />;
+            /* [026B-1] Cobros pendientes: gestión admin de billing_items */
+            case 'cobros':
+                return <SeccionCobros />;
             default:
                 return <PlaceholderSeccion tab={tabActual} />;
         }

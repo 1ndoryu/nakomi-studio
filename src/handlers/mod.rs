@@ -2,6 +2,7 @@
  * [164A-17] Sigue siendo el orquestador único de rutas/estado global del backend. */
 #![allow(clippy::needless_for_each)] // Generado por utoipa OpenApi derive
 
+mod admin_billing;
 mod admin_client_bootstrap;
 mod admin_email_preview;
 mod admin_emails;
@@ -197,6 +198,8 @@ impl utoipa::Modify for SecurityAddon {
         hosting::email_aliases::get_email_info,
         hosting::email_aliases::create_alias,
         hosting::email_aliases::delete_alias,
+        admin_billing::list_billing_items,
+        admin_billing::update_billing_status,
     ),
     components(schemas(
         health::HealthResponse,
@@ -306,6 +309,8 @@ impl utoipa::Modify for SecurityAddon {
         crate::models::EmailMailboxResponse,
         crate::models::HostingEmailInfoResponse,
         crate::models::CreateEmailAliasRequest,
+        crate::models::AdminBillingItemResponse,
+        crate::models::AdminUpdateBillingStatusRequest,
         order_lifecycle::ActivityEntry,
         profile::AvatarResponse,
         public_config::PublicConfigResponse,
@@ -678,6 +683,7 @@ fn api_routes() -> Router<AppState> {
         .merge(dashboard::routes())
         .merge(profile::routes())
         .merge(admin_users::routes())
+        .merge(admin_billing::routes())
         .merge(admin_services::routes())
         .merge(blog::public_routes())
         .merge(blog::admin_routes())

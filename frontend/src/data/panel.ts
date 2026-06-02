@@ -17,7 +17,9 @@ export type SeccionPanel =
     /* [304A-3] Sección de dominios Contabo (admin only) */
     | 'dominios'
     /* [311A-1] Sección de trazabilidad de correos enviados (admin only) */
-    | 'correos';
+    | 'correos'
+    /* [026B-1] Cobros pendientes: gestión admin de billing_items */
+    | 'cobros';
 
 export interface TabConfig {
     id: SeccionPanel;
@@ -187,6 +189,12 @@ const TABS_ADMIN: TabConfig[] = [
         id: 'dominios',
         label: 'Dominios',
         descripcion: 'Dominios registrados en Contabo: estado, nameservers y fecha de vencimiento.'
+    },
+    /* [026B-1] Cobros pendientes: gestión admin de billing_items */
+    {
+        id: 'cobros',
+        label: 'Cobros',
+        descripcion: 'Gestiona cobros pendientes de clientes: marca pagados o pendientes manualmente.'
     }
 ];
 

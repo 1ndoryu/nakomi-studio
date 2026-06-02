@@ -7,7 +7,7 @@
 import React, {useState, useCallback, useRef} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {useTranslation} from 'react-i18next';
-import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, Banknote, Menu, Network, Globe, Mail} from 'lucide-react';
+import {FolderOpen, Receipt, User, CreditCard, ClipboardList, PackageOpen, ArrowRightLeft, MessageSquare, RotateCcw, UserCog, Server, Settings, FileEdit, AlertTriangle, Wallet, Banknote, Menu, Network, Globe, Mail, ReceiptText} from 'lucide-react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import {obtenerTabsPorRol, type SeccionPanel} from '../../data/panel';
 import {useCurrentProfile} from '../../hooks/useCurrentProfile';
@@ -51,6 +51,8 @@ const ICONOS_SECCION: Record<SeccionPanel, React.ElementType> = {
     'dominios': Globe,
     /* [311A-1] Trazabilidad de correos */
     'correos': Mail,
+    /* [026B-1] Cobros pendientes admin */
+    'cobros': ReceiptText,
 };
 
 /* [044A-38 Fase 1] Etiquetas legibles para cada rol */

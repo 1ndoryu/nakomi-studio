@@ -53,3 +53,30 @@ pub struct CreateBillingCheckoutRequest {
 pub struct BillingCheckoutResponse {
     pub checkout_url: String,
 }
+
+/* [026B-1] Respuesta admin de billing_items con email del usuario. */
+#[derive(Debug, Serialize, ToSchema)]
+pub struct AdminBillingItemResponse {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub user_email: String,
+    pub resource_type: String,
+    pub resource_id: Option<Uuid>,
+    pub title: String,
+    pub description: Option<String>,
+    pub amount_cents: i32,
+    pub currency: String,
+    pub billing_period: String,
+    pub status: String,
+    pub due_at: DateTime<Utc>,
+    pub grace_period_ends_at: DateTime<Utc>,
+    pub paid_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/* [026B-1] Request para cambiar status de un billing_item desde admin. */
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct AdminUpdateBillingStatusRequest {
+    pub status: String,
+}
