@@ -26,16 +26,19 @@ use crate::AppState;
 
 fn subscription_routes() -> Router<AppState> {
     /* [255A-1] Checkout/suscripción también debe usar la IP real del cliente.
-     * Si se limita por la IP interna del proxy, un pico ajeno puede bloquear compras. */
+     * Si se limita por la IP interna del proxy, un pico ajeno puede bloquear compras.
+     *
+     * [176A-1] Corregido: per_second(N) = 1 token cada N segundos.
+     * Checkout: 1 req/s, burst 5 — prevenir abuso sin bloquear compras legítimas. */
     let subscribe_gov = GovernorConfigBuilder::default()
         .key_extractor(SmartIpKeyExtractor)
-        .per_second(1200)
-        .burst_size(3)
+        .per_second(1)
+        .burst_size(5)
         .finish()
         .expect("subscribe rate limit config");
     let checkout_gov = GovernorConfigBuilder::default()
         .key_extractor(SmartIpKeyExtractor)
-        .per_second(720)
+        .per_second(1)
         .burst_size(5)
         .finish()
         .expect("checkout rate limit config");
