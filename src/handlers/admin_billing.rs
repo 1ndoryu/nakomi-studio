@@ -113,7 +113,7 @@ pub fn routes() -> Router<AppState> {
             get(list_billing_items),
         )
         .route(
-            "/admin/billing-items/{item_id}/status",
+            "/admin/billing-items/:item_id/status",
             patch(update_billing_status),
         )
 }
