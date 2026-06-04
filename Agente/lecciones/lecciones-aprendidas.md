@@ -217,7 +217,7 @@
 - Cuando una migración agrega columnas `NOT NULL` a una tabla fixture-managed, actualizar ese mismo día todos los `content/*.toml` de la tabla. Un solo campo faltante (`users.username` en este caso) rompe en cascada todos los fixtures dependientes y termina pareciendo un bug del seed en vez de un drift del fixture.
 
 ## Code Sentinel — sentinel-disable-next-line formato
-- `sentinel-disable-next-line {rule-id}` DEBE estar en la línea inmediatamente anterior a la violación.
+- `sentinel-disable-next-line {rule-id}` deBE estar en la línea inmediatamente anterior a la violación.
 - En Rust, usar `// sentinel-disable-next-line {rule-id}` como comentario single-line.
 - NUNCA ponerlo dentro de un comentario multilínea `/* ... */` que ocupe varias líneas, porque el checker compara `lineas[i-1]` y la línea anterior real sería el cierre `*/`, no el disable.
 - Patrón correcto: explicación en `/* ... */` arriba, y `// sentinel-disable-next-line ...` en la línea justo antes del código.

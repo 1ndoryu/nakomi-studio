@@ -80,7 +80,7 @@ fn get_postgres_password(env_vars: &HashMap<String, String>) -> Option<String> {
 
 ### E4: Backticks faltan en reglas Traefik
 
-- **Qué pasó**: `rewrite_compose_host_rules()` generaba `Host(domain)` sin backticks. Traefik espera `` Host(`domain`) ``.
+- **Qué pasó**: `rewrite_compose_host_rules()` generaba `Host(domain)` sin backticks. Traefik espera ``Host(`domain`)``.
 - **Por qué fue error**: El template engine de coolify-manager-rs no escapaba los dominios con backticks, asumiendo que Coolify los añadiría. Coolify no los añade cuando el compose viene de la API.
 - **Impacto**: Los dominios configurados no funcionaban correctamente después del redeploy. Traefik rechazaba las reglas.
 - **Fix aplicado**: Añadir backticks en `deploy_service.rs` y `template_engine.rs`.
@@ -179,9 +179,9 @@ fn format_host_rule(domain: &str) -> String {
 - **Por qué fue error**: El compose de glory-rest tiene un servicio placeholder `rust-app` con `image: busybox:latest`. El fallback `docker compose config --images | grep -v postgres | head -1` captura la primera imagen no-postgres, que es `busybox:latest` en vez de `b8s0cks444o0sogo8kg8wcgw-app`.
 - **Impacto**: Deploy aborta después de un build exitoso de 578s. Segundo ciclo de fix (~15 min).
 - **Fix aplicado**: Tres niveles de fallback:
-  1. `sed/awk` parse del `image:` field del servicio específico
-  2. `grep -E "\-${svc}$"` para buscar imagen que termine con el nombre del servicio
-  3. `grep -v postgres | grep -v busybox | head -1` como último recurso
+    1. `sed/awk` parse del `image:` field del servicio específico
+    2. `grep -E "\-${svc}$"` para buscar imagen que termine con el nombre del servicio
+    3. `grep -v postgres | grep -v busybox | head -1` como último recurso
 
 ```rust
 /* [E16-FIX] Detección de imagen con fallback inteligente.
@@ -209,10 +209,10 @@ fn detect_service_image(images: &[String], service_name: &str) -> Option<String>
 - **Por qué fue error (Causa 2)**: Coolify tiene un worker async que reescribe el `docker-compose.yml` desde su base de datos. Después de que nuestro script corregía el compose, Coolify lo sobrescribía con la versión de su API (que tenía el bind mount en postgres).
 - **Impacto**: Tercer ciclo de fix (~15 min). Los uploads de glory-rest no persistían.
 - **Fix aplicado**: Reescritura completa con Python (base64-encoded, inyectado vía SSH) que:
-  1. Elimina TODAS las líneas `/app/uploads` existentes
-  2. Localiza el bloque del servicio destino por indentación YAML
-  3. Inserta `volumes:` + bind mount en el servicio correcto
-  4. El swap (`docker compose up`) lee el compose corregido inmediatamente después
+    1. Elimina TODAS las líneas `/app/uploads` existentes
+    2. Localiza el bloque del servicio destino por indentación YAML
+    3. Inserta `volumes:` + bind mount en el servicio correcto
+    4. El swap (`docker compose up`) lee el compose corregido inmediatamente después
 
 ```rust
 /* [E17-FIX] Python rewrite para bind mount preciso.
@@ -243,6 +243,7 @@ print(yaml.dump(compose, default_flow_style=False))
 ```
 
 **Nota**: El deploy de glory-rest falló 3 veces antes de funcionar:
+
 1. Falla por DB_PASSWORD (E3)
 2. Falla por busybox:latest (E16)
 3. Falla por bind mount en servicio equivocado (E17)
@@ -493,27 +494,27 @@ mod tests {
 
 ## Plan de Implementación Priorizado
 
-| Prioridad | Mitigación | Errores que resuelve | Estado |
-|-----------|-----------|---------------------|--------|
-| **P0** | Fix backticks en `rewrite_compose_host_rules()` + `template_engine.rs` | E4 | ✅ Hecho (commit `3f67d4d`) |
-| **P0** | Fix DB_PASSWORD fallback en `ensure_postgres_auth_and_hostname()` | E3 | ✅ Hecho (commit `3f67d4d`) |
-| **P0** | Fix busybox:latest image detection | E16 | ✅ Hecho (commit `3f67d4d`) |
-| **P0** | Fix bind mount en servicio correcto (Python rewrite) | E17 | ✅ Hecho (commit `3f67d4d`) |
-| **P0** | Fix CREATE INDEX IF NOT EXISTS en email_logs migration | E18 | ✅ Hecho (commit `34bb083c`) |
-| **P0** | Health check verification 7/7 sitios | E5, E7, E14 | ✅ Hecho |
-| **P1** | **SshClient marker en `upload_file_streamed` + `execute_binary`** | E2, E10 | ✅ Hecho (sesión 03J) |
-| **P1** | Pre-write compose backup (M4) | E6, E10, E11 | ✅ Hecho (`backup_compose_locally`) |
-| **P1** | Pre-flight compose validation (M1) | E4, E15, E16, E17 | ✅ Hecho (`validate_compose_before_deploy`) |
-| **P1** | Post-deploy env verification (M8) | E12 | ✅ Hecho (`verify_container_env_vars`) |
-| **P1** | Post-deploy volume verification (M9) | E9 | ✅ Hecho (`verify_container_volumes`) |
-| **P1** | Migration linter IF NOT EXISTS (M7) | E18 | ✅ Hecho (`lint_migration_sql` + 8 tests) |
-| **P1** | Cleanup exited containers pre-deploy | E8 | ✅ Hecho (en `deploy_service.rs`) |
-| **P2** | Validate compose labels in template engine (M6) | E4 | ✅ Hecho (2 tests en `template_engine.rs`) |
-| **P2** | **Rollback automático post-fallo (E11)** | E11 | ✅ Hecho (`read_latest_compose_backup` + rollback integration) |
-| **P2** | **Centralized DB credentials test (M5)** | E3 | ✅ Hecho (10 tests en `fix_db_auth.rs`) |
-| **P2** | SSH guard instalación (con SshClient ya arreglado) | E2, E10 | ❌ Bloqueado — esperando aprobación usuario |
-| **P2** | Watchdog automático (M3) | E1, E13 | ⚠️ Cubierto por autoheal timer existente (ver evaluación M3) |
-| **P2** | Docker upgrade en servidor (27.0.3 → latest stable) | E1 | ❌ Pendiente (operación servidor) |
+| Prioridad | Mitigación                                                             | Errores que resuelve | Estado                                                         |
+| --------- | ---------------------------------------------------------------------- | -------------------- | -------------------------------------------------------------- |
+| **P0**    | Fix backticks en `rewrite_compose_host_rules()` + `template_engine.rs` | E4                   | ✅ Hecho (commit `3f67d4d`)                                    |
+| **P0**    | Fix DB_PASSWORD fallback en `ensure_postgres_auth_and_hostname()`      | E3                   | ✅ Hecho (commit `3f67d4d`)                                    |
+| **P0**    | Fix busybox:latest image detection                                     | E16                  | ✅ Hecho (commit `3f67d4d`)                                    |
+| **P0**    | Fix bind mount en servicio correcto (Python rewrite)                   | E17                  | ✅ Hecho (commit `3f67d4d`)                                    |
+| **P0**    | Fix CREATE INDEX IF NOT EXISTS en email_logs migration                 | E18                  | ✅ Hecho (commit `34bb083c`)                                   |
+| **P0**    | Health check verification 7/7 sitios                                   | E5, E7, E14          | ✅ Hecho                                                       |
+| **P1**    | **SshClient marker en `upload_file_streamed` + `execute_binary`**      | E2, E10              | ✅ Hecho (sesión 03J)                                          |
+| **P1**    | Pre-write compose backup (M4)                                          | E6, E10, E11         | ✅ Hecho (`backup_compose_locally`)                            |
+| **P1**    | Pre-flight compose validation (M1)                                     | E4, E15, E16, E17    | ✅ Hecho (`validate_compose_before_deploy`)                    |
+| **P1**    | Post-deploy env verification (M8)                                      | E12                  | ✅ Hecho (`verify_container_env_vars`)                         |
+| **P1**    | Post-deploy volume verification (M9)                                   | E9                   | ✅ Hecho (`verify_container_volumes`)                          |
+| **P1**    | Migration linter IF NOT EXISTS (M7)                                    | E18                  | ✅ Hecho (`lint_migration_sql` + 8 tests)                      |
+| **P1**    | Cleanup exited containers pre-deploy                                   | E8                   | ✅ Hecho (en `deploy_service.rs`)                              |
+| **P2**    | Validate compose labels in template engine (M6)                        | E4                   | ✅ Hecho (2 tests en `template_engine.rs`)                     |
+| **P2**    | **Rollback automático post-fallo (E11)**                               | E11                  | ✅ Hecho (`read_latest_compose_backup` + rollback integration) |
+| **P2**    | **Centralized DB credentials test (M5)**                               | E3                   | ✅ Hecho (10 tests en `fix_db_auth.rs`)                        |
+| **P2**    | SSH guard instalación (con SshClient ya arreglado)                     | E2, E10              | ✅ Hecho (instalado + validado, key coolify protegida)         |
+| **P2**    | Watchdog automático (M3)                                               | E1, E13              | ⚠️ Cubierto por autoheal timer existente (ver evaluación M3)   |
+| **P2**    | Docker upgrade en servidor (27.0.3 → latest stable)                    | E1                   | ❌ Pendiente (operación servidor)                              |
 
 ---
 
@@ -524,47 +525,47 @@ mod tests {
 - **Coolify API**: http://66.94.100.241:8000
 - **Binary coolify-manager**: `C:\Users\Owner\OneDrive\Documentos\WP\app\public\wp-content\themes\glorytemplate\.agent\coolify-manager-rs\target\release\coolify-manager.exe`
 - **Service UUIDs**:
-  - padel: `zkcc040cc0scock4kcooowkc`
-  - studio: `do8k4w8swccwwogoc0os0ck0`
-  - guillermo: `owck8sww4ogk8gskgwcsk4w0`
-  - wandori: `csoc88c0gw8kc4cwcwosc48s`
-  - nakomi: `u00gc8ss4csc4cckkg4g00ks`
-  - cap: `qgskgw8wwc08o444o08wko8o`
-  - glory-rest: `b8s0cks444o0sogo8kg8wcgw`
-  - mail-nakomi: `vk4c4oocow0sc844ocssgw4s`
+    - padel: `zkcc040cc0scock4kcooowkc`
+    - studio: `do8k4w8swccwwogoc0os0ck0`
+    - guillermo: `owck8sww4ogk8gskgwcsk4w0`
+    - wandori: `csoc88c0gw8kc4cwcwosc48s`
+    - nakomi: `u00gc8ss4csc4cckkg4g00ks`
+    - cap: `qgskgw8wwc08o444o08wko8o`
+    - glory-rest: `b8s0cks444o0sogo8kg8wcgw`
+    - mail-nakomi: `vk4c4oocow0sc844ocssgw4s`
 
 ---
 
 ## Timeline
 
-| Hora (CEST) | Evento | Error |
-|---|---|---|
-| ~08:52 | Docker SIGSEGV crash. Todos los contenedores destruidos. | E1 |
-| ~09:00 | Crash detectado. `docker ps -a` confirma destrucción total. | |
-| ~09:30 | Diagnóstico: Docker 27.0.3 bug con BuildKit en kernel 6.8.x. | |
-| ~09:45 | Intento de deploy por SSH directo (violación regla 1). | E2, E10 |
-| ~10:00 | Inicio de recuperación con coolify-manager-rs. Contenedores huérfanos encontrados. | E8 |
-| ~10:30 | Volúmenes huérfanos identificados, re-attach manual. | E9 |
-| ~11:00 | padel, studio, guillermo, wandori recuperados. Backticks faltantes detectados. | E4 |
-| ~11:30 | Fix backticks aplicado. Reglas Traefik funcionando. | |
-| ~12:00 | nakomi, cap recuperados. Health checks con falsos positivos. | E5, E14 |
-| ~12:30 | Todos los sitios UP excepto glory-rest. | |
-| ~14:00 | glory-rest deploy falla por DB_PASSWORD mismatch. | E3 |
-| ~14:30 | Fix DB_PASSWORD fallback coded + compilado. Coolify overwrite detectado. | E11, E12 |
-| ~15:00 | Fix DB_PASSWORD desplegado. | |
-| ~16:00 | glory-rest redeploy iniciado (build toma ~10 min). | |
-| ~16:20 | Build completado (578s) pero falla por busybox:latest detection. | E16 |
-| ~17:00 | Fix busybox image detection coded + compilado. | |
-| ~17:30 | glory-rest redeploy re-iniciado con todos los fixes. Bind mount wrong detectado. | E17 |
-| ~17:46 | Fix bind mount con Python rewrite. Contenedor arranca OK. | |
-| ~18:00 | `docker inspect` confirma bind mount correcto. 7/7 sitios healthy. | |
-| ~18:30 | Sin backup pre-write del compose notado. | E6 |
-| --- | **Día siguiente (04/Jun)** | |
-| ~10:00 | Studio (nakomi.studio) en crash loop. Health check: `missing_ip`. | E7 |
-| ~10:15 | Diagnóstico real: migración `20260531000000_email_logs.up.sql` con `CREATE INDEX` sin `IF NOT EXISTS`. PostgreSQL 42P07. | E18 |
-| ~10:30 | Fix: 4× `CREATE INDEX` → `CREATE INDEX IF NOT EXISTS`. Commit `34bb083c`. | |
-| ~10:45 | Push a origin. Redeploy studio vía coolify-manager-rs. | |
-| ~11:00 | Studio healthy. 405 PATCH verificado (devuelve 401, no 405). | |
+| Hora (CEST) | Evento                                                                                                                   | Error    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------ | -------- |
+| ~08:52      | Docker SIGSEGV crash. Todos los contenedores destruidos.                                                                 | E1       |
+| ~09:00      | Crash detectado. `docker ps -a` confirma destrucción total.                                                              |          |
+| ~09:30      | Diagnóstico: Docker 27.0.3 bug con BuildKit en kernel 6.8.x.                                                             |          |
+| ~09:45      | Intento de deploy por SSH directo (violación regla 1).                                                                   | E2, E10  |
+| ~10:00      | Inicio de recuperación con coolify-manager-rs. Contenedores huérfanos encontrados.                                       | E8       |
+| ~10:30      | Volúmenes huérfanos identificados, re-attach manual.                                                                     | E9       |
+| ~11:00      | padel, studio, guillermo, wandori recuperados. Backticks faltantes detectados.                                           | E4       |
+| ~11:30      | Fix backticks aplicado. Reglas Traefik funcionando.                                                                      |          |
+| ~12:00      | nakomi, cap recuperados. Health checks con falsos positivos.                                                             | E5, E14  |
+| ~12:30      | Todos los sitios UP excepto glory-rest.                                                                                  |          |
+| ~14:00      | glory-rest deploy falla por DB_PASSWORD mismatch.                                                                        | E3       |
+| ~14:30      | Fix DB_PASSWORD fallback coded + compilado. Coolify overwrite detectado.                                                 | E11, E12 |
+| ~15:00      | Fix DB_PASSWORD desplegado.                                                                                              |          |
+| ~16:00      | glory-rest redeploy iniciado (build toma ~10 min).                                                                       |          |
+| ~16:20      | Build completado (578s) pero falla por busybox:latest detection.                                                         | E16      |
+| ~17:00      | Fix busybox image detection coded + compilado.                                                                           |          |
+| ~17:30      | glory-rest redeploy re-iniciado con todos los fixes. Bind mount wrong detectado.                                         | E17      |
+| ~17:46      | Fix bind mount con Python rewrite. Contenedor arranca OK.                                                                |          |
+| ~18:00      | `docker inspect` confirma bind mount correcto. 7/7 sitios healthy.                                                       |          |
+| ~18:30      | Sin backup pre-write del compose notado.                                                                                 | E6       |
+| ---         | **Día siguiente (04/Jun)**                                                                                               |          |
+| ~10:00      | Studio (nakomi.studio) en crash loop. Health check: `missing_ip`.                                                        | E7       |
+| ~10:15      | Diagnóstico real: migración `20260531000000_email_logs.up.sql` con `CREATE INDEX` sin `IF NOT EXISTS`. PostgreSQL 42P07. | E18      |
+| ~10:30      | Fix: 4× `CREATE INDEX` → `CREATE INDEX IF NOT EXISTS`. Commit `34bb083c`.                                                |          |
+| ~10:45      | Push a origin. Redeploy studio vía coolify-manager-rs.                                                                   |          |
+| ~11:00      | Studio healthy. 405 PATCH verificado (devuelve 401, no 405).                                                             |          |
 
 ---
 
@@ -572,33 +573,33 @@ mod tests {
 
 ### Estado final tras sesión 03J + continuación (mitigaciones implementadas)
 
-| Error | Mitigación | Ya existe en código? | Resuelve? | Gap restante |
-|-------|-----------|---------------------|-----------|-------------|
-| **E1** Docker SIGSEGV | M3 (Watchdog) | ⚠️ Parcial: autoheal timer por sitio + alertas SMTP | ✅ Detecta, no previene | Docker upgrade P2 |
-| **E2** SSH directo | SSH guard + SshClient marker | ✅ SshClient marker en `upload_file_streamed` + `execute_binary` | ✅ Marker listo | SSH guard pendiente aprobación |
-| **E3** DB_PASSWORD | M5 (fallback) | ✅ Implementado + 10 tests unitarios | ✅ Resuelto | — |
-| **E4** Backticks Traefik | M1 + M6 | ✅ `validate_compose_before_deploy` + 2 tests template_engine | ✅ Resuelto | — |
-| **E5** Health hard fail | M2 (retry) | ✅ 120s poll con 5s intervalo + `recover_rust_network_probe_failure()` | ✅ Resuelto | — |
-| **E6** Sin compose backup | M4 (pre-write backup) | ✅ `backup_compose_locally()` en deploy_service.rs | ✅ Resuelto | — |
-| **E7** Container sin IP | E2 (retry) + fix E18 | ✅ `recover_rust_network_probe_failure()` ya existe | ✅ Resuelto | — |
-| **E8** Contenedores huérfanos | Cleanup pre-deploy | ✅ `docker ps -a --filter status=exited` + `docker rm` | ✅ Resuelto | — |
-| **E9** Volúmenes huérfanos | M9 (volume verify) | ✅ `verify_container_volumes()` post-deploy | ✅ Resuelto | — |
-| **E10** Sin rollback SSH | SSH guard + M4 | ✅ M4 permite rollback manual | ⚠️ Parcial | SSH guard pendiente aprobación |
-| **E11** Coolify overwrite compose | M4 (backup) | ✅ Backup permite revertir manualmente | ✅ Resuelto | Rollback automático implementado |
-| **E12** Secrets no inyectados | M8 (env verify) | ✅ `verify_container_env_vars()` post-deploy | ✅ Resuelto | — |
-| **E13** Sin métricas health | M3 (Watchdog) | ✅ autoheal timer + alertas SMTP cubren detección | ✅ Resuelto | Historial persistente opcional |
-| **E14** DNS lento | M2 (retry) | ✅ 120s poll cubre esto | ✅ Resuelto | — |
-| **E15** Sin diff compose | M1 (pre-flight) | ✅ `validate_compose_before_deploy` detecta diferencias | ⚠️ Parcial | Falta diff explícito |
-| **E16** busybox:latest | M1 (pre-flight) | ✅ Filtro busybox en `validate_compose_before_deploy` | ✅ Resuelto | — |
-| **E17** Bind mount wrong | M1 + Python rewrite | ✅ Validación en `validate_compose_before_deploy` | ✅ Resuelto | — |
-| **E18** Migration 42P07 | M7 (migration linter) | ✅ `lint_migration_sql()` + 8 tests | ✅ Resuelto | — |
+| Error                             | Mitigación                   | Ya existe en código?                                                   | Resuelve?               | Gap restante                     |
+| --------------------------------- | ---------------------------- | ---------------------------------------------------------------------- | ----------------------- | -------------------------------- |
+| **E1** Docker SIGSEGV             | M3 (Watchdog)                | ⚠️ Parcial: autoheal timer por sitio + alertas SMTP                    | ✅ Detecta, no previene | Docker upgrade P2                |
+| **E2** SSH directo                | SSH guard + SshClient marker | ✅ SshClient marker + SSH guard instalado (key coolify protegida)      | ✅ Resuelto             | —                                |
+| **E3** DB_PASSWORD                | M5 (fallback)                | ✅ Implementado + 10 tests unitarios                                   | ✅ Resuelto             | —                                |
+| **E4** Backticks Traefik          | M1 + M6                      | ✅ `validate_compose_before_deploy` + 2 tests template_engine          | ✅ Resuelto             | —                                |
+| **E5** Health hard fail           | M2 (retry)                   | ✅ 120s poll con 5s intervalo + `recover_rust_network_probe_failure()` | ✅ Resuelto             | —                                |
+| **E6** Sin compose backup         | M4 (pre-write backup)        | ✅ `backup_compose_locally()` en deploy_service.rs                     | ✅ Resuelto             | —                                |
+| **E7** Container sin IP           | E2 (retry) + fix E18         | ✅ `recover_rust_network_probe_failure()` ya existe                    | ✅ Resuelto             | —                                |
+| **E8** Contenedores huérfanos     | Cleanup pre-deploy           | ✅ `docker ps -a --filter status=exited` + `docker rm`                 | ✅ Resuelto             | —                                |
+| **E9** Volúmenes huérfanos        | M9 (volume verify)           | ✅ `verify_container_volumes()` post-deploy                            | ✅ Resuelto             | —                                |
+| **E10** Sin rollback SSH          | SSH guard + M4               | ✅ M4 permite rollback manual + SSH guard instalado                     | ✅ Resuelto             | —                                |
+| **E11** Coolify overwrite compose | M4 (backup)                  | ✅ Backup permite revertir manualmente                                 | ✅ Resuelto             | Rollback automático implementado |
+| **E12** Secrets no inyectados     | M8 (env verify)              | ✅ `verify_container_env_vars()` post-deploy                           | ✅ Resuelto             | —                                |
+| **E13** Sin métricas health       | M3 (Watchdog)                | ✅ autoheal timer + alertas SMTP cubren detección                      | ✅ Resuelto             | Historial persistente opcional   |
+| **E14** DNS lento                 | M2 (retry)                   | ✅ 120s poll cubre esto                                                | ✅ Resuelto             | —                                |
+| **E15** Sin diff compose          | M1 (pre-flight)              | ✅ `validate_compose_before_deploy` detecta diferencias                | ⚠️ Parcial              | Falta diff explícito             |
+| **E16** busybox:latest            | M1 (pre-flight)              | ✅ Filtro busybox en `validate_compose_before_deploy`                  | ✅ Resuelto             | —                                |
+| **E17** Bind mount wrong          | M1 + Python rewrite          | ✅ Validación en `validate_compose_before_deploy`                      | ✅ Resuelto             | —                                |
+| **E18** Migration 42P07           | M7 (migration linter)        | ✅ `lint_migration_sql()` + 8 tests                                    | ✅ Resuelto             | —                                |
 
 ### Errores pendientes de mitigación completa (2 de 18)
 
-| # | Error | Severidad | Estado | Mitigación restante |
-|---|-------|-----------|--------|-------------------|
-| E1 | Docker SIGSEGV | 🔴 Alta | ⚠️ Parcial (autoheal detecta) | Docker upgrade en servidor |
-| E10 | Sin rollback SSH | 🟡 Media | ✅ M4 permite rollback manual | SSH guard pendiente aprobación |
+| #   | Error            | Severidad | Estado                        | Mitigación restante            |
+| --- | ---------------- | --------- | ----------------------------- | ------------------------------ |
+| E1  | Docker SIGSEGV   | 🔴 Alta   | ⚠️ Parcial (autoheal detecta) | Docker upgrade en servidor     |
+| E10 | Sin rollback SSH | 🟡 Media  | ✅ Resuelto (M4 + SSH guard) | —                              |
 
 ### Evaluación M3: Watchdog no necesario (autoheal existente cubre 95%)
 
@@ -616,19 +617,19 @@ La diferencia entre autoheal y M3 es que autoheal intenta reconnect/recreate (so
 
 ### ⚠️ SshClient marker — RESUELTO
 
-> Todos los métodos SshClient tienen CM_GUARD_v1 marker. SSH guard se puede instalar con seguridad.
+> Todos los métodos SshClient tienen CM_GUARD_v1 marker. SSH guard instalado y validado.
 
-| Método SshClient | Usa marker? | Estado |
-|------------------|------------|--------|
-| `execute()` | ✅ Sí (original) | ✅ |
-| `execute_long_running()` | ✅ Indirecto (via execute) | ✅ |
-| `upload_file()` | ✅ Indirecto (via execute) | ✅ |
-| `download_file()` | ✅ Indirecto (via execute) | ✅ |
-| **`upload_file_streamed()`** | ✅ **Corregido** sesión 03J | ✅ `CM_GUARD_v1 cat > '{path}'` |
-| **`execute_binary()`** | ✅ **Corregido** sesión 03J | ✅ `CM_GUARD_v1 {command}` |
-| **`download_file_streamed()`** | ✅ Indirecto (via execute_binary) | ✅ |
+| Método SshClient               | Usa marker?                       | Estado                          |
+| ------------------------------ | --------------------------------- | ------------------------------- |
+| `execute()`                    | ✅ Sí (original)                  | ✅                              |
+| `execute_long_running()`       | ✅ Indirecto (via execute)        | ✅                              |
+| `upload_file()`                | ✅ Indirecto (via execute)        | ✅                              |
+| `download_file()`              | ✅ Indirecto (via execute)        | ✅                              |
+| **`upload_file_streamed()`**   | ✅ **Corregido** sesión 03J       | ✅ `CM_GUARD_v1 cat > '{path}'` |
+| **`execute_binary()`**         | ✅ **Corregido** sesión 03J       | ✅ `CM_GUARD_v1 {command}`      |
+| **`download_file_streamed()`** | ✅ Indirecto (via execute_binary) | ✅                              |
 
-**Conclusión**: Todos los métodos tienen marker. SSH guard se puede instalar con seguridad cuando el usuario lo autorice.
+**Conclusión**: Todos los métodos tienen marker. SSH guard instalado en servidor (key coolify protegida, owner@Wan sin restricción).
 
 ---
 
@@ -714,4 +715,3 @@ async fn verify_container_volumes(ssh, _site_name, service_dir, compose_service)
 5. **`IF NOT EXISTS` es obligatorio en migraciones SQLx**: SQLx aborta el startup si una migración falla. No hay skip parcial. `CREATE INDEX IF NOT EXISTS` es la misma protección que `CREATE TABLE IF NOT EXISTS`.
 
 6. **SSH directo es siempre un antipatrón**: Cada operación por SSH (E2) carece de audit, rollback, y guard. El SSH guard con `CM_GUARD_v1` marker es la protección mínima.
-
