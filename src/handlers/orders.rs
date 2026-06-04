@@ -58,7 +58,7 @@ pub async fn create_order(
             Ok(_) => {
                 order.assigned_employee_id = Some(admin_id);
                 order.status = OrderStatus::InProgress;
-                order.started_at = Some(chrono::Utc::now());
+                order.started_at = Some(chrono::Utc::now().naive_utc());
                 let _ = ActivityLogRepository::log(
                     &state.pool,
                     admin_id,
