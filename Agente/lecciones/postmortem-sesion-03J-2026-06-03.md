@@ -512,7 +512,7 @@ mod tests {
 | **P2**    | Validate compose labels in template engine (M6)                        | E4                   | ✅ Hecho (2 tests en `template_engine.rs`)                     |
 | **P2**    | **Rollback automático post-fallo (E11)**                               | E11                  | ✅ Hecho (`read_latest_compose_backup` + rollback integration) |
 | **P2**    | **Centralized DB credentials test (M5)**                               | E3                   | ✅ Hecho (10 tests en `fix_db_auth.rs`)                        |
-| **P2**    | SSH guard instalación (con SshClient ya arreglado)                     | E2, E10              | ✅ Hecho (instalado + validado, key coolify protegida)         |
+| **P2**    | SSH guard instalación (con SshClient ya arreglado)                     | E2, E10              | ⚠️ No viable — Coolify usa misma clave. CM_GUARD_v1 markers son mitigación |
 | **P2**    | Watchdog automático (M3)                                               | E1, E13              | ⚠️ Cubierto por autoheal timer existente (ver evaluación M3)   |
 | **P2**    | Docker upgrade en servidor (27.0.3 → latest stable)                    | E1                   | ❌ Pendiente (operación servidor)                              |
 
@@ -576,7 +576,7 @@ mod tests {
 | Error                             | Mitigación                   | Ya existe en código?                                                   | Resuelve?               | Gap restante                     |
 | --------------------------------- | ---------------------------- | ---------------------------------------------------------------------- | ----------------------- | -------------------------------- |
 | **E1** Docker SIGSEGV             | M3 (Watchdog)                | ⚠️ Parcial: autoheal timer por sitio + alertas SMTP                    | ✅ Detecta, no previene | Docker upgrade P2                |
-| **E2** SSH directo                | SSH guard + SshClient marker | ✅ SshClient marker + SSH guard instalado (key coolify protegida)      | ✅ Resuelto             | —                                |
+| **E2** SSH directo                | CM_GUARD_v1 markers en code  | ✅ SshClient markers en todos los métodos. SSH guard no viable (Coolify) | ✅ Mitigado por markers  | —                                |
 | **E3** DB_PASSWORD                | M5 (fallback)                | ✅ Implementado + 10 tests unitarios                                   | ✅ Resuelto             | —                                |
 | **E4** Backticks Traefik          | M1 + M6                      | ✅ `validate_compose_before_deploy` + 2 tests template_engine          | ✅ Resuelto             | —                                |
 | **E5** Health hard fail           | M2 (retry)                   | ✅ 120s poll con 5s intervalo + `recover_rust_network_probe_failure()` | ✅ Resuelto             | —                                |
@@ -584,7 +584,7 @@ mod tests {
 | **E7** Container sin IP           | E2 (retry) + fix E18         | ✅ `recover_rust_network_probe_failure()` ya existe                    | ✅ Resuelto             | —                                |
 | **E8** Contenedores huérfanos     | Cleanup pre-deploy           | ✅ `docker ps -a --filter status=exited` + `docker rm`                 | ✅ Resuelto             | —                                |
 | **E9** Volúmenes huérfanos        | M9 (volume verify)           | ✅ `verify_container_volumes()` post-deploy                            | ✅ Resuelto             | —                                |
-| **E10** Sin rollback SSH          | SSH guard + M4               | ✅ M4 permite rollback manual + SSH guard instalado                     | ✅ Resuelto             | —                                |
+| **E10** Sin rollback SSH          | M4 (rollback)                | ✅ M4 permite rollback manual. SSH guard no viable (Coolify usa misma key)| ✅ Resuelto             | —                                |
 | **E11** Coolify overwrite compose | M4 (backup)                  | ✅ Backup permite revertir manualmente                                 | ✅ Resuelto             | Rollback automático implementado |
 | **E12** Secrets no inyectados     | M8 (env verify)              | ✅ `verify_container_env_vars()` post-deploy                           | ✅ Resuelto             | —                                |
 | **E13** Sin métricas health       | M3 (Watchdog)                | ✅ autoheal timer + alertas SMTP cubren detección                      | ✅ Resuelto             | Historial persistente opcional   |
@@ -599,7 +599,7 @@ mod tests {
 | #   | Error            | Severidad | Estado                        | Mitigación restante            |
 | --- | ---------------- | --------- | ----------------------------- | ------------------------------ |
 | E1  | Docker SIGSEGV   | 🔴 Alta   | ⚠️ Parcial (autoheal detecta) | Docker upgrade en servidor     |
-| E10 | Sin rollback SSH | 🟡 Media  | ✅ Resuelto (M4 + SSH guard) | —                              |
+| E10 | Sin rollback SSH | 🟡 Media  | ✅ Resuelto (M4 rollback)   | —                              |
 
 ### Evaluación M3: Watchdog no necesario (autoheal existente cubre 95%)
 
@@ -617,7 +617,7 @@ La diferencia entre autoheal y M3 es que autoheal intenta reconnect/recreate (so
 
 ### ⚠️ SshClient marker — RESUELTO
 
-> Todos los métodos SshClient tienen CM_GUARD_v1 marker. SSH guard instalado y validado.
+> Todos los métodos SshClient tienen CM_GUARD_v1 marker. SSH guard no viable (Coolify usa misma clave SSH). Los markers en código son la mitigación.
 
 | Método SshClient               | Usa marker?                       | Estado                          |
 | ------------------------------ | --------------------------------- | ------------------------------- |
@@ -629,7 +629,7 @@ La diferencia entre autoheal y M3 es que autoheal intenta reconnect/recreate (so
 | **`execute_binary()`**         | ✅ **Corregido** sesión 03J       | ✅ `CM_GUARD_v1 {command}`      |
 | **`download_file_streamed()`** | ✅ Indirecto (via execute_binary) | ✅                              |
 
-**Conclusión**: Todos los métodos tienen marker. SSH guard instalado en servidor (key coolify protegida, owner@Wan sin restricción).
+**Conclusión**: Todos los métodos tienen marker. SSH guard no viable con Coolify (misma clave). CM_GUARD_v1 markers en código son la protección elegida.
 
 ---
 
