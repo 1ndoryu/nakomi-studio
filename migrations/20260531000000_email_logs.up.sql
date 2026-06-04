@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS email_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_email_logs_created_at ON email_logs (created_at DESC);
-CREATE INDEX idx_email_logs_template ON email_logs (template);
-CREATE INDEX idx_email_logs_status ON email_logs (status);
-CREATE INDEX idx_email_logs_reference ON email_logs (reference_type, reference_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_created_at ON email_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_logs_template ON email_logs (template);
+CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs (status);
+CREATE INDEX IF NOT EXISTS idx_email_logs_reference ON email_logs (reference_type, reference_id);
