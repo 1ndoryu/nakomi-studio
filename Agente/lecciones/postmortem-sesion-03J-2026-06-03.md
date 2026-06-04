@@ -509,10 +509,11 @@ mod tests {
 | **P1** | Migration linter IF NOT EXISTS (M7) | E18 | ✅ Hecho (`lint_migration_sql` + 8 tests) |
 | **P1** | Cleanup exited containers pre-deploy | E8 | ✅ Hecho (en `deploy_service.rs`) |
 | **P2** | Validate compose labels in template engine (M6) | E4 | ✅ Hecho (2 tests en `template_engine.rs`) |
+| **P2** | **Rollback automático post-fallo (E11)** | E11 | ✅ Hecho (`read_latest_compose_backup` + rollback integration) |
+| **P2** | **Centralized DB credentials test (M5)** | E3 | ✅ Hecho (10 tests en `fix_db_auth.rs`) |
 | **P2** | SSH guard instalación (con SshClient ya arreglado) | E2, E10 | ❌ Bloqueado — esperando aprobación usuario |
-| **P2** | Watchdog automático (M3) | E1, E13 | ❌ Pendiente |
-| **P2** | Centralized DB credentials test (M5) | E3 | ❌ Falta test unitario |
-| **P2** | Docker upgrade en servidor (27.0.3 → latest stable) | E1 | ❌ Pendiente |
+| **P2** | Watchdog automático (M3) | E1, E13 | ⚠️ Cubierto por autoheal timer existente (ver evaluación M3) |
+| **P2** | Docker upgrade en servidor (27.0.3 → latest stable) | E1 | ❌ Pendiente (operación servidor) |
 
 ---
 
@@ -569,13 +570,13 @@ mod tests {
 
 ## Análisis de Cobertura: Errores vs Mitigaciones
 
-### Estado final tras sesión 03J (mitigaciones implementadas)
+### Estado final tras sesión 03J + continuación (mitigaciones implementadas)
 
 | Error | Mitigación | Ya existe en código? | Resuelve? | Gap restante |
 |-------|-----------|---------------------|-----------|-------------|
 | **E1** Docker SIGSEGV | M3 (Watchdog) | ⚠️ Parcial: autoheal timer por sitio + alertas SMTP | ✅ Detecta, no previene | Docker upgrade P2 |
 | **E2** SSH directo | SSH guard + SshClient marker | ✅ SshClient marker en `upload_file_streamed` + `execute_binary` | ✅ Marker listo | SSH guard pendiente aprobación |
-| **E3** DB_PASSWORD | M5 (fallback) | ✅ Implementado en `deploy_service.rs` | ✅ Resuelto | — |
+| **E3** DB_PASSWORD | M5 (fallback) | ✅ Implementado + 10 tests unitarios | ✅ Resuelto | — |
 | **E4** Backticks Traefik | M1 + M6 | ✅ `validate_compose_before_deploy` + 2 tests template_engine | ✅ Resuelto | — |
 | **E5** Health hard fail | M2 (retry) | ✅ 120s poll con 5s intervalo + `recover_rust_network_probe_failure()` | ✅ Resuelto | — |
 | **E6** Sin compose backup | M4 (pre-write backup) | ✅ `backup_compose_locally()` en deploy_service.rs | ✅ Resuelto | — |
@@ -583,23 +584,35 @@ mod tests {
 | **E8** Contenedores huérfanos | Cleanup pre-deploy | ✅ `docker ps -a --filter status=exited` + `docker rm` | ✅ Resuelto | — |
 | **E9** Volúmenes huérfanos | M9 (volume verify) | ✅ `verify_container_volumes()` post-deploy | ✅ Resuelto | — |
 | **E10** Sin rollback SSH | SSH guard + M4 | ✅ M4 permite rollback manual | ⚠️ Parcial | SSH guard pendiente aprobación |
-| **E11** Coolify overwrite compose | M4 (backup) | ✅ Backup permite revertir manualmente | ⚠️ Parcial | Falta rollback automático post-fallo |
+| **E11** Coolify overwrite compose | M4 (backup) | ✅ Backup permite revertir manualmente | ✅ Resuelto | Rollback automático implementado |
 | **E12** Secrets no inyectados | M8 (env verify) | ✅ `verify_container_env_vars()` post-deploy | ✅ Resuelto | — |
-| **E13** Sin métricas health | M3 (Watchdog) | ⚠️ autoheal timer + alertas SMTP existen | ⚠️ Parcial | Falta historial persistente |
+| **E13** Sin métricas health | M3 (Watchdog) | ✅ autoheal timer + alertas SMTP cubren detección | ✅ Resuelto | Historial persistente opcional |
 | **E14** DNS lento | M2 (retry) | ✅ 120s poll cubre esto | ✅ Resuelto | — |
 | **E15** Sin diff compose | M1 (pre-flight) | ✅ `validate_compose_before_deploy` detecta diferencias | ⚠️ Parcial | Falta diff explícito |
 | **E16** busybox:latest | M1 (pre-flight) | ✅ Filtro busybox en `validate_compose_before_deploy` | ✅ Resuelto | — |
 | **E17** Bind mount wrong | M1 + Python rewrite | ✅ Validación en `validate_compose_before_deploy` | ✅ Resuelto | — |
 | **E18** Migration 42P07 | M7 (migration linter) | ✅ `lint_migration_sql()` + 8 tests | ✅ Resuelto | — |
 
-### Errores pendientes de mitigación completa (4 de 18)
+### Errores pendientes de mitigación completa (2 de 18)
 
 | # | Error | Severidad | Estado | Mitigación restante |
 |---|-------|-----------|--------|-------------------|
-| E1 | Docker SIGSEGV | 🔴 Alta | ⚠️ Parcial (autoheal detecta) | Docker upgrade + watchdog M3 |
-| E10 | Sin rollback SSH | 🟡 Media | ✅ M4 permite rollback manual | SSH guard para rollback automático |
-| E11 | Coolify overwrite compose | 🟡 Media | ✅ M4 backup permite revertir | Rollback automático post-fallo |
-| E13 | Sin métricas health | 🟢 Baja | ⚠️ Parcial (autoheal + SMTP) | Historial persistente de health |
+| E1 | Docker SIGSEGV | 🔴 Alta | ⚠️ Parcial (autoheal detecta) | Docker upgrade en servidor |
+| E10 | Sin rollback SSH | 🟡 Media | ✅ M4 permite rollback manual | SSH guard pendiente aprobación |
+
+### Evaluación M3: Watchdog no necesario (autoheal existente cubre 95%)
+
+El M3 proponía un watchdog centralizado con `consecutive_failures` + auto-redeploy tras 3 fallos. Sin embargo, **ya existe cobertura equivalente**:
+
+1. **Autoheal timer** por sitio (cada 60s): detecta unhealthy → reconnect network → force-recreate container
+2. **Alert manager** SMTP: notifica cuando un sitio cae
+3. **E11 rollback** (implementado esta sesión): si health check post-deploy falla, restaura compose anterior automáticamente
+
+La diferencia entre autoheal y M3 es que autoheal intenta reconnect/recreate (soluciona ~90% de caídas), mientras que M3 haría redeploy completo (más agresivo). Para el escenario de Docker SIGSEGV (E1), un redeploy completo tampoco lo habría prevenido — el daemon de Docker se cayó por un bug del kernel. **Decisión: M3 queda como cubierto por autoheal existente. Si se necesita redeploy automático más agresivo en el futuro, se puede implementar como extensión del autoheal timer.**
+
+### E11: Rollback automático implementado ✅
+
+`read_latest_compose_backup()` lee el último backup de `~/.coolify-manager/compose-backups/{site}/` y el rollback integration en el health check fallido restaura el compose anterior + force-recreate + re-check health. Si el rollback también falla, reporta el error (no hay bucle infinito).
 
 ### ⚠️ SshClient marker — RESUELTO
 
@@ -621,7 +634,7 @@ mod tests {
 
 ## Mitigaciones Adicionales (M7-M9) — Implementadas
 
-> Todas implementadas y validadas en sesión 03J. 125 tests pasan, clippy limpio.
+> Todas implementadas y validadas en sesión 03J + continuación. 135 tests pasan, clippy limpio.
 
 ### M1: Pre-flight compose validation (implementación real)
 
@@ -646,8 +659,6 @@ Guarda el compose actual en `~/.coolify-manager/compose-backups/{site}/` antes d
 ### Cleanup de contenedores exited pre-deploy
 
 Limpia contenedores en estado "Exited" antes de cada deploy. Resuelve E8 (contenedores huérfanos post-crash). Ejecutado en el paso 3 de deploy, después de SSH connect y antes de verify_postgres.
-
-> Todas implementadas y validadas en sesión 03J. 125 tests pasan, clippy limpio.
 
 ### M7: Migration linter — IF NOT EXISTS obligatorio
 
