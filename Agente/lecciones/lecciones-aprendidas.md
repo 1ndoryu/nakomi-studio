@@ -217,7 +217,7 @@
 - Cuando una migración agrega columnas `NOT NULL` a una tabla fixture-managed, actualizar ese mismo día todos los `content/*.toml` de la tabla. Un solo campo faltante (`users.username` en este caso) rompe en cascada todos los fixtures dependientes y termina pareciendo un bug del seed en vez de un drift del fixture.
 
 ## Code Sentinel — sentinel-disable-next-line formato
-- `sentinel-disable-next-line {rule-id}` deBE estar en la línea inmediatamente anterior a la violación.
+- `sentinel-disable-next-line {rule-id}` DEBE estar en la línea inmediatamente anterior a la violación.
 - En Rust, usar `// sentinel-disable-next-line {rule-id}` como comentario single-line.
 - NUNCA ponerlo dentro de un comentario multilínea `/* ... */` que ocupe varias líneas, porque el checker compara `lineas[i-1]` y la línea anterior real sería el cierre `*/`, no el disable.
 - Patrón correcto: explicación en `/* ... */` arriba, y `// sentinel-disable-next-line ...` en la línea justo antes del código.
@@ -379,3 +379,11 @@
 ## Capabilities del CMS - mas texto, mismo estado de publicacion
 - Si el usuario pide ampliar las Capabilities de servicios, el cambio real vive en `skills.descripcion` del catalogo CMS. La validacion mas fiable es medir por API que esas descripciones crecieron y no solo confiar en una lectura visual indirecta.
 - Cuando un servicio ya fue archivado manualmente, cualquier sync de copy debe respetar ese estado en la fuente reusable (`status = archived`, `is_active = false`) o lo reactivara en el siguiente empuje aunque el texto sea el unico objetivo del cambio.
+
+## SSH Guard — bloqueo del lado del cliente con perfil PowerShell
+- En vez de restringir keys en el servidor (riesgo de lockout), bloquear `ssh`/`scp` desde el perfil PowerShell del usuario. Es más seguro, reversible al instante y no afecta a Coolify ni a coolify-manager-rs.
+- coolify-manager-rs usa `russh` (cliente SSH nativo en Rust), NO `ssh.exe`. Por eso el guard en PowerShell no lo afecta — son caminos completamente separados.
+- El perfil vive en `$PROFILE` (CurrentUserAllHosts = `~\OneDrive\Documentos\PowerShell\profile.ps1`). Se carga automáticamente en cada sesión PowerShell.
+- Bypass de emergencia: `ssh-unsafe` y `scp-unsafe` ejecutan los comandos reales sin filtro. Útil para diagnóstico puntual.
+- IPs bloqueadas: `66.94.100.241` (VPS1) y `173.249.50.44` (VPS2). Para agregar más, editar `$Script:BlockedSSHHosts` en el perfil.
+- **Lección del lockout anterior (jun 2026):** nunca usar `$(date)` en nombres de backup SSH — el shell remoto puede interpretar el `$` y romper el authorized_keys. Usar nombre fijo.
