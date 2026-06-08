@@ -28,12 +28,22 @@ pub struct VpsCheckoutParams<'a> {
     pub tier_name: &'a str,
     pub amount_cents: i32,
     pub setup_fee_cents: i32,
+    pub processing_fee_cents: i32,
     pub customer_email: &'a str,
     pub success_url: &'a str,
     pub cancel_url: &'a str,
 }
 
 pub struct VpsStripeService;
+
+/* Comisión Stripe México: 3.6% + 1.5% (internacional) + 1% (divisa) = 6.1% + $3 MXN.
+ * Se añade como cargo de procesamiento en el primer checkout. */
+pub const STRIPE_FEE_RATE_CENTS: i32 = 610; /* 6.1% en basis points × 100 */
+pub const STRIPE_FEE_FIXED_CENTS: i32 = 300; /* $3.00 MXN */
+
+pub fn vps_stripe_fee_cents(base_cents: i32) -> i32 {
+    base_cents * STRIPE_FEE_RATE_CENTS / 10_000 + STRIPE_FEE_FIXED_CENTS
+}
 
 fn humanize_tier_name(tier_name: &str) -> &str {
     match tier_name {
@@ -110,6 +120,31 @@ impl VpsStripeService {
                     "Cargo inicial de configuración del VPS".to_string(),
                 ),
                 ("line_items[1][quantity]", "1".to_string()),
+            ]);
+        }
+
+        /* Cargo por procesamiento de pago (Stripe México: 6.1% + $3 MXN).
+         * Solo en el primer checkout; los cobros recurrentes ya incluyen su propia comisión. */
+        if params.processing_fee_cents > 0 {
+            let fee_idx = if params.setup_fee_cents > 0 { 2 } else { 1 };
+            let k = |suffix: &str| -> &'static str {
+                Box::leak(format!("line_items[{fee_idx}]{suffix}").into_boxed_str())
+            };
+            form.extend([
+                (k("[price_data][currency]"), "usd".to_string()),
+                (
+                    k("[price_data][unit_amount]"),
+                    params.processing_fee_cents.to_string(),
+                ),
+                (
+                    k("[price_data][product_data][name]"),
+                    "Cargo por procesamiento de pago".to_string(),
+                ),
+                (
+                    k("[price_data][product_data][description]"),
+                    "Comisión de procesamiento Stripe (tarjeta internacional + divisa)".to_string(),
+                ),
+                (k("[quantity]"), "1".to_string()),
             ]);
         }
 

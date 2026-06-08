@@ -21,7 +21,7 @@ export function VpsConfiguradorIsland(): JSX.Element {
     const configurador = useVpsConfiguradorIsland(tier);
     const {
         plans, selectedPlan, form, emailExiste, status,
-        dueToday, monthlyTotal, storageExtraCents, regionExtraCents,
+        dueToday, monthlyTotal, storageExtraCents, regionExtraCents, processingFeeCents,
         logueado, updateField, handleSubmit,
     } = configurador;
 
@@ -261,6 +261,12 @@ export function VpsConfiguradorIsland(): JSX.Element {
                                 <div className="vpsConfiguradorResumenFila">
                                     <span>Puesta en marcha</span>
                                     <strong>{formatMoney(selectedPlan.setup_fee_cents)}</strong>
+                                </div>
+                            )}
+                            {processingFeeCents > 0 && (
+                                <div className="vpsConfiguradorResumenFila">
+                                    <span>Procesamiento de pago</span>
+                                    <strong>+{formatMoney(processingFeeCents)}</strong>
                                 </div>
                             )}
                             <div className="vpsConfiguradorResumenTotal">

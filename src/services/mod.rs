@@ -66,5 +66,5 @@ pub use payment::PaymentService;
 pub use payment_method::PaymentMethodService;
 pub use seed::SeedService;
 pub use test_checkout::{checkout_bypass_is_configured, is_checkout_bypass_email};
-pub use vps_stripe::{VpsCheckoutParams, VpsStripeService};
+pub use vps_stripe::{vps_stripe_fee_cents, VpsCheckoutParams, VpsStripeService};
 pub use wallet::WalletService;

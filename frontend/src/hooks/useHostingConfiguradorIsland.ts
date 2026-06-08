@@ -50,8 +50,8 @@ export const HOSTING_LANGUAGE_OPTIONS = [
 
 export const HOSTING_BILLING_OPTIONS: Array<{months: HostingBillingCycle; label: string; description: string}> = [
     {months: 1, label: '1 mes', description: 'Sin descuento'},
-    {months: 6, label: '6 meses', description: 'Descuento de $10'},
-    {months: 12, label: '1 año', description: 'Descuento de $20'},
+    {months: 6, label: '6 meses', description: 'Descuento de 10%'},
+    {months: 12, label: '1 año', description: 'Descuento de 20%'},
 ];
 
 export function formatHostingMoney(cents: number): string {
@@ -73,10 +73,22 @@ function parseBillingCycle(value: string): HostingBillingCycle {
     return 1;
 }
 
-function hostingBillingDiscountCents(months: HostingBillingCycle): number {
-    if (months === 12) return 2000;
-    if (months === 6) return 1000;
+/* Descuento porcentual por período: 6 meses = 10%, 12 meses = 20%.
+ * Calculado sobre el subtotal (precio mensual × meses). */
+function hostingBillingDiscountCents(monthlyPriceCents: number, months: HostingBillingCycle): number {
+    const subtotal = monthlyPriceCents * months;
+    if (months === 12) return Math.round(subtotal * 0.20);
+    if (months === 6) return Math.round(subtotal * 0.10);
     return 0;
+}
+
+/* Comisión Stripe México: 3.6% + 1.5% (internacional) + 1% (divisa) = 6.1% + $3 MXN.
+ * Se muestra como cargo adicional en el resumen de pago. */
+const STRIPE_FEE_RATE = 0.061;
+const STRIPE_FEE_FIXED_CENTS = 300; /* $3.00 MXN */
+
+export function hostingStripeFeeCents(baseCents: number): number {
+    return Math.round(baseCents * STRIPE_FEE_RATE) + STRIPE_FEE_FIXED_CENTS;
 }
 
 function resolveSelectedPlan(plans: HostingPlanInfo[], selectedPlan: string, initialPlan?: string): HostingPlanInfo | undefined {
@@ -94,8 +106,10 @@ export function useHostingConfiguradorIsland(kind: HostingConfiguradorKind, init
 
     const selectedPlan = resolveSelectedPlan(plans, form.selectedPlan, initialPlan);
     const billingCycleMonths = parseBillingCycle(form.billingCycle);
-    const discountCents = selectedPlan ? Math.min(hostingBillingDiscountCents(billingCycleMonths), selectedPlan.priceCents * billingCycleMonths) : 0;
-    const dueToday = selectedPlan ? (selectedPlan.priceCents * billingCycleMonths) - discountCents : 0;
+    const discountCents = selectedPlan ? Math.min(hostingBillingDiscountCents(selectedPlan.priceCents, billingCycleMonths), selectedPlan.priceCents * billingCycleMonths) : 0;
+    const subtotalAfterDiscount = selectedPlan ? (selectedPlan.priceCents * billingCycleMonths) - discountCents : 0;
+    const stripeFeeCents = selectedPlan ? hostingStripeFeeCents(subtotalAfterDiscount) : 0;
+    const dueToday = subtotalAfterDiscount + stripeFeeCents;
 
     const updateField = (field: keyof HostingConfigForm, value: string) => {
         setForm(prev => ({...prev, [field]: value}));
@@ -171,6 +185,7 @@ export function useHostingConfiguradorIsland(kind: HostingConfiguradorKind, init
         status,
         dueToday,
         discountCents,
+        stripeFeeCents,
         billingCycleMonths,
         logueado,
         updateField,

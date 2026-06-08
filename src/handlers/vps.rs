@@ -22,7 +22,8 @@ use crate::models::{
 };
 use crate::repositories::{CreateVpsSubscriptionParams, UserRepository, VpsRepository};
 use crate::services::{
-    is_checkout_bypass_email, CreateInstanceParams, EmailService, VpsCheckoutParams,
+    is_checkout_bypass_email, vps_stripe_fee_cents, CreateInstanceParams, EmailService,
+    VpsCheckoutParams,
     VpsStripeService,
 };
 use crate::AppState;
@@ -433,6 +434,9 @@ pub async fn subscribe_self(
     let success_url = format!("{base_url}/panel?vps=success&session_id={{CHECKOUT_SESSION_ID}}");
     let cancel_url = format!("{base_url}/panel?vps=cancelled");
 
+    let total_first_payment = subscription.monthly_price_cents + plan_config.setup_fee_cents;
+    let stripe_fee = vps_stripe_fee_cents(total_first_payment);
+
     let checkout_url = VpsStripeService::create_checkout_session(&VpsCheckoutParams {
         http_client: &state.http_client,
         stripe_key,
@@ -440,6 +444,7 @@ pub async fn subscribe_self(
         tier_name: &subscription.tier_name,
         amount_cents: subscription.monthly_price_cents,
         setup_fee_cents: plan_config.setup_fee_cents,
+        processing_fee_cents: stripe_fee,
         customer_email: &subscription.client_email,
         success_url: &success_url,
         cancel_url: &cancel_url,

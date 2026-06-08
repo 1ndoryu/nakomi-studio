@@ -53,16 +53,28 @@ fn normalize_hosting_billing_cycle(value: Option<i32>) -> Result<i32, AppError> 
     }
 }
 
-fn hosting_billing_discount_cents(months: i32) -> i32 {
+/* Porcentaje de descuento por período de facturación.
+ * 6 meses = 10%, 12 meses = 20%. Calculado sobre el subtotal (precio × meses). */
+fn hosting_billing_discount_cents(monthly_price_cents: i32, months: i32) -> i32 {
+    let subtotal = monthly_price_cents * months;
     match months {
-        12 => 2000,
-        6 => 1000,
+        12 => subtotal * 20 / 100,
+        6 => subtotal * 10 / 100,
         _ => 0,
     }
 }
 
 fn hosting_period_amount_cents(monthly_price_cents: i32, months: i32) -> i32 {
-    (monthly_price_cents * months - hosting_billing_discount_cents(months)).max(0)
+    (monthly_price_cents * months - hosting_billing_discount_cents(monthly_price_cents, months)).max(0)
+}
+
+/* Comisión Stripe México: 3.6% + 1.5% (internacional) + 1% (divisa) = 6.1% + $3 MXN.
+ * Se suma al monto total para trasladar el costo al cliente. */
+const STRIPE_FEE_RATE_CENTS: i32 = 610; /* 6.1% en basis points × 100 */
+const STRIPE_FEE_FIXED_CENTS: i32 = 300; /* $3.00 MXN */
+
+fn hosting_stripe_fee_cents(base_cents: i32) -> i32 {
+    base_cents * STRIPE_FEE_RATE_CENTS / 10_000 + STRIPE_FEE_FIXED_CENTS
 }
 
 fn ensure_single_line_secret(value: Option<&str>, label: &str) -> Result<(), AppError> {
@@ -89,12 +101,16 @@ fn validate_hosting_checkout_request(req: &SelfSubscribeRequest) -> Result<i32, 
 fn hosting_checkout_config_details(
     req: &SelfSubscribeRequest,
     billing_cycle_months: i32,
+    monthly_price_cents: i32,
     period_amount_cents: i32,
 ) -> serde_json::Value {
+    let discount = hosting_billing_discount_cents(monthly_price_cents, billing_cycle_months);
+    let stripe_fee = hosting_stripe_fee_cents(period_amount_cents);
     serde_json::json!({
         "billing_cycle_months": billing_cycle_months,
         "period_amount_cents": period_amount_cents,
-        "discount_cents": hosting_billing_discount_cents(billing_cycle_months),
+        "discount_cents": discount,
+        "stripe_fee_cents": stripe_fee,
         "wp_admin_username": req.wp_admin_username.as_deref(),
         "wp_admin_password": req.wp_admin_password.as_deref(),
         "wp_language": req.wp_language.as_deref(),
@@ -200,7 +216,7 @@ pub(super) async fn subscribe_self(
             "plan": req.plan,
             "by": auth.user_id.to_string(),
             "source": "self-service",
-            "checkout_config": hosting_checkout_config_details(&req, billing_cycle_months, period_amount_cents)
+            "checkout_config": hosting_checkout_config_details(&req, billing_cycle_months, price, period_amount_cents)
         })),
     )
     .await
@@ -241,7 +257,7 @@ pub(super) async fn subscribe_self(
             stripe_key,
             subscription_id: sub.id,
             plan: &sub.plan,
-            amount_cents: period_amount_cents,
+            amount_cents: period_amount_cents + hosting_stripe_fee_cents(period_amount_cents),
             customer_email: &client_email,
             success_url: &success_url,
             cancel_url: &cancel_url,
@@ -496,6 +512,7 @@ pub(super) async fn admin_test_subscribe(
             "checkout_config": hosting_checkout_config_details(
                 &req,
                 billing_cycle_months,
+                plan_config.monthly_price_cents,
                 hosting_period_amount_cents(plan_config.monthly_price_cents, billing_cycle_months)
             )
         })),

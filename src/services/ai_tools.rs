@@ -27,7 +27,7 @@ use crate::repositories::{
 };
 use crate::services::{
     checkout_bypass_is_configured, is_checkout_bypass_email, CheckoutParams, HostingStripeService,
-    VpsCheckoutParams, VpsStripeService,
+    VpsCheckoutParams, VpsStripeService, vps_stripe_fee_cents,
 };
 
 /* Resultado de ejecutar una tool: JSON para la IA y opcionalmente un
@@ -1011,6 +1011,9 @@ async fn create_chat_vps_checkout_url(
         tier_name: &subscription.tier_name,
         amount_cents: subscription.monthly_price_cents,
         setup_fee_cents: plan_config.setup_fee_cents,
+        processing_fee_cents: vps_stripe_fee_cents(
+            subscription.monthly_price_cents + plan_config.setup_fee_cents,
+        ),
         customer_email: client_email,
         success_url: &success_url,
         cancel_url: &cancel_url,

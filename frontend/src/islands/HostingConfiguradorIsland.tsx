@@ -25,7 +25,7 @@ export function HostingConfiguradorIsland({kind}: HostingConfiguradorIslandProps
     const configurador = useHostingConfiguradorIsland(kind, plan);
     const {
         plans, selectedPlan, form, emailExiste, status, dueToday, discountCents,
-        billingCycleMonths, logueado, updateField, handleSubmit,
+        stripeFeeCents, billingCycleMonths, logueado, updateField, handleSubmit,
     } = configurador;
 
     const title = isWordPress ? 'Configurar Hosting WordPress' : 'Configurar hosting';
@@ -246,6 +246,12 @@ export function HostingConfiguradorIsland({kind}: HostingConfiguradorIslandProps
                                 <div className="vpsConfiguradorResumenFila">
                                     <span>CDN</span>
                                     <strong>Incluido</strong>
+                                </div>
+                            )}
+                            {stripeFeeCents > 0 && (
+                                <div className="vpsConfiguradorResumenFila">
+                                    <span>Procesamiento de pago</span>
+                                    <strong>+{formatHostingMoney(stripeFeeCents)}</strong>
                                 </div>
                             )}
                             <div className="vpsConfiguradorResumenTotal">
