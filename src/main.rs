@@ -117,11 +117,24 @@ let tower_service = match make_service.call(remote_addr).await {
                         });
 
                     let mut builder = auto::Builder::new(TokioExecutor::new());
+
+                    /* [096A-2] HTTP/1.1: header_read_timeout se rearma tras cada
+                     * respuesta y actúa como idle timeout (hyper PR #3828). */
                     let mut http1 = builder.http1();
-                    let conn = http1
+                    http1
                         .timer(TokioTimer::new())
                         .header_read_timeout(Duration::from_secs(30))
-                        .keep_alive(true)
+                        .keep_alive(true);
+
+                    /* [096A-2] HTTP/2: keep-alive con PING cada 30s, timeout 10s.
+                     * Sin esto, conexiones h2c (si Traefik negocia H2) quedan
+                     * abiertas indefinidamente → CLOSE_WAIT. */
+                    let mut http2 = builder.http2();
+                    http2
+                        .keep_alive_interval(Duration::from_secs(30))
+                        .keep_alive_timeout(Duration::from_secs(10));
+
+                    let conn = builder
                         .serve_connection_with_upgrades(io, hyper_service);
 
                     tokio::select! {

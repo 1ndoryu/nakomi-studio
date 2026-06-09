@@ -48,9 +48,9 @@ dashmap = "6"
 futures = "0.3"
 socket2 = "0.5"
 
-# HTTP connection management (096A-2: CLOSE_WAIT fix via header_read_timeout)
-hyper-util = { version = "0.1", features = ["server-auto", "http1", "tokio"] }
-hyper = "1"
+# HTTP connection management (096A-2: CLOSE_WAIT fix via header_read_timeout + http2 keep-alive)
+hyper-util = { version = "0.1", features = ["server-auto", "http1", "http2", "tokio"] }
+hyper = { version = "1", features = ["http1", "http2", "server"] }
 
 # Rate limiting
 governor = "0.7"
