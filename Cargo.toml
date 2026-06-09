@@ -10,7 +10,7 @@ authors = ["1ndoryu"]
 # Web framework
 axum = { version = "0.7", features = ["macros", "ws", "multipart"] }
 tokio = { version = "1", features = ["full"] }
-tower = "0.4"
+tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["cors", "trace", "fs", "set-header", "compression-gzip", "compression-br", "normalize-path"] }
 
 # Serialization
@@ -47,6 +47,10 @@ chrono = { version = "0.4", features = ["serde"] }
 dashmap = "6"
 futures = "0.3"
 socket2 = "0.5"
+
+# HTTP connection management (096A-2: CLOSE_WAIT fix via header_read_timeout)
+hyper-util = { version = "0.1", features = ["server-auto", "http1", "tokio"] }
+hyper = "1"
 
 # Rate limiting
 governor = "0.7"

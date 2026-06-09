@@ -3,6 +3,11 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
+use hyper::body::Incoming;
+use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
+use hyper_util::server::conn::auto;
+use tower::{Service, ServiceExt};
+
 use argon2::password_hash::rand_core::OsRng;
 use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use glory_backend::config::AppConfig;
@@ -78,15 +83,65 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     socket.listen(1024)?;
     let listener = tokio::net::TcpListener::from_std(socket.into())?;
 
-    /* [074A-41] into_make_service_with_connect_info para que GovernorLayer
-     * (PeerIpKeyExtractor) y ConnectInfo<SocketAddr> en ws_visitor funcionen.
-     * Sin esto, tower_governor devuelve "Unable To Extract Key!" en todas las rutas /api/ routes. */
-    axum::serve(
-        listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .with_graceful_shutdown(shutdown_signal())
-    .await?;
+    /* [096A-2] Migrado de axum::serve() a hyper_util::auto::Builder para
+     * configurar header_read_timeout a nivel HTTP. axum::serve() es
+     * intencionalmente simple y NO expone configuración de conexiones
+     * (ver tokio-rs/axum#2939). Sin este timeout, conexiones keep-alive
+     * de clientes que desaparecen quedan en CLOSE_WAIT indefinidamente
+     * hasta saturar el event loop.
+     *
+     * header_read_timeout se rearma después de cada respuesta (confirmado
+     * por test hyper: header_read_timeout_as_idle_timeout), actuando como
+     * idle timeout entre requests keep-alive. */
+    let mut make_service =
+        app.into_make_service_with_connect_info::<SocketAddr>();
+
+    let shutdown = shutdown_signal();
+    tokio::pin!(shutdown);
+
+    loop {
+        tokio::select! {
+            result = listener.accept() => {
+                let (tcp_stream, remote_addr) = result?;
+let tower_service = match make_service.call(remote_addr).await {
+                        Ok(svc) => svc,
+                        Err(err) => match err {},
+                    };
+
+                tokio::spawn(async move {
+                    let io = TokioIo::new(tcp_stream);
+
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
+                            tower_service.clone().oneshot(request)
+                        });
+
+                    let mut builder = auto::Builder::new(TokioExecutor::new());
+                    let mut http1 = builder.http1();
+                    let conn = http1
+                        .timer(TokioTimer::new())
+                        .header_read_timeout(Duration::from_secs(30))
+                        .keep_alive(true)
+                        .serve_connection_with_upgrades(io, hyper_service);
+
+                    tokio::select! {
+                        result = conn => {
+                            if let Err(err) = result {
+                                tracing::debug!("Connection error from {remote_addr}: {err:#}");
+                            }
+                        }
+                        _ = shutdown_signal() => {
+                            /* graceful shutdown: dejar que hyper cierre limpiamente */
+                        }
+                    }
+                });
+            }
+            _ = &mut shutdown => {
+                tracing::info!("Graceful shutdown: dejando de aceptar conexiones");
+                break;
+            }
+        }
+    }
 
     Ok(())
 }

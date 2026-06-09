@@ -136,13 +136,42 @@ Configurar health check HTTP en el compose de Coolify para auto-restart si el co
 
 ---
 
+### ❌ Fix v1 (262eb2b5) — INSUFICIENTE
+
+El fix anterior (SO_KEEPALIVE + WS timeouts) **NO resolvió el problema**. El sitio siguió cayendo ~26 min después de cada restart con CLOSE_WAIT acumulándose de nuevo.
+
+**Razón:** SO_KEEPALIVE opera a nivel TCP y solo detecta peers muertos (default 2h en Linux). CLOSE_WAIT no es un peer muerto — es que la aplicación nunca llama `close()` tras recibir FIN del cliente. TCP keepalive no fuerza el cierre.
+
+### ✅ Fix v2 (096A-2) — CORRECTO
+
+**Solución:** Reemplazar `axum::serve()` con `hyper_util::auto::Builder` + `http1().header_read_timeout(30s)`.
+
+`axum::serve()` es intencionalmente simple y **NO expone configuración de conexiones** (tokio-rs/axum#2939). Internamente usa hyper con defaults que no incluyen idle timeout efectivo.
+
+`header_read_timeout` de Hyper 1.x se rearma después de cada respuesta HTTP (confirmado por test oficial: `header_read_timeout_as_idle_timeout`). Actúa como idle timeout entre requests keep-alive: si el cliente no envía una nueva request en 30s, Hyper cierra el socket.
+
+```rust
+let builder = auto::Builder::new(TokioExecutor::new());
+let mut http1 = builder.http1();
+let conn = http1
+    .timer(TokioTimer::new())
+    .header_read_timeout(Duration::from_secs(30))
+    .keep_alive(true)
+    .serve_connection_with_upgrades(io, hyper_service);
+```
+
+Dependencias: `hyper-util = { features = ["server-auto", "http1", "tokio"] }`, `hyper = "1"`, `tower = { features = ["util"] }`
+
+---
+
 ## Lecciones Aprendidas
 
-1. **Axum/Hyper no configura keep-alive por defecto** — hay que hacerlo explícitamente
-2. **Los WebSockets sin timeout son una bomba de tiempo** — cada conexión abierta consume un slot tokio
-3. **El watchdog interno (`spawn_http_watchdog`) no fue suficiente** — hace probe a `/healthz` cada 30s, pero el proceso estaba vivo (solo colgado). El probe local (`127.0.0.1`) quizá se procesaba en un path diferente al de Traefik
-4. **Coolify sin health check Docker** = sin auto-restart. El contenedor estaba "running" pero inútil
-5. **CLOSE_WAIT es el síntoma clave** — si `/proc/net/tcp` muestra muchas conexiones CLOSE_WAIT, la app tiene un leak
+1. **SO_KEEPALIVE NO resuelve CLOSE_WAIT** — TCP keepalive detecta peers muertos (default 2h), pero CLOSE_WAIT es que la app no cierra el socket tras recibir FIN. Solo HTTP-level timeouts lo resuelven.
+2. **`axum::serve()` no expone configuración de conexiones** — para producir idle timeouts hay que migrar a `hyper_util::auto::Builder` (ver tokio-rs/axum#2939).
+3. **`header_read_timeout` funciona como idle timeout** — se rearma entre requests. Default hyper es 30s, pero `axum::serve()` no lo aplica correctamente.
+4. **Los WebSockets sin timeout son una bomba de tiempo** — cada conexión abierta consume un slot tokio.
+5. **El watchdog interno (`spawn_http_watchdog`) no fue suficiente** — hace probe a `/healthz` cada 30s, pero el proceso estaba vivo (solo colgado). El healthcheck Docker amplifica el problema: si el servidor no responde, lo marca unhealthy → Traefik devuelve 503.
+6. **CLOSE_WAIT es el síntoma clave** — si `/proc/net/tcp` muestra muchas conexiones CLOSE_WAIT (state `08`), la app tiene un leak de conexiones HTTP.
 
 ---
 
