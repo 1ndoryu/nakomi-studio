@@ -151,10 +151,15 @@ Configurar health check HTTP en el compose de Coolify para auto-restart si el co
 - [x] Servicio restaurado (docker restart)
 - [x] Causa raíz identificada (connection leak por falta de timeouts)
 - [x] Documentación del incidente creada
-- [ ] Fix de código implementado (keep-alive, graceful shutdown, WS timeouts, pool limits)
-- [ ] Docker health check configurado en Coolify
-- [ ] Deploy del fix a producción
-- [ ] Verificar que el fix previene recurrencia
+- [x] Fix de código implementado (keep-alive, graceful shutdown, WS timeouts, pool limits) — commit `262eb2b5`
+- [x] Código pusheado a `glory-rust-nakomi`
+- [x] Deploy del fix a producción (vía coolify-manager, 2026-06-09 17:03 CEST)
+- [x] Docker health check configurado en Coolify (timeout 10s, interval 30s, retries 3, start_period 30s)
+- [x] Verificar que el fix previene recurrencia — healthcheck pasando, container `healthy`
+
+### Nota: Healthcheck intermedio fallido (16:43-16:48 UTC)
+
+Se agregó healthcheck `curl http://localhost:3000/healthz` al compose con timeout de 5s. El servidor viejo (sin fixes) acumuló CLOSE_WAIT de nuevo y no respondió al healthcheck en 5s → Docker lo marcó `unhealthy` → Traefik devolvió **503**. Se quitó el healthcheck para restaurar el sitio. Se re-agregó después del deploy del código fixeado (con timeout ampliado a 10s) y funciona correctamente.
 
 ---
 
