@@ -85,7 +85,7 @@ function hostingBillingDiscountCents(monthlyPriceCents: number, months: HostingB
 /* Comisión Stripe México: 3.6% + 1.5% (internacional) + 1% (divisa) = 6.1% + $3 MXN.
  * Se muestra como cargo adicional en el resumen de pago. */
 const STRIPE_FEE_RATE = 0.061;
-const STRIPE_FEE_FIXED_CENTS = 300; /* $3.00 MXN */
+const STRIPE_FEE_FIXED_CENTS = 15; /* $3 MXN ≈ $0.15 USD al TC ~20 */
 
 export function hostingStripeFeeCents(baseCents: number): number {
     return Math.round(baseCents * STRIPE_FEE_RATE) + STRIPE_FEE_FIXED_CENTS;

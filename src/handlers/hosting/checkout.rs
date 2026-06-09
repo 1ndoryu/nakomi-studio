@@ -71,7 +71,7 @@ fn hosting_period_amount_cents(monthly_price_cents: i32, months: i32) -> i32 {
 /* Comisión Stripe México: 3.6% + 1.5% (internacional) + 1% (divisa) = 6.1% + $3 MXN.
  * Se suma al monto total para trasladar el costo al cliente. */
 const STRIPE_FEE_RATE_CENTS: i32 = 610; /* 6.1% en basis points × 100 */
-const STRIPE_FEE_FIXED_CENTS: i32 = 300; /* $3.00 MXN */
+const STRIPE_FEE_FIXED_CENTS: i32 = 15; /* $3 MXN ≈ $0.15 USD al TC ~20 */
 
 fn hosting_stripe_fee_cents(base_cents: i32) -> i32 {
     base_cents * STRIPE_FEE_RATE_CENTS / 10_000 + STRIPE_FEE_FIXED_CENTS

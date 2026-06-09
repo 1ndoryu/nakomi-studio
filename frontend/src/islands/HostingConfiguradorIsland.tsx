@@ -258,7 +258,7 @@ export function HostingConfiguradorIsland({kind}: HostingConfiguradorIslandProps
                                 <span>Hoy</span>
                                 <strong>{formatHostingMoney(dueToday)}</strong>
                             </div>
-                            <p className="vpsConfiguradorResumenNota">Luego se renueva según el periodo seleccionado.</p>
+                            <p className="vpsConfiguradorResumenNota">Se renueva a {formatHostingMoney(selectedPlan.priceCents)}/mes.</p>
                         </>
                     ) : (
                         <p className="vpsConfiguradorMuted">No hay planes de hosting disponibles.</p>

@@ -39,7 +39,7 @@ pub struct VpsStripeService;
 /* Comisión Stripe México: 3.6% + 1.5% (internacional) + 1% (divisa) = 6.1% + $3 MXN.
  * Se añade como cargo de procesamiento en el primer checkout. */
 pub const STRIPE_FEE_RATE_CENTS: i32 = 610; /* 6.1% en basis points × 100 */
-pub const STRIPE_FEE_FIXED_CENTS: i32 = 300; /* $3.00 MXN */
+pub const STRIPE_FEE_FIXED_CENTS: i32 = 15; /* $3 MXN ≈ $0.15 USD al TC ~20 */
 
 pub fn vps_stripe_fee_cents(base_cents: i32) -> i32 {
     base_cents * STRIPE_FEE_RATE_CENTS / 10_000 + STRIPE_FEE_FIXED_CENTS
