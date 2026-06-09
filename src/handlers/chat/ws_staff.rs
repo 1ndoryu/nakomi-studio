@@ -82,8 +82,18 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
     /* Track de suscripciones */
     let mut subscriptions = Vec::new();
 
-    /* Recibir mensajes del staff */
-    while let Some(Ok(msg)) = receiver.next().await {
+    /* Recibir mensajes del staff.
+     * [096A-1] Timeout de inactividad: 5 minutos sin mensajes → cerrar conexión. */
+    loop {
+        let msg = match tokio::time::timeout(
+            std::time::Duration::from_secs(300),
+            receiver.next(),
+        )
+        .await
+        {
+            Ok(Some(Ok(msg))) => msg,
+            Ok(None) | Ok(Some(Err(_))) | Err(_) => break,
+        };
         let Message::Text(text) = msg else {
             continue;
         };

@@ -159,7 +159,19 @@ pub async fn process_visitor_messages(
     client_ip: Option<&str>,
     timing_tx: &tokio::sync::mpsc::Sender<TimingEvent>,
 ) -> bool {
-    while let Some(Ok(msg)) = receiver.next().await {
+    /* [096A-1] Timeout de inactividad: 5 minutos sin mensajes del visitante
+     * → cerrar conexión para liberar recursos y evitar acumulación de CLOSE_WAIT. */
+    loop {
+        let msg = match tokio::time::timeout(
+            std::time::Duration::from_secs(300),
+            receiver.next(),
+        )
+        .await
+        {
+            Ok(Some(Ok(msg))) => msg,
+            Ok(None) | Ok(Some(Err(_))) | Err(_) => break,
+        };
+
         let Message::Text(text) = msg else {
             continue;
         };

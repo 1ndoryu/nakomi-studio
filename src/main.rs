@@ -32,9 +32,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = AppConfig::from_env()?;
 
+    /* [096A-1] Pool con max_lifetime + idle_timeout para evitar conexiones
+     * zombie que provocan CLOSE_WAIT y deadlock del event loop. */
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(10)
-        .min_connections(2)
+        .min_connections(1)
+        .max_lifetime(Duration::from_secs(1800))
+        .idle_timeout(Duration::from_secs(300))
+        .acquire_timeout(Duration::from_secs(5))
         .connect(&config.database_url)
         .await?;
 
@@ -52,7 +57,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     spawn_http_watchdog(config.port);
 
     let app = handlers::create_app(pool, config);
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
+
+    /* [096A-1] TCP keepalive para detectar conexiones muertas del lado del
+     * servidor y evitar acumulación de CLOSE_WAIT que causa deadlock. Se crea
+     * el socket con socket2 para configurar SO_KEEPALIVE antes de pasarlo a tokio. */
+    let sock_addr: std::net::SocketAddr = addr.parse()?;
+    let socket = socket2::Socket::new(
+        if sock_addr.is_ipv4() {
+            socket2::Domain::IPV4
+        } else {
+            socket2::Domain::IPV6
+        },
+        socket2::Type::STREAM,
+        None,
+    )?;
+    socket.set_keepalive(true)?;
+    socket.set_nonblocking(true)?;
+    socket.set_reuse_address(true)?;
+    socket.bind(&sock_addr.into())?;
+    socket.listen(1024)?;
+    let listener = tokio::net::TcpListener::from_std(socket.into())?;
+
     /* [074A-41] into_make_service_with_connect_info para que GovernorLayer
      * (PeerIpKeyExtractor) y ConnectInfo<SocketAddr> en ws_visitor funcionen.
      * Sin esto, tower_governor devuelve "Unable To Extract Key!" en todas las rutas /api/ routes. */
@@ -60,9 +85,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
+    .with_graceful_shutdown(shutdown_signal())
     .await?;
 
     Ok(())
+}
+
+/* [096A-1] Señal de graceful shutdown: espera SIGTERM/SIGINT y permite
+ * que las conexiones activas se drenen antes de cerrar el proceso. */
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => { tracing::info!("Recibido SIGINT, iniciando graceful shutdown..."); }
+        _ = terminate => { tracing::info!("Recibido SIGTERM, iniciando graceful shutdown..."); }
+    }
 }
 
 /* [250A-1] Extraído de main() para cumplir límite de 100 líneas.

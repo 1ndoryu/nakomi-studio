@@ -46,6 +46,7 @@ uuid = { version = "1", features = ["serde", "v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 dashmap = "6"
 futures = "0.3"
+socket2 = "0.5"
 
 # Rate limiting
 governor = "0.7"

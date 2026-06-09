@@ -188,8 +188,18 @@ async fn handle_notification_ws(socket: WebSocket, state: AppState, user_id: Uui
         }
     });
 
-    /* Mantener la conexión abierta: consumir pings/pongs y detectar cierre */
-    while let Some(Ok(msg)) = ws_receiver.next().await {
+    /* Mantener la conexión abierta: consumir pings/pongs y detectar cierre.
+     * [096A-1] Timeout de inactividad: 5 minutos sin mensajes → cerrar. */
+    loop {
+        let msg = match tokio::time::timeout(
+            std::time::Duration::from_secs(300),
+            ws_receiver.next(),
+        )
+        .await
+        {
+            Ok(Some(Ok(msg))) => msg,
+            Ok(None) | Ok(Some(Err(_))) | Err(_) => break,
+        };
         if matches!(msg, Message::Close(_)) {
             break;
         }
