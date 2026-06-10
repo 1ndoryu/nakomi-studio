@@ -131,12 +131,23 @@ fn spawn_visitor_send_task(
     mut sender: futures::stream::SplitSink<WebSocket, Message>,
     mut rx: tokio::sync::broadcast::Receiver<WsServerMessage>,
 ) -> tokio::task::JoinHandle<()> {
+    /* [096A-8] Manejar RecvError::Lagged: si el receiver se atrasa, no romper el loop.
+     * Sin esto, un cliente lento pierde la tarea de envío silenciosamente. */
     tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
-            if let Ok(json) = serde_json::to_string(&msg) {
-                if sender.send(Message::Text(json)).await.is_err() {
-                    break;
+        loop {
+            match rx.recv().await {
+                Ok(msg) => {
+                    if let Ok(json) = serde_json::to_string(&msg) {
+                        if sender.send(Message::Text(json)).await.is_err() {
+                            break;
+                        }
+                    }
                 }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                    tracing::warn!("Visitor broadcast lagged: {n} mensajes perdidos");
+                    continue;
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
             }
         }
     })
@@ -357,7 +368,10 @@ async fn cleanup_visitor_session(
         state
             .chat_hub
             .notify_visitor_offline(session_id, Some(visitor_online_at));
-        let _ = timing_tx.send(TimingEvent::Disconnect).await;
+        /* [096A-8] try_send: si el timing loop está ocupado con IA, no bloquear cleanup.
+         * unregister_session() eliminará el sender del DashMap, lo que cerrará el canal
+         * y el timing loop terminará por sí solo al hacer recv(). */
+        let _ = timing_tx.try_send(TimingEvent::Disconnect);
         state.chat_timing.unregister_session(session_id);
         let _ = state.chat_hub.close_session(session_id).await;
     } else if remaining == 0 {
@@ -367,7 +381,7 @@ async fn cleanup_visitor_session(
         state
             .chat_hub
             .notify_visitor_offline(session_id, Some(visitor_online_at));
-        let _ = timing_tx.send(TimingEvent::Disconnect).await;
+        let _ = timing_tx.try_send(TimingEvent::Disconnect);
         state.chat_timing.unregister_session(session_id);
     }
     if !ip_for_tracking.is_empty() {

@@ -142,7 +142,12 @@ async fn handle_visitor_text_message(
         .chat_hub
         .send_message(session_id, "client", Some(visitor_id), &content)
         .await;
-    let _ = timing_tx.send(TimingEvent::Message(content)).await;
+    /* [096A-8] try_send en vez de send: si el canal timing está lleno (IA ocupada),
+     * NO bloquear el handler WS. send().await congela la lectura del WebSocket
+     * → buffer TCP se llena → conexión se congela silenciosamente. */
+    if timing_tx.try_send(TimingEvent::Message(content)).is_err() {
+        tracing::warn!("Canal timing lleno, descartando mensaje para session {session_id}");
+    }
 
     VisitorTextFlow::Continue
 }
@@ -193,15 +198,16 @@ pub async fn process_visitor_messages(
             }
             WsClientMessage::Typing { content, .. } => {
                 state.chat_hub.send_typing(session_id, "client", &content);
+                /* [096A-8] try_send: typing events son no-críticos, nunca deben bloquear */
                 if content.is_empty() {
-                    let _ = timing_tx.send(TimingEvent::TypingStop).await;
+                    let _ = timing_tx.try_send(TimingEvent::TypingStop);
                 } else {
-                    let _ = timing_tx.send(TimingEvent::TypingStart).await;
+                    let _ = timing_tx.try_send(TimingEvent::TypingStart);
                 }
             }
             WsClientMessage::Close => {
                 /* [T-4] Cierre explícito del usuario — cierra para todas las conexiones */
-                let _ = timing_tx.send(TimingEvent::Disconnect).await;
+                let _ = timing_tx.try_send(TimingEvent::Disconnect);
                 return true;
             }
             /* [T-2] Acciones desde botones de mensajes ricos.
@@ -219,7 +225,9 @@ pub async fn process_visitor_messages(
                     .chat_hub
                     .send_message(session_id, "client", Some(visitor_id), &action_text)
                     .await;
-                let _ = timing_tx.send(TimingEvent::Message(action_text)).await;
+                if timing_tx.try_send(TimingEvent::Message(action_text)).is_err() {
+                    tracing::warn!("Canal timing lleno, descartando action para session {session_id}");
+                }
             }
             _ => {} /* join/toggle_ai son solo para staff */
         }

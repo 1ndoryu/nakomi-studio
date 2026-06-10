@@ -409,7 +409,11 @@ impl ChatTimingService {
         session_id: Uuid,
         event: TimingEvent,
     ) -> Result<(), &'static str> {
-        if let Some(tx) = self.sessions.get(&session_id) {
+        /* [096A-8] Clonar sender fuera del Ref guard de DashMap.
+         * DashMap::get() retiene el lock del shard; retenerlo a través de .await
+         * bloquea register_session/unregister_session en ese shard. */
+        let tx = self.sessions.get(&session_id).map(|guard| guard.clone());
+        if let Some(tx) = tx {
             tx.send(event).await.map_err(|_| "channel closed")
         } else {
             Err("session not registered")
@@ -477,7 +481,18 @@ async fn session_timing_loop(
 
         /* [096A-7] Adquirir permit del semáforo antes de llamar a IA.
          * Limita peticiones IA concurrentes para proteger pool DB y APIs. */
-        let _permit = ai_semaphore.acquire().await.expect("semaphore closed");
+        /* [096A-8] Timeout en semaphore: si 3 permits ocupados >30s, abortar en vez de bloquear.
+         * Sin timeout, una 4ta sesión espera indefinidamente → canal mpsc se llena → WS se congela. */
+        let _permit = match tokio::time::timeout(
+            Duration::from_secs(30),
+            ai_semaphore.acquire(),
+        ).await {
+            Ok(permit) => permit.expect("semaphore closed"),
+            Err(_) => {
+                tracing::warn!("Timeout 30s esperando semáforo IA para sesión {session_id}");
+                continue;
+            }
+        };
         irrelevant_count = generate_ai_response(
             session_id,
             visitor_name.as_deref(),
