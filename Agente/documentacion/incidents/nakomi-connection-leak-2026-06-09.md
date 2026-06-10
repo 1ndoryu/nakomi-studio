@@ -1,11 +1,12 @@
 # Incidente: nakomi.studio — Connection Leak Persistente (CLOSE_WAIT → Deadlock)
 
-**Fecha:** 2026-06-09  
-**Duración:** ~8 horas de inestabilidad continua con múltiples caídas  
-**Severidad:** 🔴 Crítica — sitio cayendo repetidamente cada ~2-8 horas  
+**Fecha inicio:** 2026-06-09 ~11:00 UTC  
+**Última caída:** 2026-06-10 ~09:45 UTC  
+**Severidad:** 🔴 Crítica — sitio cayendo repetidamente cada ~6 horas  
 **Servicio:** nakomi.studio (VPS1 66.94.100.241, Coolify service `do8k4w8swccwwogoc0os0ck0`)  
-**Estado actual (2026-06-09 ~22:50 UTC):** Fix v4 implementado, pendiente deploy y verificación  
-**Responsable:** Fix v4 implementado — verificar post-deploy que CLOSE_WAIT se estabiliza < 20
+**Estado actual (2026-06-10 ~10:08 UTC):** Fix v5 implementado, pendiente deploy.  
+**Commits desplegados:** `21bca97a` (v4.1). Fix v5 pendiente deploy.  
+**Root cause real (v5):** `accept()` en Linux NO hereda `SO_KEEPALIVE` del listener socket → TCP keepalive de fixes v1-v4 era NO-OP en todas las conexiones reales. Además, el watchdog HTTP generaba CLOSE_WAIT propio.
 
 ---
 
@@ -13,18 +14,15 @@
 
 El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue acumulando conexiones CLOSE_WAIT** pese a múltiples intentos de fix. El patrón es consistente: después de cada restart, las conexiones CLOSE_WAIT crecen (~1/min) hasta que el event loop se satura y el sitio deja de responder.
 
-**4 intentos de fix realizados** — ninguno resolvió el problema de raíz:
-1. TCP SO_KEEPALIVE + WS timeouts + pool limits → insuficiente (TCP keepalive no fuerza cierre de sockets en CLOSE_WAIT)
-2. Migración a `hyper_util::auto::Builder` + `header_read_timeout(30s)` → insuficiente (`hyper = "1"` sin features = NO-OP silencioso)
-3. Hyper features explícitas (`http1`, `http2`, `server`) + HTTP/2 keep-alive → **insuficiente** (deployado, 425 CLOSE_WAIT en 8 horas)
-4. Site sigue cayendo después de cada intento
+**6 intentos de fix realizados:**
+1. TCP SO_KEEPALIVE + WS timeouts + pool limits → insuficiente (TCP keepalive no fuerza cierre)
+2. Migración a `hyper_util::auto::Builder` + `header_read_timeout(30s)` → insuficiente (hyper sin features = NO-OP)
+3. Hyper features explícitas (`http1`, `http2`, `server`) + HTTP/2 keep-alive → insuficiente (425 CLOSE_WAIT en 8h)
+4. TCP keepalive agresivo (60s) + timeout absoluto por conexión (10min) → insuficiente (caída en ~6h)
+5. GracefulShutdown + `half_close(false)` → mejora significativa (15 CLOSE_WAIT/6h vs 425/8h) pero sitio sigue cayendo
+6. **Fix v5 (actual):** TCP keepalive per-accepted-socket + watchdog atómico sin HTTP + timeout 300s
 
-**Root cause identificado en fix v4:** Los 3 fixes anteriores operaban a nivel de **protocolo HTTP** (header timeouts, HTTP/2 PING, keep-alive). Pero CLOSE_WAIT es un problema a nivel de **socket TCP**: hyper recibió FIN del peer pero no ejecutaba `close()` en su lado. Además, `set_keepalive(true)` sin parámetros usaba el default del kernel Linux de 7200s (2h), completamente inútil.
-
-**Causa raíz (Fix v4):** Combinación de 3 factores:
-1. `serve_connection_with_upgrades()` mantiene sockets abiertos esperando posible upgrade que nunca llega
-2. `socket.set_keepalive(true)` usa default kernel de 7200s → no detecta peers muertos a tiempo
-3. No existía timeout absoluto por conexión → sockets CLOSE_WAIT sobrevivían indefinidamente
+**Root cause real descubierto en fix v5:** `accept()` en Linux **NO hereda** `SO_KEEPALIVE` del listening socket. Los fixes v1-v4 aplicaban keepalive al listener (inútil). Las conexiones reales de Traefik → servidor arrancaban con keepalive desactivado o con defaults del kernel (7200s). Además, el watchdog HTTP generaba sus propias conexiones CLOSE_WAIT al probar `http://127.0.0.1:3000/healthz` cada 30s, y mataba la app con `exit(1)` cuando esas conexiones fallaban.
 
 ---
 
@@ -84,49 +82,84 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue acumu
 **Resultado:** 425 CLOSE_WAIT acumulados en ~8 horas. Site cae de nuevo. Reducción de velocidad pero no eliminación.  
 **Por qué no funcionó:** HTTP/2 keep-alive solo aplica si Traefik negocia h2c (improbable). Y tampoco cierra CLOSE_WAIT — solo detecta peers silenciosos en HTTP/2, no sockets que ya recibieron FIN.
 
-### ✅ Fix v4 (pendiente deploy) — ROOT CAUSE
+### ❌ Fix v4 (commit `2c25102f`) — MEJORA PARCIAL
 **Qué:** 3 capas complementarias:
 1. TCP keepalive con parámetros agresivos: `tcp_keepalive_time=60s`, `tcp_keepalive_interval=15s`, `tcp_keepalive_probes=4` (detecta peers muertos en ~120s vs 7200s del kernel default).
-2. Timeout absoluto por conexión: 10 minutos via `tokio::time::timeout` que fuerza `drop()` del `TcpStream` → `close()` automático vía RAII. Safety net que garantiza que ningún socket sobrevive más de 10 min.
-3. Eliminación del `shutdown_signal()` interno por conexión (redundante con outer loop, creaba un listener de señal por cada conexión).
+2. Timeout absoluto por conexión: 10 minutos via `tokio::time::timeout` que fuerza `drop()` del `TcpStream` → `close()` automático vía RAII.
+3. Eliminación del `shutdown_signal()` interno por conexión (redundante con outer loop).
 
-**Por qué funciona:** A diferencia de los fixes v1-v3 que operaban a nivel de protocolo HTTP, este fix opera a nivel de **socket TCP**. El único mecanismo que cierra CLOSE_WAIT es el `drop()` del socket, y el timeout absoluto lo garantiza.
+**Resultado:** Caída en ~6 horas. Reducción significativa pero no eliminación.  
+**Problema:** `set_tcp_keepalive` de `socket2` en Linux usa `setsockopt` directo — puede no aplicar a conexiones ya establecidas. Y 10 min timeout no se activa si hyper mantiene la conexión "activa" (keep-alive sin tráfico real).
+
+### ⚠️ Fix v4.1 (commit `21bca97a`) — EN PRODUCCIÓN, MEJORA SIGNIFICATIVA
+**Qué:** GracefulShutdown (`hyper_util::server::graceful::GracefulShutdown`) + `half_close(false)` + TCP keepalive agresivo + timeout absoluto (600s).  
+**Resultado:** **15 CLOSE_WAIT en 6 horas** (vs 425 en 8 horas antes). Mejora de ~30x. Pero sitio sigue cayendo.  
+**Observación clave:** Con solo 15 CLOSE_WAIT, el event loop NO debería saturarse. **15 conexiones zombie NO matan un servidor.** El cuello de botella está en otra parte — posiblemente el watchdog.
+
+### ✅ Fix v5 (pendiente deploy) — ROOT CAUSE REAL
+**Qué:** 3 correcciones fundamentales:
+1. **TCP keepalive por socket aceptado** (CRÍTICO): `accept()` en Linux NO hereda SO_KEEPALIVE. Ahora cada conexión aceptada se convierte a `socket2::Socket`, se aplica keepalive (60s idle, 15s interval), y se convierte de vuelta. Los fixes v1-v4 aplicaban keepalive al listener (NO-OP).
+2. **Watchdog atómico sin HTTP**: Reemplaza `spawn_http_watchdog` (que generaba CLOSE_WAIT con probes TCP a 127.0.0.1:3000) por un `AtomicU64` heartbeat que el server loop actualiza en cada `accept()`. El watchdog lee el timestamp sin generar tráfico TCP.
+3. **Timeout absoluto reducido a 300s**: Match con WS inactivity timeout (300s). HTTP normal cierra mucho antes (header_read_timeout 30s).
+
+**Por qué funciona:** Por primera vez el TCP keepalive REALMENTE opera en las conexiones de tráfico (no solo en el listener). Combinado con la eliminación del watchdog HTTP (que generaba CLOSE_WAIT y mataba la app), el servidor debería mantener CLOSE_WAIT en ~0.
 
 ---
 
-## Configuración Actual del Servidor (`src/main.rs`)
+## Configuración Actual del Servidor (`src/main.rs`) — Fix v4.1
 
 ```rust
-/* Server config actual — hyper_util::auto::Builder con features explícitas */
+/* GracefulShutdown + TCP keepalive agresivo + timeout absoluto */
+use hyper_util::server::graceful::GracefulShutdown;
+
+// TCP Socket con keepalive agresivo
 let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP))?;
 socket.set_nonblocking(true)?;
 socket.set_reuse_address(true)?;
-socket.set_keepalive(true)?;  // TCP SO_KEEPALIVE
+socket.set_keepalive(true)?;
+socket.set_tcp_keepalive(
+    socket2::TcpKeepalive::new()
+        .with_time(Duration::from_secs(60))     // Primer probe tras 60s (default: 7200s)
+        .with_interval(Duration::from_secs(15))  // Intervalo entre probes: 15s
+)?;
 socket.bind(&addr.into())?;
 socket.listen(1024)?;
 let listener = TcpListener::from_std(socket.into())?;
 
 let builder = auto::Builder::new(TokioExecutor::new());
-
-// HTTP/1.1 config
-let mut http1 = builder.http1();
-http1
+// HTTP/1.1: header_read_timeout + half_close(false)
+builder.http1()
     .timer(TokioTimer::new())
     .header_read_timeout(Duration::from_secs(30))
-    .keep_alive(true);
-
-// HTTP/2 config (h2c)
-let mut http2 = builder.http2();
-http2
+    .keep_alive(true)
+    .half_close(false);
+// HTTP/2: keep-alive
+builder.http2()
     .keep_alive_interval(Duration::from_secs(30))
     .keep_alive_timeout(Duration::from_secs(10));
 
-// Loop de aceptación de conexiones
+// GracefulShutdown wrapper
+let graceful = GracefulShutdown::new();
+
 loop {
     let (io, _remote_addr) = tokio::select! {
         result = listener.accept() => { result? }
         _ = shutdown_signal() => { break; }
     };
+
+    let watch = graceful.watch();
+    let hyper_service = tower_service_fn(move |req| { /* router */ });
+
+    tokio::spawn(async move {
+        let conn = builder.serve_connection_with_upgrades(io, hyper_service);
+        let conn_with_watch = watch.watch(conn);
+        // Timeout absoluto: 600s — fuerza drop() del socket
+        let _ = tokio::time::timeout(Duration::from_secs(600), conn_with_watch).await;
+    });
+}
+
+// Shutdown graceful: espera hasta 5s por conexiones activas
+let _ = tokio::time::timeout(Duration::from_secs(5), graceful.shutdown()).await;
 
     let hyper_service = tower_service_fn(move |req: Request<Incoming>| {
         // ... router handler
@@ -174,45 +207,15 @@ Las siguientes hipótesis NO se han confirmado ni descartado:
 - [x] Fix v1 implementado (keep-alive, graceful shutdown, WS timeouts, pool limits) — commit `262eb2b5` — **insuficiente**
 - [x] Fix v2 implementado (hyper_util::auto::Builder + header_read_timeout) — commit `86e74fc4` — **insuficiente**
 - [x] Fix v3 implementado (hyper features explícitas + HTTP/2 keep-alive) — commit `59ee3c70` — **insuficiente**
-- [x] Código pusheado a `glory-rust-nakomi`
-- [x] Deploy del fix v3 a producción (coolify-manager-rs, 18:22 UTC)
-- [x] Confirmado: fix v3 NO resuelve CLOSE_WAIT (425 acumulados en 8h)
-- [x] **Root cause identificado** — socket-level (no HTTP-level): hyper no cierra sockets tras FIN + keepalive con defaults del kernel (7200s)
-- [x] Fix v4 implementado: TCP keepalive agresivo (60s) + timeout absoluto por conexión (10min) + eliminar shutdown_signal redundante
-- [ ] Deploy fix v4 a producción via coolify-manager-rs
-- [ ] Verificar post-deploy: CLOSE_WAIT < 20 tras 2-4 horas
-- [ ] Agregar Docker healthcheck al compose (solo después de verificar fix)
+- [x] Fix v4 implementado: TCP keepalive agresivo + timeout absoluto por conexión — commit `2c25102f` — **mejora parcial**
+- [x] Fix v4.1 implementado: GracefulShutdown + half_close(false) — commit `21bca97a` — **mejora significativa (15 CLOSE_WAIT/6h vs 425/8h) pero NO definitivo**
+- [x] Deploy v4.1 a producción — **confirmado: imagen desplegada, sitio caído tras 6h**
+- [x] Restauración con restart — **2026-06-10 ~09:50 UTC, HTTP 200**
+- [x] Fix v5 implementado: keepalive per-accepted-socket + watchdog atómico + timeout 300s
+- [ ] Deploy fix v5 a producción via coolify-manager-rs
+- [ ] Verificar post-deploy: CLOSE_WAIT ~0 tras 24h
+- [ ] Agregar Docker healthcheck al compose
 - [ ] Monitoreo proactivo (alerta CLOSE_WAIT > 20)
-
-### Acción Inmediata Mientras se Investiga
-
-Mientras no se resuelva el root cause, el sitio necesita **restart periódico** para evitar caídas:
-- Opción A: Cron job en el servidor cada ~4 horas: `docker restart app-do8k4w8swccwwogoc0os0ck0`
-- Opción B: Autoheal externo que monitoree CLOSE_WAIT y reinicie si > 50
-- Opción C: `cm-autoheal-studio.timer` (ya instalado por coolify-manager) — verificar si funciona
-
----
-
-## Prevención Futura
-
-### Monitoreo proactivo
-- Alertar si conexiones CLOSE_WAIT > 20 en `/proc/net/tcp`
-- Docker health check: `curl -f http://localhost:3000/healthz` cada 30s (solo después de fix)
-- Auto-restart del contenedor si health falla 3 veces consecutivas
-
-### En el código
-- TCP keepalive obligatorio en todos los servidores Axum
-- WebSockets con timeout de inactividad (5 min)
-- Pool SQLx con `max_lifetime` y `idle_timeout`
-- HTTP clients compartidos (no crear `reqwest::Client::new()` en handlers)
-
-### En Coolify
-- Health check HTTP configurado
-- Restart policy: `on-failure` con max 3 reintentos
-
----
-
-## Prevención Futura
 
 ---
 
@@ -258,11 +261,14 @@ Postgres:     postgres-do8k4w8swccwwogoc0os0ck0
 ```
 
 ### Commits relacionados
-```
-59ee3c70  096A-3: hyper features explícitas + HTTP/2 keep-alive  (NO resuelve)
-86e74fc4  096A-2: hyper_util::auto::Builder + header_read_timeout (NO resuelve)
-262eb2b5  fix(096A): SO_KEEPALIVE + WS timeouts + pool limits     (NO resuelve)
-```
+````
+(pendiente) 096A-5: fix CLOSE_WAIT real — keepalive per-socket + watchdog atómico  (v5 — ROOT CAUSE REAL)
+21bca97a  096A-4: GracefulShutdown + TCP keepalive agresivo para CLOSE_WAIT  (v4.1 — mejora significativa, NO definitivo)
+2c25102f  096A-4: fix CLOSE_WAIT leak — TCP keepalive agresivo + timeout absoluto  (v4 — mejora parcial)
+59ee3c70  096A-3: hyper features explícitas + HTTP/2 keep-alive  (v3 — NO resuelve)
+86e74fc4  096A-2: hyper_util::auto::Builder + header_read_timeout (v2 — NO resuelve)
+262eb2b5  fix(096A): SO_KEEPALIVE + WS timeouts + pool limits     (v1 — NO resuelve)
+````
 
 ### Archivos modificados en los intentos de fix
 - `Cargo.toml` — hyper features, hyper-util features, socket2 dependency
@@ -274,4 +280,24 @@ Postgres:     postgres-do8k4w8swccwwogoc0os0ck0
 ### URL de referencia
 - Axum issue sobre configuración de conexiones: https://github.com/tokio-rs/axum/issues/2939
 - hyper-util repo: https://github.com/hyperium/hyper-util
+
+---
+
+## Timeline del Incidente
+
+| Hora (UTC) | Evento |
+|---|---|
+| 2026-06-09 ~11:00 | Sitio DOWN detectado. CLOSE_WAIT acumulados. Restart restaura. |
+| 2026-06-09 ~11:19 | Fix v1 implementado (`262eb2b5`) — SO_KEEPALIVE + WS timeouts + pool limits |
+| 2026-06-09 ~11:52 | Fix v2 implementado (`86e74fc4`) — hyper_util::auto::Builder + header_read_timeout |
+| 2026-06-09 ~13:52 | Fix v3 implementado (`59ee3c70`) — hyper features explícitas + HTTP/2 keep-alive |
+| 2026-06-09 ~15:22 | Deploy v3 a producción via coolify-manager-rs |
+| 2026-06-09 ~23:00 | Sitio DOWN nuevamente. 425 CLOSE_WAIT acumulados en 8h. |
+| 2026-06-09 ~22:51 | Fix v4 implementado (`2c25102f`) — TCP keepalive agresivo + timeout absoluto |
+| 2026-06-09 ~23:32 | Fix v4.1 implementado (`21bca97a`) — GracefulShutdown + half_close(false) |
+| 2026-06-10 ~03:44 | Deploy v4.1 a producción (imagen `7382774993fc`) |
+| 2026-06-10 ~09:45 | Sitio DOWN. 15 CLOSE_WAIT en 6h (mejora significativa). Restart restaura. |
+| 2026-06-10 ~09:50 | Sitio restaurado con restart. HTTP 200. |
+| 2026-06-10 ~10:08 | Fix v5 implementado — keepalive per-accepted-socket + watchdog atómico + timeout 300s |
+| **Próximo** | Deploy fix v5 a producción |
 

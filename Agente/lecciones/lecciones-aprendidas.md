@@ -28,6 +28,16 @@
 - Si el auto-install falla pero el stack existe, no ocultarlo como éxito completo: registrar `wordpress_ready` + `wordpress_install_error` permite distinguir entre infraestructura levantada y bootstrap funcional.
 - Cuando una función de provisioning mezcla create/start con bootstrap HTTP posterior, el primer endurecimiento debe ser extraer helpers privados antes de seguir agregando lógica; así se evita romper la regla de 100 líneas justo en el path crítico.
 
+## CLOSE_WAIT en Axum/Hyper — el watchdog puede ser el verdadero killer
+- Tras 5 intentos de fix (v1→v4.1), el rate de CLOSE_WAIT bajó de ~50/hora a ~2.5/hora, pero el sitio seguía cayendo cada 6h.
+- Con solo 15 CLOSE_WAIT, el event loop NO se satura — 15 conexiones zombie no matan un servidor.
+- **El watchdog HTTP (`spawn_http_watchdog`) que hace probes a `/healthz` cada 30s y llama `std::process::exit(1)` tras 3 fallos es el probable killer.** Sus propias conexiones de healthcheck pueden quedar en CLOSE_WAIT, y al fallar los probes → exit(1) → contenedor muere.
+- **Lección:** Antes de intentar 5 fixes de CLOSE_WAIT, aislar si el watchdog es la causa desactivándolo (`GLORY_HTTP_WATCHDOG=false`). El diagnóstico correcto es desactivar componentes uno a uno, no iterar sobre el mismo síntoma.
+- `hyper = "1"` sin features explícitas NO implementa `header_read_timeout()` — es cfg-gated y compila como stub silencioso. Siempre poner `features = ["http1", "http2", "server"]`.
+- `socket2` 0.5.x no tiene `with_retries()` en `TcpKeepalive` — solo `with_time()` y `with_interval()`.
+- `Box::leak` es necesario para pasar el hyper-util builder a `tokio::spawn` (requiere `'static`).
+- **GracefulShutdown** de hyper-util reduce significativamente CLOSE_WAIT pero no elimina el problema si hay otro componente (watchdog) que mata el proceso.
+
 ## Hosting Coolify — compose de rescate para hosting administrado
 - En stacks compose creados por Coolify, no mezclar `pids_limit` propio con `deploy.resources.limits.pids` inyectado por la plataforma. Docker Compose aborta con `can't set distinct values on 'pids_limit' and 'deploy.resources.limits.pids'` y el servicio queda `exited` aunque la API de creación haya respondido éxito.
 - Las imágenes pineadas en `dockerfile_inline` también vencen: `lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190` ya no existe. Para sidecars SSH/SFTP, validar periódicamente la tag real del registry o el provisioning fallará durante el build aunque el YAML sea correcto.

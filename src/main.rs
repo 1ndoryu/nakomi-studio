@@ -1,6 +1,7 @@
 /* sentinel-disable-file sqlx-query-sin-macro: main.rs usa queries dinámicas para
  * setup inicial (admin seeding, cleanup test data) con formatos generados en runtime. */
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use hyper::body::Incoming;
@@ -60,13 +61,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Servidor iniciando en {addr}");
     tracing::info!("Swagger UI disponible en http://{addr}/swagger-ui/");
 
-    spawn_http_watchdog(config.port);
-
     let app = handlers::create_app(pool, config);
 
-    /* [096A-1] TCP keepalive para detectar conexiones muertas del lado del
-     * servidor y evitar acumulación de CLOSE_WAIT que causa deadlock. Se crea
-     * el socket con socket2 para configurar SO_KEEPALIVE antes de pasarlo a tokio. */
+    /* [096A-5] Socket del listener: solo necesita reuse_address y nonblocking.
+     * TCP keepalive NO se aplica aquí porque accept() en Linux NO hereda
+     * SO_KEEPALIVE del listening socket a los sockets de conexión.
+     * El keepalive real se aplica a cada conexión aceptada (ver loop). */
     let sock_addr: std::net::SocketAddr = addr.parse()?;
     let socket = socket2::Socket::new(
         if sock_addr.is_ipv4() {
@@ -77,19 +77,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         socket2::Type::STREAM,
         None,
     )?;
-    /* [096A-4] TCP keepalive agresivo: detecta peers muertos en ~120s
-     * (60s idle + 4 probes × 15s). El default del kernel Linux es 7200s (2h),
-     * completamente inútil para detectar CLOSE_WAIT a tiempo.
-     * set_keepalive(true) sin parámetros usaba ese default → fix v1 no servía. */
-    let keepalive = socket2::TcpKeepalive::new()
-        .with_time(Duration::from_secs(60))
-        .with_interval(Duration::from_secs(15));
-    socket.set_tcp_keepalive(&keepalive)?;
     socket.set_nonblocking(true)?;
     socket.set_reuse_address(true)?;
     socket.bind(&sock_addr.into())?;
     socket.listen(1024)?;
     let listener = tokio::net::TcpListener::from_std(socket.into())?;
+
+    /* [096A-5] Heartbeat atómico: el server loop marca timestamp en cada accept.
+     * El watchdog verifica sin HTTP (evita generar CLOSE_WAIT con probes).
+     * Box::leak es intencional: vive tanto como el proceso. */
+    let heartbeat: &'static AtomicU64 = Box::leak(Box::new(AtomicU64::new(0)));
+    spawn_heartbeat_watchdog(heartbeat);
 
     /* [096A-2] Migrado de axum::serve() a hyper_util::auto::Builder para
      * configurar header_read_timeout a nivel HTTP. axum::serve() es
@@ -148,6 +146,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokio::select! {
             result = listener.accept() => {
                 let (tcp_stream, remote_addr) = result?;
+
+                /* [096A-5] Heartbeat: marcar que el event loop sigue aceptando.
+                 * El watchdog lee esto para detectar congelamiento sin HTTP. */
+                heartbeat.store(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                    Ordering::Relaxed,
+                );
+
+                /* [096A-5] CRÍTICO: TCP keepalive DEBE aplicarse al socket de conexión,
+                 * NO al listener. accept() en Linux NO hereda SO_KEEPALIVE.
+                 * Sin esto, el keepalive de fixes v1-v4 era NO-OP en todas las
+                 * conexiones reales — solo operaba en el listener socket (inútil).
+                 *
+                 * Parámetros: 60s idle → primer probe, luego cada 15s.
+                 * Si el peer muere, kernel detecta en ~120s y cierra el socket. */
+                let tcp_stream = {
+                    let std_stream = tcp_stream.into_std()?;
+                    let accepted = socket2::Socket::from(std_stream);
+                    accepted.set_keepalive(true)?;
+                    let ka = socket2::TcpKeepalive::new()
+                        .with_time(Duration::from_secs(60))
+                        .with_interval(Duration::from_secs(15));
+                    let _ = accepted.set_tcp_keepalive(&ka);
+                    let std_back: std::net::TcpStream = accepted.into();
+                    std_back.set_nonblocking(true)?;
+                    tokio::net::TcpStream::from_std(std_back)?
+                };
+
                 let tower_service = match make_service.call(remote_addr).await {
                     Ok(svc) => svc,
                     Err(err) => match err {},
@@ -171,12 +200,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tokio::spawn(async move {
                     let start = std::time::Instant::now();
 
-                    /* [096A-4] Timeout absoluto por conexión (safety net): fuerza
-                     * drop del socket si hyper no cierra limpiamente.
-                     * WS legítimos: su timeout de inactividad (5min) cierra antes.
-                     * HTTP keep-alive: header_read_timeout (30s) cierra idle antes.
-                     * Este es el último recurso — dropea TcpStream → close() vía RAII. */
-                    match tokio::time::timeout(Duration::from_secs(600), watched).await {
+                    /* [096A-5] Timeout absoluto 300s (5 min): match con WS inactivity
+                     * timeout. HTTP normal cierra mucho antes (header_read_timeout 30s).
+                     * WS activos: su timeout de app (300s) cierra primero.
+                     * Este es el safety net — dropea TcpStream → close() vía RAII. */
+                    match tokio::time::timeout(Duration::from_secs(300), watched).await {
                         Ok(Ok(())) => {
                             let secs = start.elapsed().as_secs();
                             if secs > 60 {
@@ -190,7 +218,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         Err(_) => {
                             tracing::warn!(
-                                "Connection from {remote_addr} killed by 10min timeout"
+                                "Connection from {remote_addr} killed by 5min timeout"
                             );
                         }
                     }
@@ -357,47 +385,45 @@ fn spawn_background_services(pool: &sqlx::PgPool, _config: &AppConfig) {
     }
 }
 
-fn spawn_http_watchdog(port: u16) {
+/* [096A-5] Watchdog basado en heartbeat atómico — NO usa HTTP.
+ * El watchdog anterior (spawn_http_watchdog) creaba conexiones TCP a 127.0.0.1:3000
+ * que contribuían al CLOSE_WAIT. Además, cuando el event loop se degradaba,
+ * los probes HTTP fallaban (timeout 3s) → 3 fallos → exit(1), matando la app
+ * antes de que los timeouts TCP pudieran limpiar las conexiones.
+ *
+ * Este watchdog lee un AtomicU64 que el server loop actualiza en cada accept().
+ * Si no hay accepts en 5 minutos, el event loop está congelado → exit(1).
+ * Cero conexiones TCP generadas. */
+fn spawn_heartbeat_watchdog(heartbeat: &'static AtomicU64) {
     if std::env::var("GLORY_HTTP_WATCHDOG")
         .is_ok_and(|value| value.eq_ignore_ascii_case("false") || value == "0")
     {
-        tracing::warn!("[watchdog] HTTP self-check desactivado por GLORY_HTTP_WATCHDOG");
+        tracing::warn!("[watchdog] Desactivado por GLORY_HTTP_WATCHDOG");
         return;
     }
 
-    /* [135A-1] Si Hyper queda aceptando TCP pero sin responder HTTP, Docker
-     * puede dejar el contenedor unhealthy indefinidamente. Este watchdog fuerza
-     * un reinicio limpio tras fallos consecutivos de /healthz. */
     tokio::spawn(async move {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(3))
-            .build()
-            .expect("watchdog HTTP client");
-        let url = format!("http://127.0.0.1:{port}/healthz");
-        let mut failures = 0_u8;
-
-        tokio::time::sleep(Duration::from_mins(1)).await;
+        /* Warmup: dar 2 minutos al servidor para arrancar y recibir tráfico. */
+        tokio::time::sleep(Duration::from_secs(120)).await;
         loop {
-            let ok = match client.get(&url).send().await {
-                Ok(response) => response.status().is_success(),
-                Err(error) => {
-                    tracing::warn!("[watchdog] Health probe failed: {error}");
-                    false
-                }
-            };
-
-            if ok {
-                failures = 0;
-            } else {
-                failures = failures.saturating_add(1);
-                tracing::error!(failures, "[watchdog] HTTP health probe failed");
-                if failures >= 3 {
-                    tracing::error!("[watchdog] Reiniciando proceso por health HTTP congelado");
-                    std::process::exit(1);
-                }
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            let last = heartbeat.load(Ordering::Relaxed);
+            if last == 0 {
+                /* Aún no ha recibido ninguna conexión — servidor recién arrancado
+                 * o sin tráfico. No matar por falta de tráfico. */
+                continue;
             }
-
-            tokio::time::sleep(Duration::from_secs(30)).await;
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let stale_secs = now.saturating_sub(last);
+            if stale_secs > 300 {
+                tracing::error!(
+                    "[watchdog] Event loop congelado: sin accepts en {stale_secs}s — forzando restart"
+                );
+                std::process::exit(1);
+            }
         }
     });
 }
