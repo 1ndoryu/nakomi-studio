@@ -174,26 +174,17 @@ async fn handle_notification_ws(socket: WebSocket, state: AppState, user_id: Uui
         }
     }
 
-    /* Spawn tarea que reenvía del broadcast channel al WS */
-    /* [096A-8] Manejar RecvError::Lagged para no matar la tarea silenciosamente */
+    /* Spawn tarea que reenvía del mpsc channel al WS.
+     * [096A-13] subscribe() devuelve mpsc::UnboundedReceiver (lock-free recv). */
     let send_task = tokio::spawn(async move {
-        loop {
-            match rx.recv().await {
-                Ok(notif) => {
-                    if let Ok(json) = serde_json::to_string(&notif) {
-                        if futures::SinkExt::send(&mut ws_sender, Message::Text(json))
-                            .await
-                            .is_err()
-                        {
-                            break;
-                        }
-                    }
+        while let Some(notif) = rx.recv().await {
+            if let Ok(json) = serde_json::to_string(&notif) {
+                if futures::SinkExt::send(&mut ws_sender, Message::Text(json))
+                    .await
+                    .is_err()
+                {
+                    break;
                 }
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                    tracing::warn!("Notification broadcast lagged: {n} mensajes perdidos");
-                    continue;
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
             }
         }
     });

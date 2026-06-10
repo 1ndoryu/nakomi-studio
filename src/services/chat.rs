@@ -2,35 +2,40 @@
  * queries para operaciones de broadcast y persistencia con tipos dinámicos. */
 /* [044A-38 Fase 5] ChatHub: gestión de conexiones WebSocket y routing de mensajes.
  * DashMap para sesiones activas en memoria. Cada sesión tiene múltiples suscriptores
- * (visitante/cliente + staff). Los mensajes se persisten en BD y se broadcastean. */
+ * (visitante/cliente + staff). Los mensajes se persisten en BD y se broadcastean.
+ * [096A-13] mpsc::unbounded_channel reemplaza broadcast::channel.
+ *   - broadcast::Sender::send() usa std::sync::Mutex + Notify internamente,
+ *     lo que bloquea workers tokio en futex_wait bajo contención (8 workers → freeze total).
+ *   - mpsc::UnboundedSender::send() es lock-free: nunca bloquea el OS thread.
+ *   - Cada suscriptor tiene su propio canal mpsc individual (no compartido).
+ *   - broadcast() itera el Vec de senders y hace retain() limpiando caídos.
+ *   - staff_senders usa std::sync::Mutex (retención microsegundos, operaciones lock-free). */
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use dashmap::DashMap;
 use sqlx::PgPool;
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::{ChatMessage, ChatSession, ChatSessionResponse, WsServerMessage};
 use crate::repositories::ChatRepository;
 
-/* Canal de broadcast por sesión: cada conexión WS suscribe un receiver */
-const CHANNEL_CAPACITY: usize = 64;
-
-pub type SessionSender = broadcast::Sender<WsServerMessage>;
+pub type SessionSender = mpsc::UnboundedSender<WsServerMessage>;
 
 /// Hub central de chat: estado en memoria de sesiones activas + broadcasters.
-/// [064A-68] Canal global de staff para notificar nuevas sesiones en tiempo real.
+/// [096A-13] Cada suscriptor tiene su propio mpsc::unbounded_channel.
+/// En vez de un broadcast::Sender compartido, mantenemos un Vec de senders por sesión.
 /// [T-4] `connection_counts`: refcount por sesión para multi-conexión (tabs/dispositivos).
 #[derive(Clone)]
 pub struct ChatHub {
     pool: PgPool,
-    /* session_id → broadcast::Sender para ese chat */
-    channels: Arc<DashMap<Uuid, SessionSender>>,
-    /* Canal global: todos los staff conectados reciben session_new aquí */
-    staff_channel: SessionSender,
+    /* session_id → Vec de senders mpsc (uno por suscriptor conectado) */
+    channels: Arc<DashMap<Uuid, Vec<SessionSender>>>,
+    /* Canal global: staff conectados reciben session_new, visitor_status, etc. */
+    staff_senders: Arc<std::sync::Mutex<Vec<SessionSender>>>,
     /* [T-4] Contador de conexiones WS activas por sesión (tabs/dispositivos) */
     connection_counts: Arc<DashMap<Uuid, AtomicUsize>>,
 }
@@ -38,33 +43,29 @@ pub struct ChatHub {
 impl ChatHub {
     #[must_use]
     pub fn new(pool: PgPool) -> Self {
-        let (staff_tx, _) = broadcast::channel(CHANNEL_CAPACITY);
         Self {
             pool,
             channels: Arc::new(DashMap::new()),
-            staff_channel: staff_tx,
+            staff_senders: Arc::new(std::sync::Mutex::new(Vec::new())),
             connection_counts: Arc::new(DashMap::new()),
         }
     }
 
-    /// Obtiene o crea el canal broadcast para una sesión
-    #[must_use]
-    pub fn get_or_create_channel(&self, session_id: Uuid) -> SessionSender {
-        self.channels
-            .entry(session_id)
-            .or_insert_with(|| broadcast::channel(CHANNEL_CAPACITY).0)
-            .clone()
-    }
-
     /// Suscribirse al canal de una sesión (para recibir mensajes).
     /// [T-4] Incrementa contador de conexiones activas para refcount multi-tab.
+    /// [096A-13] Crea un canal mpsc individual por suscriptor.
     #[must_use]
-    pub fn subscribe(&self, session_id: Uuid) -> broadcast::Receiver<WsServerMessage> {
+    pub fn subscribe(&self, session_id: Uuid) -> mpsc::UnboundedReceiver<WsServerMessage> {
         self.connection_counts
             .entry(session_id)
             .or_insert_with(|| AtomicUsize::new(0))
             .fetch_add(1, Ordering::Relaxed);
-        self.get_or_create_channel(session_id).subscribe()
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.channels
+            .entry(session_id)
+            .or_default()
+            .push(tx);
+        rx
     }
 
     /// [T-4] Decrementar refcount de conexiones WS. Retorna cuántas quedan.
@@ -82,33 +83,35 @@ impl ChatHub {
         0
     }
 
-    /// Eliminar canal cuando la sesión se cierra
+    /// Eliminar canales cuando la sesión se cierra.
+    /// [096A-13] Elimina el Vec de senders; los Drop implícitos cierran los canales.
     pub fn remove_channel(&self, session_id: Uuid) {
         self.channels.remove(&session_id);
     }
 
-    /// [064A-68] Suscribirse al canal global de staff (nuevas sesiones, etc.)
+    /// [064A-68] Suscribirse al canal global de staff (nuevas sesiones, visitor_status, etc.)
+    /// [096A-13] Crea un canal mpsc individual por staff conectado.
     #[must_use]
-    pub fn subscribe_staff(&self) -> broadcast::Receiver<WsServerMessage> {
-        self.staff_channel.subscribe()
+    pub fn subscribe_staff(&self) -> mpsc::UnboundedReceiver<WsServerMessage> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.staff_senders.lock().unwrap().push(tx);
+        rx
     }
 
-    /// Broadcast de un mensaje a todos los suscriptores de una sesión
-    /// [096A-11] Clonar el sender fuera del guard DashMap para no retener
-    /// el std::sync::RwLock del shard durante el broadcast::Sender::send().
-    /// Esto previene deadlock: si un shard tiene un write lock esperando
-    /// (por insert/remove concurrente), el read bloquea el OS worker thread.
-    /// [096A-12] spawn_blocking: broadcast::Sender::send() usa std::sync::Mutex
-    /// internamente. Si muchos receivers contienden el mutex simultáneamente,
-    /// el worker tokio se bloquea en futex_wait. spawn_blocking lo mueve al
-    /// pool de hilos separado, protegiendo los 8 workers del runtime.
-    pub fn broadcast(&self, session_id: Uuid, msg: WsServerMessage) {
-        let sender = self.channels.get(&session_id).map(|guard| guard.clone());
-        if let Some(sender) = sender {
-            let _ = tokio::task::spawn_blocking(move || {
-                let _ = sender.send(msg);
-            });
+    /// Broadcast de un mensaje a todos los suscriptores de una sesión.
+    /// [096A-13] Itera el Vec de senders: `send()` lock-free, `retain()` limpia caídos.
+    /// La lock del shard `DashMap` se mantiene solo durante la iteración (microsegundos).
+    pub fn broadcast(&self, session_id: Uuid, msg: &WsServerMessage) {
+        if let Some(mut senders) = self.channels.get_mut(&session_id) {
+            senders.retain(|tx| tx.send(msg.clone()).is_ok());
         }
+    }
+
+    /// [096A-13] Broadcast a todos los staff conectados.
+    /// La `std::sync::Mutex` se mantiene solo durante iteración + send lock-free.
+    fn broadcast_to_staff(&self, msg: &WsServerMessage) {
+        let mut senders = self.staff_senders.lock().unwrap();
+        senders.retain(|tx| tx.send(msg.clone()).is_ok());
     }
 
     /* ============================================================
@@ -164,14 +167,9 @@ impl ChatHub {
             .await;
         }
 
-        /* [064A-68] Notificar a todos los staff conectados sobre la nueva sesión
-         * [096A-12] spawn_blocking: protege workers tokio del Mutex interno de send() */
-        let staff_msg = WsServerMessage::SessionNew {
+        /* [064A-68] Notificar a todos los staff conectados sobre la nueva sesión */
+        self.broadcast_to_staff(&WsServerMessage::SessionNew {
             session: session.clone(),
-        };
-        let staff_tx = self.staff_channel.clone();
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = staff_tx.send(staff_msg);
         });
 
         Ok(session)
@@ -205,27 +203,16 @@ impl ChatHub {
             if let Ok(Some(updated)) =
                 ChatRepository::find_session_by_id(&self.pool, session.id).await
             {
-                /* [064A-68] Notificar a staff conectados sobre nueva sesión de orden
-                 * [096A-12] spawn_blocking: protege workers tokio del Mutex interno de send() */
-                let staff_msg = WsServerMessage::SessionNew {
+                /* [064A-68] Notificar a staff conectados sobre nueva sesión de orden */
+                self.broadcast_to_staff(&WsServerMessage::SessionNew {
                     session: updated.clone(),
-                };
-                let staff_tx = self.staff_channel.clone();
-                let _ = tokio::task::spawn_blocking(move || {
-                    let _ = staff_tx.send(staff_msg);
                 });
                 return Ok(updated);
             }
         }
 
-/* [064A-68] Notificar incluso si no se asignó empleado
-     * [096A-12] spawn_blocking: protege workers tokio del Mutex interno de send() */
-    let staff_msg = WsServerMessage::SessionNew {
-        session: session.clone(),
-    };
-    let staff_tx = self.staff_channel.clone();
-    let _ = tokio::task::spawn_blocking(move || {
-        let _ = staff_tx.send(staff_msg);
+        self.broadcast_to_staff(&WsServerMessage::SessionNew {
+            session: session.clone(),
         });
 
         Ok(session)
@@ -254,7 +241,7 @@ impl ChatHub {
             message_type: msg.message_type.clone(),
             metadata: msg.metadata.clone(),
         };
-        self.broadcast(session_id, ws_msg);
+        self.broadcast(session_id, &ws_msg);
         tracing::debug!(%session_id, sender = sender_type, "send_message: broadcast completado");
 
         Ok(msg)
@@ -292,7 +279,7 @@ impl ChatHub {
             message_type: msg.message_type.clone(),
             metadata: msg.metadata.clone(),
         };
-        self.broadcast(session_id, ws_msg);
+        self.broadcast(session_id, &ws_msg);
 
         Ok(msg)
     }
@@ -301,7 +288,7 @@ impl ChatHub {
     pub fn send_typing(&self, session_id: Uuid, sender: &str, content: &str) {
         self.broadcast(
             session_id,
-            WsServerMessage::Typing {
+            &WsServerMessage::Typing {
                 session_id,
                 sender: sender.to_string(),
                 content: content.to_string(),
@@ -318,7 +305,7 @@ impl ChatHub {
         let session = ChatRepository::assign_staff(&self.pool, session_id, staff_id).await?;
         self.broadcast(
             session_id,
-            WsServerMessage::Status {
+            &WsServerMessage::Status {
                 session_id,
                 value: "staff_handling".to_string(),
             },
@@ -340,7 +327,7 @@ impl ChatHub {
         };
         self.broadcast(
             session_id,
-            WsServerMessage::Status {
+            &WsServerMessage::Status {
                 session_id,
                 value: status.to_string(),
             },
@@ -351,7 +338,7 @@ impl ChatHub {
     /// Cerrar sesión. [T-4] También limpia el refcount de conexiones.
     pub async fn close_session(&self, session_id: Uuid) -> Result<(), AppError> {
         ChatRepository::close_session(&self.pool, session_id).await?;
-        self.broadcast(session_id, WsServerMessage::SessionClosed { session_id });
+        self.broadcast(session_id, &WsServerMessage::SessionClosed { session_id });
         self.remove_channel(session_id);
         self.connection_counts.remove(&session_id);
         Ok(())
@@ -471,7 +458,8 @@ impl ChatHub {
 
     /* [104A-40] Broadcast de estado del visitante al canal de sesión + canal global de staff.
      * online=true cuando el visitor abre la conexión WS; online=false al desconectar.
-     * Staff usa esto para mostrar online/offline y confirmar que el visitante lee los mensajes. */
+     * Staff usa esto para mostrar online/offline y confirmar que el visitante lee los mensajes.
+     * [096A-13] broadcast() + broadcast_to_staff() usan mpsc lock-free. */
     pub fn notify_visitor_online(
         &self,
         session_id: Uuid,
@@ -482,12 +470,8 @@ impl ChatHub {
             online: true,
             last_connected_at: Some(last_connected_at),
         };
-        self.broadcast(session_id, msg.clone());
-        /* [096A-12] spawn_blocking: staff_channel.send() también usa std::sync::Mutex */
-        let staff_tx = self.staff_channel.clone();
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = staff_tx.send(msg);
-        });
+        self.broadcast(session_id, &msg);
+        self.broadcast_to_staff(&msg);
     }
 
     pub fn notify_visitor_offline(
@@ -500,10 +484,7 @@ impl ChatHub {
             online: false,
             last_connected_at,
         };
-        self.broadcast(session_id, msg.clone());
-        let staff_tx = self.staff_channel.clone();
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = staff_tx.send(msg);
-        });
+        self.broadcast(session_id, &msg);
+        self.broadcast_to_staff(&msg);
     }
 }

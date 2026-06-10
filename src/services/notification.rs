@@ -1,30 +1,29 @@
 /* [044A-38 Fase 9] NotificationHub: gestión de conexiones WS de notificaciones por usuario.
  * Patrón similar a ChatHub pero indexado por user_id en vez de session_id.
  * Cada usuario autenticado puede conectarse vía WS y recibir notificaciones push.
- * El hub persiste en BD y broadcastea en tiempo real a todos los tabs del usuario. */
+ * El hub persiste en BD y broadcastea en tiempo real a todos los tabs del usuario.
+ * [096A-13] mpsc::unbounded_channel reemplaza broadcast::channel (mismo motivo que chat.rs). */
 
 use std::sync::Arc;
 
 use dashmap::DashMap;
 use sqlx::PgPool;
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::{CreateNotification, Notification, WsNotification};
 use crate::repositories::NotificationRepository;
 
-/* Capacidad del canal broadcast por usuario (búfer de mensajes no consumidos) */
-const USER_CHANNEL_CAPACITY: usize = 32;
+pub type UserNotifSender = mpsc::UnboundedSender<WsNotification>;
 
-pub type UserNotifSender = broadcast::Sender<WsNotification>;
-
-/// Hub central de notificaciones: broadcast channels indexados por `user_id`
+/// Hub central de notificaciones: canales mpsc indexados por `user_id`.
+/// [096A-13] Cada suscriptor tiene su propio canal mpsc individual.
 #[derive(Clone)]
 pub struct NotificationHub {
     pool: PgPool,
-    /* user_id → broadcast::Sender para ese usuario */
-    channels: Arc<DashMap<Uuid, UserNotifSender>>,
+    /* user_id → Vec de senders mpsc (uno por tab conectado) */
+    channels: Arc<DashMap<Uuid, Vec<UserNotifSender>>>,
 }
 
 impl NotificationHub {
@@ -36,41 +35,29 @@ impl NotificationHub {
         }
     }
 
-    /// Obtiene o crea el canal broadcast para un usuario
+    /// Suscribirse al canal de un usuario (para recibir notificaciones en WS).
+    /// [096A-13] Crea un canal mpsc individual por suscriptor.
     #[must_use]
-    pub fn get_or_create_channel(&self, user_id: Uuid) -> UserNotifSender {
+    pub fn subscribe(&self, user_id: Uuid) -> mpsc::UnboundedReceiver<WsNotification> {
+        let (tx, rx) = mpsc::unbounded_channel();
         self.channels
             .entry(user_id)
-            .or_insert_with(|| broadcast::channel(USER_CHANNEL_CAPACITY).0)
-            .clone()
+            .or_default()
+            .push(tx);
+        rx
     }
 
-    /// Suscribirse al canal de un usuario (para recibir notificaciones en WS)
-    #[must_use]
-    pub fn subscribe(&self, user_id: Uuid) -> broadcast::Receiver<WsNotification> {
-        self.get_or_create_channel(user_id).subscribe()
-    }
-
-    /// Crea una notificación en BD y la emite por WS al usuario si está conectado
+    /// Crea una notificación en BD y la emite por WS al usuario si está conectado.
+    /// [096A-13] broadcast_to_user() itera Vec de senders con send() lock-free.
     pub async fn notify(&self, params: CreateNotification) -> Result<Notification, AppError> {
         let user_id = params.user_id;
 
         /* Persistir en BD */
         let notification = NotificationRepository::create(&self.pool, &params).await?;
 
-        /* Broadcast al usuario si tiene canal abierto.
-         * [096A-11] Clonar sender fuera del guard DashMap para no retener
-         * el std::sync::RwLock durante broadcast::Sender::send().
-         * [096A-12] spawn_blocking: el Mutex interno de send() puede bloquear
-         * workers tokio si hay contendores concurrentes. */
+        /* Broadcast al usuario si tiene canal abierto */
         let ws_msg: WsNotification = notification.clone().into();
-        let sender = self.channels.get(&user_id).map(|guard| guard.clone());
-        if let Some(sender) = sender {
-            /* Ignorar error si nadie escucha (no hay receivers activos) */
-            let _ = tokio::task::spawn_blocking(move || {
-                let _ = sender.send(ws_msg);
-            });
-        }
+        self.broadcast_to_user(user_id, &ws_msg);
 
         /* También enviar contador actualizado */
         self.send_unread_count(user_id).await;
@@ -78,20 +65,18 @@ impl NotificationHub {
         Ok(notification)
     }
 
-    /// Envía el conteo actual de no leídas por WS
-    /// [096A-11] Clonar sender y soltar guard ANTES del await de DB.
-    /// Retener un DashMap std::sync::RwLock guard durante un .await
-     /// bloquea el shard completo y puede causar deadlock con otros
-     /// workers que intenten insert/remove en ese shard.
-    /// [096A-12] spawn_blocking: protege workers tokio del Mutex interno de send().
+    /// Envía el conteo actual de no leídas por WS.
+    /// [096A-13] El await de DB está fuera de cualquier lock de DashMap o Mutex.
     pub async fn send_unread_count(&self, user_id: Uuid) {
-        let sender = self.channels.get(&user_id).map(|guard| guard.clone());
-        if let Some(sender) = sender {
-            if let Ok(count) = NotificationRepository::count_unread(&self.pool, user_id).await {
-                let _ = tokio::task::spawn_blocking(move || {
-                    let _ = sender.send(WsNotification::UnreadCount { count });
-                });
-            }
+        if let Ok(count) = NotificationRepository::count_unread(&self.pool, user_id).await {
+            self.broadcast_to_user(user_id, &WsNotification::UnreadCount { count });
+        }
+    }
+
+    /// [096A-13] Itera el Vec de senders del usuario y hace retain de los vivos.
+    fn broadcast_to_user(&self, user_id: Uuid, msg: &WsNotification) {
+        if let Some(mut senders) = self.channels.get_mut(&user_id) {
+            senders.retain(|tx| tx.send(msg.clone()).is_ok());
         }
     }
 
@@ -125,9 +110,10 @@ impl NotificationHub {
         Ok(results)
     }
 
-    /// Limpia canales de usuarios sin receivers activos (housekeeping)
+    /// Limpia canales de usuarios sin senders activos (housekeeping).
+    /// [096A-13] Remove entradas cuyo Vec está vacío (todos los senders droppeados).
     pub fn cleanup_empty_channels(&self) {
         self.channels
-            .retain(|_user_id, sender| sender.receiver_count() > 0);
+            .retain(|_user_id, senders| !senders.is_empty());
     }
 }

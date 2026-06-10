@@ -61,7 +61,7 @@ pub async fn handle_reset(state: &AppState, session_id: uuid::Uuid, visitor_id: 
         tracing::error!("Reset: error cerrando session={session_id}: {e}");
     }
 
-    state.chat_hub.broadcast(session_id, WsServerMessage::Reset);
+    state.chat_hub.broadcast(session_id, &WsServerMessage::Reset);
     tracing::info!("Reset ejecutado: session={session_id}, visitor={visitor_id}");
 }
 

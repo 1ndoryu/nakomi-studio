@@ -57,23 +57,14 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
     }
 
     /* [064A-68] Suscripción global al canal de staff para nuevas sesiones.
-     * Cualquier sesión creada (visitante u orden) se reenvía a este WS. */
+     * Cualquier sesión creada (visitante u orden) se reenvía a este WS.
+     * [096A-13] subscribe_staff() devuelve mpsc::UnboundedReceiver. */
     let mut staff_rx = hub.subscribe_staff();
     let tx_staff = tx.clone();
-    /* [096A-8] Manejar RecvError::Lagged para no matar la tarea silenciosamente */
     let staff_sub = tokio::spawn(async move {
-        loop {
-            match staff_rx.recv().await {
-                Ok(server_msg) => {
-                    if tx_staff.send(server_msg).await.is_err() {
-                        break;
-                    }
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                    tracing::warn!("Staff broadcast lagged: {n} mensajes perdidos");
-                    continue;
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+        while let Some(server_msg) = staff_rx.recv().await {
+            if tx_staff.send(server_msg).await.is_err() {
+                break;
             }
         }
     });
@@ -115,23 +106,14 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
             WsClientMessage::Join { session_id } => {
                 let _ = hub.staff_join_session(session_id, staff_id).await;
 
-                /* Suscribirse al canal de esta sesión → reenviar al mpsc */
+                /* Suscribirse al canal de esta sesión → reenviar al mpsc
+                 * [096A-13] subscribe() devuelve mpsc::UnboundedReceiver. */
                 let mut session_rx = hub.subscribe(session_id);
                 let tx_clone = tx.clone();
-                /* [096A-8] Manejar RecvError::Lagged */
                 let handle = tokio::spawn(async move {
-                    loop {
-                        match session_rx.recv().await {
-                            Ok(server_msg) => {
-                                if tx_clone.send(server_msg).await.is_err() {
-                                    break;
-                                }
-                            }
-                            Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                                tracing::warn!("Session broadcast lagged: {n} mensajes perdidos");
-                                continue;
-                            }
-                            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                    while let Some(server_msg) = session_rx.recv().await {
+                        if tx_clone.send(server_msg).await.is_err() {
+                            break;
                         }
                     }
                 });
