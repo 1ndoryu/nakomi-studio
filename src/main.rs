@@ -6,6 +6,7 @@ use std::time::Duration;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use hyper_util::server::conn::auto;
+use hyper_util::server::graceful::GracefulShutdown;
 use tower::{Service, ServiceExt};
 
 use argon2::password_hash::rand_core::OsRng;
@@ -83,8 +84,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let keepalive = socket2::TcpKeepalive::new()
         .with_time(Duration::from_secs(60))
         .with_interval(Duration::from_secs(15));
-    #[cfg(unix)]
-    let keepalive = keepalive.with_retries(4);
     socket.set_tcp_keepalive(&keepalive)?;
     socket.set_nonblocking(true)?;
     socket.set_reuse_address(true)?;
@@ -108,67 +107,94 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
 
+    /* [096A-4] GracefulShutdown coordina el cierre limpio de TODAS las conexiones
+     * activas cuando el server loop hace break (SIGTERM, deploy, Docker restart).
+     * Sin esto, las tareas spawneadas con conexiones activas quedan huérfanas →
+     * hyper no les notifica que deben cerrar → CLOSE_WAIT permanente.
+     *
+     * NOTA: GracefulShutdown NO es Clone intencionalmente (prevenir race conditions
+     * entre watch y shutdown). Usamos watcher() para crear un Watcher owned
+     * por conexión, que se puede mover a tokio::spawn sin problemas. */
+    let graceful = GracefulShutdown::new();
+
+    /* [096A-4] Builder creado UNA VEZ con Box::leak para obtener &'static.
+     * serve_connection_with_upgrades(&self) retorna Connection<'_> que borrow
+     * el builder — tokio::spawn requiere 'static, así que el builder debe
+     * vivir tanto como el proceso. Box::leak es intencional: el servidor
+     * vive hasta exit(), no hay leak real. */
+    let builder: &'static mut auto::Builder<TokioExecutor> =
+        Box::leak(Box::new(auto::Builder::new(TokioExecutor::new())));
+
+    /* [096A-4] HTTP/1.1: header_read_timeout actúa como idle timeout
+     * (se rearma tras cada respuesta, hyper PR #3828).
+     * half_close(false): cierra conexión al detectar EOF durante request,
+     * evitando sockets en CLOSE_WAIT por half-close de Traefik. */
+    builder
+        .http1()
+        .timer(TokioTimer::new())
+        .header_read_timeout(Duration::from_secs(30))
+        .half_close(false)
+        .keep_alive(true);
+
+    /* [096A-2] HTTP/2: keep-alive con PING cada 30s, timeout 10s.
+     * Sin esto, conexiones h2c (si Traefik negocia H2) quedan
+     * abiertas indefinidamente → CLOSE_WAIT. */
+    builder
+        .http2()
+        .keep_alive_interval(Duration::from_secs(30))
+        .keep_alive_timeout(Duration::from_secs(10));
+
     loop {
         tokio::select! {
             result = listener.accept() => {
                 let (tcp_stream, remote_addr) = result?;
-let tower_service = match make_service.call(remote_addr).await {
-                        Ok(svc) => svc,
-                        Err(err) => match err {},
-                    };
+                let tower_service = match make_service.call(remote_addr).await {
+                    Ok(svc) => svc,
+                    Err(err) => match err {},
+                };
+
+                let io = TokioIo::new(tcp_stream);
+
+                let hyper_service =
+                    hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
+                        tower_service.clone().oneshot(request)
+                    });
+
+                let conn = builder.serve_connection_with_upgrades(io, hyper_service);
+
+                /* [096A-4] watcher() crea un Watcher owned (no borrow graceful).
+                 * watch(conn) toma ownership del Connection y retorna un Future
+                 * que combina la conexión con la señal de shutdown. */
+                let watcher = graceful.watcher();
+                let watched = watcher.watch(conn);
 
                 tokio::spawn(async move {
-                    /* [096A-4] Timeout absoluto por conexión: fuerza drop del socket
-                     * si hyper no cierra limpiamente (CLOSE_WAIT, upgrades huérfanos).
+                    let start = std::time::Instant::now();
+
+                    /* [096A-4] Timeout absoluto por conexión (safety net): fuerza
+                     * drop del socket si hyper no cierra limpiamente.
                      * WS legítimos: su timeout de inactividad (5min) cierra antes.
                      * HTTP keep-alive: header_read_timeout (30s) cierra idle antes.
-                     * Este es el safety net que dropea el TcpStream → close() vía RAII.
-                     * Sin esto, conexiones CLOSE_WAIT sobreviven indefinidamente. */
-                    let conn_future = async {
-                        let io = TokioIo::new(tcp_stream);
-
-                        let hyper_service =
-                            hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
-                                tower_service.clone().oneshot(request)
-                            });
-
-                        let mut builder = auto::Builder::new(TokioExecutor::new());
-
-                        /* [096A-2] HTTP/1.1: header_read_timeout se rearma tras cada
-                         * respuesta y actúa como idle timeout (hyper PR #3828). */
-                        let mut http1 = builder.http1();
-                        http1
-                            .timer(TokioTimer::new())
-                            .header_read_timeout(Duration::from_secs(30))
-                            .keep_alive(true);
-
-                        /* [096A-2] HTTP/2: keep-alive con PING cada 30s, timeout 10s.
-                         * Sin esto, conexiones h2c (si Traefik negocia H2) quedan
-                         * abiertas indefinidamente → CLOSE_WAIT. */
-                        let mut http2 = builder.http2();
-                        http2
-                            .keep_alive_interval(Duration::from_secs(30))
-                            .keep_alive_timeout(Duration::from_secs(10));
-
-                        let conn = builder
-                            .serve_connection_with_upgrades(io, hyper_service);
-
-                        if let Err(err) = conn.await {
+                     * Este es el último recurso — dropea TcpStream → close() vía RAII. */
+                    match tokio::time::timeout(Duration::from_secs(600), watched).await {
+                        Ok(Ok(())) => {
+                            let secs = start.elapsed().as_secs();
+                            if secs > 60 {
+                                tracing::debug!(
+                                    "Connection from {remote_addr} closed after {secs}s"
+                                );
+                            }
+                        }
+                        Ok(Err(err)) => {
                             tracing::debug!("Connection error from {remote_addr}: {err:#}");
                         }
-                    };
-
-                    if tokio::time::timeout(Duration::from_secs(600), conn_future)
-                        .await
-                        .is_err()
-                    {
-                        tracing::debug!(
-                            "Connection from {remote_addr} killed by 10min absolute timeout"
-                        );
+                        Err(_) => {
+                            tracing::warn!(
+                                "Connection from {remote_addr} killed by 10min timeout"
+                            );
+                        }
                     }
-                    /* Socket (TcpStream) se dropea aquí → close() automático vía RAII.
-                     * Este es el mecanismo que limpia CLOSE_WAIT: sin drop explícito,
-                     * hyper puede mantener el socket abierto indefinidamente. */
+                    /* Socket (TcpStream) se dropea aquí → close() automático vía RAII. */
                 });
             }
             _ = &mut shutdown => {
@@ -176,6 +202,17 @@ let tower_service = match make_service.call(remote_addr).await {
                 break;
             }
         }
+    }
+
+    /* [096A-4] Drenar conexiones activas: graceful.shutdown() notifica a todas
+     * las conexiones watched que deben cerrar. Damos 30s de plazo; si alguna
+     * conexión no cierra a tiempo, el proceso termina y el kernel limpia. */
+    tracing::info!("Graceful shutdown: esperando conexiones activas (max 30s)...");
+    if tokio::time::timeout(Duration::from_secs(30), graceful.shutdown())
+        .await
+        .is_err()
+    {
+        tracing::warn!("Graceful shutdown timeout: forzando cierre de conexiones pendientes");
     }
 
     Ok(())
