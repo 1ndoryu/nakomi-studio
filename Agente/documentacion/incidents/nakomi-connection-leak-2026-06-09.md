@@ -1,26 +1,93 @@
 # Incidente: nakomi.studio — Connection Leak Persistente (CLOSE_WAIT → Deadlock)
 
 **Fecha inicio:** 2026-06-09 ~11:00 UTC  
-**Última caída:** 2026-06-10 ~11:30 UTC  
-**Severidad:** 🔴 Crítica — sitio cayendo repetidamente cada ~6 horas  
+**Última caída:** 2026-06-10 ~14:55 UTC (caída #8)  
+**Severidad:** 🔴 Crítica — sitio cayendo repetidamente cada ~1.5-6 horas tras 8 intentos de fix  
 **Servicio:** nakomi.studio (VPS1 66.94.100.241, Coolify service `do8k4w8swccwwogoc0os0ck0`)  
-**Estado actual (2026-06-10 ~11:35 UTC):** Fix v5 deployándose vía `deploy-service --skip-backup`. Sitio caído, restaurando.  
-**Commits desplegados:** `21bca97a` (v4.1). Fix v5 pendiente deploy.  
-**Root cause real (v5):** `accept()` en Linux NO hereda `SO_KEEPALIVE` del listener socket → TCP keepalive de fixes v1-v4 era NO-OP en todas las conexiones reales. Además, el watchdog HTTP generaba CLOSE_WAIT propio.
+**Estado actual (2026-06-10 ~15:00 UTC):** 🔴 **PEDIR AYUDA EXTERNA.** Restaurado con `docker restart` por 8ª vez. 7 fixes implementados, ninguno definitivo.  
+**Commits desplegados:** `ddc59a6b` (v6: semáforo AI + timeout + métricas). Desplegado ~13:19 UTC, caído ~14:55 UTC (~1.5h).  
+**Root cause (v5-v6):** Fixes implementados (keepalive por socket, semáforo AI, timeout 600s, métricas) **no resuelven la causa raíz real.** Hipótesis previas descartadas.  
+
+---
+
+## ⚠️ PETICIÓN DE REVISIÓN A OTRO AGENTE  
+
+**Este documento es una petición explícita para que un agente diferente revise este incidente con ojos frescos.**  
+
+### Qué NO ha funcionado (7 intentos):  
+
+| Fix | Hipótesis | Resultado | Conclusión |
+|---|---|---|---|
+| v1 | SO_KEEPALIVE + WS timeouts | Caída en ~26 min | TCP keepalive no fuerza cierre |
+| v2 | hyper_util + header_read_timeout | Caída | Features cfg-gated = NO-OP |
+| v3 | hyper features explícitas + HTTP/2 keepalive | 425 CLOSE_WAIT/8h | h2c probablemente no se negocia |
+| v4 | TCP keepalive agresivo por socket | Caída en ~6h | Mejora parcial, NO definitivo |
+| v4.1 | GracefulShutdown + half_close(false) | 15 CLOSE_WAIT/6h | **15 CLOSE_WAIT NO matan servidor** → cuello de botella en otro sitio |
+| v5 | TCP keepalive por accepted socket + watchdog atómico | Desplegado, mismo patrón | Keepalive no es el problema real |
+| v6 | **Semaphore(3) AI + timeout(600s) + AtomicU64 + métricas** | **Caída en ~1.5h** | Concurrencia AI no era el killer |  
+
+### Lo que sabemos con certeza:  
+
+1. **El servidor se cuelga**, no crashea (no hay panic, no hay exit). El proceso sigue vivo pero no responde.  
+2. **`docker restart` lo arregla** inmediatamente → no es corrupción de estado persistente.  
+3. **El patrón es consistente:** restart → funciona X horas → cuelga → restart → repeat.  
+4. **15 CLOSE_WAIT no deberían matar un servidor Rust** con 4 tokio workers. El cuello de botella NO es CLOSE_WAIT.  
+5. **El semáforo AI(3) y timeout(600s) no lo arreglan** → no es starvation por requests AI concurrentes.  
+6. **Health endpoint funciona** cuando el servidor responde: `{active_timing_loops: 0, registered_sessions: 0, ai_permits_available: 3}`.  
+7. **El contenedor tiene 5.5GB RAM libres** y 190GB disco. No es OOM.  
+
+### Qué buscar (hipótesis no exploradas):  
+
+1. **¿El accept loop se bloquea?** Si `listener.accept()` se bloquea indefinidamente (por ejemplo, por un fd leak), el servidor deja de aceptar conexiones nuevas sin morir. Verificar: ¿cuántos fd tiene el proceso? (`ls /proc/PID/fd | wc -l`).  
+2. **¿El DB pool se agota silenciosamente?** Pool max=10. Si alguna query no libera conexión (transaction sin commit/rollback, o query que cuelga), el pool se llena. Verificar: `SELECT count(*) FROM pg_stat_activity WHERE datname='nakomi'`.  
+3. **¿Traefik cierra la conexión TCP pero el servidor no lo detecta?** Si Traefik hace TCP RST en vez de FIN, el socket queda en estado limbo. Verificar: `ss -tnp` en el contenedor cuando cuelga.  
+4. **¿Alguno de los servicios spawned (broadcast channels, notification handlers, chat WS handlers) tiene un leak de tokio tasks?** Cada `tokio::spawn` que nunca termina consume recursos. Verificar: ¿hay un contador de tasks activas?  
+5. **¿El PG listener (`LISTEN/NOTIFY`)** tiene un leak? Si el canal de PostgreSQL se cuelga, puede bloquear el loop principal.  
+6. **¿Hay un deadlock en `RwLock` o `Mutex`** dentro de `AppState`? Si algún handler toma un lock y nunca lo suelta (por ejemplo, por un panic en un task), todo se bloquea.  
+
+### Acciones sugeridas:  
+
+1. **Agregar métricas de tokio runtime** al health endpoint: `tokio::runtime::Handle::current().metrics()` — número de workers activos, tasks spawned, injection count.  
+2. **Agregar métricas de DB pool** al health endpoint: `pg_pool.size()`, `pg_pool.num_idle()`, `pg_pool.num_idle()`.  
+3. **Habilitar `tokio-console`** para observar tasks en tiempo real: `console-subscriber` crate + `RUSTFLAGS="--cfg tokio_unstable"`.  
+4. **Capturar `gdb` backtrace** cuando el servidor cuelga: `kill -SIGUSR1 <PID>` (si se configura handler) o `gdb -p <PID> -ex "thread apply all bt" -ex quit`.  
+5. **Monitorear fd count** periódicamente desde el host: `docker exec <container> ls /proc/1/fd | wc -l`.  
+6. **Revisar si `generate_context_summary`** (spawn fire-and-forget) o algún otro spawn se acumula sin terminar.  
+
+### Datos del servidor:  
+
+```
+Stack: Axum 0.7.9 + Hyper 1.8.1 + hyper-util 0.1.20 + SQLx 0.8.6 (PostgreSQL)
+tokio: multi_thread, 4 workers
+DB pool: max=10, min=1
+AI: Groq (3 keys × 3 models) + Gemini (6 models), cada request hasta 90s
+Container: Docker en Coolify v4.0.0-beta.460
+RAM disponible: ~5.5GB | Disco: ~190GB libres
+Puerto: 3000 (bind 0.0.0.0)
+Proxy: coolify-proxy (Traefik v3.6)
+Repo: github.com/1ndoryu/glory-rs, rama glory-rust-nakomi
+Último commit: ddc59a6b
+Health endpoint: https://nakomi.studio/healthz
+```
+
+---
 
 ---
 
 ## Resumen Ejecutivo
 
-El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue acumulando conexiones CLOSE_WAIT** pese a múltiples intentos de fix. El patrón es consistente: después de cada restart, las conexiones CLOSE_WAIT crecen (~1/min) hasta que el event loop se satura y el sitio deja de responder.
+El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colgándose** pese a 7 intentos de fix. El patrón es consistente: después de cada restart funciona durante 1.5-6 horas, luego el servidor deja de responder sin crashear.
 
-**6 intentos de fix realizados:**
-1. TCP SO_KEEPALIVE + WS timeouts + pool limits → insuficiente (TCP keepalive no fuerza cierre)
-2. Migración a `hyper_util::auto::Builder` + `header_read_timeout(30s)` → insuficiente (hyper sin features = NO-OP)
-3. Hyper features explícitas (`http1`, `http2`, `server`) + HTTP/2 keep-alive → insuficiente (425 CLOSE_WAIT en 8h)
-4. TCP keepalive agresivo (60s) + timeout absoluto por conexión (10min) → insuficiente (caída en ~6h)
-5. GracefulShutdown + `half_close(false)` → mejora significativa (15 CLOSE_WAIT/6h vs 425/8h) pero sitio sigue cayendo
-6. **Fix v5 (actual):** TCP keepalive per-accepted-socket + watchdog atómico sin HTTP + timeout 300s
+**7 intentos de fix realizados (todos insuficientes):**
+1. TCP SO_KEEPALIVE + WS timeouts + pool limits → insuficiente
+2. Migración a `hyper_util::auto::Builder` + `header_read_timeout(30s)` → insuficiente (features cfg-gated)
+3. Hyper features explícitas + HTTP/2 keep-alive → insuficiente (425 CLOSE_WAIT en 8h)
+4. TCP keepalive agresivo + timeout absoluto por conexión (10min) → mejora parcial (~6h)
+5. GracefulShutdown + `half_close(false)` → 15 CLOSE_WAIT/6h pero sigue cayendo
+6. TCP keepalive per-accepted-socket + watchdog atómico → desplegado, mismo patrón
+7. **Semaphore(3) AI + timeout(600s) + AtomicU64 + métricas health** → caído en ~1.5h
+
+**Conclusión: PEDIR AYUDA EXTERNA.** Las hipótesis exploradas (CLOSE_WAIT, TCP keepalive, concurrencia AI) NO son la causa raíz.
 
 **Root cause real descubierto en fix v5:** `accept()` en Linux **NO hereda** `SO_KEEPALIVE` del listening socket. Los fixes v1-v4 aplicaban keepalive al listener (inútil). Las conexiones reales de Traefik → servidor arrancaban con keepalive desactivado o con defaults del kernel (7200s). Además, el watchdog HTTP generaba sus propias conexiones CLOSE_WAIT al probar `http://127.0.0.1:3000/healthz` cada 30s, y mataba la app con `exit(1)` cuando esas conexiones fallaban.
 
@@ -56,6 +123,11 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue acumu
 | 2026-06-10 ~10:30-11:30 | **Fix v5** implementado por otro agente: TCP keepalive por socket aceptado + watchdog atómico + timeout 300s |
 | 2026-06-10 ~11:30 | **Sitio DOWN de nuevo** — contenedor con ~1h de uptime |
 | 2026-06-10 ~11:32 | Deploy v5 vía `deploy-service --skip-backup` iniciado |
+| 2026-06-10 ~11:35 | Restauración con `docker restart` — HTTP 200 |
+| 2026-06-10 ~12:37 | Restauración #2 con `docker restart` — HTTP 200 |
+| 2026-06-10 ~13:04-13:19 | **Deploy v6** (semáforo AI + timeout 600s + métricas) — build 817s, swap exitoso, health 200 |
+| 2026-06-10 ~14:55 | **Caída #8** — v6 activo solo ~1.5h. Fix de semáforo/concurrencia NO resuelve. |
+| 2026-06-10 ~14:59 | Restauración #8 con `docker restart` — HTTP 200. **PEDIR AYUDA A OTRO AGENTE.** |
 
 ---
 
@@ -105,13 +177,25 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue acumu
 **Resultado:** **15 CLOSE_WAIT en 6 horas** (vs 425 en 8 horas antes). Mejora de ~30x. Pero sitio sigue cayendo.  
 **Observación clave:** Con solo 15 CLOSE_WAIT, el event loop NO debería saturarse. **15 conexiones zombie NO matan un servidor.** El cuello de botella está en otra parte — posiblemente el watchdog.
 
-### ✅ Fix v5 (pendiente deploy) — ROOT CAUSE REAL
+### ✅ Fix v5 (commit `...`) — ROOT CAUSE REAL (PARCIAL)
 **Qué:** 3 correcciones fundamentales:
 1. **TCP keepalive por socket aceptado** (CRÍTICO): `accept()` en Linux NO hereda SO_KEEPALIVE. Ahora cada conexión aceptada se convierte a `socket2::Socket`, se aplica keepalive (60s idle, 15s interval), y se convierte de vuelta. Los fixes v1-v4 aplicaban keepalive al listener (NO-OP).
 2. **Watchdog atómico sin HTTP**: Reemplaza `spawn_http_watchdog` (que generaba CLOSE_WAIT con probes TCP a 127.0.0.1:3000) por un `AtomicU64` heartbeat que el server loop actualiza en cada `accept()`. El watchdog lee el timestamp sin generar tráfico TCP.
 3. **Timeout absoluto reducido a 300s**: Match con WS inactivity timeout (300s). HTTP normal cierra mucho antes (header_read_timeout 30s).
 
-**Por qué funciona:** Por primera vez el TCP keepalive REALMENTE opera en las conexiones de tráfico (no solo en el listener). Combinado con la eliminación del watchdog HTTP (que generaba CLOSE_WAIT y mataba la app), el servidor debería mantener CLOSE_WAIT en ~0.
+**Resultado:** Desplegado, mismo patrón de caída. Keepalive NO es el problema real.
+
+### ❌ Fix v6 (commit `ddc59a6b`) — INSUFICIENTE (caída en ~1.5h)
+**Qué:** Control de concurrencia AI + observabilidad:
+1. **Semaphore(3)** para requests AI concurrentes — protege DB pool de 10 conexiones
+2. **Timeout(600s)** global en `session_timing_loop` como safety net
+3. **Timeout(60s)** en `generate_context_summary` (fire-and-forget)
+4. **AtomicU64** counter de timing loops activos
+5. **Health endpoint mejorado** con métricas: `active_timing_loops`, `registered_sessions`, `ai_permits_available`
+
+**Resultado:** Deploy exitoso (build 817s, swap, health 200). **Caído en ~1.5 horas.** Concurrencia AI NO era el killer.  
+**Métricas post-restart:** `{active_timing_loops: 0, registered_sessions: 0, ai_permits_available: 3}` — todo normal al inicio.  
+**Conclusión:** Ni CLOSE_WAIT, ni keepalive, ni concurrencia AI son la causa raíz. **Se necesita diagnóstico externo.**
 
 ---
 
