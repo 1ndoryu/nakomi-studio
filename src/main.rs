@@ -99,6 +99,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rt_heartbeat: &'static AtomicU64 = Box::leak(Box::new(AtomicU64::new(0)));
     spawn_runtime_watchdog(rt_heartbeat);
 
+    /* [096A-12] Heartbeat logger: confirma que el runtime está vivo cada 15s.
+     * Si el log desaparece, sabemos exactamente cuándo se congeló el runtime.
+     * Dos mecanismos: tokio task (funciona normalmente) + OS thread (funciona
+     * aunque el runtime esté parcialmente bloqueado). */
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(15)).await;
+        loop {
+            tracing::debug!("[rt-heartbeat] runtime vivo — workers activos");
+            tokio::time::sleep(Duration::from_secs(15)).await;
+        }
+    });
+    std::thread::Builder::new()
+        .name("hb-logger".into())
+        .spawn(move || {
+            std::thread::sleep(Duration::from_secs(100));
+            loop {
+                let last = rt_heartbeat.load(Ordering::Relaxed);
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let stale = now.saturating_sub(last);
+                eprintln!("[hb-logger] last_pulse={last} stale={stale}s");
+                std::thread::sleep(Duration::from_secs(15));
+            }
+        })
+        .expect("spawn hb-logger");
+
     /* [096A-2] Migrado de axum::serve() a hyper_util::auto::Builder para
      * configurar header_read_timeout a nivel HTTP. axum::serve() es
      * intencionalmente simple y NO expone configuración de conexiones

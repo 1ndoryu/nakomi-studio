@@ -98,11 +98,16 @@ impl ChatHub {
     /// el std::sync::RwLock del shard durante el broadcast::Sender::send().
     /// Esto previene deadlock: si un shard tiene un write lock esperando
     /// (por insert/remove concurrente), el read bloquea el OS worker thread.
+    /// [096A-12] spawn_blocking: broadcast::Sender::send() usa std::sync::Mutex
+    /// internamente. Si muchos receivers contienden el mutex simultáneamente,
+    /// el worker tokio se bloquea en futex_wait. spawn_blocking lo mueve al
+    /// pool de hilos separado, protegiendo los 8 workers del runtime.
     pub fn broadcast(&self, session_id: Uuid, msg: WsServerMessage) {
         let sender = self.channels.get(&session_id).map(|guard| guard.clone());
         if let Some(sender) = sender {
-            /* Ignorar error (no hay receivers conectados) */
-            let _ = sender.send(msg);
+            let _ = tokio::task::spawn_blocking(move || {
+                let _ = sender.send(msg);
+            });
         }
     }
 
@@ -159,9 +164,14 @@ impl ChatHub {
             .await;
         }
 
-        /* [064A-68] Notificar a todos los staff conectados sobre la nueva sesión */
-        let _ = self.staff_channel.send(WsServerMessage::SessionNew {
+        /* [064A-68] Notificar a todos los staff conectados sobre la nueva sesión
+         * [096A-12] spawn_blocking: protege workers tokio del Mutex interno de send() */
+        let staff_msg = WsServerMessage::SessionNew {
             session: session.clone(),
+        };
+        let staff_tx = self.staff_channel.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            let _ = staff_tx.send(staff_msg);
         });
 
         Ok(session)
@@ -195,17 +205,27 @@ impl ChatHub {
             if let Ok(Some(updated)) =
                 ChatRepository::find_session_by_id(&self.pool, session.id).await
             {
-                /* [064A-68] Notificar a staff conectados sobre nueva sesión de orden */
-                let _ = self.staff_channel.send(WsServerMessage::SessionNew {
+                /* [064A-68] Notificar a staff conectados sobre nueva sesión de orden
+                 * [096A-12] spawn_blocking: protege workers tokio del Mutex interno de send() */
+                let staff_msg = WsServerMessage::SessionNew {
                     session: updated.clone(),
+                };
+                let staff_tx = self.staff_channel.clone();
+                let _ = tokio::task::spawn_blocking(move || {
+                    let _ = staff_tx.send(staff_msg);
                 });
                 return Ok(updated);
             }
         }
 
-        /* [064A-68] Notificar incluso si no se asignó empleado */
-        let _ = self.staff_channel.send(WsServerMessage::SessionNew {
-            session: session.clone(),
+/* [064A-68] Notificar incluso si no se asignó empleado
+     * [096A-12] spawn_blocking: protege workers tokio del Mutex interno de send() */
+    let staff_msg = WsServerMessage::SessionNew {
+        session: session.clone(),
+    };
+    let staff_tx = self.staff_channel.clone();
+    let _ = tokio::task::spawn_blocking(move || {
+        let _ = staff_tx.send(staff_msg);
         });
 
         Ok(session)
@@ -463,7 +483,11 @@ impl ChatHub {
             last_connected_at: Some(last_connected_at),
         };
         self.broadcast(session_id, msg.clone());
-        let _ = self.staff_channel.send(msg);
+        /* [096A-12] spawn_blocking: staff_channel.send() también usa std::sync::Mutex */
+        let staff_tx = self.staff_channel.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            let _ = staff_tx.send(msg);
+        });
     }
 
     pub fn notify_visitor_offline(
@@ -477,6 +501,9 @@ impl ChatHub {
             last_connected_at,
         };
         self.broadcast(session_id, msg.clone());
-        let _ = self.staff_channel.send(msg);
+        let staff_tx = self.staff_channel.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            let _ = staff_tx.send(msg);
+        });
     }
 }
