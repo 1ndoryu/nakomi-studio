@@ -1,12 +1,12 @@
-# Incidente: nakomi.studio — Connection Leak Persistente (CLOSE_WAIT → Deadlock)
+# Incidente: nakomi.studio — Connection Leak Persistente (CLOSE_WAIT → Deadlock → Congelamiento Silencioso)
 
 **Fecha inicio:** 2026-06-09 ~11:00 UTC  
-**Última caída:** 2026-06-10 ~14:55 UTC (caída #8)  
-**Severidad:** 🔴 Crítica — sitio cayendo repetidamente cada ~1.5-6 horas tras 8 intentos de fix  
+**Última caída:** 2026-06-10 ~15:38 UTC (caída #10)  
+**Severidad:** 🔴 Crítica — sitio cayendo cada ~1-6 horas tras 8 intentos de fix  
 **Servicio:** nakomi.studio (VPS1 66.94.100.241, Coolify service `do8k4w8swccwwogoc0os0ck0`)  
-**Estado actual (2026-06-10 ~15:00 UTC):** 🔴 **PEDIR AYUDA EXTERNA.** Restaurado con `docker restart` por 8ª vez. 7 fixes implementados, ninguno definitivo.  
-**Commits desplegados:** `ddc59a6b` (v6: semáforo AI + timeout + métricas). Desplegado ~13:19 UTC, caído ~14:55 UTC (~1.5h).  
-**Root cause (v5-v6):** Fixes implementados (keepalive por socket, semáforo AI, timeout 600s, métricas) **no resuelven la causa raíz real.** Hipótesis previas descartadas.  
+**Estado actual (2026-06-10 ~17:10 UTC):** 🟡 **Fix v8 desplegado.** Root cause identificado: cascada de 4 bugs en chat WebSocket.  
+**Commits desplegados:** `d89b3b02` (v8: fix raíz congelamiento silencioso).  
+**Root cause real:** Ver sección "Root Cause Final" abajo.  
 
 ---
 
@@ -128,6 +128,50 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colg�
 | 2026-06-10 ~13:04-13:19 | **Deploy v6** (semáforo AI + timeout 600s + métricas) — build 817s, swap exitoso, health 200 |
 | 2026-06-10 ~14:55 | **Caída #8** — v6 activo solo ~1.5h. Fix de semáforo/concurrencia NO resuelve. |
 | 2026-06-10 ~14:59 | Restauración #8 con `docker restart` — HTTP 200. **PEDIR AYUDA A OTRO AGENTE.** |
+| 2026-06-10 ~15:38 | **Caída #9** — usuario escribe en chat → servidor CONGELA (silencioso, 0 logs) |
+| 2026-06-10 ~15:40 | Restauración #9 — 3ra caída en misma sesión |
+| 2026-06-10 ~15:43 | **Caída #10** — misma causa: escribir en chat |
+| 2026-06-10 ~15:45 | Restauración #10 + análisis profundo de código delegado a subagente |
+| 2026-06-10 ~17:09 | **Fix v8** (d89b3b02): 4 bugs cascada en chat WS — deploy iniciado |
+
+---
+
+## Root Cause Final (descubierto 2026-06-10)
+
+**El servidor NO se cuelga por CLOSE_WAIT, ni por TCP keepalive, ni por concurrencia AI. Se CONGELA por una cascada de 4 bugs en el flujo del chat WebSocket.**
+
+### Los 4 bugs (cascada):
+
+1. **`broadcast::Receiver::recv()` rompe el loop en `Lagged(n)`** — `while let Ok(msg) = rx.recv().await` trata `Lagged` como `Err` y sale del loop, matando la tarea de envío silenciosamente. Sin logs.
+
+2. **`timing_tx.send().await` bloquea el WS handler** — cuando el timing loop está ocupado con una llamada AI (hasta 90s), el canal mpsc (cap 64) se llena. `send().await` bloquea la lectura del WebSocket → buffer TCP se llena → conexión se congela.
+
+3. **`ai_semaphore.acquire()` sin timeout** — si los 3 permits están ocupados, la 4ta sesión espera indefinidamente. Su canal mpsc se llena → Bug #2.
+
+4. **DashMap guard retenido en `.await`** — `send_event()` hace `self.sessions.get(&session_id)` (lock shard) y luego `.send().await` (hasta 90s). Otros shards quedan bloqueados.
+
+### Escenario de congelamiento (1 usuario):
+```
+1. Usuario envía "hola" → timing_tx.send(Message) → timing loop recibe
+2. Timing loop llama generate_ai_response() → HTTP a DeepSeek (hasta 90s)
+3. Durante esos 90s, usuario escribe más → canal mpsc (cap 64) se llena
+4. timing_tx.send().await BLOQUEA el WS handler
+5. WS handler deja de leer del socket → buffer TCP se llena
+6. CONEXIÓN CONGELA — sin logs, sin panic, sin OOM
+7. Servidor sigue vivo pero no responde a NINGUNA conexión
+```
+
+### Por qué fue invisible:
+- Solo se manifiesta cuando alguien escribe en el chat (trigger específico)
+- En desarrollo con 1 usuario, el timing loop responde rápido y no se llena el canal
+- Los 7 fixes anteriores atacaban CLOSE_WAIT (sintoma TCP) no el bloqueo de la aplicación
+- ZERO logs porque nadie panic, nadie loguea — todo simplemente espera
+
+### Fix v8 (commit d89b3b02):
+- Bug 1: `while let Ok(msg)` → `match` con `Lagged(n) => continue`
+- Bug 2: `timing_tx.send().await` → `timing_tx.try_send()` en todos los paths
+- Bug 3: `ai_semaphore.acquire()` → con timeout 30s
+- Bug 4: DashMap `get()` → clone sender fuera del guard
 
 ---
 
