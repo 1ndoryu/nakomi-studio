@@ -1,3 +1,4 @@
+use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
 use serde::Serialize;
@@ -9,6 +10,13 @@ use crate::AppState;
 pub struct HealthResponse {
     pub status: String,
     pub version: String,
+    /* [096A-7] Métricas internas para diagnóstico de starvation/crash */
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_timing_loops: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub registered_sessions: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ai_permits_available: Option<usize>,
 }
 
 /// Endpoint de health check — siempre público
@@ -19,10 +27,14 @@ pub struct HealthResponse {
         (status = 200, description = "Servicio funcionando", body = HealthResponse)
     )
 )]
-pub async fn health_check() -> Json<HealthResponse> {
+pub async fn health_check(State(state): State<AppState>) -> Json<HealthResponse> {
+    let (loops, sessions, permits) = state.chat_timing.metrics();
     Json(HealthResponse {
         status: "ok".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
+        active_timing_loops: Some(loops),
+        registered_sessions: Some(sessions),
+        ai_permits_available: Some(permits),
     })
 }
 

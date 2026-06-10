@@ -38,6 +38,15 @@
 - `Box::leak` es necesario para pasar el hyper-util builder a `tokio::spawn` (requiere `'static`).
 - **GracefulShutdown** de hyper-util reduce significativamente CLOSE_WAIT pero no elimina el problema si hay otro componente (watchdog) que mata el proceso.
 
+## tokio::spawn sin tracking — el killer invisible (096A-7)
+- **6 intentos de fix para CLOSE_WAIT fueron un diagnóstico erróneo.** El sitio caía por starvation del pool DB, no por conexiones zombie.
+- `tokio::spawn(session_timing_loop(...))` creaba tareas huérfanas que retenían conexiones DB (max=10) y hacían HTTP a APIs de IA (hasta 90s cada una).
+- Con ~10 visitors concurrentes en chat, el pool se agotaba → servidor colgaba. Los 15 CLOSE_WAIT eran síntoma, no causa.
+- **Patrón peligroso:** `tokio::spawn` sin `tokio::time::timeout` wrapping. Invisible en tests (1 usuario), solo se manifiesta con tráfico real.
+- **Fix:** Semaphore de concurrencia (max 3 AI simultáneas) + timeout global 600s en timing loop + timeout 60s en generate_context_summary.
+- **Prevención:** Regla Sentinel `spawn-sin-timeout-rs` en `Agente/prevencion/prevencion-spawn-sin-timeout-2026-06-10.md`.
+- **Lección fundamental:** Antes de 6 fixes iterativos sobre un síntoma, instrumentar: contar tareas activas, conexiones DB en uso, FDs abiertos. Sin métricas, cada fix es una hipótesis a ciegas.
+
 ## Hosting Coolify — compose de rescate para hosting administrado
 - En stacks compose creados por Coolify, no mezclar `pids_limit` propio con `deploy.resources.limits.pids` inyectado por la plataforma. Docker Compose aborta con `can't set distinct values on 'pids_limit' and 'deploy.resources.limits.pids'` y el servicio queda `exited` aunque la API de creación haya respondido éxito.
 - Las imágenes pineadas en `dockerfile_inline` también vencen: `lscr.io/linuxserver/openssh-server:9.9_p2-r0-ls190` ya no existe. Para sidecars SSH/SFTP, validar periódicamente la tag real del registry o el provisioning fallará durante el build aunque el YAML sea correcto.

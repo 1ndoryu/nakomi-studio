@@ -21,7 +21,8 @@ use std::time::{Duration, Instant};
 
 use dashmap::DashMap;
 use sqlx::PgPool;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Semaphore};
+use std::sync::atomic::{AtomicU64, Ordering};
 use uuid::Uuid;
 
 use crate::models::{CreateNotification, NOTIF_ESCALATION_NEEDED};
@@ -75,6 +76,16 @@ const AI_REQUEST_OVERHEAD_TOKENS: usize = 1_500;
 /* Relevancia */
 const MAX_IRRELEVANT_STREAK: u32 = 3;
 
+/* [096A-7] Concurrencia máxima de peticiones IA simultáneas.
+ * Protege el pool DB (max=10) y APIs externas de saturación.
+ * Cada petición IA retiene 1 conexión DB + 1 request HTTP hasta 90s. */
+const MAX_CONCURRENT_AI_REQUESTS: usize = 3;
+
+/* [096A-7] Timeout absoluto de seguridad para session_timing_loop (10 min).
+ * Si por cualquier razón el loop no recibe Disconnect, este timeout lo mata.
+ * El timeout normal de inactividad (300s en process_visitor_messages) cierra antes. */
+const TIMING_LOOP_MAX_LIFETIME: Duration = Duration::from_secs(600);
+
 /// Eventos que el handler WS envía al timing service
 pub enum TimingEvent {
     Message(String),
@@ -125,7 +136,7 @@ impl Default for RateState {
 }
 
 /// Servicio de timing: gestiona sesiones activas y rate limiting global
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ChatTimingService {
     sessions: Arc<DashMap<Uuid, mpsc::Sender<TimingEvent>>>,
     rate_limits: Arc<DashMap<String, RateState>>,
@@ -135,6 +146,17 @@ pub struct ChatTimingService {
     /* [095A-11] Presupuesto por tokens estimados: evita quemar saldo aunque el atacante
      * respete los limites de cantidad de mensajes. Ventana en memoria por hora. */
     ai_token_budgets: Arc<DashMap<String, BudgetState>>,
+    /* [096A-7] Semáforo para limitar peticiones IA concurrentes.
+     * Sin esto, N visitors simultáneos saturan el pool DB y APIs externas. */
+    ai_semaphore: Arc<Semaphore>,
+    /* [096A-7] Contador de timing loops activos para health endpoint. */
+    pub active_timing_loops: Arc<AtomicU64>,
+}
+
+impl Default for ChatTimingService {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ChatTimingService {
@@ -146,6 +168,8 @@ impl ChatTimingService {
             ip_rate_limits: Arc::new(DashMap::new()),
             ip_connections: Arc::new(DashMap::new()),
             ai_token_budgets: Arc::new(DashMap::new()),
+            ai_semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_AI_REQUESTS)),
+            active_timing_loops: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -352,7 +376,24 @@ impl ChatTimingService {
         let (tx, rx) = mpsc::channel::<TimingEvent>(64);
         self.sessions.insert(session_id, tx.clone());
 
-        tokio::spawn(session_timing_loop(session_id, visitor_name, rx, deps));
+        /* [096A-7] Pasar semáforo y contador al loop. Wrap en timeout global de seguridad. */
+        let ai_sem = self.ai_semaphore.clone();
+        let loop_counter = self.active_timing_loops.clone();
+        let counter_ref = loop_counter.clone();
+        tokio::spawn(async move {
+            counter_ref.fetch_add(1, Ordering::Relaxed);
+            let result = tokio::time::timeout(
+                TIMING_LOOP_MAX_LIFETIME,
+                session_timing_loop(session_id, visitor_name, rx, deps, ai_sem),
+            )
+            .await;
+            if result.is_err() {
+                tracing::warn!(
+                    "session_timing_loop {session_id} killed by global timeout ({TIMING_LOOP_MAX_LIFETIME:?})"
+                );
+            }
+            counter_ref.fetch_sub(1, Ordering::Relaxed);
+        });
 
         tx
     }
@@ -374,6 +415,17 @@ impl ChatTimingService {
             Err("session not registered")
         }
     }
+
+    /* [096A-7] Métricas internas para health endpoint.
+     * Retorna (timing_loops_activos, sesiones_registradas, permits_ai_disponibles). */
+    #[must_use]
+    pub fn metrics(&self) -> (u64, usize, usize) {
+        (
+            self.active_timing_loops.load(Ordering::Relaxed),
+            self.sessions.len(),
+            self.ai_semaphore.available_permits(),
+        )
+    }
 }
 
 /* Máquina de estados del timing por sesión.
@@ -384,6 +436,7 @@ async fn session_timing_loop(
     visitor_name: Option<String>,
     mut rx: mpsc::Receiver<TimingEvent>,
     deps: TimingSessionDeps,
+    ai_semaphore: Arc<Semaphore>,
 ) {
     let mut buffer: Vec<String> = Vec::new();
     let mut is_typing = false;
@@ -422,6 +475,9 @@ async fn session_timing_loop(
         let combined = buffer.join("\n");
         buffer.clear();
 
+        /* [096A-7] Adquirir permit del semáforo antes de llamar a IA.
+         * Limita peticiones IA concurrentes para proteger pool DB y APIs. */
+        let _permit = ai_semaphore.acquire().await.expect("semaphore closed");
         irrelevant_count = generate_ai_response(
             session_id,
             visitor_name.as_deref(),
@@ -430,16 +486,21 @@ async fn session_timing_loop(
             &deps,
         )
         .await;
+        drop(_permit);
     }
 
     /* [T-3] Al cerrar sesión, generar resumen de contexto para futuras conversaciones.
-     * Usa modelo pequeño para resumir el historial y lo guarda en visitor_profiles. */
-    tokio::spawn(generate_context_summary(
-        deps.pool.clone(),
-        deps.ai_config.clone(),
-        session_id,
-        deps.visitor_id,
-    ));
+     * Usa modelo pequeño para resumir el historial y lo guarda en visitor_profiles.
+     * [096A-7] Wrap en timeout 60s: fire-and-forget no debe vivir indefinidamente. */
+    let summary_pool = deps.pool.clone();
+    let summary_config = deps.ai_config.clone();
+    tokio::spawn(async move {
+        let _ = tokio::time::timeout(
+            Duration::from_secs(60),
+            generate_context_summary(summary_pool, summary_config, session_id, deps.visitor_id),
+        )
+        .await;
+    });
 }
 
 /* Acumula mensajes del buffer hasta que expira el timeout.
