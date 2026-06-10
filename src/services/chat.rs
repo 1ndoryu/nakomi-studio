@@ -94,8 +94,13 @@ impl ChatHub {
     }
 
     /// Broadcast de un mensaje a todos los suscriptores de una sesión
+    /// [096A-11] Clonar el sender fuera del guard DashMap para no retener
+    /// el std::sync::RwLock del shard durante el broadcast::Sender::send().
+    /// Esto previene deadlock: si un shard tiene un write lock esperando
+    /// (por insert/remove concurrente), el read bloquea el OS worker thread.
     pub fn broadcast(&self, session_id: Uuid, msg: WsServerMessage) {
-        if let Some(sender) = self.channels.get(&session_id) {
+        let sender = self.channels.get(&session_id).map(|guard| guard.clone());
+        if let Some(sender) = sender {
             /* Ignorar error (no hay receivers conectados) */
             let _ = sender.send(msg);
         }

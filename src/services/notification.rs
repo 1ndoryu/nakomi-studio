@@ -58,9 +58,12 @@ impl NotificationHub {
         /* Persistir en BD */
         let notification = NotificationRepository::create(&self.pool, &params).await?;
 
-        /* Broadcast al usuario si tiene canal abierto */
+        /* Broadcast al usuario si tiene canal abierto.
+         * [096A-11] Clonar sender fuera del guard DashMap para no retener
+         * el std::sync::RwLock durante broadcast::Sender::send(). */
         let ws_msg: WsNotification = notification.clone().into();
-        if let Some(sender) = self.channels.get(&user_id) {
+        let sender = self.channels.get(&user_id).map(|guard| guard.clone());
+        if let Some(sender) = sender {
             /* Ignorar error si nadie escucha (no hay receivers activos) */
             let _ = sender.send(ws_msg);
         }
@@ -72,8 +75,13 @@ impl NotificationHub {
     }
 
     /// Envía el conteo actual de no leídas por WS
+    /// [096A-11] Clonar sender y soltar guard ANTES del await de DB.
+    /// Retener un DashMap std::sync::RwLock guard durante un .await
+     /// bloquea el shard completo y puede causar deadlock con otros
+     /// workers que intenten insert/remove en ese shard.
     pub async fn send_unread_count(&self, user_id: Uuid) {
-        if let Some(sender) = self.channels.get(&user_id) {
+        let sender = self.channels.get(&user_id).map(|guard| guard.clone());
+        if let Some(sender) = sender {
             if let Ok(count) = NotificationRepository::count_unread(&self.pool, user_id).await {
                 let _ = sender.send(WsNotification::UnreadCount { count });
             }

@@ -1,12 +1,12 @@
 # Incidente: nakomi.studio — Connection Leak Persistente (CLOSE_WAIT → Deadlock → Congelamiento Silencioso)
 
 **Fecha inicio:** 2026-06-09 ~11:00 UTC  
-**Última caída:** 2026-06-10 ~17:37 UTC (caída #11)  
-**Severidad:** 🔴 **CRÍTICA** — 11 caídas, 9 intentos de fix fallidos  
+**Última caída:** 2026-06-10 ~19:24 UTC (caída #13 — watchdog v10)  
+**Severidad:** 🔴 **CRÍTICA** — 13+ caídas, 10 intentos de fix fallidos  
 **Servicio:** nakomi.studio (VPS1 66.94.100.241, Coolify service `do8k4w8swccwwogoc0os0ck0`)  
-**Estado actual (2026-06-10 ~18:10 UTC):** 🟡 **Fix v9 desplegado.** `reqwest::Client` compartido — elimina DNS+TLS por llamada AI. Esperando verificación.  
-**Commits desplegados:** `49cbb36f` (v9: shared http_client), `669eab26` (MD update).  
-**Root cause real:** Ver sección "Root Cause Final" abajo. **Bug #6 (reqwest::Client) fix desplegado.**  
+**Estado actual (2026-06-10 ~19:30 UTC):** 🔴 **Fix v10 desplegado pero freeze PERSISTE.** Watchdog OS-level confirma freeze real del runtime tokio. Patrón identificado: freeze ocurre DESPUÉS de enviar respuesta AI.  
+**Commits desplegados:** `ab96d5f0` (v10: diagnóstico integral + watchdog OS-level + tracing).  
+**Root cause activo:** Ver "Root Cause Real v11" — operaciones `std::sync` bloqueantes en hot path async + WebSocket write sin timeout.  
 
 ---
 
@@ -81,9 +81,9 @@ Health endpoint: https://nakomi.studio/healthz
 
 ## Resumen Ejecutivo
 
-El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colgándose** pese a 7 intentos de fix. El patrón es consistente: después de cada restart funciona durante 1.5-6 horas, luego el servidor deja de responder sin crashear.
+El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colgándose** pese a 10 intentos de fix. El patrón es consistente: después de cada restart funciona durante 1.5-6 horas, luego el servidor deja de responder sin crashear.
 
-**7 intentos de fix realizados (todos insuficientes):**
+**10 intentos de fix realizados (todos insuficientes):**
 1. TCP SO_KEEPALIVE + WS timeouts + pool limits → insuficiente
 2. Migración a `hyper_util::auto::Builder` + `header_read_timeout(30s)` → insuficiente (features cfg-gated)
 3. Hyper features explícitas + HTTP/2 keep-alive → insuficiente (425 CLOSE_WAIT en 8h)
@@ -92,8 +92,12 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colg�
 6. TCP keepalive per-accepted-socket + watchdog atómico → desplegado, mismo patrón
 7. **Semaphore(3) AI + timeout(600s) + AtomicU64 + métricas health** → caído en ~1.5h
 8. **4 bugs cascada (Lagged, try_send, semaphore timeout, DashMap guard)** → caído en ~14 minutos
+9. **reqwest::Client compartido** (elimina DNS+TLS por llamada AI) → caído en ~14 minutos
+10. **Diagnóstico integral + watchdog OS-level + tracing** → freeze CONFIRMADO, root cause identificado
 
-**Conclusión: FIX v8 NO RESOLVIÓ.** Los bugs corregidos son reales pero no son el trigger del congelamiento. Hipótesis activa: `reqwest::Client` por llamada AI (Bug #6).
+**Conclusión: FIX v10 NO RESOLVIÓ PERO PROPORCIONÓ DATOS DEFINITIVOS.** El watchdog OS-level confirma que el runtime tokio se congela completamente después de enviar la respuesta AI. Los kernel stacks están vacíos (Docker). Patrón de freeze: usuario escribe → AI responde OK → `Respuesta IA recibida, enviando...` → 30s silencio → watchdog detecta → exit(1).
+
+**Root cause v11 identificado:** operaciones `std::sync` (Mutex/RwLock) en el hot path de broadcast + WebSocket write sin timeout en `spawn_visitor_send_task`.
 
 **Root cause real descubierto en fix v5:** `accept()` en Linux **NO hereda** `SO_KEEPALIVE` del listening socket. Los fixes v1-v4 aplicaban keepalive al listener (inútil). Las conexiones reales de Traefik → servidor arrancaban con keepalive desactivado o con defaults del kernel (7200s). Además, el watchdog HTTP generaba sus propias conexiones CLOSE_WAIT al probar `http://127.0.0.1:3000/healthz` cada 30s, y mataba la app con `exit(1)` cuando esas conexiones fallaban.
 
@@ -145,8 +149,14 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colg�
 | 2026-06-10 ~17:45 | **Diagnóstico:** `curl localhost:3000/healthz` → `Connection reset by peer` (servidor RSTea activamente). `ss -tnp` → vacío. FD=22. Process running. |
 | 2026-06-10 ~17:45 | Restauración #11 con `docker restart` — HTTP 200 |
 | 2026-06-10 ~17:51 | **Fix v9** (49cbb36f): reqwest::Client compartido — elimina DNS+TLS por llamada AI |
-| 2026-06-10 ~18:10 | Deploy v9 completado (build 879s) — health 200, ai_permits=3 |
-
+| 2026-06-10 ~18:10 | Deploy v9 completado (build 879s) — health 200, ai_permits=3 || 2026-06-10 ~18:XX | **Caída #12** — usuario escribe en chat → servidor CONGELA (fix v9 NO resuelve) |
+| 2026-06-10 ~19:00 | **Fix v10** (ab96d5f0): diagnóstico integral + runtime watchdog OS-level + tracing WS + hyper=debug |
+| 2026-06-10 ~19:15 | Deploy v10 vía Docker manual rebuild (`docker compose build --no-cache app`) — health 200 |
+| 2026-06-10 ~19:23:42 | **Caída #13** — usuario escribe "hola" → AI responde OK (DeepSeek 2s) → servidor CONGELA |
+| 2026-06-10 ~19:24:12 | Segunda sesión WS conecta, "hola" → AI OK → freeze |
+| 2026-06-10 ~19:24:28 | **[rt-watchdog] ⚠️ FREEZE DETECTADO: sin pulso en 30s.** Kernel stacks: VACÍOS (Docker). exit(1). |
+| 2026-06-10 ~19:26:35 | Docker restart automático. Segundo ciclo: mismo patrón → freeze → watchdog → exit(1) |
+| 2026-06-10 ~19:28:36 | Tercer restart. Watchdog bug: "sin pulso en 1781119715s" (timestamp corrupto). exit(1). |
 ---
 
 ## Root Cause Final (descubierto 2026-06-10, revisado post-fix-v8)
@@ -228,7 +238,7 @@ Cada llamada AI crea un `reqwest::Client` nuevo. Esto implica:
 | **Axum** | 0.7.9 |
 | **Hyper** | 1.x con features `["http1", "http2", "server"]` |
 | **hyper-util** | 0.1.x con features `["server-auto", "http1", "http2", "tokio"]` |
-| **tokio** | multi_thread, 4 workers |
+| **tokio** | multi_thread, 8 workers (fix v10) |
 | **SQLx** | 0.8 (PostgreSQL), pool: max=10, min=1, lifetime=1800s, idle=300s, acquire=5s |
 | **Proxy** | coolify-proxy (Traefik v3.6) |
 | **Container** | Docker en Coolify v4.0.0-beta.460, restart: `unless-stopped` |
@@ -360,6 +370,95 @@ let _ = tokio::time::timeout(Duration::from_secs(5), graceful.shutdown()).await;
 
 ---
 
+## Diagnóstico Watchdog v10 (2026-06-10 ~19:15-19:30 UTC)
+
+### Qué hizo fix v10
+- `worker_threads`: 4 → 8 (más workers para no saturar con AI calls)
+- **Runtime watchdog OS-level** (`std::thread::spawn`, NO tokio task): monitorea `AtomicU64` heartbeat cada 30s. Si no hay pulso, vuelca `/proc/self/task/*/stack` y fuerza `exit(1)` para que Docker reinicie.
+- **Tracing en cada paso del WS:** `session_timing_loop: iniciado`, `evento recibido`, `Iniciando respuesta IA`, `Llamando a IA`, `Respuesta IA recibida, enviando...`
+- **Hyper/h2 debug logging** activado
+
+### Datos del watchdog — 3 freeze events confirmados
+
+**Evento 1 (19:23:42 → 19:24:28):**
+```
+19:23:42  session_timing_loop: evento recibido event=Message("hola")  [sesión a97d1b09]
+19:23:53  Iniciando respuesta IA chars=4
+19:23:55  AI OK: proveedor=DeepSeek, modelo=deepseek-v4-flash
+19:23:55  Respuesta IA recibida, enviando...
+19:24:12  WS session obtenida/creada session_id=0602d499  [2da sesión]
+19:24:14  evento recibido event=Message("hola")  [sesión 0602d499]
+19:24:27  AI OK: proveedor=DeepSeek  [2da sesión]
+19:24:27  Respuesta IA recibida, enviando...  [2da sesión]
+         ← 30 segundos de silencio total →
+19:24:28  [rt-watchdog] ⚠️ RUNTIME FREEZE DETECTED: sin pulso en 30s
+         [rt-watchdog] Volcando stacks del kernel...
+         ← STACKS VACÍOS (Docker no expone /proc/self/task/TID/stack) →
+         [rt-watchdog] Forzando exit(1) para restart de Docker...
+```
+
+**Evento 2 (19:26:35 → ~19:27:05):** Mismo patrón. Sessions reconnect → "hola" → AI OK → freeze → watchdog → exit(1).
+
+**Evento 3 (19:28:36 → ~19:29:06):** Bug en watchdog: "sin pulso en 1781119715s" (~56 años). Posible race condition en `AtomicU64::load()` o timestamp no inicializado tras cold start del tokio task (60s warmup).
+
+### Hallazgos críticos del watchdog
+
+1. **El runtime tokio se congela COMPLETAMENTE** — no es un task colgado, es todo el runtime. El heartbeat task (tokio::spawn) deja de enviar pulsos, lo que significa que los 8 worker threads están todos bloqueados.
+
+2. **El freeze ocurre DESPUÉS de enviar la respuesta AI** — no es la llamada HTTP a DeepSeek la que congela. El flujo `generate_ai_response()` completa exitosamente (DB INSERT + broadcast), y DESPUÉS de eso el runtime se congela.
+
+3. **Kernel stacks VACÍOS** — `/proc/self/task/TID/stack` en Docker containers no expone los stacks del kernel. El watchdog detecta el freeze pero no puede diagnosticar dónde están bloqueados los threads. Se necesita user-space stack dump (backtrace).
+
+4. **Patrón 100% reproducible** — basta con que un usuario escriba en el chat para triggerar el freeze. No necesita múltiples usuarios ni carga.
+
+### Análisis del flujo post-AI (por subagente)
+
+Después de "Respuesta IA recibida, enviando..." (`chat_timing.rs:748`), el flujo es:
+
+```
+generate_ai_response()
+  ├── send_rich_message() × N
+  │   ├── ChatRepository::save_rich_message()   → DB INSERT async ✔️
+  │   └── broadcast(session_id, msg)
+  │       ├── self.channels.get(&session_id)    → DashMap std::sync::RwLock ⚠️
+  │       └── sender.send(msg)                  → broadcast std::sync::Mutex ⚠️⚠️
+  │
+  ├── send_message()
+  │   ├── ChatRepository::save_message()        → DB INSERT async ✔️
+  │   └── broadcast(session_id, msg)            → ⚠️⚠️
+  │
+  └── (si escalation) send_escalation()
+      └── notify_many() → broadcast por cada admin → ⚠️⚠️
+```
+
+**Operaciones de riesgo en el hot path:**
+
+| Operación | Tipo | Riesgo |
+|---|---|---|
+| `DashMap::get()` en `broadcast()` | `std::sync::RwLock::read()` — bloquea OS thread si hay write lock esperando | **ALTO** |
+| `broadcast::Sender::send()` | `std::sync::Mutex` interno del canal — bloquea OS thread | **ALTO** |
+| `sender.send(Message::Text).await` en `spawn_visitor_send_task` | WebSocket TCP write — bloquea INDEFINIDAMENTE si cliente muerto | **CRÍTICO** |
+| `mpsc::Sender::send().await` en `send_event()` | Se bloquea si canal lleno (cap 64) y timing loop ocupado | **MEDIO** |
+
+### Root Cause Real v11 (hipótesis más probable)
+
+**Escenario de freeze:**
+
+1. `spawn_visitor_send_task` (ws_visitor.rs:69-88) hace `sender.send(Message::Text(json)).await` sobre el WebSocket. Si el cliente está muerto (conexión TCP sin FIN/RST), **este await se bloquea indefinidamente**. La tarea queda pending para siempre.
+
+2. Esta tarea pending retiene un `broadcast::Receiver`. Cuando `session_timing_loop` llama a `broadcast()` después de la respuesta AI, `broadcast::Sender::send()` adquiere el `std::sync::Mutex` interno del canal. Normalmente es microsegundos, pero si hay contención (múltiples sends rápidos al mismo canal), el Mutex se retiene más.
+
+3. **El mecanismo de deadlock probable:** `DashMap::get()` en `broadcast()` adquiere un `std::sync::RwLock::read()` del shard. Si CUALQUIER otra operación (insert/remove en otro path) tiene un write lock en ese shard, el read bloquea el OS thread. Con el write lock retenido por una tarea que a su vez espera un broadcast... deadlock circular.
+
+4. Con 8 workers bloqueados → runtime tokio completamente congelado → heartbeat no se ejecuta → watchdog detecta → exit(1).
+
+**Fix propuesto v11:**
+- **Timeout en WebSocket write** (`tokio::time::timeout(5s, sender.send(...))`) en `spawn_visitor_send_task`
+- **Clone el sender fuera del DashMap guard** en `broadcast()` para no retener el RwLock durante el send
+- **`dump_kernel_stacks()` → user-space backtrace** con `std::backtrace` o thread enumeration
+
+---
+
 ## Hipótesis Pendientes (NO verificadas)
 
 Las siguientes hipótesis NO se han confirmado ni descartado:
@@ -396,19 +495,18 @@ Las siguientes hipótesis NO se han confirmado ni descartado:
 - [x] Restauración con restart — **2026-06-10 ~09:50 UTC, HTTP 200**
 - [x] Fix v5 implementado: keepalive per-accepted-socket + watchdog atómico + timeout 300s
 - [x] Sitio caído nuevamente tras ~1h de uptime (2026-06-10 ~11:30 UTC)
-- [ ] Deploy fix v5 a producción vía `deploy-service --skip-backup` — **EN CURSO**
-- [ ] Verificar post-deploy: CLOSE_WAIT ~0 tras 24h
-- [ ] Si v5 no resuelve: buscar ayuda externa (el usuario buscará soporte en otro lugar)
+- [x] Fix v8 implementado: 4 bugs cascada en chat WS — commit `d89b3b02` — **insuficiente (caída #11 en 14 min)**
+- [x] Fix v9 implementado: reqwest::Client compartido — commit `49cbb36f` — **insuficiente (caída #12)**
+- [x] Fix v10 implementado: diagnóstico integral + watchdog OS-level + tracing — commit `ab96d5f0` — **freeze CONFIRMADO por watchdog**
+- [ ] **Fix v11: WS write timeout + broadcast guard fix + user-space backtrace** — PENDIENTE
+- [ ] Verificar post-deploy v11: sin freeze tras 24h con usuario escribiendo en chat
 - [ ] Agregar Docker healthcheck al compose
 - [ ] Monitoreo proactivo (alerta CLOSE_WAIT > 20)
 
-### Estado: BUSCANDO AYUDA EXTERNA
-El usuario ha decidido buscar ayuda fuera del equipo. **6 intentos de fix** no resolvieron el problema. El patrón es claro:
-- v1→v3: reducción gradual de CLOSE_WAIT pero sitio sigue cayendo
-- v4.1: mejora significativa (15 CLOSE_WAIT/6h) pero sitio sigue cayendo
-- v5: fix teóricamente correcto (keepalive por socket aceptado) — pendiente verificación
+### Estado: DIAGNÓSTICO DEFINITIVO OBTENIDO — FIX v11 PENDIENTE
+El watchdog OS-level de fix v10 confirmó que el runtime tokio se congela completamente después de enviar la respuesta AI. Los kernel stacks están vacíos (Docker), pero el análisis de código revela operaciones `std::sync` bloqueantes en el hot path de broadcast + WebSocket write sin timeout.
 
-**Nota para quien tome el caso:** El problema persiste pese a múltiples correcciones teóricamente correctas. Sospechar de factores externos: Traefik timeout mismatch, Docker networking bridge, o un bug en hyper-util 0.1.x.
+**Próximo paso:** Implementar fix v11 (WS write timeout + broadcast guard fix).
 
 ---
 
@@ -466,6 +564,9 @@ Postgres:     postgres-do8k4w8swccwwogoc0os0ck0
 
 ### Commits relacionados
 ````
+ab96d5f0  096A-10: Fix v10 - diagnóstico integral del runtime + watchdog OS-level + tracing WS path
+49cbb36f  096A-9: reqwest::Client compartido — elimina DNS+TLS por llamada AI  (v9 — NO resuelve)
+d89b3b02  096A-8: 4 bugs cascada en chat WS (Lagged, try_send, semaphore timeout, DashMap guard)  (v8 — NO resuelve)
 (pendiente) 096A-5: fix CLOSE_WAIT real — keepalive per-socket + watchdog atómico  (v5 — ROOT CAUSE REAL)
 21bca97a  096A-4: GracefulShutdown + TCP keepalive agresivo para CLOSE_WAIT  (v4.1 — mejora significativa, NO definitivo)
 2c25102f  096A-4: fix CLOSE_WAIT leak — TCP keepalive agresivo + timeout absoluto  (v4 — mejora parcial)
@@ -503,5 +604,17 @@ Postgres:     postgres-do8k4w8swccwwogoc0os0ck0
 | 2026-06-10 ~09:45 | Sitio DOWN. 15 CLOSE_WAIT en 6h (mejora significativa). Restart restaura. |
 | 2026-06-10 ~09:50 | Sitio restaurado con restart. HTTP 200. |
 | 2026-06-10 ~10:08 | Fix v5 implementado — keepalive per-accepted-socket + watchdog atómico + timeout 300s |
-| **Próximo** | Deploy fix v5 a producción |
+| 2026-06-10 ~10:30 | **Sitio DOWN de nuevo** tras ~1h de uptime. Fix v5 NO resuelve. |
+| 2026-06-10 ~13:04-13:19 | **Deploy v6** (semáforo AI + timeout 600s + métricas) — build 817s, health 200 |
+| 2026-06-10 ~14:55 | **Caída #8** — v6 activo solo ~1.5h |
+| 2026-06-10 ~15:38-15:45 | **Caídas #9 y #10** — escribir en chat → freeze |
+| 2026-06-10 ~17:09 | **Fix v8** (d89b3b02): 4 bugs cascada en chat WS |
+| 2026-06-10 ~17:37 | **Caída #11** — fix v8 NO resuelve (14 min post-deploy) |
+| 2026-06-10 ~17:51 | **Fix v9** (49cbb36f): reqwest::Client compartido |
+| 2026-06-10 ~18:10 | Deploy v9 completado — health 200 |
+| 2026-06-10 ~18:XX | **Caída #12** — fix v9 NO resuelve |
+| 2026-06-10 ~19:00 | **Fix v10** (ab96d5f0): diagnóstico integral + watchdog OS-level + tracing |
+| 2026-06-10 ~19:15 | Deploy v10 vía Docker manual rebuild — health 200 |
+| 2026-06-10 ~19:23-19:29 | **Caídas #13-15** — watchdog confirma freeze del runtime tokio. 3 ciclos restart. |
+| **Pendiente** | **Fix v11: WS write timeout + broadcast guard fix** |
 

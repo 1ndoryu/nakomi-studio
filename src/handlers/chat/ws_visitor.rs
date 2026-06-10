@@ -132,14 +132,33 @@ fn spawn_visitor_send_task(
     mut rx: tokio::sync::broadcast::Receiver<WsServerMessage>,
 ) -> tokio::task::JoinHandle<()> {
     /* [096A-8] Manejar RecvError::Lagged: si el receiver se atrasa, no romper el loop.
-     * Sin esto, un cliente lento pierde la tarea de envío silenciosamente. */
+     * Sin esto, un cliente lento pierde la tarea de envío silenciosamente.
+     * [096A-11] Timeout de 5s en cada write WebSocket. Si el cliente está muerto
+     * (conexión TCP sin FIN/RST), el write se bloquea indefinidamente y retiene
+     * el broadcast receiver, contribuyendo a la contención del std::sync::Mutex
+     * interno del canal broadcast. Con timeout, la tarea aborta y libera el receiver. */
     tokio::spawn(async move {
         loop {
             match rx.recv().await {
                 Ok(msg) => {
                     if let Ok(json) = serde_json::to_string(&msg) {
-                        if sender.send(Message::Text(json)).await.is_err() {
-                            break;
+                        match tokio::time::timeout(
+                            std::time::Duration::from_secs(5),
+                            sender.send(Message::Text(json)),
+                        )
+                        .await
+                        {
+                            Ok(Ok(())) => { /* enviado OK */ }
+                            Ok(Err(_)) => {
+                                tracing::debug!("Visitor WS write error, cerrando send task");
+                                break;
+                            }
+                            Err(_) => {
+                                tracing::warn!(
+                                    "Visitor WS write timeout (5s), abortando send task"
+                                );
+                                break;
+                            }
                         }
                     }
                 }
