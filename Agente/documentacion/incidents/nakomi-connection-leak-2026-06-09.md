@@ -1,12 +1,12 @@
 # Incidente: nakomi.studio — Connection Leak Persistente (CLOSE_WAIT → Deadlock → Congelamiento Silencioso)
 
 **Fecha inicio:** 2026-06-09 ~11:00 UTC  
-**Última caída:** 2026-06-10 ~15:38 UTC (caída #10)  
-**Severidad:** 🔴 Crítica — sitio cayendo cada ~1-6 horas tras 8 intentos de fix  
+**Última caída:** 2026-06-10 ~17:37 UTC (caída #11)  
+**Severidad:** 🔴 **CRÍTICA** — 11 caídas, 9 intentos de fix fallidos  
 **Servicio:** nakomi.studio (VPS1 66.94.100.241, Coolify service `do8k4w8swccwwogoc0os0ck0`)  
-**Estado actual (2026-06-10 ~17:10 UTC):** 🟡 **Fix v8 desplegado.** Root cause identificado: cascada de 4 bugs en chat WebSocket.  
-**Commits desplegados:** `d89b3b02` (v8: fix raíz congelamiento silencioso).  
-**Root cause real:** Ver sección "Root Cause Final" abajo.  
+**Estado actual (2026-06-10 ~17:45 UTC):** 🔴 **Fix v8 NO resolvió el problema.** Servidor se congeló 14 minutos tras deploy. Hipótesis no explorada: `reqwest::Client` creado por llamada AI bloquea tokio workers.  
+**Commits desplegados:** `61920b92` (v8 fix + MD).  
+**Root cause real:** Ver sección "Root Cause Final" abajo. **Bug #6 (reqwest::Client) hipótesis activa.**  
 
 ---
 
@@ -24,7 +24,9 @@
 | v4 | TCP keepalive agresivo por socket | Caída en ~6h | Mejora parcial, NO definitivo |
 | v4.1 | GracefulShutdown + half_close(false) | 15 CLOSE_WAIT/6h | **15 CLOSE_WAIT NO matan servidor** → cuello de botella en otro sitio |
 | v5 | TCP keepalive por accepted socket + watchdog atómico | Desplegado, mismo patrón | Keepalive no es el problema real |
-| v6 | **Semaphore(3) AI + timeout(600s) + AtomicU64 + métricas** | **Caída en ~1.5h** | Concurrencia AI no era el killer |  
+| v6 | **Semaphore(3) AI + timeout(600s) + AtomicU64 + métricas** | **Caída en ~1.5h** | Concurrencia AI no era el killer |
+| v8 | **4 bugs cascada: Lagged, try_send, semaphore timeout, DashMap guard** | **Caída en ~14 minutos** | Fixes correctos pero NO era el root cause real |
+| v8 | **4 bugs cascada: Lagged, try_send, semaphore timeout, DashMap guard** | **Caída en ~14 minutos** | Fixes correctos pero NO era el root cause real |  
 
 ### Lo que sabemos con certeza:  
 
@@ -34,7 +36,10 @@
 4. **15 CLOSE_WAIT no deberían matar un servidor Rust** con 4 tokio workers. El cuello de botella NO es CLOSE_WAIT.  
 5. **El semáforo AI(3) y timeout(600s) no lo arreglan** → no es starvation por requests AI concurrentes.  
 6. **Health endpoint funciona** cuando el servidor responde: `{active_timing_loops: 0, registered_sessions: 0, ai_permits_available: 3}`.  
-7. **El contenedor tiene 5.5GB RAM libres** y 190GB disco. No es OOM.  
+7. **El contenedor tiene 5.5GB RAM libres** y 190GB disco. No es OOM.
+8. **Fix v8 (4 bugs cascada) NO resolvió** — servidor se congeló en 14 minutos. Los bugs corregidos eran reales pero no el trigger.
+9. **Post-v8: `Connection reset by peer`** en vez de timeout → el listener fd puede estar cerrado/inválido, no solo bloqueado.
+10. **`reqwest::Client` creado por llamada AI** — DNS+TLS puede bloquear tokio workers. Hipótesis activa.
 
 ### Qué buscar (hipótesis no exploradas):  
 
@@ -86,8 +91,9 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colg�
 5. GracefulShutdown + `half_close(false)` → 15 CLOSE_WAIT/6h pero sigue cayendo
 6. TCP keepalive per-accepted-socket + watchdog atómico → desplegado, mismo patrón
 7. **Semaphore(3) AI + timeout(600s) + AtomicU64 + métricas health** → caído en ~1.5h
+8. **4 bugs cascada (Lagged, try_send, semaphore timeout, DashMap guard)** → caído en ~14 minutos
 
-**Conclusión: PEDIR AYUDA EXTERNA.** Las hipótesis exploradas (CLOSE_WAIT, TCP keepalive, concurrencia AI) NO son la causa raíz.
+**Conclusión: FIX v8 NO RESOLVIÓ.** Los bugs corregidos son reales pero no son el trigger del congelamiento. Hipótesis activa: `reqwest::Client` por llamada AI (Bug #6).
 
 **Root cause real descubierto en fix v5:** `accept()` en Linux **NO hereda** `SO_KEEPALIVE` del listening socket. Los fixes v1-v4 aplicaban keepalive al listener (inútil). Las conexiones reales de Traefik → servidor arrancaban con keepalive desactivado o con defaults del kernel (7200s). Además, el watchdog HTTP generaba sus propias conexiones CLOSE_WAIT al probar `http://127.0.0.1:3000/healthz` cada 30s, y mataba la app con `exit(1)` cuando esas conexiones fallaban.
 
@@ -132,11 +138,16 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colg�
 | 2026-06-10 ~15:40 | Restauración #9 — 3ra caída en misma sesión |
 | 2026-06-10 ~15:43 | **Caída #10** — misma causa: escribir en chat |
 | 2026-06-10 ~15:45 | Restauración #10 + análisis profundo de código delegado a subagente |
-| 2026-06-10 ~17:09 | **Fix v8** (d89b3b02): 4 bugs cascada en chat WS — deploy iniciado |
+| 2026-06-10 ~17:09 | **Fix v8** (d89b3b02): 4 bugs cascada en chat WS — deploy completado |
+| 2026-06-10 ~17:23 | Servidor reiniciado con fix v8 — health 200, ai_permits=3 |
+| 2026-06-10 ~17:37:14 | **Caída #11** — usuario (admin d422903d) escribe en chat → servidor CONGELA en ~14 minutos |
+| 2026-06-10 ~17:37:19 | Segunda conexión WS del mismo usuario (posible refresh) — último log del servidor |
+| 2026-06-10 ~17:45 | **Diagnóstico:** `curl localhost:3000/healthz` → `Connection reset by peer` (servidor RSTea activamente). `ss -tnp` → vacío. FD=22. Process running. |
+| 2026-06-10 ~17:45 | Restauración #11 con `docker restart` — HTTP 200 |
 
 ---
 
-## Root Cause Final (descubierto 2026-06-10)
+## Root Cause Final (descubierto 2026-06-10, revisado post-fix-v8)
 
 **El servidor NO se cuelga por CLOSE_WAIT, ni por TCP keepalive, ni por concurrencia AI. Se CONGELA por una cascada de 4 bugs en el flujo del chat WebSocket.**
 
@@ -172,6 +183,39 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colg�
 - Bug 2: `timing_tx.send().await` → `timing_tx.try_send()` en todos los paths
 - Bug 3: `ai_semaphore.acquire()` → con timeout 30s
 - Bug 4: DashMap `get()` → clone sender fuera del guard
+
+### ⚠️ Fix v8 NO RESOLVIÓ — Caída #11 (14 minutos post-deploy)
+
+**Datos de la caída:**
+- Servidor arrancó 17:23:43, usuario conectó 17:37:14, servidor congeló 17:37:19
+- `curl localhost:3000/healthz` → `Connection reset by peer` (RST activo)
+- `ss -tnp` → vacío (cero conexiones TCP visibles)
+- FD count = 22 (sin leak)
+- Process: `Status=running, OOM=false, ExitCode=0`
+- ZERO logs después de la conexión WS
+
+**Diferencia clave vs v6:**
+- v6: curl healthz → TIMEOUT (servidor acepta conexión pero no responde)
+- v8: curl healthz → `Connection reset by peer` (servidor RSTea activamente)
+- Esto sugiere que el listener fd está cerrado o en estado inválido
+
+### Hipótesis activa: Bug #6 — `reqwest::Client` por llamada AI
+
+**Descubierto por subagente en análisis de `ai_providers.rs` (líneas 48-51):**
+```rust
+let client = reqwest::Client::builder()
+    .timeout(Duration::from_secs(90))
+    .build()?;
+```
+Cada llamada AI crea un `reqwest::Client` nuevo. Esto implica:
+- DNS resolution síncrona (puede bloquear tokio worker)
+- TLS handshake (CPU intensivo, puede tomar 100-500ms)
+- Con 3 concurrent AI calls → 3 workers bloqueados en DNS+TLS
+- Con 4 tokio workers → 1 worker libre → accept loop puede no despachar
+
+**Si `reqwest::Client::builder().build()` hace DNS resolution eagerly (no lazy), puede bloquear el thread de tokio.** Con 4 workers y 3+ llamadas AI concurrentes, el accept loop queda sin worker disponible → servidor acepta socket pero no procesa → RST.
+
+**Fix propuesto:** Usar `state.http_client` (shared) en lugar de crear client nuevo por llamada.
 
 ---
 
