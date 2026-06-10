@@ -254,7 +254,7 @@ impl AiChatService {
 
         /* [T-2] Tool call loop: máximo 3 iteraciones */
         for iteration in 0..3 {
-            let resp = call_ai_api(config, &messages, Some(&tools)).await?;
+            let resp = call_ai_api(config, &messages, Some(&tools), Some(http_client)).await?;
 
             let choice = &resp["choices"][0];
             let tool_calls = &choice["message"]["tool_calls"];
@@ -314,7 +314,7 @@ impl AiChatService {
         }
 
         /* Si agotamos iteraciones de tools, generar sin tools */
-        let resp = call_ai_api(config, &messages, None).await?;
+        let resp = call_ai_api(config, &messages, None, Some(http_client)).await?;
         let text = resp["choices"][0]["message"]["content"]
             .as_str()
             .unwrap_or("Disculpa, hubo un problema procesando tu solicitud.");
@@ -331,7 +331,7 @@ impl AiChatService {
     pub async fn generate_intermediary_response(
         pool: &PgPool,
         config: &AiChatConfig,
-        _http_client: &reqwest::Client,
+        http_client: &reqwest::Client,
         session_id: Uuid,
         order: &Order,
         user_id: Uuid,
@@ -359,7 +359,7 @@ impl AiChatService {
             messages.push(serde_json::json!({"role": role, "content": msg.content}));
         }
 
-        let resp = call_ai_api(config, &messages, None).await?;
+        let resp = call_ai_api(config, &messages, None, Some(http_client)).await?;
         let text = resp["choices"][0]["message"]["content"]
             .as_str()
             .unwrap_or("Disculpa, no pude procesar tu mensaje. Un miembro del equipo te asistirá.");
@@ -376,7 +376,7 @@ impl AiChatService {
     pub async fn maybe_update_order_summary(
         pool: &PgPool,
         config: &AiChatConfig,
-        _http_client: &reqwest::Client,
+        http_client: &reqwest::Client,
         order_id: Uuid,
         msgs: &[ChatMessage],
     ) {
@@ -397,7 +397,7 @@ impl AiChatService {
         ];
 
         if let Ok(json) =
-            call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(400)).await
+            call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(400), Some(http_client)).await
         {
             if let Some(summary) = json["choices"][0]["message"]["content"].as_str() {
                 let _ = OrderRepository::update_ai_summary(pool, order_id, summary).await;

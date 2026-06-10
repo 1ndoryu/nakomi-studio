@@ -35,12 +35,16 @@ impl ChatApiOptions {
 
 /* [095A-10] Llamar a API AI con retry multi-proveedor.
  * Flujo: DeepSeek → Groq (modelos × keys) → Gemini. */
+/* [096A-9] call_ai_api ahora acepta un reqwest::Client compartido.
+ * Crear Client por llamada hace DNS+TLS síncrono, bloqueando tokio workers.
+ * Si no se provee client, crea uno nuevo (fallback para compatibilidad). */
 pub(crate) async fn call_ai_api(
     config: &AiChatConfig,
     messages: &[Value],
     tools: Option<&Value>,
+    client: Option<&reqwest::Client>,
 ) -> Result<Value, String> {
-    call_ai_api_with_options(config, messages, tools, ChatApiOptions::standard()).await
+    call_ai_api_with_options(config, messages, tools, ChatApiOptions::standard(), client).await
 }
 
 pub(crate) async fn call_ai_api_with_options(
@@ -48,11 +52,19 @@ pub(crate) async fn call_ai_api_with_options(
     messages: &[Value],
     tools: Option<&Value>,
     options: ChatApiOptions,
+    client: Option<&reqwest::Client>,
 ) -> Result<Value, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(options.timeout_secs))
-        .build()
-        .unwrap_or_default();
+    let default_client;
+    let client = match client {
+        Some(c) => c,
+        None => {
+            default_client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(options.timeout_secs))
+                .build()
+                .unwrap_or_default();
+            &default_client
+        }
+    };
     let mut last_error = String::new();
 
     if config.deepseek_key.is_some() {
@@ -99,6 +111,7 @@ async fn try_deepseek_provider(
 
     let resp = client
         .post(&config.deepseek_url)
+        .timeout(std::time::Duration::from_secs(options.timeout_secs))
         .header("Authorization", format!("Bearer {deepseek_key}"))
         .header("Content-Type", "application/json")
         .json(&body)
@@ -160,6 +173,7 @@ async fn try_groq_provider(
 
             let resp = client
                 .post(&config.api_url)
+                .timeout(std::time::Duration::from_secs(options.timeout_secs))
                 .header("Authorization", format!("Bearer {api_key}"))
                 .header("Content-Type", "application/json")
                 .json(&body)
@@ -240,6 +254,7 @@ async fn try_gemini_provider(
 
         let resp = client
             .post(&config.gemini_url)
+            .timeout(std::time::Duration::from_secs(options.timeout_secs))
             .header("Authorization", format!("Bearer {gemini_key}"))
             .header("Content-Type", "application/json")
             .json(&body)

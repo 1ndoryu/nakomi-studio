@@ -509,10 +509,11 @@ async fn session_timing_loop(
      * [096A-7] Wrap en timeout 60s: fire-and-forget no debe vivir indefinidamente. */
     let summary_pool = deps.pool.clone();
     let summary_config = deps.ai_config.clone();
+    let summary_http = deps.http_client.clone();
     tokio::spawn(async move {
         let _ = tokio::time::timeout(
             Duration::from_secs(60),
-            generate_context_summary(summary_pool, summary_config, session_id, deps.visitor_id),
+            generate_context_summary(summary_pool, summary_config, summary_http, session_id, deps.visitor_id),
         )
         .await;
     });
@@ -608,7 +609,7 @@ async fn generate_ai_response(
     }
 
     /* Clasificador de relevancia: filtrar off-topic con modelo pequeño */
-    if let Ok(false) = check_relevance(&deps.pool, &deps.ai_config, combined).await {
+    if let Ok(false) = check_relevance(&deps.pool, &deps.ai_config, combined, &deps.http_client).await {
         irrelevant_count += 1;
         let msg = if irrelevant_count >= MAX_IRRELEVANT_STREAK {
             irrelevant_count = 0;
@@ -769,6 +770,7 @@ async fn check_relevance(
     _pool: &PgPool,
     config: &AiChatConfig,
     content: &str,
+    http_client: &reqwest::Client,
 ) -> Result<bool, String> {
     if !config.is_configured() {
         return Ok(true); /* sin API keys, asumir relevante */
@@ -788,7 +790,7 @@ async fn check_relevance(
         }),
         serde_json::json!({"role": "user", "content": content}),
     ];
-    let json = call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(5)).await?;
+    let json = call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(5), Some(http_client)).await?;
 
     let answer = json["choices"][0]["message"]["content"]
         .as_str()
@@ -867,6 +869,7 @@ async fn send_escalation(
 async fn generate_context_summary(
     pool: PgPool,
     config: AiChatConfig,
+    http_client: reqwest::Client,
     session_id: Uuid,
     visitor_id: String,
 ) {
@@ -903,7 +906,7 @@ async fn generate_context_summary(
         &transcript
     };
 
-    let Some(summary) = call_summary_api(&config, transcript_truncated).await else {
+    let Some(summary) = call_summary_api(&config, transcript_truncated, &http_client).await else {
         return;
     };
 
@@ -940,7 +943,7 @@ async fn generate_context_summary(
 
 /* [T-3] Llama a la API de Groq con modelo ligero para generar resumen de sesión.
  * Retorna None si la API falla o el resumen está vacío. */
-async fn call_summary_api(config: &AiChatConfig, transcript: &str) -> Option<String> {
+async fn call_summary_api(config: &AiChatConfig, transcript: &str, http_client: &reqwest::Client) -> Option<String> {
     let messages = [
         serde_json::json!({
             "role": "system",
@@ -952,7 +955,7 @@ async fn call_summary_api(config: &AiChatConfig, transcript: &str) -> Option<Str
         serde_json::json!({"role": "user", "content": transcript}),
     ];
 
-    match call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(200)).await {
+    match call_ai_api_with_options(config, &messages, None, ChatApiOptions::terse(200), Some(http_client)).await {
         Ok(json) => {
             let s = json["choices"][0]["message"]["content"]
                 .as_str()
