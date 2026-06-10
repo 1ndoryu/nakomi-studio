@@ -4,9 +4,9 @@
 **Última caída:** 2026-06-10 ~17:37 UTC (caída #11)  
 **Severidad:** 🔴 **CRÍTICA** — 11 caídas, 9 intentos de fix fallidos  
 **Servicio:** nakomi.studio (VPS1 66.94.100.241, Coolify service `do8k4w8swccwwogoc0os0ck0`)  
-**Estado actual (2026-06-10 ~17:45 UTC):** 🔴 **Fix v8 NO resolvió el problema.** Servidor se congeló 14 minutos tras deploy. Hipótesis no explorada: `reqwest::Client` creado por llamada AI bloquea tokio workers.  
-**Commits desplegados:** `61920b92` (v8 fix + MD).  
-**Root cause real:** Ver sección "Root Cause Final" abajo. **Bug #6 (reqwest::Client) hipótesis activa.**  
+**Estado actual (2026-06-10 ~18:10 UTC):** 🟡 **Fix v9 desplegado.** `reqwest::Client` compartido — elimina DNS+TLS por llamada AI. Esperando verificación.  
+**Commits desplegados:** `49cbb36f` (v9: shared http_client), `669eab26` (MD update).  
+**Root cause real:** Ver sección "Root Cause Final" abajo. **Bug #6 (reqwest::Client) fix desplegado.**  
 
 ---
 
@@ -26,7 +26,7 @@
 | v5 | TCP keepalive por accepted socket + watchdog atómico | Desplegado, mismo patrón | Keepalive no es el problema real |
 | v6 | **Semaphore(3) AI + timeout(600s) + AtomicU64 + métricas** | **Caída en ~1.5h** | Concurrencia AI no era el killer |
 | v8 | **4 bugs cascada: Lagged, try_send, semaphore timeout, DashMap guard** | **Caída en ~14 minutos** | Fixes correctos pero NO era el root cause real |
-| v8 | **4 bugs cascada: Lagged, try_send, semaphore timeout, DashMap guard** | **Caída en ~14 minutos** | Fixes correctos pero NO era el root cause real |  
+| v9 | **reqwest::Client compartido — elimina DNS+TLS por llamada AI** | **Desplegado 2026-06-10 18:10** | Esperando verificación — hipótesis Bug #6 |  
 
 ### Lo que sabemos con certeza:  
 
@@ -144,6 +144,8 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue colg�
 | 2026-06-10 ~17:37:19 | Segunda conexión WS del mismo usuario (posible refresh) — último log del servidor |
 | 2026-06-10 ~17:45 | **Diagnóstico:** `curl localhost:3000/healthz` → `Connection reset by peer` (servidor RSTea activamente). `ss -tnp` → vacío. FD=22. Process running. |
 | 2026-06-10 ~17:45 | Restauración #11 con `docker restart` — HTTP 200 |
+| 2026-06-10 ~17:51 | **Fix v9** (49cbb36f): reqwest::Client compartido — elimina DNS+TLS por llamada AI |
+| 2026-06-10 ~18:10 | Deploy v9 completado (build 879s) — health 200, ai_permits=3 |
 
 ---
 
