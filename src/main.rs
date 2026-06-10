@@ -22,7 +22,7 @@ use glory_backend::services::vps_monitor::vps_monitor_loop;
 use glory_backend::services::{AssignmentService, ContaboConfig, ContaboService, CoolifyConfig};
 use glory_rs::fixtures::ContentManager;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 #[allow(clippy::too_many_lines)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                 tracing_subscriber::EnvFilter::new(
-                    "glory_backend=debug,glory_rs=debug,tower_http=debug",
+                    "glory_backend=debug,glory_rs=debug,tower_http=debug,hyper=debug,h2=debug",
                 )
             }),
         )
@@ -88,6 +88,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
      * Box::leak es intencional: vive tanto como el proceso. */
     let heartbeat: &'static AtomicU64 = Box::leak(Box::new(AtomicU64::new(0)));
     spawn_heartbeat_watchdog(heartbeat);
+
+    /* [096A-10] Runtime watchdog: OS thread (NO tokio task) que detecta cuando
+     * el runtime tokio está congelado. Un tokio task actualiza un AtomicU64
+     * cada 5s; un OS thread separado lee ese timestamp. Si no se actualiza
+     * en 30s, el runtime está muerto → volcamos stacks del kernel y salimos.
+     * Esto es independiente del heartbeat del accept loop: captura el caso
+     * donde el accept loop funciona (Traefik healthchecks) pero los workers
+     * están todos bloqueados procesando chat. */
+    let rt_heartbeat: &'static AtomicU64 = Box::leak(Box::new(AtomicU64::new(0)));
+    spawn_runtime_watchdog(rt_heartbeat);
 
     /* [096A-2] Migrado de axum::serve() a hyper_util::auto::Builder para
      * configurar header_read_timeout a nivel HTTP. axum::serve() es
@@ -426,6 +436,103 @@ fn spawn_heartbeat_watchdog(heartbeat: &'static AtomicU64) {
             }
         }
     });
+}
+
+/* [096A-10] Runtime watchdog: detecta tokio congelado via heartbeat de task + OS thread.
+ * El tokio task actualiza un timestamp cada 5s; el OS thread lee el timestamp
+ * con recv_timeout. Si el runtime está muerto, el tokio task no puede ejecutar,
+ * el timestamp se estanca, y el OS thread lo detecta.
+ * Al detectar freeze: volcamos stacks del kernel (/proc/self/task/TID/stack)
+ * y forzamos exit(1) para que Docker reinicie. */
+fn spawn_runtime_watchdog(rt_heartbeat: &'static AtomicU64) {
+    use std::sync::mpsc as std_mpsc;
+
+    if std::env::var("GLORY_HTTP_WATCHDOG")
+        .is_ok_and(|value| value.eq_ignore_ascii_case("false") || value == "0")
+    {
+        return;
+    }
+
+    let (tx, rx) = std_mpsc::sync_channel::<()>(1);
+
+    /* Tokio task: envía pulso cada 5s */
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(60)).await;
+        loop {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            rt_heartbeat.store(now, Ordering::Relaxed);
+            /* También enviar por canal como doble verificación */
+            let _ = tx.try_send(());
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+    });
+
+    /* OS thread: monitorea el pulso. Si no llega en 30s → runtime congelado */
+    std::thread::Builder::new()
+        .name("rt-watchdog".into())
+        .spawn(move || {
+            std::thread::sleep(Duration::from_secs(90)); /* warmup */
+            loop {
+                match rx.recv_timeout(Duration::from_secs(30)) {
+                    Ok(()) => { /* runtime vivo */ }
+                    Err(std_mpsc::RecvTimeoutError::Timeout) => {
+                        /* Verificar también el atomic */
+                        let last = rt_heartbeat.load(Ordering::Relaxed);
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        let stale = now.saturating_sub(last);
+                        if stale < 20 {
+                            continue; /* fue timeout del canal, pero atomic está fresco */
+                        }
+                        eprintln!(
+                            "\n[rt-watchdog] ⚠️  RUNTIME FREEZE DETECTED: sin pulso en {stale}s"
+                        );
+                        eprintln!("[rt-watchdog] Volcando stacks del kernel...\n");
+                        dump_kernel_stacks();
+                        eprintln!("\n[rt-watchdog] Forzando exit(1) para restart de Docker...");
+                        std::process::exit(1);
+                    }
+                    Err(std_mpsc::RecvTimeoutError::Disconnected) => break,
+                }
+            }
+        })
+        .expect("spawn rt-watchdog thread");
+}
+
+/* Volcar stacks del kernel de todos los threads via /proc/self/task/TID/stack.
+ * Funciona dentro de Docker en Linux. No requiere gdb ni herramientas externas.
+ * Los stacks del kernel muestran si un thread está bloqueado en futex (mutex),
+ * esperando I/O, o en estado running. Muy útil para diagnosticar deadlocks. */
+fn dump_kernel_stacks() {
+    let Ok(tasks) = std::fs::read_dir("/proc/self/task") else {
+        eprintln!("[rt-watchdog] No se pudo leer /proc/self/task");
+        return;
+    };
+    for entry in tasks.flatten() {
+        let tid = entry.file_name();
+        let tid_str = tid.to_string_lossy();
+        let stack_path = format!("/proc/self/task/{tid_str}/stack");
+        let status_path = format!("/proc/self/task/{tid_str}/status");
+        let name = std::fs::read_to_string(&status_path)
+            .ok()
+            .and_then(|s| {
+                s.lines()
+                    .find(|l| l.starts_with("Name:"))
+                    .map(|l| l.trim_start_matches("Name:").trim().to_string())
+            })
+            .unwrap_or_default();
+        if let Ok(stack) = std::fs::read_to_string(&stack_path) {
+            let trimmed = stack.trim();
+            if !trimmed.is_empty() && trimmed != "(empty)" {
+                eprintln!("--- Thread {tid_str} ({name}) ---\n{trimmed}\n");
+            }
+        }
+    }
 }
 
 /* [074A-23] Limpia datos de seed legacy que ahora son manejados por fixtures.

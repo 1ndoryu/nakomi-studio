@@ -214,6 +214,7 @@ impl ChatHub {
         sender_id: Option<&str>,
         content: &str,
     ) -> Result<ChatMessage, AppError> {
+        tracing::debug!(%session_id, sender = sender_type, len = content.len(), "send_message: persistiendo en BD");
         let msg =
             ChatRepository::save_message(&self.pool, session_id, sender_type, sender_id, content)
                 .await?;
@@ -229,6 +230,7 @@ impl ChatHub {
             metadata: msg.metadata.clone(),
         };
         self.broadcast(session_id, ws_msg);
+        tracing::debug!(%session_id, sender = sender_type, "send_message: broadcast completado");
 
         Ok(msg)
     }

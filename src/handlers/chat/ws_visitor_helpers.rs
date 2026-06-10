@@ -114,6 +114,8 @@ async fn handle_visitor_text_message(
 
     let content = truncate_visitor_message(content);
 
+    tracing::debug!(%session_id, len = content.len(), "Procesando mensaje de texto del visitante");
+
     if let Some(ip) = client_ip {
         let (ip_result, ip_msg) = state.chat_timing.check_ip_rate(ip);
         if let Some(should_close) =
@@ -142,6 +144,7 @@ async fn handle_visitor_text_message(
         .chat_hub
         .send_message(session_id, "client", Some(visitor_id), &content)
         .await;
+    tracing::debug!(%session_id, "Mensaje persistido y broadcast, enviando a timing channel...");
     /* [096A-8] try_send en vez de send: si el canal timing está lleno (IA ocupada),
      * NO bloquear el handler WS. send().await congela la lectura del WebSocket
      * → buffer TCP se llena → conexión se congela silenciosamente. */
@@ -166,6 +169,7 @@ pub async fn process_visitor_messages(
 ) -> bool {
     /* [096A-1] Timeout de inactividad: 5 minutos sin mensajes del visitante
      * → cerrar conexión para liberar recursos y evitar acumulación de CLOSE_WAIT. */
+    tracing::debug!(%session_id, "process_visitor_messages: entrando al loop");
     loop {
         let msg = match tokio::time::timeout(
             std::time::Duration::from_secs(300),
@@ -181,8 +185,18 @@ pub async fn process_visitor_messages(
             continue;
         };
         let Ok(ws_msg) = serde_json::from_str::<WsClientMessage>(&text) else {
+            tracing::warn!(%session_id, "Mensaje WS con formato inválido");
             continue;
         };
+
+        let tipo = match &ws_msg {
+            WsClientMessage::Message { .. } => "message",
+            WsClientMessage::Typing { .. } => "typing",
+            WsClientMessage::Close => "close",
+            WsClientMessage::Action { .. } => "action",
+            _ => "other",
+        };
+        tracing::debug!(%session_id, %tipo, "Mensaje WS recibido");
 
         match ws_msg {
             WsClientMessage::Message { content } => {

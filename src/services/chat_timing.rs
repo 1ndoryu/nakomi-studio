@@ -87,6 +87,7 @@ const MAX_CONCURRENT_AI_REQUESTS: usize = 3;
 const TIMING_LOOP_MAX_LIFETIME: Duration = Duration::from_secs(600);
 
 /// Eventos que el handler WS envía al timing service
+#[derive(Debug)]
 pub enum TimingEvent {
     Message(String),
     TypingStart,
@@ -446,11 +447,15 @@ async fn session_timing_loop(
     let mut is_typing = false;
     let mut irrelevant_count: u32 = 0;
 
+    tracing::info!(%session_id, "session_timing_loop: iniciado");
     loop {
         /* Estado IDLE: esperar primer mensaje */
         let Some(event) = rx.recv().await else {
+            tracing::info!(%session_id, "session_timing_loop: channel cerrado, saliendo");
             break; /* channel cerrado, sesión terminó */
         };
+
+        tracing::info!(%session_id, ?event, "session_timing_loop: evento recibido");
 
         match event {
             TimingEvent::Disconnect => break,
@@ -479,6 +484,7 @@ async fn session_timing_loop(
         let combined = buffer.join("\n");
         buffer.clear();
 
+        tracing::info!(%session_id, chars = combined.len(), "Iniciando respuesta IA");
         /* [096A-7] Adquirir permit del semáforo antes de llamar a IA.
          * Limita peticiones IA concurrentes para proteger pool DB y APIs. */
         /* [096A-8] Timeout en semaphore: si 3 permits ocupados >30s, abortar en vez de bloquear.
@@ -601,6 +607,7 @@ async fn generate_ai_response(
         };
 
     if !session_ok {
+        tracing::info!(%session_id, "generate_ai_response: sesión no activa, saltando IA");
         return irrelevant_count;
     }
 
@@ -634,6 +641,7 @@ async fn generate_ai_response(
     /* [114A-6] Timeout global 90s para toda la cadena de retries de IA.
      * Sin esto, la cadena Groq (3 keys × 3 modelos) + Gemini (6 modelos)
      * podría bloquear hasta 7+ minutos reteniendo conexión DB. */
+    tracing::info!(%session_id, "Llamando a IA para generar respuesta...");
     let ai_result = tokio::time::timeout(
         std::time::Duration::from_secs(90),
         AiChatService::generate_response(
@@ -654,10 +662,13 @@ async fn generate_ai_response(
     .await;
 
     let ai_resp = if let Ok(result) = ai_result {
-        result.unwrap_or_else(|e| AiResponse {
-            text: format!("Error IA: {e}"),
-            needs_escalation: true,
-            rich_messages: Vec::new(),
+        result.unwrap_or_else(|e| {
+            tracing::warn!(%session_id, error = %e, "Error en respuesta IA");
+            AiResponse {
+                text: format!("Error IA: {e}"),
+                needs_escalation: true,
+                rich_messages: Vec::new(),
+            }
         })
     } else {
         tracing::error!("AI response timeout (90s) para sesión {session_id}");
@@ -669,6 +680,8 @@ async fn generate_ai_response(
             rich_messages: Vec::new(),
         }
     };
+
+    tracing::info!(%session_id, has_escalation = ai_resp.needs_escalation, rich_count = ai_resp.rich_messages.len(), "Respuesta IA recibida, enviando...");
 
     /* [T-2] Enviar rich messages (service_cards, invoices) antes del texto */
     for rm in &ai_resp.rich_messages {

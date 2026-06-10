@@ -262,6 +262,7 @@ async fn handle_visitor_ws(
     };
 
     let session_id = session.id;
+    tracing::info!(%session_id, visitor_id = %params.visitor_id, "WS session obtenida/creada");
     let rx = state.chat_hub.subscribe(session_id);
     let (mut sender, mut receiver) = socket.split();
 
@@ -332,6 +333,7 @@ async fn handle_visitor_ws(
 
     /* Procesar mensajes del visitante. Retorna true si el cierre fue explícito
      * (usuario cerró chat o rate limit forzó cierre). */
+    tracing::info!(%session_id, "Esperando mensajes del visitante...");
     let explicit_close = process_visitor_messages(
         &mut receiver,
         &state,
