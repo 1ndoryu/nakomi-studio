@@ -76,7 +76,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         socket2::Type::STREAM,
         None,
     )?;
-    socket.set_keepalive(true)?;
+    /* [096A-4] TCP keepalive agresivo: detecta peers muertos en ~120s
+     * (60s idle + 4 probes × 15s). El default del kernel Linux es 7200s (2h),
+     * completamente inútil para detectar CLOSE_WAIT a tiempo.
+     * set_keepalive(true) sin parámetros usaba ese default → fix v1 no servía. */
+    let keepalive = socket2::TcpKeepalive::new()
+        .with_time(Duration::from_secs(60))
+        .with_interval(Duration::from_secs(15));
+    #[cfg(unix)]
+    let keepalive = keepalive.with_retries(4);
+    socket.set_tcp_keepalive(&keepalive)?;
     socket.set_nonblocking(true)?;
     socket.set_reuse_address(true)?;
     socket.bind(&sock_addr.into())?;
@@ -109,44 +118,57 @@ let tower_service = match make_service.call(remote_addr).await {
                     };
 
                 tokio::spawn(async move {
-                    let io = TokioIo::new(tcp_stream);
+                    /* [096A-4] Timeout absoluto por conexión: fuerza drop del socket
+                     * si hyper no cierra limpiamente (CLOSE_WAIT, upgrades huérfanos).
+                     * WS legítimos: su timeout de inactividad (5min) cierra antes.
+                     * HTTP keep-alive: header_read_timeout (30s) cierra idle antes.
+                     * Este es el safety net que dropea el TcpStream → close() vía RAII.
+                     * Sin esto, conexiones CLOSE_WAIT sobreviven indefinidamente. */
+                    let conn_future = async {
+                        let io = TokioIo::new(tcp_stream);
 
-                    let hyper_service =
-                        hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
-                            tower_service.clone().oneshot(request)
-                        });
+                        let hyper_service =
+                            hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
+                                tower_service.clone().oneshot(request)
+                            });
 
-                    let mut builder = auto::Builder::new(TokioExecutor::new());
+                        let mut builder = auto::Builder::new(TokioExecutor::new());
 
-                    /* [096A-2] HTTP/1.1: header_read_timeout se rearma tras cada
-                     * respuesta y actúa como idle timeout (hyper PR #3828). */
-                    let mut http1 = builder.http1();
-                    http1
-                        .timer(TokioTimer::new())
-                        .header_read_timeout(Duration::from_secs(30))
-                        .keep_alive(true);
+                        /* [096A-2] HTTP/1.1: header_read_timeout se rearma tras cada
+                         * respuesta y actúa como idle timeout (hyper PR #3828). */
+                        let mut http1 = builder.http1();
+                        http1
+                            .timer(TokioTimer::new())
+                            .header_read_timeout(Duration::from_secs(30))
+                            .keep_alive(true);
 
-                    /* [096A-2] HTTP/2: keep-alive con PING cada 30s, timeout 10s.
-                     * Sin esto, conexiones h2c (si Traefik negocia H2) quedan
-                     * abiertas indefinidamente → CLOSE_WAIT. */
-                    let mut http2 = builder.http2();
-                    http2
-                        .keep_alive_interval(Duration::from_secs(30))
-                        .keep_alive_timeout(Duration::from_secs(10));
+                        /* [096A-2] HTTP/2: keep-alive con PING cada 30s, timeout 10s.
+                         * Sin esto, conexiones h2c (si Traefik negocia H2) quedan
+                         * abiertas indefinidamente → CLOSE_WAIT. */
+                        let mut http2 = builder.http2();
+                        http2
+                            .keep_alive_interval(Duration::from_secs(30))
+                            .keep_alive_timeout(Duration::from_secs(10));
 
-                    let conn = builder
-                        .serve_connection_with_upgrades(io, hyper_service);
+                        let conn = builder
+                            .serve_connection_with_upgrades(io, hyper_service);
 
-                    tokio::select! {
-                        result = conn => {
-                            if let Err(err) = result {
-                                tracing::debug!("Connection error from {remote_addr}: {err:#}");
-                            }
+                        if let Err(err) = conn.await {
+                            tracing::debug!("Connection error from {remote_addr}: {err:#}");
                         }
-                        _ = shutdown_signal() => {
-                            /* graceful shutdown: dejar que hyper cierre limpiamente */
-                        }
+                    };
+
+                    if tokio::time::timeout(Duration::from_secs(600), conn_future)
+                        .await
+                        .is_err()
+                    {
+                        tracing::debug!(
+                            "Connection from {remote_addr} killed by 10min absolute timeout"
+                        );
                     }
+                    /* Socket (TcpStream) se dropea aquí → close() automático vía RAII.
+                     * Este es el mecanismo que limpia CLOSE_WAIT: sin drop explícito,
+                     * hyper puede mantener el socket abierto indefinidamente. */
                 });
             }
             _ = &mut shutdown => {
