@@ -1,10 +1,10 @@
 # Incidente: nakomi.studio — Connection Leak Persistente (CLOSE_WAIT → Deadlock)
 
 **Fecha inicio:** 2026-06-09 ~11:00 UTC  
-**Última caída:** 2026-06-10 ~09:45 UTC  
+**Última caída:** 2026-06-10 ~11:30 UTC  
 **Severidad:** 🔴 Crítica — sitio cayendo repetidamente cada ~6 horas  
 **Servicio:** nakomi.studio (VPS1 66.94.100.241, Coolify service `do8k4w8swccwwogoc0os0ck0`)  
-**Estado actual (2026-06-10 ~10:08 UTC):** Fix v5 implementado, pendiente deploy.  
+**Estado actual (2026-06-10 ~11:35 UTC):** Fix v5 deployándose vía `deploy-service --skip-backup`. Sitio caído, restaurando.  
 **Commits desplegados:** `21bca97a` (v4.1). Fix v5 pendiente deploy.  
 **Root cause real (v5):** `accept()` en Linux NO hereda `SO_KEEPALIVE` del listener socket → TCP keepalive de fixes v1-v4 era NO-OP en todas las conexiones reales. Además, el watchdog HTTP generaba CLOSE_WAIT propio.
 
@@ -47,6 +47,15 @@ El servidor Rust (Axum 0.7.9 + Hyper 1.x + tokio) de nakomi.studio **sigue acumu
 | ~20:15 | **Sitio DOWN de nuevo** — 425 CLOSE_WAIT acumulados en ~2 horas |
 | ~20:18 | `docker restart` manual → sitio restaurado (HTTP 200) |
 | ~20:20 | Documento actualizado con status: **FIX NO ENCONTRADO** |
+| 2026-06-09 ~22:51 | **Fix v4** (2c25102f): TCP keepalive agresivo + timeout absoluto 10min |
+| 2026-06-09 ~23:32 | **Fix v4.1** (21bca97a): GracefulShutdown + half_close(false) |
+| 2026-06-10 ~03:44 | Deploy v4.1 a producción (imagen `7382774993fc`) |
+| 2026-06-10 ~09:45 | **Sitio DOWN** — 15 CLOSE_WAIT en 6h (mejora 30x vs v3, pero NO definitivo) |
+| 2026-06-10 ~09:50 | `docker restart` → sitio restaurado (HTTP 200) |
+| 2026-06-10 ~10:29 | Contenedor reiniciado (otro agente o Coolify auto-restart) |
+| 2026-06-10 ~10:30-11:30 | **Fix v5** implementado por otro agente: TCP keepalive por socket aceptado + watchdog atómico + timeout 300s |
+| 2026-06-10 ~11:30 | **Sitio DOWN de nuevo** — contenedor con ~1h de uptime |
+| 2026-06-10 ~11:32 | Deploy v5 vía `deploy-service --skip-backup` iniciado |
 
 ---
 
@@ -212,10 +221,20 @@ Las siguientes hipótesis NO se han confirmado ni descartado:
 - [x] Deploy v4.1 a producción — **confirmado: imagen desplegada, sitio caído tras 6h**
 - [x] Restauración con restart — **2026-06-10 ~09:50 UTC, HTTP 200**
 - [x] Fix v5 implementado: keepalive per-accepted-socket + watchdog atómico + timeout 300s
-- [ ] Deploy fix v5 a producción via coolify-manager-rs
+- [x] Sitio caído nuevamente tras ~1h de uptime (2026-06-10 ~11:30 UTC)
+- [ ] Deploy fix v5 a producción vía `deploy-service --skip-backup` — **EN CURSO**
 - [ ] Verificar post-deploy: CLOSE_WAIT ~0 tras 24h
+- [ ] Si v5 no resuelve: buscar ayuda externa (el usuario buscará soporte en otro lugar)
 - [ ] Agregar Docker healthcheck al compose
 - [ ] Monitoreo proactivo (alerta CLOSE_WAIT > 20)
+
+### Estado: BUSCANDO AYUDA EXTERNA
+El usuario ha decidido buscar ayuda fuera del equipo. **6 intentos de fix** no resolvieron el problema. El patrón es claro:
+- v1→v3: reducción gradual de CLOSE_WAIT pero sitio sigue cayendo
+- v4.1: mejora significativa (15 CLOSE_WAIT/6h) pero sitio sigue cayendo
+- v5: fix teóricamente correcto (keepalive por socket aceptado) — pendiente verificación
+
+**Nota para quien tome el caso:** El problema persiste pese a múltiples correcciones teóricamente correctas. Sospechar de factores externos: Traefik timeout mismatch, Docker networking bridge, o un bug en hyper-util 0.1.x.
 
 ---
 
@@ -248,6 +267,17 @@ Image:        sha256:5b9b6c7d2acc6ba6620a53ffa1ec6be96ee798be5f7fd037329108fd64c
 CLOSE_WAIT:   425 conexiones
 HTTP:         timeout (000)
 Watchdog:     fallando continuamente (error sending request for url)
+```
+
+### Datos del contenedor al momento de la caída (~11:30 UTC, 2026-06-10)
+```
+Container:    app-do8k4w8swccwwogoc0os0ck0
+Started:      2026-06-10T10:29:19 (último restart)
+Uptime:       ~1 hora antes de caer
+Status:       Up About an hour
+CLOSE_WAIT:   no medible (parse error en awk dentro del contenedor)
+HTTP:         timeout (curl no responde)
+Fix activo:   v4.1 (21bca97a) — GracefulShutdown + TCP keepalive
 ```
 
 ### Datos del servidor
