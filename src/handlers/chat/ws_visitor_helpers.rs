@@ -13,7 +13,10 @@ use crate::services::{RateCheckResult, TimingEvent};
 use crate::AppState;
 
 /* Enviar historial de mensajes al visitante al reconectar.
- * Retorna true si la sesión tenía mensajes previos, false si es nueva. */
+ * Retorna true si la sesión tenía mensajes previos, false si es nueva.
+ * [096A-14] Timeout 5s por mensaje: si el WS TCP está half-open (cliente
+ * desapareció sin FIN/RST), el write se bloquea indefinidamente ocupando
+ * el worker tokio. Con timeout, abortamos y liberamos el handler. */
 pub async fn send_history(
     state: &AppState,
     session_id: uuid::Uuid,
@@ -35,8 +38,23 @@ pub async fn send_history(
                 metadata: msg.metadata,
             };
             if let Ok(json) = serde_json::to_string(&ws_msg) {
-                if sender.send(Message::Text(json)).await.is_err() {
-                    return Err(());
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    sender.send(Message::Text(json)),
+                )
+                .await
+                {
+                    Ok(Ok(())) => { /* enviado OK */ }
+                    Ok(Err(_)) => {
+                        tracing::debug!("send_history: WS write error, abortando");
+                        return Err(());
+                    }
+                    Err(_) => {
+                        tracing::warn!(
+                            "send_history: WS write timeout (5s) para session {session_id}"
+                        );
+                        return Err(());
+                    }
                 }
             }
         }

@@ -318,7 +318,8 @@ async fn handle_visitor_ws(
             });
     state
         .chat_hub
-        .notify_visitor_online(session_id, visitor_online_at);
+        .notify_visitor_online(session_id, visitor_online_at)
+        .await;
 
     /* Notificar a staff de nueva sesión */
     state.chat_hub.broadcast(
@@ -379,7 +380,8 @@ async fn cleanup_visitor_session(
     if explicit_close {
         state
             .chat_hub
-            .notify_visitor_offline(session_id, Some(visitor_online_at));
+            .notify_visitor_offline(session_id, Some(visitor_online_at))
+            .await;
         /* [096A-8] try_send: si el timing loop está ocupado con IA, no bloquear cleanup.
          * unregister_session() eliminará el sender del DashMap, lo que cerrará el canal
          * y el timing loop terminará por sí solo al hacer recv(). */
@@ -392,7 +394,8 @@ async fn cleanup_visitor_session(
          * para que el mismo visitor_id recupere historial al volver. */
         state
             .chat_hub
-            .notify_visitor_offline(session_id, Some(visitor_online_at));
+            .notify_visitor_offline(session_id, Some(visitor_online_at))
+            .await;
         let _ = timing_tx.try_send(TimingEvent::Disconnect);
         state.chat_timing.unregister_session(session_id);
     }

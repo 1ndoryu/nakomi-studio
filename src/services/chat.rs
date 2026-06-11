@@ -9,14 +9,16 @@
  *   - mpsc::UnboundedSender::send() es lock-free: nunca bloquea el OS thread.
  *   - Cada suscriptor tiene su propio canal mpsc individual (no compartido).
  *   - broadcast() itera el Vec de senders y hace retain() limpiando caídos.
- *   - staff_senders usa std::sync::Mutex (retención microsegundos, operaciones lock-free). */
+ * [096A-14] staff_senders migrado a tokio::sync::Mutex: std::sync::Mutex bloqueaba
+ *   el worker tokio completo (OS thread) durante retain()+send(). Con tokio::sync::Mutex,
+ *   la task se suspende sin ocupar el worker. broadcast_to_staff() ahora es async. */
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use dashmap::DashMap;
 use sqlx::PgPool;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex as TokioMutex};
 use uuid::Uuid;
 
 use crate::errors::AppError;
@@ -34,8 +36,9 @@ pub struct ChatHub {
     pool: PgPool,
     /* session_id → Vec de senders mpsc (uno por suscriptor conectado) */
     channels: Arc<DashMap<Uuid, Vec<SessionSender>>>,
-    /* Canal global: staff conectados reciben session_new, visitor_status, etc. */
-    staff_senders: Arc<std::sync::Mutex<Vec<SessionSender>>>,
+    /* Canal global: staff conectados reciben session_new, visitor_status, etc.
+     * [096A-14] tokio::sync::Mutex: no bloquea el worker tokio bajo contención. */
+    staff_senders: Arc<TokioMutex<Vec<SessionSender>>>,
     /* [T-4] Contador de conexiones WS activas por sesión (tabs/dispositivos) */
     connection_counts: Arc<DashMap<Uuid, AtomicUsize>>,
 }
@@ -46,7 +49,7 @@ impl ChatHub {
         Self {
             pool,
             channels: Arc::new(DashMap::new()),
-            staff_senders: Arc::new(std::sync::Mutex::new(Vec::new())),
+            staff_senders: Arc::new(TokioMutex::new(Vec::new())),
             connection_counts: Arc::new(DashMap::new()),
         }
     }
@@ -91,10 +94,10 @@ impl ChatHub {
 
     /// [064A-68] Suscribirse al canal global de staff (nuevas sesiones, visitor_status, etc.)
     /// [096A-13] Crea un canal mpsc individual por staff conectado.
-    #[must_use]
-    pub fn subscribe_staff(&self) -> mpsc::UnboundedReceiver<WsServerMessage> {
+    /// [096A-14] tokio::sync::Mutex: lock().await no bloquea el worker.
+    pub async fn subscribe_staff(&self) -> mpsc::UnboundedReceiver<WsServerMessage> {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.staff_senders.lock().unwrap().push(tx);
+        self.staff_senders.lock().await.push(tx);
         rx
     }
 
@@ -108,9 +111,9 @@ impl ChatHub {
     }
 
     /// [096A-13] Broadcast a todos los staff conectados.
-    /// La `std::sync::Mutex` se mantiene solo durante iteración + send lock-free.
-    fn broadcast_to_staff(&self, msg: &WsServerMessage) {
-        let mut senders = self.staff_senders.lock().unwrap();
+    /// [096A-14] tokio::sync::Mutex: lock().await suspende la task sin bloquear el worker.
+    async fn broadcast_to_staff(&self, msg: &WsServerMessage) {
+        let mut senders = self.staff_senders.lock().await;
         senders.retain(|tx| tx.send(msg.clone()).is_ok());
     }
 
@@ -170,7 +173,8 @@ impl ChatHub {
         /* [064A-68] Notificar a todos los staff conectados sobre la nueva sesión */
         self.broadcast_to_staff(&WsServerMessage::SessionNew {
             session: session.clone(),
-        });
+        })
+        .await;
 
         Ok(session)
     }
@@ -206,14 +210,16 @@ impl ChatHub {
                 /* [064A-68] Notificar a staff conectados sobre nueva sesión de orden */
                 self.broadcast_to_staff(&WsServerMessage::SessionNew {
                     session: updated.clone(),
-                });
+                })
+                .await;
                 return Ok(updated);
             }
         }
 
         self.broadcast_to_staff(&WsServerMessage::SessionNew {
             session: session.clone(),
-        });
+        })
+        .await;
 
         Ok(session)
     }
@@ -460,7 +466,8 @@ impl ChatHub {
      * online=true cuando el visitor abre la conexión WS; online=false al desconectar.
      * Staff usa esto para mostrar online/offline y confirmar que el visitante lee los mensajes.
      * [096A-13] broadcast() + broadcast_to_staff() usan mpsc lock-free. */
-    pub fn notify_visitor_online(
+    /* [096A-14] async: broadcast_to_staff usa tokio::sync::Mutex */
+    pub async fn notify_visitor_online(
         &self,
         session_id: Uuid,
         last_connected_at: chrono::DateTime<chrono::Utc>,
@@ -471,10 +478,11 @@ impl ChatHub {
             last_connected_at: Some(last_connected_at),
         };
         self.broadcast(session_id, &msg);
-        self.broadcast_to_staff(&msg);
+        self.broadcast_to_staff(&msg).await;
     }
 
-    pub fn notify_visitor_offline(
+    /* [096A-14] async: broadcast_to_staff usa tokio::sync::Mutex */
+    pub async fn notify_visitor_offline(
         &self,
         session_id: Uuid,
         last_connected_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -485,6 +493,6 @@ impl ChatHub {
             last_connected_at,
         };
         self.broadcast(session_id, &msg);
-        self.broadcast_to_staff(&msg);
+        self.broadcast_to_staff(&msg).await;
     }
 }

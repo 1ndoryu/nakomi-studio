@@ -45,21 +45,23 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
     /* Canal interno: las suscripciones a sesiones envían aquí, un task central escribe al WS */
     let (tx, mut rx) = tokio::sync::mpsc::channel::<WsServerMessage>(128);
 
-    /* Enviar lista de sesiones activas al conectar */
+    /* Enviar lista de sesiones activas al conectar.
+     * [096A-14] 5s timeout para evitar bloqueo en TCP half-open. */
     if let Ok(sessions) = hub.list_all_active_sessions().await {
         let init_msg = serde_json::json!({
             "type": "init",
             "sessions": sessions
         });
         if let Ok(json) = serde_json::to_string(&init_msg) {
-            let _ = ws_sender.send(Message::Text(json)).await;
+            let send_fut = ws_sender.send(Message::Text(json));
+            let _ = tokio::time::timeout(std::time::Duration::from_secs(5), send_fut).await;
         }
     }
 
     /* [064A-68] Suscripción global al canal de staff para nuevas sesiones.
      * Cualquier sesión creada (visitante u orden) se reenvía a este WS.
      * [096A-13] subscribe_staff() devuelve mpsc::UnboundedReceiver. */
-    let mut staff_rx = hub.subscribe_staff();
+    let mut staff_rx = hub.subscribe_staff().await;
     let tx_staff = tx.clone();
     let staff_sub = tokio::spawn(async move {
         while let Some(server_msg) = staff_rx.recv().await {
@@ -69,11 +71,16 @@ async fn handle_staff_ws(socket: WebSocket, state: AppState, staff_id: Uuid) {
         }
     });
 
-    /* Task: leer del mpsc y enviar al WS */
+    /* Task: leer del mpsc y enviar al WS.
+     * [096A-14] 5s timeout en cada envío WS para no bloquear el task ante TCP half-open. */
     let send_task = tokio::spawn(async move {
         while let Some(server_msg) = rx.recv().await {
             if let Ok(json) = serde_json::to_string(&server_msg) {
-                if ws_sender.send(Message::Text(json)).await.is_err() {
+                let send_fut = ws_sender.send(Message::Text(json));
+                if tokio::time::timeout(std::time::Duration::from_secs(5), send_fut)
+                    .await
+                    .is_err()
+                {
                     break;
                 }
             }
