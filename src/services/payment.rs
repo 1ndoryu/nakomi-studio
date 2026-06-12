@@ -295,8 +295,12 @@ impl PaymentService {
     ) -> Result<(i32, Option<Uuid>, String), AppError> {
         match order.payment_mode {
             PaymentMode::Full => {
-                if order.status != OrderStatus::PaymentHeld {
-                    return Err(AppError::BadRequest("La orden ya fue pagada".into()));
+                /* [166A-1] Aceptar pending_payment (orden nueva sin pago) y payment_held
+                 * (orden legacy o después de pago parcial en half_half). Rechazar otros estados. */
+                if order.status != OrderStatus::PendingPayment
+                    && order.status != OrderStatus::PaymentHeld
+                {
+                    return Err(AppError::BadRequest("La orden ya fue pagada o no está disponible para pago".into()));
                 }
                 Ok((
                     order.final_price_cents,

@@ -11,10 +11,10 @@ use validator::Validate;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateNotification, CreateOrderRequest, OrderResponse, OrderStatus, UpdateOrderPhaseDefinitionRequest,
-    UpdateOrderProjectDescriptionRequest, UserRole, NOTIF_NEW_ORDER, NOTIF_ORDER_ASSIGNED,
+    CreateNotification, CreateOrderRequest, OrderResponse, UpdateOrderPhaseDefinitionRequest,
+    UpdateOrderProjectDescriptionRequest, UserRole, NOTIF_ORDER_ASSIGNED,
 };
-use crate::repositories::{ActivityLogRepository, OrderRepository, UserRepository};
+use crate::repositories::{ActivityLogRepository, OrderRepository};
 use crate::services::OrderService;
 use crate::AppState;
 
@@ -46,42 +46,14 @@ pub async fn create_order(
     req.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
-    let mut order = OrderService::create_order(&state.pool, auth.user_id, req).await?;
+    let order = OrderService::create_order(&state.pool, auth.user_id, req).await?;
 
-    /* [016A-4] Auto-asignar nueva orden al primer admin disponible.
-     * El admin podrá delegar o reasignar desde el panel. */
-    let admins = UserRepository::admin_ids(&state.pool)
-        .await
-        .unwrap_or_default();
-    if let Some(&admin_id) = admins.first() {
-        match OrderRepository::assign_order(&state.pool, order.id, admin_id).await {
-            Ok(_) => {
-                order.assigned_employee_id = Some(admin_id);
-                order.status = OrderStatus::InProgress;
-                order.started_at = Some(chrono::Utc::now());
-                let _ = ActivityLogRepository::log(
-                    &state.pool,
-                    admin_id,
-                    "order_assigned",
-                    "order",
-                    order.id,
-                    Some(serde_json::json!({"auto": true})),
-                )
-                .await;
-            }
-            Err(e) => tracing::error!("[016A-4] Error auto-asignando orden {}: {e}", order.id),
-        }
-    }
-    let base = CreateNotification {
-        user_id: Uuid::nil(),
-        notification_type: NOTIF_NEW_ORDER.to_string(),
-        title: format!("Nueva orden #{}", order.order_number),
-        body: Some(format!("{} — {}", order.service_title, order.plan_name)),
-        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
-        reference_type: Some("order".to_string()),
-        reference_id: Some(order.id),
-    };
-    let _ = state.notification_hub.notify_many(&admins, &base).await;
+    /* [166A-1] Flujo pago-primero: la orden se crea en pending_payment.
+     * La auto-asignación, chat y emails se ejecutan en el webhook de pago exitoso
+     * (handle_payment_success en payments.rs). Esto garantiza que:
+     * 1. El pedido NO se activa sin pago confirmado.
+     * 2. El cliente puede cancelar antes de pagar.
+     * 3. Stripe funciona correctamente (resolve_payment_amount acepta pending_payment). */
 
     /* [154A-15d] Registrar en activity_log */
     let _ = ActivityLogRepository::log(
@@ -97,93 +69,6 @@ pub async fn create_order(
         })),
     )
     .await;
-
-    /* [154A-15c] Crear chat session + mensaje de bienvenida automático */
-    {
-        let chat_hub = &state.chat_hub;
-        match chat_hub
-            .get_or_create_order_session(order.id, auth.user_id)
-            .await
-        {
-            Ok(session) => {
-                let greeting = format!(
-                    "¡Felicidades! Tu pedido #{} ha sido recibido. \
-                     Será atendido dentro de las próximas 48 horas por nuestro equipo. \
-                     Puedes usar este chat para cualquier duda sobre tu pedido.",
-                    order.order_number,
-                );
-                let _ = chat_hub
-                    .send_message(session.id, "system", None, &greeting)
-                    .await;
-            }
-            Err(e) => tracing::error!("Error creando chat session para orden {}: {e}", order.id),
-        }
-    }
-
-    /* [154A-15c] Email de confirmación al cliente (non-fatal) */
-    if let Some(ref email_cfg) = state.email_config {
-        let client_email: Option<String> = UserRepository::get_email(&state.pool, auth.user_id)
-            .await
-            .ok()
-            .flatten();
-
-        let client_name: Option<String> =
-            UserRepository::get_display_name(&state.pool, auth.user_id)
-                .await
-                .ok()
-                .flatten();
-
-        if let Some(email) = client_email {
-            let cfg = email_cfg.clone();
-            let pool = state.pool.clone();
-            let name = client_name.unwrap_or_else(|| "Cliente".to_string());
-            let svc = order.service_title.clone();
-            let plan = order.plan_name.clone();
-            let price =
-                crate::services::format_price_cents(order.final_price_cents, &order.currency);
-            let order_num = order.order_number;
-            tokio::spawn(async move {
-                crate::services::EmailService::send_order_confirmation(
-                    &cfg, &pool, &email, &name, order_num, &svc, &plan, &price,
-                )
-                .await;
-            });
-        }
-    }
-
-    /* [311A-1] Email a admins notificando nueva orden (non-fatal) */
-    if let Some(ref email_cfg) = state.email_config {
-        let admin_emails = UserRepository::admin_emails(&state.pool).await.unwrap_or_default();
-        if !admin_emails.is_empty() {
-            let cfg = email_cfg.clone();
-            let pool = state.pool.clone();
-            let client_email_for_admin = UserRepository::get_email(&state.pool, auth.user_id)
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or_else(|| "desconocido".to_string());
-            let client_name_for_admin =
-                UserRepository::get_display_name(&state.pool, auth.user_id)
-                    .await
-                    .ok()
-                    .flatten()
-                    .unwrap_or_else(|| "Cliente".to_string());
-            let svc = order.service_title.clone();
-            let plan = order.plan_name.clone();
-            let price = crate::services::format_price_cents(order.final_price_cents, &order.currency);
-            let pmode = format!("{:?}", order.payment_mode);
-            let oid = order.id;
-            let onum = order.order_number;
-            let site_url = std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
-            tokio::spawn(async move {
-                crate::services::EmailService::send_new_order_admin(
-                    &cfg, &pool, &admin_emails, &client_email_for_admin, &client_name_for_admin,
-                    onum, &svc, &plan, &price, &pmode, oid, &site_url,
-                )
-                .await;
-            });
-        }
-    }
 
     Ok((StatusCode::CREATED, Json(order)))
 }

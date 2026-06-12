@@ -147,10 +147,17 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
                 });
                 setPaso('checkout');
                 return;
-            } catch {
-                /* Si Stripe no esta configurado o falla el intent, al menos dejar
-                 * la orden visible en el panel como pendiente de pago. */
-                navegarAlPanelPendiente();
+            } catch (paymentErr: unknown) {
+                /* [166A-1] Mostrar error en vez de redirigir silenciosamente.
+                 * La orden ya fue creada en payment_held; el usuario puede
+                 * reintentar el pago desde el panel si falla Stripe. */
+                setPaso('error');
+                setErrorMsg(
+                    getPurchaseErrorMessage(
+                        paymentErr,
+                        'No se pudo iniciar el pago con Stripe. Tu orden fue creada — puedes reintentar el pago desde tu panel.',
+                    ),
+                );
                 return;
             }
         } catch (err: unknown) {

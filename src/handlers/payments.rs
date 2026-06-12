@@ -149,12 +149,14 @@ pub async fn stripe_webhook(
     PaymentService::handle_webhook(&state.pool, event_type, &event["data"]).await?;
 
     /* [104A-38] Notificar al cliente cuando su pago se procesa exitosamente.
-     * Buscamos el payment por stripe_intent → order → client_id. */
+     * Buscamos el payment por stripe_intent → order → client_id.
+     * [166A-1] Re-leemos la orden DESPUÉS de handle_webhook para tener el status actualizado. */
     if event_type == "payment_intent.succeeded" {
         if let Some(pi_id) = event["data"]["object"]["id"].as_str() {
             if let Ok(Some(payment)) =
                 PaymentRepository::find_by_stripe_intent(&state.pool, pi_id).await
             {
+                /* Re-leer orden con status post-webhook (handle_payment_success actualiza status) */
                 if let Ok(Some(order)) =
                     OrderRepository::find_order_by_id(&state.pool, payment.order_id).await
                 {
@@ -208,6 +210,156 @@ pub async fn stripe_webhook(
                                     &site_url,
                                 )
                                 .await;
+                            }
+                        }
+                    }
+
+                    /* [166A-1] Post-pago: auto-asignar, crear chat y enviar emails.
+                     * handle_payment_success movió la orden a awaiting_assignment (Full/HalfHalf 1er pago)
+                     * o la dejó en payment_held (si no cambió status). En ambos casos, necesita activación.
+                     * Para HalfHalf 2do pago o Phased subsiguiente, la orden ya está in_progress → skip. */
+                    let needs_activation = order.status == crate::models::OrderStatus::AwaitingAssignment
+                        || order.status == crate::models::OrderStatus::PaymentHeld;
+
+                    if needs_activation {
+                        /* Obtener nombres de servicio y plan para emails/chat */
+                        let (svc_title, _svc_slug, plan_name) =
+                            OrderRepository::get_order_display_info(
+                                &state.pool, order.service_id, order.plan_id,
+                            )
+                            .await
+                            .unwrap_or_else(|_| ("Servicio".into(), String::new(), "Plan".into()));
+
+                        let admins = UserRepository::admin_ids(&state.pool)
+                            .await
+                            .unwrap_or_default();
+                        if let Some(&admin_id) = admins.first() {
+                            match OrderRepository::assign_order(&state.pool, order.id, admin_id).await {
+                                Ok(_) => {
+                                    let _ = crate::repositories::ActivityLogRepository::log(
+                                        &state.pool,
+                                        admin_id,
+                                        "order_assigned",
+                                        "order",
+                                        order.id,
+                                        Some(serde_json::json!({"auto": true, "post_payment": true})),
+                                    )
+                                    .await;
+
+                                    /* Notificar admins de nueva orden */
+                                    let notif_base = CreateNotification {
+                                        user_id: Uuid::nil(),
+                                        notification_type: crate::models::NOTIF_NEW_ORDER.to_string(),
+                                        title: format!("Nueva orden #{}", order.order_number),
+                                        body: Some(format!("{} — Pago confirmado", order.order_number)),
+                                        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                                        reference_type: Some("order".to_string()),
+                                        reference_id: Some(order.id),
+                                    };
+                                    let _ = state.notification_hub.notify_many(&admins, &notif_base).await;
+                                }
+                                Err(e) => tracing::error!(
+                                    "[166A-1] Error auto-asignando orden {} post-pago: {e}",
+                                    order.id
+                                ),
+                            }
+                        }
+
+                        /* Crear chat session + mensaje de bienvenida */
+                        let chat_hub = &state.chat_hub;
+                        match chat_hub
+                            .get_or_create_order_session(order.id, order.client_id)
+                            .await
+                        {
+                            Ok(session) => {
+                                let greeting = format!(
+                                    "¡Felicidades! Tu pedido #{} ha sido recibido. \
+                                     Será atendido dentro de las próximas 48 horas por nuestro equipo. \
+                                     Puedes usar este chat para cualquier duda sobre tu pedido.",
+                                    order.order_number,
+                                );
+                                let _ = chat_hub
+                                    .send_message(session.id, "system", None, &greeting)
+                                    .await;
+                            }
+                            Err(e) => tracing::error!(
+                                "[166A-1] Error creando chat session para orden {}: {e}",
+                                order.id
+                            ),
+                        }
+
+                        /* Email de confirmación al cliente */
+                        if let Some(ref email_cfg) = state.email_config {
+                            let client_email_opt =
+                                UserRepository::get_email(&state.pool, order.client_id)
+                                    .await
+                                    .ok()
+                                    .flatten();
+                            let client_name_opt =
+                                UserRepository::get_display_name(&state.pool, order.client_id)
+                                    .await
+                                    .ok()
+                                    .flatten();
+
+                            if let Some(email) = client_email_opt {
+                                let cfg = email_cfg.clone();
+                                let pool = state.pool.clone();
+                                let name = client_name_opt.unwrap_or_else(|| "Cliente".to_string());
+                                let svc = svc_title.clone();
+                                let plan = plan_name.clone();
+                                let price = crate::services::format_price_cents(
+                                    order.final_price_cents,
+                                    &order.currency,
+                                );
+                                let order_num = order.order_number;
+                                tokio::spawn(async move {
+                                    EmailService::send_order_confirmation(
+                                        &cfg, &pool, &email, &name, order_num, &svc, &plan, &price,
+                                    )
+                                    .await;
+                                });
+                            }
+                        }
+
+                        /* Email a admins notificando nueva orden */
+                        if let Some(ref email_cfg) = state.email_config {
+                            let admin_emails =
+                                UserRepository::admin_emails(&state.pool).await.unwrap_or_default();
+                            if !admin_emails.is_empty() {
+                                let cfg = email_cfg.clone();
+                                let pool = state.pool.clone();
+                                let client_email_admin = UserRepository::get_email(
+                                    &state.pool, order.client_id,
+                                )
+                                .await
+                                .ok()
+                                .flatten()
+                                .unwrap_or_else(|| "desconocido".to_string());
+                                let client_name_admin =
+                                    UserRepository::get_display_name(&state.pool, order.client_id)
+                                        .await
+                                        .ok()
+                                        .flatten()
+                                        .unwrap_or_else(|| "Cliente".to_string());
+                                let svc = svc_title;
+                                let plan = plan_name;
+                                let price = crate::services::format_price_cents(
+                                    order.final_price_cents,
+                                    &order.currency,
+                                );
+                                let pmode = format!("{:?}", order.payment_mode);
+                                let oid = order.id;
+                                let onum = order.order_number;
+                                let site_url = std::env::var("SITE_URL")
+                                    .unwrap_or_else(|_| "https://nakomi.studio".to_string());
+                                tokio::spawn(async move {
+                                    EmailService::send_new_order_admin(
+                                        &cfg, &pool, &admin_emails, &client_email_admin,
+                                        &client_name_admin, onum, &svc, &plan, &price,
+                                        &pmode, oid, &site_url,
+                                    )
+                                    .await;
+                                });
                             }
                         }
                     }
