@@ -822,8 +822,9 @@ impl OrderService {
         }
     }
 
-    /// Estado inicial de la primera fase segun modo de pago
-    fn initial_phase_status(mode: PaymentMode) -> PhaseStatus {
+    /// Estado inicial de la primera fase segun modo de pago.
+    /// [166A-2] Pública para uso desde PaymentService (checkout directo).
+    pub fn initial_phase_status(mode: PaymentMode) -> PhaseStatus {
         match mode {
             PaymentMode::Full => PhaseStatus::Paid,
             PaymentMode::HalfHalf | PaymentMode::Phased => PhaseStatus::PendingPayment,

@@ -69,3 +69,22 @@ pub struct PaymentResponse {
     pub bypassed: bool,
     pub created_at: DateTime<Utc>,
 }
+
+/* [166A-2] Request para crear PaymentIntent de checkout directo (sin orden previa).
+ * El usuario envía los slugs y modo de pago; el backend resuelve precio y crea
+ * el PaymentIntent en Stripe. La orden se crea recién cuando el pago se confirma
+ * via webhook. */
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateCheckoutIntentRequest {
+    pub service_slug: String,
+    pub plan_slug: String,
+    pub payment_mode: PaymentMode,
+}
+
+/* [166A-2] Response del checkout intent: solo lo necesario para el frontend. */
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CheckoutIntentResponse {
+    pub client_secret: String,
+    pub amount_cents: i32,
+    pub currency: String,
+}

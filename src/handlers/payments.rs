@@ -13,7 +13,8 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
-    CreateNotification, InitiatePaymentRequest, PaymentIntentResponse, PaymentResponse, UserRole,
+    CheckoutIntentResponse, CreateCheckoutIntentRequest, CreateNotification,
+    InitiatePaymentRequest, PaymentIntentResponse, PaymentResponse, UserRole,
     NOTIF_CHAT_INVOICE_PAID, NOTIF_PAYMENT_RECEIVED,
 };
 use crate::repositories::{OrderRepository, PaymentRepository, UserRepository};
@@ -95,6 +96,43 @@ pub async fn initiate_payment(
     Ok(Json(result))
 }
 
+/* [166A-2] Crear PaymentIntent de checkout directo (sin orden previa).
+ * El usuario autenticado envía service_slug + plan_slug + payment_mode.
+ * El backend resuelve el precio y crea un PaymentIntent en Stripe.
+ * La orden se crea recién cuando el webhook confirma el pago. */
+pub async fn create_checkout_intent(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<CreateCheckoutIntentRequest>,
+) -> Result<Json<CheckoutIntentResponse>, AppError> {
+    auth.require_role(&[UserRole::Client, UserRole::Admin])?;
+
+    let stripe_key = state
+        .stripe_secret_key
+        .as_ref()
+        .ok_or_else(|| AppError::Internal("Stripe no está configurado".into()))?;
+
+    /* Obtener email del usuario para pre-llenar en Stripe */
+    let user_email = match UserRepository::find_by_id(&state.pool, auth.user_id).await {
+        Ok(Some(u)) => Some(u.email),
+        _ => None,
+    };
+
+    let result = PaymentService::create_checkout_intent(
+        &state.pool,
+        &state.http_client,
+        stripe_key,
+        auth.user_id,
+        &req.service_slug,
+        &req.plan_slug,
+        req.payment_mode,
+        user_email.as_deref(),
+    )
+    .await?;
+
+    Ok(Json(result))
+}
+
 /// Webhook de Stripe — sin autenticación, verificado por firma HMAC
 #[utoipa::path(
     post,
@@ -146,7 +184,7 @@ pub async fn stripe_webhook(
         return Ok(StatusCode::OK);
     }
 
-    PaymentService::handle_webhook(&state.pool, event_type, &event["data"]).await?;
+    PaymentService::handle_webhook(&state.pool, event_type, &event["data"], Some(&event)).await?;
 
     /* [104A-38] Notificar al cliente cuando su pago se procesa exitosamente.
      * Buscamos el payment por stripe_intent → order → client_id.
@@ -543,4 +581,5 @@ pub fn routes() -> Router<AppState> {
         .route("/orders/:order_id/pay", post(initiate_payment))
         .route("/orders/:order_id/payments", get(list_payments))
         .route("/webhooks/stripe", post(stripe_webhook))
+        .route("/checkout/intent", post(create_checkout_intent))
 }

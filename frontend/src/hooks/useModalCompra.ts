@@ -2,23 +2,24 @@
  * Maneja: pasos del modal, auth inline, creación de orden e inicio de pago.
  * Extraído de ModalCompra.tsx para cumplir SRP (max 3 useState en componente).
  * [064A-3] Flujo simplificado: solo pide email. Si el email ya existe, pide password.
- * [104A-25] Guard ref contra doble invocación de iniciarCompra (previene órdenes duplicadas). */
+ * [104A-25] Guard ref contra doble invocación de iniciarCompra (previene órdenes duplicadas).
+ * [166A-2] Flujo checkout directo: Stripe PRIMERO, orden DESPUÉS del pago via webhook. */
 import {useState, useRef} from 'react';
 import {useAuthStore} from '../stores/authStore';
 import {apiQuickRegister, apiLogin} from '../api/auth';
-import {apiCreateOrder, type PaymentMode} from '../api/orders';
+import type {PaymentMode} from '../api/orders';
 import {apiSelfSubscribe, apiSelfSubscribeVps} from '../api/hosting';
-import {apiInitiatePayment} from '../api/payments';
+import {apiCreateCheckoutIntent} from '../api/payments';
 import {PANEL_TAB_KEY} from '../data/panel';
 import {navegar} from '../navegacionSPA';
 import type {PlanServicio} from '../data/planes/tipos';
 
 export type PasoModal = 'resumen' | 'auth' | 'procesando' | 'checkout' | 'error';
 
+/* [166A-2] CheckoutPendiente simplificado: ya no tiene orderId ni orderNumber
+ * porque la orden NO existe hasta que el pago se confirma via webhook. */
 interface CheckoutPendiente {
     clientSecret: string;
-    orderId: string;
-    orderNumber: number;
     amountCents: number;
     currency: string;
 }
@@ -115,54 +116,27 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         }
     };
 
-    /* [104A-15] Crear la orden y abrir checkout inmediatamente con el
-     * PaymentIntent ya creado, en vez de redirigir primero al panel. */
+    /* [166A-2] Flujo nuevo: crear PaymentIntent directo (sin crear orden).
+     * La orden se crea via webhook cuando Stripe confirma el pago.
+     * Esto garantiza que NO se crea cuenta ni pedido sin pago confirmado. */
     const crearOrdenYPagar = async () => {
         setPaso('procesando');
         try {
-            const orden = await apiCreateOrder({
+            const checkoutIntent = await apiCreateCheckoutIntent({
                 service_slug: servicioSlug,
                 plan_slug: plan.id,
                 payment_mode: paymentMode,
-                project_description: undefined,
-                client_notes: undefined,
             });
-
-            /* Intentar iniciar pago Stripe */
-            try {
-                const paymentIntent = await apiInitiatePayment(orden.id, {
-                    phase_number: paymentMode === 'phased' ? 1 : undefined,
-                });
-                localStorage.setItem(PANEL_TAB_KEY, 'proyectos');
-                if (paymentIntent.bypassed || !paymentIntent.client_secret) {
-                    navegarAlPanelPendiente();
-                    return;
-                }
-                setCheckoutPendiente({
-                    clientSecret: paymentIntent.client_secret,
-                    orderId: orden.id,
-                    orderNumber: orden.order_number,
-                    amountCents: paymentIntent.amount_cents,
-                    currency: paymentIntent.currency,
-                });
-                setPaso('checkout');
-                return;
-            } catch (paymentErr: unknown) {
-                /* [166A-1] Mostrar error en vez de redirigir silenciosamente.
-                 * La orden ya fue creada en payment_held; el usuario puede
-                 * reintentar el pago desde el panel si falla Stripe. */
-                setPaso('error');
-                setErrorMsg(
-                    getPurchaseErrorMessage(
-                        paymentErr,
-                        'No se pudo iniciar el pago con Stripe. Tu orden fue creada — puedes reintentar el pago desde tu panel.',
-                    ),
-                );
-                return;
-            }
+            localStorage.setItem(PANEL_TAB_KEY, 'proyectos');
+            setCheckoutPendiente({
+                clientSecret: checkoutIntent.client_secret,
+                amountCents: checkoutIntent.amount_cents,
+                currency: checkoutIntent.currency,
+            });
+            setPaso('checkout');
         } catch (err: unknown) {
             setPaso('error');
-            setErrorMsg(getPurchaseErrorMessage(err, 'Error al crear la orden.'));
+            setErrorMsg(getPurchaseErrorMessage(err, 'Error al iniciar el pago. Intenta de nuevo.'));
         }
     };
 

@@ -3,7 +3,9 @@
  * y confirma el pago. El webhook procesa el resultado asíncronamente.
  * [064A-55] Migrado a <Modal> del sistema (focus trap, Escape, scroll lock).
  * [104A-15] Si recibe `clientSecret`, reutiliza el PaymentIntent ya creado
- * por el flujo publico y evita generar uno duplicado al entrar a Stripe. */
+ * por el flujo publico y evita generar uno duplicado al entrar a Stripe.
+ * [166A-2] orderId y orderNumber opcionales: en checkout directo la orden
+ * no existe hasta que el pago se confirma via webhook. */
 
 import { useCallback, useState } from 'react';
 import {
@@ -20,8 +22,8 @@ import { Modal } from '../ui/Modal';
 import './CheckoutModal.css';
 
 interface CheckoutModalProps {
-    orderId: string;
-    orderNumber: number;
+    orderId?: string;
+    orderNumber?: number;
     amountCents: number;
     currency: string;
     clientSecret?: string;
@@ -42,6 +44,13 @@ export default function CheckoutModal(props: CheckoutModalProps) {
             return;
         }
 
+        /* [166A-2] Solo iniciar pago si hay orderId (flujo legacy).
+         * En checkout directo, clientSecret siempre viene como prop. */
+        if (!orderId) {
+            setError('No se pudo iniciar el pago. Intenta de nuevo.');
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {
@@ -59,7 +68,7 @@ export default function CheckoutModal(props: CheckoutModalProps) {
         } finally {
             setLoading(false);
         }
-    }, [orderId, phaseNumber]);
+    }, [orderId, phaseNumber, clientSecret]);
 
     if (cargandoStripe) {
         return (

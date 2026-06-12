@@ -12,7 +12,9 @@ use crate::models::{
     OrderPayment, OrderStatus, PaymentIntentResponse, PaymentMode, PaymentResponse, PaymentStatus,
     PhaseStatus,
 };
-use crate::repositories::{CreatePaymentParams, OrderRepository, PaymentRepository};
+use crate::repositories::{CreateOrderParams, CreatePaymentParams, CreatePhaseParams, OrderRepository,
+    PaymentRepository, ServiceRepository, UserRepository};
+use super::order_slugs::{find_plan_for_order, find_service_for_order};
 
 pub struct PaymentService;
 
@@ -128,11 +130,233 @@ impl PaymentService {
         })
     }
 
-    /// Procesa webhook de Stripe (ya verificada la firma)
+    /* [166A-2] Crea PaymentIntent de checkout directo SIN crear orden.
+     * El usuario envía service_slug + plan_slug + payment_mode; el backend resuelve
+     * el precio, crea un PaymentIntent en Stripe con metadata source=checkout y
+     * retorna el client_secret. La orden se crea recién en el webhook cuando el
+     * pago se confirma. */
+    pub async fn create_checkout_intent(
+        pool: &PgPool,
+        http_client: &Client,
+        stripe_key: &str,
+        user_id: Uuid,
+        service_slug: &str,
+        plan_slug: &str,
+        payment_mode: PaymentMode,
+        receipt_email: Option<&str>,
+    ) -> Result<crate::models::CheckoutIntentResponse, AppError> {
+        /* Resolver servicio y plan (misma lógica que create_order) */
+        let svc = find_service_for_order(pool, service_slug).await?;
+        let plan = find_plan_for_order(pool, svc.id, plan_slug).await?;
+
+        let base_price = plan.price_cents;
+        let discount = Self::discount_for_mode(payment_mode);
+        let final_price = base_price - (base_price * discount / 100);
+        let currency = "usd".to_string();
+
+        /* Validar que phased tenga fases configuradas */
+        if payment_mode == PaymentMode::Phased {
+            let plan_phases = ServiceRepository::list_plan_phases(pool, plan.id).await?;
+            if plan_phases.is_empty() {
+                return Err(AppError::BadRequest(
+                    "Este plan no tiene fases configuradas para pago por fases".into(),
+                ));
+            }
+        }
+
+        /* Crear PaymentIntent en Stripe con metadata de checkout */
+        let mut params = vec![
+            ("amount", final_price.to_string()),
+            ("currency", currency.clone()),
+            ("capture_method", "manual".to_string()),
+            ("metadata[source]", "checkout".to_string()),
+            ("metadata[user_id]", user_id.to_string()),
+            ("metadata[service_slug]", service_slug.to_string()),
+            ("metadata[plan_slug]", plan_slug.to_string()),
+            ("metadata[payment_mode]", format!("{:?}", payment_mode)),
+        ];
+
+        if let Some(email) = receipt_email {
+            params.push(("receipt_email", email.to_string()));
+        }
+
+        let resp = http_client
+            .post("https://api.stripe.com/v1/payment_intents")
+            .bearer_auth(stripe_key)
+            .form(&params)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Error llamando a Stripe: {e}")))?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            tracing::error!("Stripe error {status}: {body}");
+            return Err(AppError::Internal(format!(
+                "Stripe rechazó la solicitud ({status})"
+            )));
+        }
+
+        let pi: StripePaymentIntentMin = resp
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Error parseando respuesta Stripe: {e}")))?;
+
+        Ok(crate::models::CheckoutIntentResponse {
+            client_secret: pi.client_secret,
+            amount_cents: final_price,
+            currency,
+        })
+    }
+
+    /* [166A-2] Descuento según modo de pago (misma lógica que OrderService). */
+    fn discount_for_mode(mode: PaymentMode) -> i32 {
+        match mode {
+            PaymentMode::Full => 20,
+            PaymentMode::HalfHalf => 10,
+            PaymentMode::Phased => 0,
+        }
+    }
+
+    /* [166A-2] Procesa pago exitoso de checkout: crea orden + pago + fases.
+     * Se llama desde handle_webhook cuando metadata.source == "checkout". */
+    pub async fn handle_checkout_payment_succeeded(
+        pool: &PgPool,
+        user_id: Uuid,
+        service_slug: &str,
+        plan_slug: &str,
+        payment_mode: PaymentMode,
+        stripe_intent_id: &str,
+        charge_id: Option<&str>,
+        _amount_cents: i32,
+    ) -> Result<(), AppError> {
+        /* Verificar que el usuario exista (debería, pues estaba autenticado al crear el intent) */
+        let _user = UserRepository::find_by_id(pool, user_id)
+            .await?
+            .ok_or_else(|| {
+                tracing::error!("[166A-2] Usuario {user_id} no encontrado para checkout");
+                AppError::NotFound("Usuario no encontrado".into())
+            })?;
+
+        let svc = find_service_for_order(pool, service_slug).await?;
+        let plan = find_plan_for_order(pool, svc.id, plan_slug).await?;
+
+        let base_price = plan.price_cents;
+        let discount = Self::discount_for_mode(payment_mode);
+        let final_price = base_price - (base_price * discount / 100);
+
+        /* Crear la orden (status default: payment_held en BD) */
+        let order = OrderRepository::create_order(
+            pool,
+            CreateOrderParams {
+                client_id: user_id,
+                service_id: svc.id,
+                plan_id: plan.id,
+                payment_mode,
+                base_price_cents: base_price,
+                discount_percent: discount,
+                final_price_cents: final_price,
+                project_description: None,
+                client_notes: None,
+            },
+        )
+        .await?;
+
+        /* Generar fases de la orden desde plantillas del plan */
+        let plan_phases = ServiceRepository::list_plan_phases(pool, plan.id).await?;
+        for tmpl in &plan_phases {
+            let phase_price = final_price * tmpl.percentage_of_total / 100;
+            let status = if tmpl.phase_number == 1 {
+                crate::services::OrderService::initial_phase_status(payment_mode)
+            } else {
+                PhaseStatus::Locked
+            };
+            OrderRepository::create_order_phase(
+                pool,
+                CreatePhaseParams {
+                    order_id: order.id,
+                    phase_number: tmpl.phase_number,
+                    title: &tmpl.title,
+                    description: tmpl.description.as_deref(),
+                    price_cents: phase_price,
+                    status,
+                    max_revisions: tmpl.max_revisions,
+                    estimated_days: tmpl.estimated_days,
+                },
+            )
+            .await?;
+        }
+
+        /* Crear registro de pago en order_payments y marcarlo como held */
+        let phase_1_id = if payment_mode == PaymentMode::Phased {
+            OrderRepository::list_order_phases(pool, order.id)
+                .await
+                .ok()
+                .and_then(|phases| phases.first().map(|p| p.id))
+        } else {
+            None
+        };
+
+        let description = format!(
+            "{} — {} ({:?})",
+            svc.title, plan.name, payment_mode
+        );
+
+        let payment = PaymentRepository::create_payment(
+            pool,
+            CreatePaymentParams {
+                order_id: order.id,
+                phase_id: phase_1_id,
+                amount_cents: final_price,
+                currency: "usd",
+                payment_mode,
+                stripe_payment_intent_id: stripe_intent_id,
+                description: Some(&description),
+            },
+        )
+        .await
+        .map_err(|e| AppError::Internal(format!("Error guardando pago de checkout: {e}")))?;
+
+        if let Some(cid) = charge_id {
+            PaymentRepository::update_charge_id(pool, payment.id, cid).await?;
+        }
+
+        /* Marcar pago como held y ejecutar máquina de estados */
+        let held_payment = PaymentRepository::update_status_held(pool, payment.id).await?;
+        Self::handle_payment_success(pool, &held_payment).await?;
+
+        /* Log de actividad */
+        let _ = crate::repositories::ActivityLogRepository::log(
+            pool,
+            user_id,
+            "order_created",
+            "order",
+            order.id,
+            Some(serde_json::json!({
+                "service": svc.title,
+                "plan": plan.name,
+                "payment_mode": format!("{:?}", payment_mode),
+                "source": "checkout",
+            })),
+        )
+        .await;
+
+        tracing::info!(
+            "[166A-2] Orden {} creada via checkout para usuario {user_id}",
+            order.id
+        );
+
+        Ok(())
+    }
+
+    /// Procesa webhook de Stripe (ya verificada la firma).
+    /// `event_data` es opcional para mantener compatibilidad con llamadas existentes;
+    /// cuando se pasa, permite detectar checkout flows por metadata.
     pub async fn handle_webhook(
         pool: &PgPool,
         event_type: &str,
         data: &serde_json::Value,
+        event_data: Option<&serde_json::Value>,
     ) -> Result<(), AppError> {
         match event_type {
             "payment_intent.succeeded" => {
@@ -141,6 +365,43 @@ impl PaymentService {
                     .ok_or_else(|| AppError::BadRequest("Missing payment_intent id".into()))?;
                 let charge_id = data["object"]["latest_charge"].as_str();
 
+                /* [166A-2] Detectar checkout flow: si metadata.source == "checkout",
+                 * crear la orden + pago desde cero. El intent NO tiene order_id asociado. */
+                let meta_source = event_data
+                    .and_then(|d| d["object"]["metadata"]["source"].as_str());
+
+                if meta_source == Some("checkout") {
+                    let user_id_str = event_data
+                        .and_then(|d| d["object"]["metadata"]["user_id"].as_str())
+                        .ok_or_else(|| AppError::BadRequest("Missing user_id in checkout metadata".into()))?;
+                    let user_id = Uuid::parse_str(user_id_str)
+                        .map_err(|_| AppError::BadRequest("Invalid user_id in metadata".into()))?;
+                    let service_slug = event_data
+                        .and_then(|d| d["object"]["metadata"]["service_slug"].as_str())
+                        .ok_or_else(|| AppError::BadRequest("Missing service_slug in metadata".into()))?;
+                    let plan_slug = event_data
+                        .and_then(|d| d["object"]["metadata"]["plan_slug"].as_str())
+                        .ok_or_else(|| AppError::BadRequest("Missing plan_slug in metadata".into()))?;
+                    let payment_mode_str = event_data
+                        .and_then(|d| d["object"]["metadata"]["payment_mode"].as_str())
+                        .unwrap_or("Full");
+                    let payment_mode: PaymentMode = serde_json::from_str(
+                        &format!("\"{}\"", payment_mode_str.to_lowercase())
+                    ).unwrap_or(PaymentMode::Full);
+
+                    let amount_cents = data["object"]["amount"]
+                        .as_i64()
+                        .unwrap_or(0) as i32;
+
+                    Self::handle_checkout_payment_succeeded(
+                        pool, user_id, service_slug, plan_slug, payment_mode,
+                        pi_id, charge_id, amount_cents,
+                    ).await?;
+
+                    return Ok(());
+                }
+
+                /* Flujo original: pago contra orden existente */
                 let payment = PaymentRepository::find_by_stripe_intent(pool, pi_id)
                     .await?
                     .ok_or_else(|| {

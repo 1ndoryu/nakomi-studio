@@ -81,7 +81,8 @@ pub use order::{
     UpdateOrderPhaseDefinitionRequest, UpdateOrderProjectDescriptionRequest,
 };
 pub use payment::{
-    InitiatePaymentRequest, OrderPayment, PaymentIntentResponse, PaymentResponse, PaymentStatus,
+    CheckoutIntentResponse, CreateCheckoutIntentRequest, InitiatePaymentRequest, OrderPayment,
+    PaymentIntentResponse, PaymentResponse, PaymentStatus,
 };
 pub use payment_method::{
     PaymentMethodResponse, SavePaymentMethodRequest, SetupIntentResponse, UserPaymentMethod,

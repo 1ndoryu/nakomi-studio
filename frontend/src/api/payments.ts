@@ -31,6 +31,19 @@ export interface InitiatePaymentRequest {
     phase_number?: number;
 }
 
+/* [166A-2] Tipos para checkout directo (sin orden previa) */
+export interface CheckoutIntentRequest {
+    service_slug: string;
+    plan_slug: string;
+    payment_mode: PaymentMode;
+}
+
+export interface CheckoutIntentResponse {
+    client_secret: string;
+    amount_cents: number;
+    currency: string;
+}
+
 export interface SavedPaymentMethod {
     id: string;
     brand: string;
@@ -57,6 +70,22 @@ export async function apiInitiatePayment(
     const { data } = await instance.post<PaymentIntentResponse>(
         `/api/orders/${orderId}/pay`,
         req
+    );
+    return data;
+}
+
+/* [166A-2] Crear PaymentIntent de checkout directo (sin crear orden).
+ * La orden se crea via webhook cuando el pago se confirma. */
+export async function apiCreateCheckoutIntent(
+    req: CheckoutIntentRequest
+): Promise<CheckoutIntentResponse> {
+    const { data } = await instance.post<CheckoutIntentResponse>(
+        '/api/checkout/intent',
+        {
+            ...req,
+            service_slug: req.service_slug.trim().toLowerCase(),
+            plan_slug: req.plan_slug.trim().toLowerCase(),
+        }
     );
     return data;
 }

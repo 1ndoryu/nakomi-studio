@@ -70,8 +70,6 @@ export const ModalCompra: React.FC<ModalCompraProps> = ({plan, servicioSlug, abi
     if (paso === 'checkout' && checkoutPendiente) {
         return (
             <CheckoutModal
-                orderId={checkoutPendiente.orderId}
-                orderNumber={checkoutPendiente.orderNumber}
                 amountCents={checkoutPendiente.amountCents}
                 currency={checkoutPendiente.currency}
                 clientSecret={checkoutPendiente.clientSecret}
