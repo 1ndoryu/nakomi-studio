@@ -6,6 +6,7 @@ import {useState, useMemo} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {Servicio} from '../types/servicios';
 import {apiListPublicServices, type PublicService} from '../api/admin-services';
+import {getServiceImage} from '../utils/serviceImages';
 import {buildFilterCategories, extractCategoryIds} from '../utils/catalogCategories';
 
 /* Convierte PublicService (API) → Servicio (frontend) */
@@ -15,7 +16,7 @@ function convertirServicio(s: PublicService): Servicio {
         adminId: s.id,
         titulo: s.title,
         descripcion: s.description || '',
-        imagen: s.image_url || '',
+        imagen: s.image_url || getServiceImage(s.slug),
         categorias: extractCategoryIds(s.categories),
         link: `/servicios/${s.slug}`,
         skills: Array.isArray(s.skills) ? s.skills.map((sk: unknown, i: number) => {

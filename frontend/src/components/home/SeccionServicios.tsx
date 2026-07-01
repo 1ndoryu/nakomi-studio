@@ -9,6 +9,7 @@ import {SeccionHeader} from '../ui/SeccionHeader';
 import {ServiceCard} from '../ui/ServiceCard';
 import {SERVICIOS_PRINCIPALES} from '../../data/servicios';
 import {apiListPublicServices} from '../../api/admin-services';
+import {getServiceImage} from '../../utils/serviceImages';
 import type {Servicio} from '../../types/servicios';
 import './SeccionServicios.css';
 
@@ -19,7 +20,7 @@ function toServicio(s: {id: string; slug: string; title: string; description: st
         adminId: s.id,
         titulo: s.title,
         descripcion: s.description || '',
-        imagen: s.image_url || '',
+        imagen: s.image_url || getServiceImage(s.slug),
         categorias: [],
         link: `/servicios/${s.slug}`,
         skills: [],

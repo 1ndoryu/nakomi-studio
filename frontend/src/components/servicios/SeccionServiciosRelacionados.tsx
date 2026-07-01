@@ -8,6 +8,7 @@ import {useTranslation} from 'react-i18next';
 import {SeccionHeader} from '../ui/SeccionHeader';
 import {ServiceCard} from '../ui/ServiceCard';
 import {apiListPublicServices, type PublicService} from '../../api/admin-services';
+import {getServiceImage} from '../../utils/serviceImages';
 import type {Servicio} from '../../types/servicios';
 import './SeccionServiciosRelacionados.css';
 
@@ -17,7 +18,7 @@ function convertirServicio(servicio: PublicService): Servicio {
         adminId: servicio.id,
         titulo: servicio.title,
         descripcion: servicio.description || '',
-        imagen: servicio.image_url || '',
+        imagen: servicio.image_url || getServiceImage(servicio.slug),
         categorias: [],
         link: `/servicios/${servicio.slug}`,
         skills: Array.isArray(servicio.skills)
