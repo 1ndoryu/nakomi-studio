@@ -55,3 +55,6 @@ frontend/tsconfig.tsbuildinfo
 /backups/
 frontend/public/legacy-assets
 clients/kamples-scraper
+clients/
+logs/
+temp/
