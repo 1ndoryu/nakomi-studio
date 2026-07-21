@@ -23,20 +23,15 @@ Rama: glory-rust-nakomi
 - **VPS2 Coolify**: Configurado en settings.json
 - **Deploy**: Siempre via coolify-manager-rs, nunca desde Coolify UI (ver doc de persistencia volúmenes)
 - **Volúmenes**: Documentado en `Agente/documentacion/hosting/coolify-volumenes-persistencia-2026-04-12.md`
+- **Admin contactos**: correo `andoryyu@gmail.com`, whatsapp `+1 (608) 466-8134`
 
 ## Contexto
 
 Proyecto migrado de WordPress a Rust (Axum) + React SPA. El frontend React se integra en frontend/src/. El backend Rust sirve API + SPA.
 
-## Estado interno reciente
-
-- `275A-3`: hotfix del listado de backups para WordPress/Coolify. El endpoint fallaba con 500 porque `alpine:3.20` usa BusyBox y no soporta `ls --time-style=long-iso`; ahora el listing usa `ls --full-time`, comprueba la existencia del volumen antes de montarlo y el parser acepta timestamps `HH:MM:SS +0000`. Validado con test unitario nuevo y smoke SSH contra el VPS del hosting de prueba.
-
 ---
 
-## Tareas pendientes
-
-### 🟦 Producto de Correo para Hosting
+## Tareas de producto — Correo para Hosting (bloqueado en decisión de proveedor)
 
 Ver análisis completo en `Agente/documentacion/hosting/producto-correo-proveedores-2026-05-26.md`.
 
@@ -66,35 +61,15 @@ Ver análisis completo en `Agente/documentacion/hosting/producto-correo-proveedo
   - Stripe: nuevo price para el add-on.
   - ~3-4h estimado.
 
---------------
+---
 
-Ve un problema, automaticamente cuando se haga un pedido, tiene que asigarse a mi, no importa que ya tenga pedidos asignados, no hay limite para el administrador
+## Estado interno reciente
 
-el modal para asignar un empleado se ve mal no se porque no es ve como los otros modales
+- `275A-3`: hotfix del listado de backups para WordPress/Coolify. El endpoint fallaba con 500 porque `alpine:3.20` usa BusyBox y no soporta `ls --time-style=long-iso`; ahora el listing usa `ls --full-time`, comprueba la existencia del volumen antes de montarlo y el parser acepta timestamps `HH:MM:SS +0000`. Validado con test unitario nuevo y smoke SSH contra el VPS del hosting de prueba.
+- `20CA`: reorganización del roadmap (20 julio 2026). 14 tareas pendientes agrupadas por dominio.
 
-hay un problema, no veo que despues de que tenga una orden asignada no pueda cancelar el pedido, o cambiar el empleado
 
-Donde dice "Empleado asignado" debería de decir "Freelancer asignado"
+## Nota
 
-otro problema grave es la cuestion de que el chat en los pedidos no funciona en tiempo real, no hubo una notificación a mi cuando probe enviar un mensaje como cliente, tambien debería llegar un correo cuando un mensaje pasa 20 minutos sin responderse, y debería mostrar un punto rojo cuando hay mensajes nuevos en el boton de sidebar de mensajes
-
-hay un problema visual con las notificaciones, el texto esta centrado, no debería
-
-otra cosa es que veo que los correos estan duplicados en el codigo para los envio y preview ¿porque? me parece mal a nivel codigo, deberia estar centralizado en plantillas, a demás de que se esta duplicando codigo innecesario
-
---------------
-
-## 20/07
-
-Ha pasado algo de tiempo con el proyecto inactivo, necesito confirmar varias cosas.
-
-Comprobar que en nakomi los pagos funcionen: comprobe, que ya no hay el problema de antes sobre de que sin pago se creaban las ordenes, bien, ya no se crean ordenes sin pagos, pero, se crean cuentas sin ordenes, eso no debería de pasar, que no se creen cuentas al menso que se haya hecho el pago del servicio; tambien neecesitamos comprobar que los pagos de servicios funcionan como esperan, no he tenido mi primer pago de servicio asi que no puedo saber aun si realmente funciona. 
-
-Algunos detalles más
-
-Comprobar que el chat funciona bien, que el bot redirige al whatsapp, y que cada vez que haya un conversación me llegue un correo y un whatsapp, mi correo es andoryyu@gmail.com y mi whatsapp es +1 (608) 466-8134, esto es importante ya no quiero que las cosas sucedan a ciega, tambien debe llegarme un whatsapp y un correo cuando se haga un pedido, lo de los correo creo que ya funcionaba pero hay verificar que siga funcionando. 
-
-Subir un poco la resolucion a galeriaHeroContenedor y a proyectoGaleriaItem, un 10% mas
-
-En el gestor de contenido Nakomi no puedo agregar comas, lo que impide pues crear varios tag y cosas, mal ahi
+Esta tarea es para orgnizar, en produccion hubo un fallo sobre el cliente guillermo@nakomi.com, habiamos hecho algo para que se creen unos pagos pendientes personalizados para este cliente y registrar unos hosting a su nombre, esto se perdido porque la base de datos se borro y se volvio a crear, hay que volver a restaurar esto, con el detalle de que el ya pago uno de los hosting que habia pendiente (el hosting de cap.wandori.us ya esta suscrito) asi no se como vincular de nuevo la suscripcion de stripe que ya esta realizada
 
