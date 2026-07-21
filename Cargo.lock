@@ -970,7 +970,11 @@ name = "glory-rs"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64",
  "chrono",
+ "dashmap 6.1.0",
+ "hex",
+ "hmac",
  "serde",
  "serde_json",
  "sha2",

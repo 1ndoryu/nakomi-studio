@@ -215,7 +215,7 @@ export function buildStaffWsUrl(token: string): string {
 export const SENDER_LABELS: Record<string, string> = {
     client: 'Cliente',
     ai: 'Nakomi',
-    employee: 'Empleado',
+    employee: 'Freelancer',
     admin: 'Admin',
     visitor: 'Visitante',
 };

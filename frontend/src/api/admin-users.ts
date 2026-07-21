@@ -66,7 +66,7 @@ export async function apiCreateUser(payload: AdminCreateUserPayload): Promise<Ad
 
 export const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
-  employee: 'Empleado',
+  employee: 'Freelancer',
   client: 'Cliente',
 };
 

@@ -31,11 +31,13 @@ export interface InitiatePaymentRequest {
     phase_number?: number;
 }
 
-/* [166A-2] Tipos para checkout directo (sin orden previa) */
+/* [166A-2] Tipos para checkout directo (sin orden previa).
+ * [20CA-1] email es obligatorio: se usa para crear el usuario post-pago. */
 export interface CheckoutIntentRequest {
     service_slug: string;
     plan_slug: string;
     payment_mode: PaymentMode;
+    email: string;
 }
 
 export interface CheckoutIntentResponse {
