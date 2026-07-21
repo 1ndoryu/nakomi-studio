@@ -9,7 +9,8 @@
     width: 100%;
     padding-left: var(--spacing-lg);
     padding-right: var(--spacing-lg);
-    aspect-ratio: 1200 / 620;
+    /* [20CA-13] +10% resolución galería hero */
+    aspect-ratio: 1320 / 682;
     border-radius: var(--radius-xl);
     overflow: hidden;
 }

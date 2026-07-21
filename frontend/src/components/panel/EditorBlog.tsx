@@ -1,6 +1,6 @@
 /* [batch-4] Status toggles migrados a <Button>. Las tabs del editor siguen usando button nativo.
  * sentinel-disable-file html-nativo-en-vez-de-componente: solo aplica a tabs del editor aún. */
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {Star} from 'lucide-react';
 import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';
@@ -43,11 +43,16 @@ export const EditorBlog: React.FC<EditorBlogProps> = ({
         await onGuardar(form.buildBody());
     }, [form, onGuardar]);
 
-    /* Manejo de tags: campo de texto separados por comas */
-    const handleTagsChange = useCallback((valor: string) => {
-        const parsed = valor.split(',').map(t => t.trim()).filter(Boolean);
+    /* [20CA-14] Tags: string local para permitir escribir comas.
+     * Se parsea a array solo en blur para que la coma no desaparezca al escribir. */
+    const [tagsInput, setTagsInput] = useState(form.tags.join(', '));
+    useEffect(() => {
+        setTagsInput(form.tags.join(', '));
+    }, [form.tags]);
+    const handleTagsBlur = useCallback(() => {
+        const parsed = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
         form.setTags(parsed);
-    }, [form]);
+    }, [tagsInput, form]);
 
     return (
         <Modal abierto={abierto} onCerrar={onCerrar} className="modalGrande modalSinPadding editorBlogModal">
@@ -101,8 +106,9 @@ export const EditorBlog: React.FC<EditorBlogProps> = ({
                         <label className="editorBlogLabel">
                             Tags (separados por comas)
                             <Input
-                                value={form.tags.join(', ')}
-                                onChange={e => handleTagsChange(e.target.value)}
+                                value={tagsInput}
+                                onChange={e => setTagsInput(e.target.value)}
+                                onBlur={handleTagsBlur}
                                 placeholder="IA, desarrollo web, branding"
                             />
                         </label>

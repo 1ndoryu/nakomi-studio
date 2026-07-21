@@ -5,7 +5,7 @@
  * <button> nativo porque botonBase interfiere con estilos del tab (mismo patrón EditorBlog).
  * sentinel-disable-file limite-lineas: Editor modal con 4 tabs (General/Media/Tech/SEO) — dividir
  * cada tab en componente aparte añadiría prop-drilling sin beneficio real, el archivo es cohesivo. */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
@@ -49,14 +49,22 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
         await onGuardar(form.buildBody());
     }, [form, onGuardar]);
 
-    /* Manejo de campos array como texto separado por comas */
-    const handleCategoriasChange = useCallback((valor: string) => {
-        form.setCategorias(valor.split(',').map(t => t.trim()).filter(Boolean));
-    }, [form]);
-
-    const handleTecnologiasChange = useCallback((valor: string) => {
-        form.setTecnologias(valor.split(',').map(t => t.trim()).filter(Boolean));
-    }, [form]);
+    /* [20CA-14] Campos array como string local: se parsea a array en blur.
+     * Esto permite escribir comas sin que desaparezcan al instante. */
+    const [categoriasInput, setCategoriasInput] = useState(form.categorias.join(', '));
+    const [tecnologiasInput, setTecnologiasInput] = useState(form.tecnologias.join(', '));
+    useEffect(() => {
+        setCategoriasInput(form.categorias.join(', '));
+    }, [form.categorias]);
+    useEffect(() => {
+        setTecnologiasInput(form.tecnologias.join(', '));
+    }, [form.tecnologias]);
+    const handleCategoriasBlur = useCallback(() => {
+        form.setCategorias(categoriasInput.split(',').map(t => t.trim()).filter(Boolean));
+    }, [categoriasInput, form]);
+    const handleTecnologiasBlur = useCallback(() => {
+        form.setTecnologias(tecnologiasInput.split(',').map(t => t.trim()).filter(Boolean));
+    }, [tecnologiasInput, form]);
 
     return (
         <Modal abierto={abierto} onCerrar={onCerrar} className="modalGrande modalSinPadding editorProyectoModal">
@@ -110,8 +118,9 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                         <label className="editorProyectoLabel">
                             Categorías (separadas por comas)
                             <Input
-                                value={form.categorias.join(', ')}
-                                onChange={e => handleCategoriasChange(e.target.value)}
+                                value={categoriasInput}
+                                onChange={e => setCategoriasInput(e.target.value)}
+                                onBlur={handleCategoriasBlur}
                                 placeholder="Desarrollo web, Branding, E-commerce"
                             />
                         </label>
@@ -205,8 +214,9 @@ export const EditorProyecto: React.FC<EditorProyectoProps> = ({
                         <label className="editorProyectoLabel">
                             Tecnologías (separadas por comas)
                             <Input
-                                value={form.tecnologias.join(', ')}
-                                onChange={e => handleTecnologiasChange(e.target.value)}
+                                value={tecnologiasInput}
+                                onChange={e => setTecnologiasInput(e.target.value)}
+                                onBlur={handleTecnologiasBlur}
                                 placeholder="React, TypeScript, Rust, PostgreSQL"
                             />
                         </label>

@@ -64,7 +64,7 @@ export function ModalCrearUsuario({ onClose, onSubmit, isCreating, onCreated }: 
                     triggerContent={<>{ROLE_LABELS[role]} <ChevronDown size={14} /></>}
                     items={[
                         { id: 'client', label: 'Cliente', onSelect: () => setRole('client') },
-                        { id: 'employee', label: 'Empleado', onSelect: () => setRole('employee') },
+                        { id: 'employee', label: 'Freelancer', onSelect: () => setRole('employee') },
                         { id: 'admin', label: 'Admin', onSelect: () => setRole('admin') },
                     ]}
                 />

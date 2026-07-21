@@ -1,14 +1,14 @@
 /* [016A-3] Modal para que el admin asigne una orden a un empleado.
- * Reestructurado para usar ModalBody/ModalField/ModalLabel consistentes.
- * Carga lista de empleados desde GET /api/admin/employees,
- * muestra nombre, especialidades y carga de trabajo actual.
+ * [20CA-4] Campo de búsqueda para filtrar freelancers por email o especialidad.
+ * Carga lista de empleados desde GET /api/admin/employees.
  * Al confirmar hace PUT /api/orders/:id/assign/:employeeId. */
 
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Loader2, Search } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiListEmployees, apiAssignOrder, type EmployeeListItem } from '../../api/assignment';
 import { Modal, ModalBody, ModalField, ModalLabel } from '../ui/Modal';
+import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import './ModalAsignar.css';
 
@@ -22,6 +22,7 @@ interface ModalAsignarProps {
 
 export function ModalAsignar({ orderId, orderNumber, abierto, onCerrar, onAsignado }: ModalAsignarProps) {
     const [seleccionado, setSeleccionado] = useState<string | null>(null);
+    const [busqueda, setBusqueda] = useState('');
     const queryClient = useQueryClient();
 
     const { data: empleados = [], isLoading } = useQuery<EmployeeListItem[]>({
@@ -29,6 +30,16 @@ export function ModalAsignar({ orderId, orderNumber, abierto, onCerrar, onAsigna
         queryFn: apiListEmployees,
         enabled: abierto,
     });
+
+    /* [20CA-4] Filtrar por email o especialidades */
+    const filtrados = useMemo(() => {
+        if (!busqueda.trim()) return empleados;
+        const q = busqueda.toLowerCase();
+        return empleados.filter(e =>
+            e.email.toLowerCase().includes(q)
+            || e.specialties.some(s => s.toLowerCase().includes(q))
+        );
+    }, [empleados, busqueda]);
 
     const asignar = useMutation({
         mutationFn: () => apiAssignOrder(orderId, seleccionado!),
@@ -41,7 +52,6 @@ export function ModalAsignar({ orderId, orderNumber, abierto, onCerrar, onAsigna
 
     return (
         <Modal abierto={abierto} onCerrar={onCerrar} className="modalMedio">
-            <h3 className="modalTitulo">Asignar orden #{orderNumber}</h3>
 
             <ModalBody>
                 {isLoading ? (
@@ -53,8 +63,21 @@ export function ModalAsignar({ orderId, orderNumber, abierto, onCerrar, onAsigna
                 ) : (
                     <ModalField>
                         <ModalLabel>Seleccionar freelancer</ModalLabel>
-                        <ul className="modalAsignarLista" role="listbox">
-                            {empleados.map(emp => (
+                        <div className="modalAsignarBusqueda">
+                            <Search size={16} className="modalAsignarBusquedaIcono" />
+                            <Input
+                                variante="outline"
+                                placeholder="Buscar por email o especialidad..."
+                                value={busqueda}
+                                onChange={e => setBusqueda(e.target.value)}
+                                className="modalAsignarBusquedaInput"
+                            />
+                        </div>
+                        {filtrados.length === 0 ? (
+                            <p className="modalAsignarVacio">Sin resultados para "{busqueda}"</p>
+                        ) : (
+                            <ul className="modalAsignarLista" role="listbox">
+                                {filtrados.map(emp => (
                                 <li key={emp.user_id} role="option" aria-selected={seleccionado === emp.user_id}>
                                     <Button
                                         type="button"
@@ -78,6 +101,7 @@ export function ModalAsignar({ orderId, orderNumber, abierto, onCerrar, onAsigna
                                 </li>
                             ))}
                         </ul>
+                        )}
                     </ModalField>
                 )}
             </ModalBody>

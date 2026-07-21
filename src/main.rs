@@ -363,6 +363,12 @@ fn spawn_background_services(pool: &sqlx::PgPool, _config: &AppConfig) {
         session_cleanup_loop(chat_cleanup_pool).await;
     });
 
+    /* [20CA-8] Background task: detectar mensajes sin responder >20min y notificar */
+    let unanswered_pool = pool.clone();
+    tokio::spawn(async move {
+        unanswered_messages_loop(unanswered_pool).await;
+    });
+
     let coolify_config = CoolifyConfig::from_env();
     let coolify_config_vps1 = CoolifyConfig::from_env_with_prefix("COOLIFY_VPS1_");
 
@@ -697,6 +703,79 @@ async fn session_cleanup_loop(pool: sqlx::PgPool) {
                 "[chat-cleanup] {n} sesiones inactivas cerradas (>{INACTIVITY_HOURS}h)"
             ),
             Err(e) => tracing::error!("[chat-cleanup] Error cerrando sesiones inactivas: {e}"),
+        }
+    }
+}
+
+/* [20CA-8] Background loop: detecta mensajes sin responder >20min y envía
+ * notificación in-app a admins. Ejecuta cada 5 minutos.
+ * Un mensaje "sin responder" es el último de la sesión y fue enviado por
+ * el visitante/cliente (no staff/system), y nadie lo ha visto. */
+async fn unanswered_messages_loop(pool: sqlx::PgPool) {
+    use glory_backend::models::CreateNotification;
+    use glory_backend::repositories::{ChatRepository, NotificationRepository, UserRepository};
+
+    const THRESHOLD_MINUTES: i64 = 20;
+    const CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_secs(300);
+    let mut notified: std::collections::HashSet<uuid::Uuid> = std::collections::HashSet::new();
+
+    loop {
+        tokio::time::sleep(CHECK_INTERVAL).await;
+        notified.clear();
+
+        match ChatRepository::find_unanswered_sessions(&pool, THRESHOLD_MINUTES).await {
+            Ok(results) => {
+                let new_ids: Vec<_> = results
+                    .into_iter()
+                    .filter(|sid| !notified.contains(sid))
+                    .collect();
+
+                if new_ids.is_empty() {
+                    continue;
+                }
+
+                tracing::info!(
+                    "[unanswered-chat] {} sesiones con mensajes sin responder >{THRESHOLD_MINUTES}min",
+                    new_ids.len()
+                );
+
+                let admin_ids = match UserRepository::admin_ids(&pool).await {
+                    Ok(ids) => ids,
+                    Err(e) => {
+                        tracing::error!("[unanswered-chat] Error obteniendo admins: {e}");
+                        continue;
+                    }
+                };
+                if admin_ids.is_empty() {
+                    continue;
+                }
+
+                for admin_id in &admin_ids {
+                    let notif = CreateNotification {
+                        user_id: *admin_id,
+                        notification_type: "unanswered_chat".to_string(),
+                        title: format!(
+                            "{} mensaje(s) sin responder",
+                            new_ids.len()
+                        ),
+                        body: Some(format!(
+                            "Hay {} sesiones de chat con mensajes sin respuesta por más de {} minutos.",
+                            new_ids.len(), THRESHOLD_MINUTES
+                        )),
+                        link: Some("/panel?seccion=chat".to_string()),
+                        reference_type: Some("chat".to_string()),
+                        reference_id: new_ids.first().copied(),
+                    };
+                    let _ = NotificationRepository::create(&pool, &notif).await;
+                }
+
+                for sid in &new_ids {
+                    notified.insert(*sid);
+                }
+            }
+            Err(e) => {
+                tracing::error!("[unanswered-chat] Error buscando mensajes sin responder: {e}");
+            }
         }
     }
 }

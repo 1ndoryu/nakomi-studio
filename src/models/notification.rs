@@ -12,16 +12,14 @@ use validator::Validate;
 
 /* Tipos de notificación soportados.
  * [104A-38] Todos integrados en sus respectivos handlers.
- * NOTIF_PAYMENT_RELEASED y NOTIF_PHASE_APPROVED pendientes de integrar. */
+ * [20CA-10] NOTIF_PAYMENT_RELEASED y NOTIF_PHASE_APPROVED integrados en order_lifecycle. */
 pub const NOTIF_NEW_ORDER: &str = "new_order";
 pub const NOTIF_ORDER_ASSIGNED: &str = "order_assigned";
 pub const NOTIF_ORDER_COMPLETED: &str = "order_completed";
 pub const NOTIF_ORDER_CANCELLED: &str = "order_cancelled";
 pub const NOTIF_PAYMENT_RECEIVED: &str = "payment_received";
-#[allow(dead_code)]
 pub const NOTIF_PAYMENT_RELEASED: &str = "payment_released";
 pub const NOTIF_PHASE_DELIVERED: &str = "phase_delivered";
-#[allow(dead_code)]
 pub const NOTIF_PHASE_APPROVED: &str = "phase_approved";
 pub const NOTIF_REVISION_REQUESTED: &str = "revision_requested";
 pub const NOTIF_REFUND_REQUESTED: &str = "refund_requested";
@@ -37,6 +35,8 @@ pub const NOTIF_ESCALATION_NEEDED: &str = "escalation_needed";
 pub const NOTIF_CHAT_INVOICE_PAID: &str = "chat_invoice_paid";
 /* Hosting cancelado/suspendido: se notifica al cliente propietario */
 pub const NOTIF_HOSTING_CANCELLED: &str = "hosting_cancelled";
+/* [20CA-10] Nueva conversación de chat iniciada por visitante */
+pub const NOTIF_NEW_CONVERSATION: &str = "new_conversation";
 pub const NOTIF_HOSTING_SUSPENDED: &str = "hosting_suspended";
 /* [195A-1] Almacenamiento superado: SSH bloqueado hasta liberar espacio */
 pub const NOTIF_HOSTING_STORAGE_EXCEEDED: &str = "hosting_storage_exceeded";

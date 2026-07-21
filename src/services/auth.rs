@@ -58,8 +58,9 @@ pub fn verify_password_hash(password: &str, password_hash: &str) -> Result<bool,
 }
 
 /* [104A-3] Verifica si el email está en GLORY_ADMIN_EMAILS y promueve a admin.
- * Env var es comma-separated, case-insensitive. Si no existe, no promueve a nadie. */
-fn is_admin_email(email: &str) -> bool {
+ * Env var es comma-separated, case-insensitive. Si no existe, no promueve a nadie.
+ * [20CA-1] pub porque payment.rs lo necesita para auto-promote en checkout post-pago. */
+pub fn is_admin_email(email: &str) -> bool {
     std::env::var("GLORY_ADMIN_EMAILS")
         .unwrap_or_default()
         .split(',')
@@ -113,17 +114,35 @@ impl AuthService {
     /* [064A-3] Registro rapido solo con email (flujo de compra).
      * Genera password aleatorio; el usuario puede cambiarlo desde el panel.
      * [154A-5] Marca password_set = false para que el frontend muestre aviso.
-     * Si el email ya existe retorna Conflict(409) para que el frontend pida password. */
+     * [20CA-1] Ahora es idempotente para usuarios sin contraseña: si el email
+     * ya existe con password_set=false, retorna el usuario existente en vez de 409.
+     * Esto permite que el flujo de checkout llame quick_register antes Y después
+     * del pago sin crear cuentas duplicadas. Solo retorna 409 si el usuario YA
+     * tiene contraseña (debe hacer login). */
     pub async fn quick_register(
         pool: &PgPool,
         req: QuickRegisterRequest,
         jwt_secret: &str,
     ) -> Result<AuthResponse, AppError> {
-        if UserRepository::find_by_email(pool, &req.email)
-            .await?
-            .is_some()
-        {
-            return Err(AppError::Conflict("Email ya registrado".into()));
+        /* [20CA-1] Si el email ya existe: */
+        if let Some(existing) = UserRepository::find_by_email(pool, &req.email).await? {
+            if existing.password_set {
+                /* Usuario con contraseña → debe hacer login */
+                return Err(AppError::Conflict("Email ya registrado".into()));
+            }
+            /* [20CA-1] Usuario sin contraseña (creado por checkout o quick_register previo).
+             * Retornar JWT sin crear duplicado. */
+            let effective = existing.effective_role();
+            let token = Self::generate_token(existing.id, existing.role, effective, None, jwt_secret)?;
+            return Ok(AuthResponse {
+                token,
+                user_id: existing.id,
+                email: existing.email.clone(),
+                role: existing.role,
+                effective_role: effective,
+                impersonating: false,
+                needs_password: true,
+            });
         }
 
         let random_password: String = {

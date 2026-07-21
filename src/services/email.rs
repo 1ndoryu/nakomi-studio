@@ -116,45 +116,8 @@ impl EmailService {
     ) {
         let subject = format!("¡Pedido #{order_number} recibido! — Nakomi Studio");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#1a1a1a;padding:32px 24px;text-align:center;">
-    <h1 style="margin:0;color:#c9a84c;font-size:24px;font-weight:600;">Nakomi Studio</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:20px;">¡Hola, {client_name}!</h2>
-    <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px;">
-      Tu pedido <strong>#{order_number}</strong> ha sido recibido exitosamente.
-      Nuestro equipo lo revisará y será atendido dentro de las próximas <strong>48 horas</strong>.
-    </p>
-    <div style="background:#f8f8f8;border-radius:8px;padding:20px;margin-bottom:24px;">
-      <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;">
-        <tr><td style="padding:6px 0;color:#888;">Servicio</td><td style="padding:6px 0;font-weight:500;text-align:right;">{service_title}</td></tr>
-        <tr><td style="padding:6px 0;color:#888;">Plan</td><td style="padding:6px 0;font-weight:500;text-align:right;">{plan_name}</td></tr>
-        <tr><td style="padding:6px 0;color:#888;">Precio</td><td style="padding:6px 0;font-weight:600;text-align:right;color:#c9a84c;">{price_display}</td></tr>
-      </table>
-    </div>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 24px;">
-      Puedes seguir el progreso de tu pedido en tiempo real desde tu panel.
-    </p>
-    <a href="https://nakomi.studio/panel" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ver mi pedido
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">© 2026 Nakomi Studio · Este email fue enviado porque realizaste un pedido.</p>
-  </div>
-</div>
-</body></html>"#,
-            client_name = html_escape(client_name),
-            order_number = order_number,
-            service_title = html_escape(service_title),
-            plan_name = html_escape(plan_name),
-            price_display = html_escape(price_display),
+        let html = super::email_templates::render_order_confirmation(
+            client_name, *order_number, service_title, plan_name, price_display,
         );
 
         /* [311A-1] Logging del envío en email_logs para trazabilidad. */
@@ -214,42 +177,10 @@ impl EmailService {
         site_url: &str,
     ) {
         let subject = format!("🆕 Nueva orden #{order_number} — {client_name} — Nakomi Studio");
-        let escaped_client = html_escape(client_name);
-        let escaped_email = html_escape(client_email);
-        let escaped_service = html_escape(service_title);
-        let escaped_plan = html_escape(plan_name);
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#1a1a1a;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#c9a84c;font-size:22px;font-weight:600;">🆕 Nueva Orden</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 20px;">
-      Se ha creado un nuevo pedido en Nakomi Studio.
-    </p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;">
-      <tr><td style="padding:6px 0;color:#888;">Pedido</td><td style="padding:6px 0;font-weight:500;text-align:right;">#{order_number}</td></tr>
-      <tr><td style="padding:6px 0;color:#888;">Cliente</td><td style="padding:6px 0;font-weight:500;text-align:right;">{escaped_client} ({escaped_email})</td></tr>
-      <tr><td style="padding:6px 0;color:#888;">Servicio</td><td style="padding:6px 0;font-weight:500;text-align:right;">{escaped_service}</td></tr>
-      <tr><td style="padding:6px 0;color:#888;">Plan</td><td style="padding:6px 0;font-weight:500;text-align:right;">{escaped_plan}</td></tr>
-      <tr><td style="padding:6px 0;color:#888;">Modalidad</td><td style="padding:6px 0;font-weight:500;text-align:right;">{payment_mode}</td></tr>
-      <tr><td style="padding:6px 0;color:#888;">Precio</td><td style="padding:6px 0;font-weight:600;text-align:right;color:#c9a84c;">{price_display}</td></tr>
-    </table>
-    <a href="{panel_link}" style="display:inline-block;margin-top:24px;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Revisar pedido
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de nuevo pedido</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_new_order_admin(
+            client_name, client_email, order_number, service_title, plan_name, price_display, payment_mode, &panel_link,
         );
 
         for email in admin_emails {
@@ -287,33 +218,9 @@ impl EmailService {
     ) {
         let subject = format!("⚠ Escalación: {visitor_name} necesita ayuda — Nakomi Studio");
         let panel_link = format!("{site_url}/panel/chat?session={session_id}");
-        let escaped_name = html_escape(visitor_name);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#b91c1c;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">⚠ Escalación de Chat</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      La IA detectó que <strong>{escaped_name}</strong> necesita asistencia humana.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 24px;">
-      Por favor, revisa la sesión de chat lo antes posible para atender al visitante.
-    </p>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Abrir sesión de chat
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de escalación</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_escalation(
+            visitor_name, &panel_link,
         );
 
         for email in admin_emails {
@@ -357,36 +264,10 @@ impl EmailService {
         site_url: &str,
     ) {
         let subject = format!("💰 Pago recibido — Orden #{order_number} — Nakomi Studio");
-        let escaped_client = html_escape(client_name);
-        let escaped_email = html_escape(client_email);
         let panel_link = format!("{site_url}/panel/orders/{order_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#166534;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">💰 Pago recibido</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 20px;">
-      El cliente <strong>{escaped_client}</strong> ({escaped_email}) realizó un pago.
-    </p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;">
-      <tr><td style="padding:6px 0;color:#888;">Pedido</td><td style="padding:6px 0;font-weight:500;text-align:right;">#{order_number}</td></tr>
-      <tr><td style="padding:6px 0;color:#888;">Monto</td><td style="padding:6px 0;font-weight:600;text-align:right;color:#166534;">{amount_display}</td></tr>
-    </table>
-    <a href="{panel_link}" style="display:inline-block;margin-top:24px;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ver orden
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de pago</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_payment_received_admin(
+            client_name, order_number, amount_display, &panel_link,
         );
 
         for email in admin_emails {
@@ -422,38 +303,10 @@ impl EmailService {
         register_url: &str,
     ) {
         let subject = "Tu pago fue recibido — Nakomi Studio".to_string();
-        let escaped_email = html_escape(client_email);
+        let amount_display = format!("${:.2} USD", amount_usd);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#c9a84c;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">✓ Pago recibido</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      ¡Hola! Tu pago de <strong>${amount_usd:.2} USD</strong> fue procesado exitosamente.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
-      Para hacer seguimiento de tu proyecto y comunicarte con nuestro equipo, crea tu cuenta
-      usando el correo con el que realizaste el pago: <strong>{escaped_email}</strong>
-    </p>
-    <a href="{register_url}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Crear mi cuenta
-    </a>
-    <p style="color:#999;font-size:12px;margin-top:20px;">
-      Si ya tienes cuenta con ese correo, simplemente inicia sesión en
-      <a href="{site_url}/panel" style="color:#c9a84c;">{site_url}/panel</a>
-    </p>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de pago</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_chat_invoice_paid_client(
+            client_email, &amount_display, "",
         );
 
         /* [311A-1] Logging del envío en email_logs para trazabilidad. */
@@ -487,30 +340,10 @@ impl EmailService {
     ) {
         let subject = format!("Factura pagada: {client_email} — Nakomi Studio");
         let panel_link = format!("{site_url}/panel/chat?session={session_id}");
-        let escaped_email = html_escape(client_email);
+        let amount_display = format!("${:.2} USD", amount_usd);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#166534;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">💰 Pago recibido via chat</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      El cliente <strong>{escaped_email}</strong> pagó <strong>${amount_usd:.2} USD</strong> via factura de chat.
-    </p>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ver sesión de chat
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de pago</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_chat_invoice_paid_admin(
+            client_email, &amount_display, &session_id.to_string(), &panel_link,
         );
 
         for email in admin_emails {
@@ -547,32 +380,10 @@ impl EmailService {
         monthly_price_cents: i32,
     ) {
         let subject = format!("VPS pendiente de aprobación: {tier_name} — Nakomi Studio");
-        let escaped_email = html_escape(client_email);
-        let escaped_tier = html_escape(tier_name);
         let amount_display = format_usd_cents(monthly_price_cents);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#92400e;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">VPS pendiente de aprobación</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      El cliente <strong>{escaped_email}</strong> pagó un <strong>{escaped_tier}</strong>.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
-      Importe mensual: <strong>{amount_display}</strong>. La suscripción quedó en espera de aprobación manual.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
-      Revisa el panel de hosting para aprobar o rechazar la provisión.
-    </p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_vps_pending_approval(
+            client_email, tier_name, "", &amount_display,
         );
 
         for email in admin_emails {
@@ -604,37 +415,11 @@ impl EmailService {
         password: &str,
     ) {
         let subject = format!("Tu {tier_name} ya está activo — Nakomi Studio");
-        let escaped_tier = html_escape(tier_name);
-        let escaped_username = html_escape(username);
-        let escaped_password = html_escape(password);
-        let ip_block = public_ip.map_or_else(
-          String::new,
-            |ip| format!(
-                "<tr><td style=\"padding:6px 0;color:#888;\">IP pública</td><td style=\"padding:6px 0;font-weight:500;text-align:right;\">{}</td></tr>",
-                html_escape(ip)
-            ),
-        );
+        let ip = public_ip.unwrap_or("");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#166534;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">VPS activo</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 20px;">
-      Tu <strong>{escaped_tier}</strong> ya fue provisionado y está listo para usar.
-    </p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;background:#f8f8f8;border-radius:8px;padding:20px;">
-      {ip_block}
-      <tr><td style="padding:6px 0;color:#888;">Usuario</td><td style="padding:6px 0;font-weight:500;text-align:right;">{escaped_username}</td></tr>
-      <tr><td style="padding:6px 0;color:#888;">Contraseña inicial</td><td style="padding:6px 0;font-weight:500;text-align:right;">{escaped_password}</td></tr>
-    </table>
-    <p style="color:#555;font-size:13px;line-height:1.6;margin:20px 0 0;">
-      Cambia la contraseña en tu primera conexión y guarda estas credenciales en un gestor seguro.
+        let html = super::email_templates::render_vps_approved(
+            client_email, tier_name, ip, username, password,
+        );
     </p>
   </div>
 </div>
@@ -666,28 +451,9 @@ impl EmailService {
         reason: &str,
     ) {
         let subject = format!("Tu solicitud de {tier_name} fue rechazada — Nakomi Studio");
-        let escaped_tier = html_escape(tier_name);
-        let escaped_reason = html_escape(reason);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#991b1b;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Solicitud rechazada</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      Revisamos tu solicitud de <strong>{escaped_tier}</strong> y no pudimos aprobarla en este momento.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
-      Motivo: <strong>{escaped_reason}</strong>
-    </p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_vps_rejected(
+            client_email, tier_name, reason,
         );
 
         /* [311A-1] Logging del envío en email_logs para trazabilidad. */
@@ -717,30 +483,10 @@ impl EmailService {
         old_email: &str,
     ) {
         let subject = "Tu correo de acceso fue actualizado — Nakomi Studio";
-        let recipient = recipient_label(display_name, new_email);
-        let escaped_old = html_escape(old_email);
-        let escaped_new = html_escape(new_email);
+        let recipient_name = display_name.unwrap_or(new_email);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#1a1a1a;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Correo actualizado</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">Hola, <strong>{recipient}</strong>.</p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
-      Tu cuenta cambió el correo de acceso de <strong>{escaped_old}</strong> a <strong>{escaped_new}</strong>.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
-      Desde ahora puedes iniciar sesión con este correo. Este cambio no requirió verificación por email.
-    </p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_profile_email_changed_new(
+            old_email, new_email, recipient_name,
         );
 
         /* [311A-1] Logging del envío en email_logs para trazabilidad. */
@@ -775,30 +521,10 @@ impl EmailService {
         new_email: &str,
     ) {
         let subject = "Tu correo de acceso fue reemplazado — Nakomi Studio";
-        let recipient = recipient_label(display_name, old_email);
-        let escaped_old = html_escape(old_email);
-        let escaped_new = html_escape(new_email);
+        let recipient_name = display_name.unwrap_or(old_email);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#991b1b;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Cambio de correo detectado</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">Hola, <strong>{recipient}</strong>.</p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
-      Tu cuenta dejó de usar <strong>{escaped_old}</strong> y ahora usa <strong>{escaped_new}</strong> para iniciar sesión.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
-      Si no reconoces este cambio, responde a este correo o contacta a soporte de inmediato.
-    </p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_profile_email_changed_old(
+            old_email, new_email, recipient_name,
         );
 
         /* [311A-1] Logging del envío en email_logs para trazabilidad. */
@@ -832,28 +558,10 @@ impl EmailService {
         display_name: Option<&str>,
     ) {
         let subject = "Tu contraseña fue actualizada — Nakomi Studio";
-        let recipient = recipient_label(display_name, to_email);
+        let recipient_name = display_name.unwrap_or(to_email);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#1a1a1a;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Contraseña actualizada</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">Hola, <strong>{recipient}</strong>.</p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">
-      La contraseña de tu cuenta fue cambiada correctamente desde la configuración de perfil.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
-      Si no fuiste tú, cambia tu contraseña de nuevo de inmediato y contacta al equipo de soporte.
-    </p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_profile_password_changed(
+            recipient_name,
         );
 
         /* [311A-1] Logging del envío en email_logs para trazabilidad. */
@@ -889,33 +597,9 @@ impl EmailService {
         order_id: uuid::Uuid,
     ) {
         let subject = format!("✅ Orden #{order_number} completada — Nakomi Studio");
-        let escaped_name = html_escape(client_name);
-        let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#166534;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">✅ Orden completada</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:18px;">¡Hola, {escaped_name}!</h2>
-    <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px;">
-      Tu orden <strong>#{order_number}</strong> ha sido completada por nuestro equipo.
-      Ya puedes revisar los entregables desde tu panel.
-    </p>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ver mi orden
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_order_completed_client(
+            client_name, order_number, "",
         );
 
         let result = Self::send(config, to_email, &subject, &html).await;
@@ -947,32 +631,9 @@ impl EmailService {
         order_id: uuid::Uuid,
     ) {
         let subject = format!("❌ Orden #{order_number} cancelada — Nakomi Studio");
-        let escaped_name = html_escape(client_name);
-        let escaped_reason = html_escape(reason);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#991b1b;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">❌ Orden cancelada</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:18px;">Hola, {escaped_name}</h2>
-    <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      Tu orden <strong>#{order_number}</strong> fue cancelada.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0;">
-      Motivo: <strong>{escaped_reason}</strong>
-    </p>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_order_cancelled_client(
+            client_name, order_number, reason,
         );
 
         let result = Self::send(config, to_email, &subject, &html).await;
@@ -1005,34 +666,10 @@ impl EmailService {
         order_id: uuid::Uuid,
     ) {
         let subject = format!("📦 Fase entregada — Orden #{order_number} — Nakomi Studio");
-        let escaped_name = html_escape(client_name);
-        let escaped_phase = html_escape(phase_title);
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#1a1a1a;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#c9a84c;font-size:20px;font-weight:600;">📦 Fase entregada</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:18px;">¡Hola, {escaped_name}!</h2>
-    <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 20px;">
-      La fase <strong>{escaped_phase}</strong> de tu orden <strong>#{order_number}</strong> ha sido entregada.
-      Revisa los archivos y confirma si todo está correcto desde tu panel.
-    </p>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Revisar entrega
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_phase_delivered_client(
+            client_name, order_number, phase_title, &panel_link,
         );
 
         let result = Self::send(config, to_email, &subject, &html).await;
@@ -1066,41 +703,9 @@ impl EmailService {
         order_id: uuid::Uuid,
     ) {
         let subject = format!("⚠️ Problema reportado — Orden #{order_number} — Nakomi Studio");
-        let escaped_name = html_escape(client_name);
-        let escaped_title = html_escape(problem_title);
-        let escaped_desc = html_escape(problem_description);
-        let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#92400e;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">⚠️ Problema reportado</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:18px;">Hola, {escaped_name}</h2>
-    <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      Se reportó un problema en tu orden <strong>#{order_number}</strong>:
-    </p>
-    <div style="background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
-      <p style="margin:0 0 8px;font-weight:600;color:#333;font-size:14px;">{escaped_title}</p>
-      <p style="margin:0;color:#555;font-size:14px;line-height:1.5;">{escaped_desc}</p>
-    </div>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 20px;">
-      Nuestro equipo revisará el problema y te dará seguimiento a la brevedad.
-    </p>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ver orden
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_problem_reported_client(
+            client_name, order_number, problem_description,
         );
 
         let result = Self::send(config, to_email, &subject, &html).await;
@@ -1133,35 +738,10 @@ impl EmailService {
         site_url: &str,
     ) {
         let subject = format!("✅ Orden #{order_number} completada — {client_name} — Nakomi Studio");
-        let escaped_client = html_escape(client_name);
-        let escaped_email = html_escape(client_email);
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#166534;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">✅ Orden completada</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 20px;">
-      La orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}) ha sido completada.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 20px;">
-      Todas las fases fueron aprobadas. Los pagos retenidos han sido capturados.
-    </p>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ver orden
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de orden completada</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_order_completed_admin(
+            client_name, order_number, "", &panel_link,
         );
 
         for email in admin_emails {
@@ -1198,36 +778,10 @@ impl EmailService {
         site_url: &str,
     ) {
         let subject = format!("❌ Orden #{order_number} cancelada — {client_name} — Nakomi Studio");
-        let escaped_client = html_escape(client_name);
-        let escaped_email = html_escape(client_email);
-        let escaped_reason = html_escape(reason);
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#991b1b;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">❌ Orden cancelada</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      La orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}) fue cancelada.
-    </p>
-    <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 20px;">
-      Motivo: <strong>{escaped_reason}</strong>
-    </p>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ver orden
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de cancelación</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_order_cancelled_admin(
+            client_name, order_number, reason, &panel_link,
         );
 
         for email in admin_emails {
@@ -1265,38 +819,10 @@ impl EmailService {
         site_url: &str,
     ) {
         let subject = format!("⚠️ Problema reportado — Orden #{order_number} — Nakomi Studio");
-        let escaped_client = html_escape(client_name);
-        let escaped_email = html_escape(client_email);
-        let escaped_title = html_escape(problem_title);
-        let escaped_desc = html_escape(problem_description);
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#92400e;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">⚠️ Problema reportado</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      Se reportó un problema en la orden <strong>#{order_number}</strong> del cliente <strong>{escaped_client}</strong> ({escaped_email}):
-    </p>
-    <div style="background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
-      <p style="margin:0 0 8px;font-weight:600;color:#333;font-size:14px;">{escaped_title}</p>
-      <p style="margin:0;color:#555;font-size:14px;line-height:1.5;">{escaped_desc}</p>
-    </div>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ver orden
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de problema</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_problem_reported_admin(
+            client_name, order_number, problem_description, &panel_link,
         );
 
         for email in admin_emails {
@@ -1334,37 +860,10 @@ impl EmailService {
         site_url: &str,
     ) {
         let subject = format!("🔄 Reembolso solicitado — Orden #{order_number} — Nakomi Studio");
-        let escaped_client = html_escape(client_name);
-        let escaped_email = html_escape(client_email);
-        let escaped_reason = html_escape(reason);
         let panel_link = format!("{site_url}/panel?seccion=reembolsos&id={refund_id}");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#b45309;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">🔄 Reembolso solicitado</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      El cliente <strong>{escaped_client}</strong> ({escaped_email}) solicitó un reembolso para la orden <strong>#{order_number}</strong>.
-    </p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
-      <tr><td style="padding:6px 8px;color:#888;">Monto</td><td style="padding:6px 8px;font-weight:600;text-align:right;color:#b45309;">{amount_display}</td></tr>
-      <tr><td style="padding:6px 8px;color:#888;">Motivo</td><td style="padding:6px 8px;text-align:right;">{escaped_reason}</td></tr>
-    </table>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Revisar solicitud
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de reembolso</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_refund_requested_admin(
+            client_name, order_number, amount_display, reason, &panel_link,
         );
 
         for email in admin_emails {
@@ -1399,36 +898,10 @@ impl EmailService {
         site_url: &str,
     ) {
         let subject = format!("🆕 Nuevo usuario registrado — {user_email} — Nakomi Studio");
-        let escaped_email = html_escape(user_email);
-        let escaped_name = html_escape(user_name);
         let panel_link = format!("{site_url}/panel");
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <div style="background:#1a1a1a;padding:24px;text-align:center;">
-    <h1 style="margin:0;color:#c9a84c;font-size:20px;font-weight:600;">🆕 Nuevo usuario</h1>
-  </div>
-  <div style="padding:32px 24px;">
-    <p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 16px;">
-      Un nuevo usuario se registró en Nakomi Studio.
-    </p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:20px;">
-      <tr><td style="padding:6px 8px;color:#888;">Nombre</td><td style="padding:6px 8px;font-weight:500;text-align:right;">{escaped_name}</td></tr>
-      <tr><td style="padding:6px 8px;color:#888;">Email</td><td style="padding:6px 8px;font-weight:500;text-align:right;">{escaped_email}</td></tr>
-    </table>
-    <a href="{panel_link}" style="display:inline-block;background:#c9a84c;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
-      Ir al panel
-    </a>
-  </div>
-  <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#999;font-size:12px;">Nakomi Studio · Notificación automática de nuevo registro</p>
-  </div>
-</div>
-</body></html>"#,
+        let html = super::email_templates::render_new_user_registered_admin(
+            user_name, user_email, &panel_link,
         );
 
         for email in admin_emails {

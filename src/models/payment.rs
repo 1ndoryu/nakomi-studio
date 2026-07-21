@@ -79,6 +79,10 @@ pub struct CreateCheckoutIntentRequest {
     pub service_slug: String,
     pub plan_slug: String,
     pub payment_mode: PaymentMode,
+    /* [20CA-1] Email opcional para flujo sin auth: se guarda en metadata de Stripe
+     * y se usa en el webhook para crear/encontrar el usuario DESPUÉS del pago.
+     * Si el usuario está autenticado, el email se ignora (se usa el del JWT). */
+    pub email: Option<String>,
 }
 
 /* [166A-2] Response del checkout intent: solo lo necesario para el frontend. */

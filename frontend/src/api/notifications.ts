@@ -45,8 +45,20 @@ export const NOTIF_TYPES = {
   delegation_received: { label: 'Delegación recibida', icon: 'ArrowRightLeft' },
   delegation_resolved: { label: 'Delegación resuelta', icon: 'ArrowRightLeft' },
   new_message: { label: 'Nuevo mensaje', icon: 'MessageCircle' },
+  new_conversation: { label: 'Nueva conversación', icon: 'MessageCircle' },
+  escalation_needed: { label: 'Escalación IA', icon: 'AlertTriangle' },
+  chat_invoice_paid: { label: 'Factura de chat pagada', icon: 'DollarSign' },
+  unanswered_chat: { label: 'Chat sin responder', icon: 'Clock' },
   problem_reported: { label: 'Problema reportado', icon: 'AlertTriangle' },
   problem_resolved: { label: 'Problema atendido', icon: 'CheckCircle' },
+  hosting_cancelled: { label: 'Hosting cancelado', icon: 'XCircle' },
+  hosting_suspended: { label: 'Hosting suspendido', icon: 'AlertCircle' },
+  hosting_storage_exceeded: { label: 'Almacenamiento superado', icon: 'AlertTriangle' },
+  hosting_storage_restored: { label: 'Almacenamiento restaurado', icon: 'CheckCircle' },
+  vps_pending_approval: { label: 'VPS pendiente de aprobación', icon: 'Clock' },
+  vps_approved: { label: 'VPS aprobado', icon: 'CheckCircle' },
+  vps_rejected: { label: 'VPS rechazado', icon: 'XCircle' },
+  vps_suspended: { label: 'VPS suspendido', icon: 'AlertCircle' },
 } as const;
 
 export type NotificationType = keyof typeof NOTIF_TYPES;

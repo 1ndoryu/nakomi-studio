@@ -76,7 +76,8 @@ pub async fn create_cancellation_request(
         CancellationRequestRepository::create(&state.pool, order_id, auth.user_id, &body.reason)
             .await?;
 
-    /* [204A-13] Notificar a la otra parte (clienteâ†’empleado o empleadoâ†’cliente) */
+    /* [204A-13] Notificar a la otra parte (cliente→empleado o empleado→cliente).
+     * [20CA-6] Si el empleado solicitó, notificar también a admins. */
     let (notify_id, notify_body) = if is_client {
         let emp = order.assigned_employee_id.unwrap_or(Uuid::nil());
         (
@@ -100,7 +101,7 @@ pub async fn create_cancellation_request(
             user_id: notify_id,
             notification_type: "cancellation_requested".to_string(),
             title: format!(
-                "Solicitud de cancelaciÃ³n â€” Orden #{}",
+                "Solicitud de cancelación Orden #{}",
                 order.order_number
             ),
             body: Some(notify_body),
@@ -109,6 +110,31 @@ pub async fn create_cancellation_request(
             reference_id: Some(order_id),
         };
         let _ = state.notification_hub.notify(notif).await;
+    }
+
+    /* [20CA-6] Si el empleado solicitó cancelación, notificar a admins */
+    if is_employee {
+        let admin_ids = UserRepository::admin_ids(&state.pool)
+            .await
+            .unwrap_or_default();
+        if !admin_ids.is_empty() {
+            let admin_notif = CreateNotification {
+                user_id: Uuid::nil(),
+                notification_type: "cancellation_requested".to_string(),
+                title: format!(
+                    "Solicitud de cancelaci\u{f3}n \u{2014} Orden #{}",
+                    order.order_number
+                ),
+                body: Some(format!(
+                    "El freelancer solicita cancelar la orden. Motivo: {}",
+                    truncate_str(&body.reason, 120)
+                )),
+                link: Some(format!("/panel?seccion=proyectos&orden={order_id}")),
+                reference_type: Some("order".to_string()),
+                reference_id: Some(order_id),
+            };
+            let _ = state.notification_hub.notify_many(&admin_ids, &admin_notif).await;
+        }
     }
 
     /* Registrar en activity_log */

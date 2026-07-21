@@ -81,3 +81,20 @@ otro problema grave es la cuestion de que el chat en los pedidos no funciona en 
 hay un problema visual con las notificaciones, el texto esta centrado, no debería
 
 otra cosa es que veo que los correos estan duplicados en el codigo para los envio y preview ¿porque? me parece mal a nivel codigo, deberia estar centralizado en plantillas, a demás de que se esta duplicando codigo innecesario
+
+--------------
+
+## 20/07
+
+Ha pasado algo de tiempo con el proyecto inactivo, necesito confirmar varias cosas.
+
+Comprobar que en nakomi los pagos funcionen: comprobe, que ya no hay el problema de antes sobre de que sin pago se creaban las ordenes, bien, ya no se crean ordenes sin pagos, pero, se crean cuentas sin ordenes, eso no debería de pasar, que no se creen cuentas al menso que se haya hecho el pago del servicio; tambien neecesitamos comprobar que los pagos de servicios funcionan como esperan, no he tenido mi primer pago de servicio asi que no puedo saber aun si realmente funciona. 
+
+Algunos detalles más
+
+Comprobar que el chat funciona bien, que el bot redirige al whatsapp, y que cada vez que haya un conversación me llegue un correo y un whatsapp, mi correo es andoryyu@gmail.com y mi whatsapp es +1 (608) 466-8134, esto es importante ya no quiero que las cosas sucedan a ciega, tambien debe llegarme un whatsapp y un correo cuando se haga un pedido, lo de los correo creo que ya funcionaba pero hay verificar que siga funcionando. 
+
+Subir un poco la resolucion a galeriaHeroContenedor y a proyectoGaleriaItem, un 10% mas
+
+En el gestor de contenido Nakomi no puedo agregar comas, lo que impide pues crear varios tag y cosas, mal ahi
+

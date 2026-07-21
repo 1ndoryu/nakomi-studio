@@ -84,7 +84,7 @@ export function SeccionUsuarios() {
                     items={[
                         {id: 'all', label: 'Todos los roles', onSelect: () => setRoleFilter('')},
                         {id: 'admin', label: 'Admin', onSelect: () => setRoleFilter('admin')},
-                        {id: 'employee', label: 'Empleado', onSelect: () => setRoleFilter('employee')},
+                        {id: 'employee', label: 'Freelancer', onSelect: () => setRoleFilter('employee')},
                         {id: 'client', label: 'Cliente', onSelect: () => setRoleFilter('client')},
                     ]}
                 />

@@ -95,7 +95,7 @@ const TABS_EMPLOYEE: TabConfig[] = [
     {
         id: 'delegaciones',
         label: 'Delegaciones',
-        descripcion: 'Solicitudes de delegación y ayuda entre empleados. Acepta, rechaza o delega órdenes.'
+        descripcion: 'Solicitudes de delegación y ayuda entre freelancers. Acepta, rechaza o delega órdenes.'
     },
     {
         id: 'mensajes',
@@ -121,7 +121,7 @@ const TABS_ADMIN: TabConfig[] = [
     {
         id: 'todos-ordenes',
         label: 'Todas las Ordenes',
-        descripcion: 'Vista completa de todas las ordenes del sistema. Filtra por estado, cliente o empleado.'
+        descripcion: 'Vista completa de todas las ordenes del sistema. Filtra por estado, cliente o freelancer.'
     },
     {
         id: 'reembolsos',
@@ -137,7 +137,7 @@ const TABS_ADMIN: TabConfig[] = [
     {
         id: 'retiros',
         label: 'Retiros',
-        descripcion: 'Gestiona solicitudes de retiro de saldo de empleados y clientes.'
+        descripcion: 'Gestiona solicitudes de retiro de saldo de freelancers y clientes.'
     },
     {
         id: 'hosting',
@@ -170,7 +170,7 @@ const TABS_ADMIN: TabConfig[] = [
     {
         id: 'problemas',
         label: 'Problemas',
-        descripcion: 'Reportes de problemas en órdenes. Revisa, resuelve o descarta tickets de clientes y empleados.'
+        descripcion: 'Reportes de problemas en órdenes. Revisa, resuelve o descarta tickets de clientes y freelancers.'
     },
     /* [304A-1] Infraestructura: despliegues Coolify y servidores VPS — solo admin */
     {

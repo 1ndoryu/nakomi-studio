@@ -131,19 +131,17 @@ impl PaymentService {
     }
 
     /* [166A-2] Crea PaymentIntent de checkout directo SIN crear orden.
-     * El usuario envía service_slug + plan_slug + payment_mode; el backend resuelve
-     * el precio, crea un PaymentIntent en Stripe con metadata source=checkout y
-     * retorna el client_secret. La orden se crea recién en el webhook cuando el
-     * pago se confirma. */
+     * [20CA-1] Ya NO requiere usuario existente: acepta email directamente.
+     * El email se guarda en metadata de Stripe para que el webhook pueda
+     * crear/encontrar el usuario DESPUÉS del pago confirmado. */
     pub async fn create_checkout_intent(
         pool: &PgPool,
         http_client: &Client,
         stripe_key: &str,
-        user_id: Uuid,
+        email: &str,
         service_slug: &str,
         plan_slug: &str,
         payment_mode: PaymentMode,
-        receipt_email: Option<&str>,
     ) -> Result<crate::models::CheckoutIntentResponse, AppError> {
         /* Resolver servicio y plan (misma lógica que create_order) */
         let svc = find_service_for_order(pool, service_slug).await?;
@@ -164,21 +162,19 @@ impl PaymentService {
             }
         }
 
-        /* Crear PaymentIntent en Stripe con metadata de checkout */
+        /* Crear PaymentIntent en Stripe con metadata de checkout.
+         * [20CA-1] Guardamos email en vez de user_id — el usuario se crea en el webhook. */
         let mut params = vec![
             ("amount", final_price.to_string()),
             ("currency", currency.clone()),
             ("capture_method", "manual".to_string()),
             ("metadata[source]", "checkout".to_string()),
-            ("metadata[user_id]", user_id.to_string()),
+            ("metadata[email]", email.to_string()),
             ("metadata[service_slug]", service_slug.to_string()),
             ("metadata[plan_slug]", plan_slug.to_string()),
             ("metadata[payment_mode]", format!("{:?}", payment_mode)),
+            ("receipt_email", email.to_string()),
         ];
-
-        if let Some(email) = receipt_email {
-            params.push(("receipt_email", email.to_string()));
-        }
 
         let resp = http_client
             .post("https://api.stripe.com/v1/payment_intents")
@@ -219,10 +215,12 @@ impl PaymentService {
     }
 
     /* [166A-2] Procesa pago exitoso de checkout: crea orden + pago + fases.
-     * Se llama desde handle_webhook cuando metadata.source == "checkout". */
+     * [20CA-1] Recibe email en vez de user_id: crea el usuario si no existe
+     * (quick_register post-pago), o reutiliza el existente. Esto garantiza que
+     * NO se crean cuentas huérfanas — el usuario solo se crea tras pago confirmado. */
     pub async fn handle_checkout_payment_succeeded(
         pool: &PgPool,
-        user_id: Uuid,
+        email: &str,
         service_slug: &str,
         plan_slug: &str,
         payment_mode: PaymentMode,
@@ -230,13 +228,9 @@ impl PaymentService {
         charge_id: Option<&str>,
         _amount_cents: i32,
     ) -> Result<(), AppError> {
-        /* Verificar que el usuario exista (debería, pues estaba autenticado al crear el intent) */
-        let _user = UserRepository::find_by_id(pool, user_id)
-            .await?
-            .ok_or_else(|| {
-                tracing::error!("[166A-2] Usuario {user_id} no encontrado para checkout");
-                AppError::NotFound("Usuario no encontrado".into())
-            })?;
+        /* [20CA-1] Buscar o crear usuario por email */
+        let user = Self::find_or_create_checkout_user(pool, email).await?;
+        let user_id = user.id;
 
         let svc = find_service_for_order(pool, service_slug).await?;
         let plan = find_plan_for_order(pool, svc.id, plan_slug).await?;
@@ -371,11 +365,11 @@ impl PaymentService {
                     .and_then(|d| d["object"]["metadata"]["source"].as_str());
 
                 if meta_source == Some("checkout") {
-                    let user_id_str = event_data
-                        .and_then(|d| d["object"]["metadata"]["user_id"].as_str())
-                        .ok_or_else(|| AppError::BadRequest("Missing user_id in checkout metadata".into()))?;
-                    let user_id = Uuid::parse_str(user_id_str)
-                        .map_err(|_| AppError::BadRequest("Invalid user_id in metadata".into()))?;
+                    /* [20CA-1] Extraer email de metadata (en vez de user_id).
+                     * El usuario se crea/encuentra dentro de handle_checkout_payment_succeeded. */
+                    let email = event_data
+                        .and_then(|d| d["object"]["metadata"]["email"].as_str())
+                        .ok_or_else(|| AppError::BadRequest("Missing email in checkout metadata".into()))?;
                     let service_slug = event_data
                         .and_then(|d| d["object"]["metadata"]["service_slug"].as_str())
                         .ok_or_else(|| AppError::BadRequest("Missing service_slug in metadata".into()))?;
@@ -394,7 +388,7 @@ impl PaymentService {
                         .unwrap_or(0) as i32;
 
                     Self::handle_checkout_payment_succeeded(
-                        pool, user_id, service_slug, plan_slug, payment_mode,
+                        pool, email, service_slug, plan_slug, payment_mode,
                         pi_id, charge_id, amount_cents,
                     ).await?;
 
@@ -547,6 +541,33 @@ impl PaymentService {
     /* ============================================================
     HELPERS PRIVADOS
     ============================================================ */
+
+    /* [20CA-1] Busca usuario por email; si no existe, lo crea con contraseña
+     * aleatoria (mismo flujo que quick_register). Usado por el webhook de
+     * checkout para crear el usuario DESPUÉS del pago confirmado. */
+    async fn find_or_create_checkout_user(
+        pool: &PgPool,
+        email: &str,
+    ) -> Result<crate::models::User, AppError> {
+        if let Some(user) = UserRepository::find_by_email(pool, email).await? {
+            return Ok(user);
+        }
+        let random_password: String = {
+            use argon2::password_hash::rand_core::RngCore;
+            let mut buf = [0u8; 32];
+            argon2::password_hash::rand_core::OsRng.fill_bytes(&mut buf);
+            hex::encode(buf)
+        };
+        let password_hash = crate::services::auth::hash_password(&random_password)?;
+        let user = UserRepository::create(pool, email, &password_hash, false).await?;
+        let user = if crate::services::auth::is_admin_email(email) {
+            UserRepository::update_role(pool, user.id, crate::models::UserRole::Admin).await?
+        } else {
+            user
+        };
+        tracing::info!("[20CA-1] Usuario {} creado post-pago para email {email}", user.id);
+        Ok(user)
+    }
 
     /// Resuelve monto, `phase_id` y descripción según `payment_mode`
     async fn resolve_payment_amount(

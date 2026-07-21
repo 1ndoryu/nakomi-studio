@@ -12,8 +12,8 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
-use crate::models::{ChatSessionResponse, CreateChatSessionRequest};
-use crate::repositories::OrderRepository;
+use crate::models::{ChatSessionResponse, CreateChatSessionRequest, CreateNotification, NOTIF_NEW_CONVERSATION};
+use crate::repositories::{OrderRepository, UserRepository};
 use crate::AppState;
 
 pub use super::rest_messages::{get_messages, send_message};
@@ -76,10 +76,42 @@ pub async fn create_session(
             .await?
     } else {
         let vid = req.visitor_id.unwrap_or_else(|| auth.user_id.to_string());
-        state
+        /* [20CA-10] Verificar si ya existe sesión para detectar creación nueva */
+        let existing =
+            crate::repositories::ChatRepository::find_session_by_visitor(&state.pool, &vid)
+                .await?;
+        let is_new = existing.is_none();
+
+        let session = state
             .chat_hub
             .get_or_create_visitor_session(&vid, req.visitor_name.as_deref(), None, None, None)
-            .await?
+            .await?;
+
+        /* [20CA-10] Notificar admins si es nueva conversación de visitante */
+        if is_new {
+            let admins = UserRepository::admin_ids(&state.pool).await.unwrap_or_default();
+            if !admins.is_empty() {
+                let visitor_label = session
+                    .visitor_name
+                    .as_deref()
+                    .unwrap_or("Visitante");
+                let notif = CreateNotification {
+                    user_id: Uuid::nil(),
+                    notification_type: NOTIF_NEW_CONVERSATION.to_string(),
+                    title: format!("Nueva conversación de {visitor_label}"),
+                    body: Some(format!("{visitor_label} ha iniciado un chat.")),
+                    link: Some(format!(
+                        "/panel?seccion=mensajes&chat={}",
+                        session.id
+                    )),
+                    reference_type: Some("chat_session".to_string()),
+                    reference_id: Some(session.id),
+                };
+                let _ = state.notification_hub.notify_many(&admins, &notif).await;
+            }
+        }
+
+        session
     };
 
     /* [064A-31] Obtener order_number si la sesión está vinculada a una orden */

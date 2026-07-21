@@ -58,7 +58,7 @@ const ICONOS_SECCION: Record<SeccionPanel, React.ElementType> = {
 /* [044A-38 Fase 1] Etiquetas legibles para cada rol */
 const ROLE_LABELS: Record<UserRole, string> = {
     admin: 'Admin',
-    employee: 'Empleado',
+    employee: 'Freelancer',
     client: 'Cliente',
 };
 

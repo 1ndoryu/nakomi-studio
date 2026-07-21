@@ -15,7 +15,8 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{
     CreateNotification, OrderResponse, OrderStatus, SwitchRoleRequest, ToggleAiIntermediaryRequest,
-    UserRole, NOTIF_ORDER_CANCELLED, NOTIF_ORDER_COMPLETED, NOTIF_REVISION_REQUESTED,
+    UserRole, NOTIF_ORDER_CANCELLED, NOTIF_ORDER_COMPLETED, NOTIF_PAYMENT_RELEASED,
+    NOTIF_PHASE_APPROVED, NOTIF_REVISION_REQUESTED,
 };
 use crate::repositories::{
     ActivityLogRepository, OrderRepository, UserRepository, WalletRepository,
@@ -174,6 +175,26 @@ pub async fn cancel_order_handler(
     };
     let _ = state.notification_hub.notify_many(&recipients, &base).await;
 
+    /* [20CA-10] Notificar también a admins sobre cancelación directa */
+    if let Ok(admin_ids) = UserRepository::admin_ids(&state.pool).await {
+        let admins_filtered: Vec<Uuid> = admin_ids
+            .into_iter()
+            .filter(|id| !recipients.contains(id))
+            .collect();
+        if !admins_filtered.is_empty() {
+            let admin_base = CreateNotification {
+                user_id: Uuid::nil(),
+                notification_type: NOTIF_ORDER_CANCELLED.to_string(),
+                title: format!("Orden #{} cancelada", order.order_number),
+                body: reason.as_deref().map(|r| format!("Motivo: {}", r.chars().take(100).collect::<String>())),
+                link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                reference_type: Some("order".to_string()),
+                reference_id: Some(order.id),
+            };
+            let _ = state.notification_hub.notify_many(&admins_filtered, &admin_base).await;
+        }
+    }
+
     /* [154A-15d] Registrar cancelación en activity_log */
     let _ = ActivityLogRepository::log(
         &state.pool,
@@ -269,6 +290,26 @@ pub async fn approve_phase(
     )
     .await;
 
+    /* [20CA-10] Notificar a admins que una fase fue aprobada */
+    if let Ok(admin_ids) = UserRepository::admin_ids(&state.pool).await {
+        let admins_filtered: Vec<Uuid> = admin_ids
+            .into_iter()
+            .filter(|id| *id != auth.user_id)
+            .collect();
+        if !admins_filtered.is_empty() {
+            let base = CreateNotification {
+                user_id: Uuid::nil(),
+                notification_type: NOTIF_PHASE_APPROVED.to_string(),
+                title: format!("Orden #{} — Fase {} aprobada", order.order_number, phase_number),
+                body: Some("El cliente aprobó la entrega".to_string()),
+                link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                reference_type: Some("order".to_string()),
+                reference_id: Some(order.id),
+            };
+            let _ = state.notification_hub.notify_many(&admins_filtered, &base).await;
+        }
+    }
+
     /* [044A-38 Fase 3] Si la orden se completó, capturar los pagos retenidos en Stripe */
     if let Some(order) = OrderRepository::find_order_by_id(&state.pool, order_id).await? {
         if order.status == OrderStatus::Completed {
@@ -298,6 +339,26 @@ pub async fn approve_phase(
                 reference_id: Some(order.id),
             };
             let _ = state.notification_hub.notify_many(&recipients, &base).await;
+
+            /* [20CA-10] Notificar a admins que la orden fue completada */
+            if let Ok(admin_ids) = UserRepository::admin_ids(&state.pool).await {
+                let admins_filtered: Vec<Uuid> = admin_ids
+                    .into_iter()
+                    .filter(|id| !recipients.contains(id))
+                    .collect();
+                if !admins_filtered.is_empty() {
+                    let admin_base = CreateNotification {
+                        user_id: Uuid::nil(),
+                        notification_type: NOTIF_ORDER_COMPLETED.to_string(),
+                        title: format!("Orden #{} completada", order.order_number),
+                        body: Some(format!("Precio final: ${:.2}", order.final_price_cents as f64 / 100.0)),
+                        link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                        reference_type: Some("order".to_string()),
+                        reference_id: Some(order.id),
+                    };
+                    let _ = state.notification_hub.notify_many(&admins_filtered, &admin_base).await;
+                }
+            }
 
             /* [311A-1] Email al cliente notificando orden completada (non-fatal) */
             if let Some(ref email_cfg) = state.email_config {
@@ -349,6 +410,24 @@ pub async fn approve_phase(
                 .await
                 {
                     tracing::error!("Error capturando pagos de orden {order_id}: {e}");
+                } else {
+                    /* [20CA-10] Notificar a admins que el pago fue liberado al empleado */
+                    if let Ok(admin_ids) = UserRepository::admin_ids(&state.pool).await {
+                        let emp_name = order.assigned_employee_id
+                            .map(|eid| UserRepository::get_display_name(&state.pool, eid).await
+                                .ok().flatten().unwrap_or_else(|| "Empleado".to_string()))
+                            .unwrap_or_else(|| "Empleado".to_string());
+                        let base = CreateNotification {
+                            user_id: Uuid::nil(),
+                            notification_type: NOTIF_PAYMENT_RELEASED.to_string(),
+                            title: format!("Pago liberado — Orden #{}", order.order_number),
+                            body: Some(format!("${:.2} liberados a {}", order.final_price_cents as f64 / 100.0, emp_name)),
+                            link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                            reference_type: Some("order".to_string()),
+                            reference_id: Some(order.id),
+                        };
+                        let _ = state.notification_hub.notify_many(&admin_ids, &base).await;
+                    }
                 }
             }
 
@@ -420,6 +499,39 @@ pub async fn request_revision(
                     reference_id: Some(order.id),
                 })
                 .await;
+        }
+
+        /* [20CA-10] Notificar también a todos los admins */
+        if let Ok(admin_ids) =
+            crate::repositories::UserRepository::admin_ids(&state.pool).await
+        {
+            let admins_filtered: Vec<Uuid> = admin_ids
+                .into_iter()
+                .filter(|id| Some(*id) != order.assigned_employee_id && *id != auth.user_id)
+                .collect();
+            if !admins_filtered.is_empty() {
+                let _ = state
+                    .notification_hub
+                    .notify_many(
+                        &admins_filtered,
+                        CreateNotification {
+                            user_id: Uuid::nil(),
+                            notification_type: NOTIF_REVISION_REQUESTED.to_string(),
+                            title: format!(
+                                "Revisión solicitada — Orden #{}, Fase {}",
+                                order.order_number, phase_number
+                            ),
+                            body: Some(format!(
+                                "El cliente solicitó cambios en la entrega de la orden #{}",
+                                order.order_number
+                            )),
+                            link: Some(format!("/panel?seccion=ordenes&id={}", order.id)),
+                            reference_type: Some("order".to_string()),
+                            reference_id: Some(order.id),
+                        },
+                    )
+                    .await;
+            }
         }
     }
 

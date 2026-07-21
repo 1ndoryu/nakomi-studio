@@ -111,10 +111,10 @@ export default function SeccionDashboard() {
       {/* Empleados */}
       <div className="dashboard__section">
         <h3 className="dashboard__sectionTitle">
-          <Users size={16} /> Empleados
+          <Users size={16} /> Freelancers
         </h3>
         {employees.length === 0 ? (
-          <p className="dashboard__empty">Sin empleados registrados</p>
+          <p className="dashboard__empty">Sin freelancers registrados</p>
         ) : (
           <div className="dashboard__table">
             <div className="dashboard__tableHeader">

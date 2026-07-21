@@ -99,6 +99,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
+  text-align: left;
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid var(--border-default);
@@ -136,6 +137,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
   gap: 2px;
   min-width: 0;
 }

@@ -97,7 +97,8 @@ async fn enforce_order_chat_sender_permission(
     Ok(())
 }
 
-/* [174A-2] Mantiene la notificación al interlocutor fuera del flujo principal del envío. */
+/* [174A-2] Mantiene la notificación al interlocutor fuera del flujo principal del envío.
+ * [20CA-10] Además notifica a todos los admins cuando un visitante/cliente envía mensaje. */
 async fn notify_chat_recipient(
     state: &AppState,
     session_id: Uuid,
@@ -136,6 +137,38 @@ async fn notify_chat_recipient(
                     reference_id: Some(session_id),
                 })
                 .await;
+        }
+
+        /* [20CA-10] Si el remitente es visitante/cliente, notificar también a todos los admins
+         * para que ningún mensaje quede desatendido. Excluir al staff asignado (ya notificado arriba). */
+        if sender_type == "visitor" || sender_type == "user" {
+            if let Ok(admin_ids) = crate::repositories::UserRepository::admin_ids(&state.pool).await
+            {
+                let admins_excluding_staff: Vec<Uuid> = admin_ids
+                    .into_iter()
+                    .filter(|id| Some(*id) != session.assigned_staff_id)
+                    .collect();
+                if !admins_excluding_staff.is_empty() {
+                    let preview: String = content.chars().take(80).collect();
+                    let panel_link = session.order_id.map_or_else(
+                        || format!("/panel?seccion=mensajes&chat={session_id}"),
+                        |order_id| format!("/panel?order={order_id}"),
+                    );
+                    let base = CreateNotification {
+                        user_id: Uuid::nil(),
+                        notification_type: NOTIF_NEW_MESSAGE.to_string(),
+                        title: "Nuevo mensaje de cliente en chat".to_string(),
+                        body: Some(preview),
+                        link: Some(panel_link),
+                        reference_type: Some("chat_session".to_string()),
+                        reference_id: Some(session_id),
+                    };
+                    let _ = state
+                        .notification_hub
+                        .notify_many(&admins_excluding_staff, base)
+                        .await;
+                }
+            }
         }
     }
 }

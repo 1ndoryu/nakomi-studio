@@ -1,23 +1,31 @@
 /* [064A-31] Hook para chat dentro de un pedido.
- * Crea/recupera sesión de chat vinculada a la orden y gestiona mensajes
- * via REST polling (5s). El empleado asignado recibe los mensajes en
- * SeccionChat via el broadcast WS existente del backend. */
+ * [20CA-7] Conecta a WebSocket para recibir mensajes en tiempo real.
+ * El polling REST (5s) se mantiene como fallback; el WS invalida la cache
+ * para que React Query actualice la UI instantáneamente.
+ * [20CA-9] Marca sesión como vista al abrir para tracking de no leídos. */
 
-import {useState, useCallback, useRef} from 'react';
+import {useState, useCallback, useRef, useEffect} from 'react';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {
     apiCreateChatSession,
     apiGetMessages,
     apiSendMessage,
+    apiMarkSessionViewed,
+    buildVisitorWsUrl,
     type ChatSession,
+    type WsServerMessage,
 } from '../api/chat';
+import {useAuthStore} from '../stores/authStore';
 
 export function useOrderChat(orderId: string) {
     const queryClient = useQueryClient();
+    const token = useAuthStore(s => s.token);
+    const user = useAuthStore(s => s.user);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [session, setSession] = useState<ChatSession | null>(null);
     const [creando, setCreando] = useState(false);
     const inicializado = useRef(false);
+    const wsRef = useRef<WebSocket | null>(null);
 
     /* Crear o recuperar sesión al montar */
     const iniciarSesion = useCallback(async () => {
@@ -28,6 +36,8 @@ export function useOrderChat(orderId: string) {
             const s = await apiCreateChatSession(orderId);
             setSessionId(s.id);
             setSession(s);
+            /* [20CA-9] Marcar como vista al iniciar */
+            apiMarkSessionViewed(s.id).catch(() => {});
         } catch (err) {
             console.error('Error creando sesión de chat de orden:', err);
             inicializado.current = false;
@@ -36,7 +46,33 @@ export function useOrderChat(orderId: string) {
         }
     }, [orderId, creando]);
 
-    /* Polling de mensajes cada 5s cuando hay sesión activa */
+    /* [20CA-7] Conectar WebSocket cuando hay sesión activa */
+    useEffect(() => {
+        if (!sessionId || !token || !user) return;
+        /* Cerrar WS previo si existe */
+        if (wsRef.current) {
+            wsRef.current.close();
+            wsRef.current = null;
+        }
+        const url = buildVisitorWsUrl(user.id, undefined, token, `order:${orderId}`);
+        const ws = new WebSocket(url);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+            try {
+                const msg: WsServerMessage = JSON.parse(event.data);
+                if (msg.type === 'message' && msg.session_id === sessionId) {
+                    /* Invalidar cache para que React Query refresque */
+                    queryClient.invalidateQueries({queryKey: ['order-chat-messages', sessionId]});
+                }
+            } catch { /* ignorar mensajes malformados */ }
+        };
+
+        ws.onclose = () => { wsRef.current = null; };
+        return () => { ws.close(); wsRef.current = null; };
+    }, [sessionId, token, user, orderId, queryClient]);
+
+    /* Polling de mensajes cada 5s como fallback (WS puede perder mensajes) */
     const {data: mensajes = []} = useQuery({
         queryKey: ['order-chat-messages', sessionId],
         queryFn: () => apiGetMessages(sessionId!, 100, 0),
@@ -60,6 +96,13 @@ export function useOrderChat(orderId: string) {
         [sessionId, enviarMensajeAsync],
     );
 
+    /* [20CA-9] Marcar como vista al hacer focus en la sesión */
+    const marcarVista = useCallback(() => {
+        if (sessionId) {
+            apiMarkSessionViewed(sessionId).catch(() => {});
+        }
+    }, [sessionId]);
+
     return {
         sessionId,
         session,
@@ -68,5 +111,6 @@ export function useOrderChat(orderId: string) {
         creando,
         iniciarSesion,
         enviarMensaje,
+        marcarVista,
     };
 }

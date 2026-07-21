@@ -45,7 +45,8 @@ export function SolucionHeroImagen({src, alt, storageKey}: SolucionHeroImagenPro
                     src={previewSrc ?? src}
                     alt={alt}
                     className="galeriaHeroImagen galeriaHeroImagenActiva solucionHeroImagen"
-                    fixedWidth={1600}
+                    /* [20CA-13] +10% resolución galería hero */
+                    fixedWidth={1760}
                     quality={80}
                     loading="lazy"
                     noOptimize={!!previewSrc}

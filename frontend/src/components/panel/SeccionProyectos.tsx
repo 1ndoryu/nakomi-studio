@@ -135,13 +135,13 @@ export const SeccionProyectos: React.FC = () => {
                             abierto={empleadoMenuAbierto}
                             onToggle={() => setEmpleadoMenuAbierto(prev => !prev)}
                             onCerrar={() => setEmpleadoMenuAbierto(false)}
-                            ariaLabel="Filtrar por empleado"
+                            ariaLabel="Filtrar por freelancer"
                             triggerClassName="proyectosFiltroEmpleado"
                             triggerVariante="outline"
                             triggerTamano="pequeno"
-                            triggerContent={<>{filtroEmpleado ? empleadosUnicos.find(e => e.id === filtroEmpleado)?.nombre ?? 'Empleado' : 'Todos los empleados'} <ChevronDown size={14} /></>}
+                            triggerContent={<>{filtroEmpleado ? empleadosUnicos.find(e => e.id === filtroEmpleado)?.nombre ?? 'Freelancer' : 'Todos los freelancers'} <ChevronDown size={14} /></>}
                             items={[
-                                {id: 'all', label: 'Todos los empleados', onSelect: () => setFiltroEmpleado('')},
+                                {id: 'all', label: 'Todos los freelancers', onSelect: () => setFiltroEmpleado('')},
                                 ...empleadosUnicos.map(emp => ({
                                     id: emp.id,
                                     label: emp.nombre,

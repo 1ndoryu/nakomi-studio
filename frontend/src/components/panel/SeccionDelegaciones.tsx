@@ -103,7 +103,7 @@ function DelegacionCard({
                     <p className="delegCardRazon">{delegacion.reason}</p>
                 )}
                 <div className="delegCardFooter">
-                    <span>{esPropia ? 'Enviada por ti' : 'De otro empleado'}</span>
+                    <span>{esPropia ? 'Enviada por ti' : 'De otro freelancer'}</span>
                     <span>{new Date(delegacion.created_at).toLocaleDateString('es')}</span>
                     {delegacion.resolved_at && (
                         <span>Resuelta: {new Date(delegacion.resolved_at).toLocaleDateString('es')}</span>

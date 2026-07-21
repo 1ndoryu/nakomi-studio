@@ -8,7 +8,7 @@
  * sentinel-disable-file usestate-excesivo: 5 estados necesarios para flujos independientes
  * (fases, intermediario, modal asignar); ya se usa useOrdenDetalle para el estado principal. */
 import React, {useState, useCallback} from 'react';
-import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft, UserCheck, UserX, Plus} from 'lucide-react';
+import {CreditCard, XCircle, ArrowLeft, AlertTriangle, Bot, ArrowRightLeft, UserCheck, UserX, Plus, DollarSign} from 'lucide-react';
 import {
     ORDER_STATUS_LABELS,
     apiToggleAiIntermediary,
@@ -34,6 +34,7 @@ import {ModalAsignar} from './ModalAsignar';
 import {apiUnassignOrder} from '../../api/assignment';
 import {useOrdenDetalle} from '../../hooks/useOrdenDetalle';
 import {useCancellationRequest} from '../../hooks/useCancellationRequest';
+import {useRefunds} from '../../hooks/useRefunds';
 import {useChatStore} from '../../stores/chatStore';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import './OrdenDetalle.css';
@@ -157,9 +158,10 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     const isClient = effectiveRole === 'client' || effectiveRole === 'admin';
     const isAdmin = effectiveRole === 'admin';
     const isActiveOrder = order.status !== 'cancelled' && order.status !== 'completed';
-    const canCancel = (CANCELABLE_STATUSES.includes(order.status)
-        || (isEmployee && order.status === 'in_progress'))
-        && !pendingRequest;
+    /* [20CA-5] Admin puede cancelar en cualquier estado activo. Empleado solo solicita en in_progress. */
+    const canCancel = (isAdmin && isActiveOrder && !pendingRequest)
+        || (CANCELABLE_STATUSES.includes(order.status) && !pendingRequest)
+        || (isEmployee && order.status === 'in_progress' && !pendingRequest);
     /* [104A-29] payment_held es el estado inicial — el botón de pago aparece aquí */
     const needsPayment = order.status === 'payment_held';
     /* [064A-60] Tanto phased como half_half usan pagos por fase individuales */
@@ -184,6 +186,9 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
             queryClient.invalidateQueries({ queryKey: ['orden-detalle', order.id] });
         },
     });
+
+    /* [20CA-5] Refund mutation para admin */
+    const { solicitarReembolso } = useRefunds();
 
     /* [064A-31] Chat disponible cuando hay empleado asignado y la orden está activa */
     const canChat = !!order.assigned_employee_id && isActiveOrder;
@@ -232,7 +237,7 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     if (canAssign) {
         menuItems.push({
             id: 'assign-order',
-            label: order.assigned_employee_id ? 'Reasignar a empleado' : 'Asignar a empleado',
+            label: order.assigned_employee_id ? 'Reasignar a freelancer' : 'Asignar a freelancer',
             onSelect: () => setModalAsignarAbierto(true),
             icon: <UserCheck size={16} />,
         });
@@ -242,10 +247,26 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
     if (isAdmin && order.assigned_employee_id && isActiveOrder) {
         menuItems.push({
             id: 'unassign-order',
-            label: 'Desasignar empleado',
+            label: 'Desasignar freelancer',
             onSelect: () => desasignar.mutate(),
             disabled: desasignar.isPending,
             icon: <UserX size={16} />,
+        });
+    }
+
+    /* [20CA-5] Solicitar reembolso: admin puede iniciar reembolso desde el detalle */
+    if (isAdmin && isActiveOrder && order.status !== 'payment_held') {
+        menuItems.push({
+            id: 'refund-order',
+            label: 'Solicitar reembolso',
+            onSelect: () => {
+                const motivo = prompt('Motivo del reembolso:');
+                if (motivo && motivo.trim()) {
+                    solicitarReembolso.mutate({ orderId: order.id, reason: motivo.trim() });
+                }
+            },
+            disabled: solicitarReembolso.isPending,
+            icon: <DollarSign size={16} />,
         });
     }
 
@@ -323,14 +344,17 @@ export const OrdenDetalle: React.FC<OrdenDetalleProps> = ({
                 )}
             </div>
 
-            {/* [164A-9] Banner de solicitud de cancelación pendiente */}
+            {/* [164A-9] Banner de solicitud de cancelación pendiente.
+             * [20CA-6] Admin ve acciones extendidas (reassign). */}
             {pendingRequest && (
                 <CancellationBanner
                     request={pendingRequest}
                     isClient={isClient}
+                    isAdmin={isAdmin}
                     responding={respondiendoSolicitud}
                     onAccept={() => void respondRequest(pendingRequest.id, true)}
                     onReject={() => void respondRequest(pendingRequest.id, false)}
+                    onReassign={isAdmin ? () => setModalAsignarAbierto(true) : undefined}
                 />
             )}
 

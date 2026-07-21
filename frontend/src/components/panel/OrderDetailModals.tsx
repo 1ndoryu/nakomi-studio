@@ -74,7 +74,7 @@ export function OrderDetailModals({
                     {isEmployee && (
                         <Textarea
                             className="ordenDetalleModalTextarea"
-                            placeholder="Razón de la cancelación (obligatorio para empleados)"
+                            placeholder="Razón de la cancelación (obligatorio para freelancers)"
                             value={cancelReason}
                             onChange={e => setCancelReason(e.target.value)}
                             rows={3}

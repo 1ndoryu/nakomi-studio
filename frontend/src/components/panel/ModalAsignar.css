@@ -32,6 +32,25 @@
     overflow-y: auto;
 }
 
+/* [20CA-4] Campo de búsqueda de freelancers */
+.modalAsignarBusqueda {
+    position: relative;
+    margin-bottom: var(--spacing-sm);
+}
+
+.modalAsignarBusquedaIcono {
+    position: absolute;
+    left: var(--spacing-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+
+.modalAsignarBusquedaInput {
+    padding-left: calc(var(--spacing-sm) + 24px);
+}
+
 .modalAsignarItem {
     display: flex;
     justify-content: space-between;

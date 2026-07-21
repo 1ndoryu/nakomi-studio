@@ -97,36 +97,39 @@ pub async fn initiate_payment(
 }
 
 /* [166A-2] Crear PaymentIntent de checkout directo (sin orden previa).
- * El usuario autenticado envía service_slug + plan_slug + payment_mode.
- * El backend resuelve el precio y crea un PaymentIntent en Stripe.
- * La orden se crea recién cuando el webhook confirma el pago. */
+ * [20CA-1] Ya NO requiere autenticación: acepta email en el body para crear
+ * el PaymentIntent con metadata. El usuario se crea DESPUÉS del pago exitoso
+ * en el webhook (handle_checkout_payment_succeeded). Esto evita cuentas
+ * huérfanas cuando el usuario abandona el checkout de Stripe. */
 pub async fn create_checkout_intent(
     State(state): State<AppState>,
-    auth: AuthUser,
     Json(req): Json<CreateCheckoutIntentRequest>,
 ) -> Result<Json<CheckoutIntentResponse>, AppError> {
-    auth.require_role(&[UserRole::Client, UserRole::Admin])?;
-
     let stripe_key = state
         .stripe_secret_key
         .as_ref()
         .ok_or_else(|| AppError::Internal("Stripe no está configurado".into()))?;
 
-    /* Obtener email del usuario para pre-llenar en Stripe */
-    let user_email = match UserRepository::find_by_id(&state.pool, auth.user_id).await {
-        Ok(Some(u)) => Some(u.email),
-        _ => None,
-    };
+    /* [20CA-1] El email es obligatorio para checkout sin auth */
+    let email = req
+        .email
+        .as_deref()
+        .filter(|e| !e.trim().is_empty())
+        .ok_or_else(|| AppError::BadRequest("Email es requerido para checkout".into()))?;
+
+    /* Validar formato básico de email */
+    if !email.contains('@') || email.len() < 5 {
+        return Err(AppError::BadRequest("Email inválido".into()));
+    }
 
     let result = PaymentService::create_checkout_intent(
         &state.pool,
         &state.http_client,
         stripe_key,
-        auth.user_id,
+        email,
         &req.service_slug,
         &req.plan_slug,
         req.payment_mode,
-        user_email.as_deref(),
     )
     .await?;
 

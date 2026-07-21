@@ -77,11 +77,21 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
      * useState es async y no previene race conditions entre renders. */
     const compraEnCurso = useRef(false);
 
-    const navegarAlPanelPendiente = () => {
-        /* [104A-15] Forzar la tab correcta evita que el usuario aterrice en la
-         * ultima seccion persistida y pierda de vista el flujo que acaba de iniciar.
-         * [104A-16] Hosting vuelve al panel de Hosting, no a Proyectos. */
+    /* [20CA-1] Tras pago exitoso: autenticar al usuario si no lo está.
+     * quick_register es idempotente para usuarios sin contraseña: retorna JWT
+     * sin crear duplicado. Si el usuario ya tiene contraseña (409), solo navegar. */
+    const navegarAlPanelPendiente = async () => {
         localStorage.setItem(PANEL_TAB_KEY, isHosting || isVps ? 'hosting' : 'proyectos');
+
+        if (!logueado && email.trim()) {
+            try {
+                const authResp = await apiQuickRegister(email.trim());
+                login(authResp.token, authResp.user_id, authResp.email, authResp.role, authResp.effective_role, authResp.needs_password);
+            } catch {
+                /* 409 = usuario con contraseña; puede loguearse manualmente */
+            }
+        }
+
         navegar('/panel');
         onClose();
     };
@@ -117,15 +127,25 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
     };
 
     /* [166A-2] Flujo nuevo: crear PaymentIntent directo (sin crear orden).
-     * La orden se crea via webhook cuando Stripe confirma el pago.
+     * [20CA-1] El email se envía al backend para guardarlo en metadata de Stripe.
+     * La orden Y el usuario se crean via webhook cuando Stripe confirma el pago.
      * Esto garantiza que NO se crea cuenta ni pedido sin pago confirmado. */
     const crearOrdenYPagar = async () => {
+        /* El email viene del campo del modal (no-auth) o del usuario logueado */
+        const checkoutEmail = email.trim() || user?.email || '';
+        if (!checkoutEmail || !checkoutEmail.includes('@')) {
+            setPaso('error');
+            setErrorMsg('Introduce un email válido para continuar.');
+            return;
+        }
+
         setPaso('procesando');
         try {
             const checkoutIntent = await apiCreateCheckoutIntent({
                 service_slug: servicioSlug,
                 plan_slug: plan.id,
                 payment_mode: paymentMode,
+                email: checkoutEmail,
             });
             localStorage.setItem(PANEL_TAB_KEY, 'proyectos');
             setCheckoutPendiente({
@@ -165,7 +185,7 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
          * En local es comun quedar logueado como employee por pruebas del panel;
          * sin este guard el modal intenta crear la orden y recibe 403. */
         if (logueado && user?.effectiveRole === 'employee') {
-            setErrorMsg('La compra publica solo se puede iniciar con una sesion de cliente. Si estas probando con un empleado, cambia a cliente o usa una cuenta cliente.');
+            setErrorMsg('La compra publica solo se puede iniciar con una sesion de cliente. Si estas probando con un freelancer, cambia a cliente o usa una cuenta cliente.');
             return;
         }
 
@@ -177,7 +197,11 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
         }
     };
 
-    /* [064A-3] Paso 2: solo email → quick-register. Si 409 → pedir password → login */
+    /* [064A-3] Paso 2: login si el usuario ya existe.
+     * [20CA-1] Para usuarios nuevos, NO se llama apiQuickRegister antes del pago.
+     * En vez de crear la cuenta inmediatamente, el email se pasa al checkout intent
+     * y el usuario se crea en el webhook DESPUÉS del pago confirmado.
+     * Esto evita cuentas huérfanas cuando el usuario abandona Stripe. */
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMsg('');
@@ -197,24 +221,15 @@ export function useModalCompra({plan, servicioSlug, onClose}: UseModalCompraPara
             return;
         }
 
-        /* Intentar registro rapido solo con email */
+        /* [20CA-1] Usuario nuevo: NO crear cuenta todavía.
+         * Guardar email y proceder directamente al checkout de Stripe.
+         * La cuenta se creará en el webhook cuando el pago se confirme. */
         setPaso('procesando');
         try {
-            const authResp = await apiQuickRegister(email);
-            login(authResp.token, authResp.user_id, email, authResp.role, authResp.effective_role, authResp.needs_password);
             await iniciarCompra();
         } catch (err: unknown) {
-            /* 409 = email ya registrado → pedir password */
-            const is409 = typeof err === 'object' && err !== null && 'response' in err
-                && (err as {response?: {status?: number}}).response?.status === 409;
-            if (is409) {
-                setEmailExiste(true);
-                setPaso('auth');
-                setErrorMsg('Ya tienes cuenta. Introduce tu contraseña para continuar.');
-            } else {
-                setPaso('error');
-                setErrorMsg(getPurchaseErrorMessage(err, 'Error al procesar. Intenta de nuevo.'));
-            }
+            setPaso('error');
+            setErrorMsg(getPurchaseErrorMessage(err, 'Error al procesar. Intenta de nuevo.'));
         }
     };
 

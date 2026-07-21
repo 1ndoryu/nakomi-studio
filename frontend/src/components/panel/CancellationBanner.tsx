@@ -1,8 +1,9 @@
 /* [164A-9] Banner de solicitud de cancelación pendiente.
+ * [20CA-6] Admin ve acciones extendidas: aceptar, rechazar, reasignar.
  * Cliente ve la solicitud del empleado con Accept/Reject.
  * Empleado ve un aviso de que su solicitud está pendiente. */
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, UserCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
 import type { CancellationRequestResponse } from '../../api/wallet';
 import './CancellationBanner.css';
@@ -10,17 +11,21 @@ import './CancellationBanner.css';
 interface CancellationBannerProps {
     request: CancellationRequestResponse;
     isClient: boolean;
+    isAdmin: boolean;
     responding: boolean;
     onAccept: () => void;
     onReject: () => void;
+    onReassign?: () => void;
 }
 
 export const CancellationBanner: React.FC<CancellationBannerProps> = ({
     request,
     isClient,
+    isAdmin,
     responding,
     onAccept,
     onReject,
+    onReassign,
 }) => {
     return (
         <div className="cancelBanner">
@@ -31,7 +36,7 @@ export const CancellationBanner: React.FC<CancellationBannerProps> = ({
                 <p className="cancelBannerTitulo">Solicitud de cancelación pendiente</p>
                 <p className="cancelBannerRazon">{request.reason}</p>
 
-                {isClient && (
+                {(isClient || isAdmin) && (
                     <div className="cancelBannerAcciones">
                         <Button
                             variante="primario"
@@ -49,10 +54,20 @@ export const CancellationBanner: React.FC<CancellationBannerProps> = ({
                         >
                             Rechazar
                         </Button>
+                        {isAdmin && onReassign && (
+                            <Button
+                                variante="outline"
+                                tamano="pequeno"
+                                onClick={onReassign}
+                                disabled={responding}
+                            >
+                                <UserCheck size={14} /> Reasignar
+                            </Button>
+                        )}
                     </div>
                 )}
 
-                {!isClient && (
+                {!isClient && !isAdmin && (
                     <p className="cancelBannerEstado">
                         Esperando respuesta del cliente...
                     </p>

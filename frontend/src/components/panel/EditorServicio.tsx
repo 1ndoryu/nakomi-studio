@@ -1,6 +1,6 @@
 /* [batch-4] Status toggles migrados a <Button>. Las tabs del editor siguen usando button nativo.
  * sentinel-disable-file html-nativo-en-vez-de-componente: solo aplica a tabs del editor aún. */
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {Modal} from '../ui/Modal';
 import {Input} from '../ui/Input';
 import {Textarea} from '../ui/Textarea';
@@ -40,9 +40,14 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
     const [tab, setTab] = useState<TabEditor>('general');
     const form = useEditorServicio(servicio, abierto);
 
-    const handleCategoriasChange = useCallback((valor: string) => {
-        form.setCategorias(valor.split(',').map(item => item.trim()).filter(Boolean));
-    }, [form]);
+    /* [20CA-14] Categorías: string local para permitir escribir comas. */
+    const [categoriasInput, setCategoriasInput] = useState(form.categorias.join(', '));
+    useEffect(() => {
+        setCategoriasInput(form.categorias.join(', '));
+    }, [form.categorias]);
+    const handleCategoriasBlur = useCallback(() => {
+        form.setCategorias(categoriasInput.split(',').map(item => item.trim()).filter(Boolean));
+    }, [categoriasInput, form]);
 
     const handleGuardar = useCallback(async () => {
         await onGuardar(form.buildBody(), form.buildPlansBody());
@@ -91,8 +96,9 @@ export const EditorServicio: React.FC<EditorServicioProps> = ({
                         <label className="editorServicioLabel">
                             Categorías
                             <Input
-                                value={form.categorias.join(', ')}
-                                onChange={e => handleCategoriasChange(e.target.value)}
+                                value={categoriasInput}
+                                onChange={e => setCategoriasInput(e.target.value)}
+                                onBlur={handleCategoriasBlur}
                                 placeholder="web, software, ai"
                             />
                         </label>
