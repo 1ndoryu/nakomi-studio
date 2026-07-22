@@ -66,7 +66,7 @@ const GUILLERMO_HOSTINGS: &[GuillermoHosting] = &[
         domain: "cap.wandori.us",
         coolify_site_name: "cap",
         server_uuid: "qgskgw8wwc08o444o08wko8o",
-        paid_subscription_id: None,
+        paid_subscription_id: Some("sub_1TdRDgCdHJpmDkrr69Vn4grz"),
     },
     GuillermoHosting {
         domain: "restaurante.wandori.us",

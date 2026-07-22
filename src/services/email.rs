@@ -117,7 +117,7 @@ impl EmailService {
         let subject = format!("¡Pedido #{order_number} recibido! — Nakomi Studio");
 
         let html = super::email_templates::render_order_confirmation(
-            client_name, *order_number, service_title, plan_name, price_display,
+            client_name, order_number, service_title, plan_name, price_display,
         );
 
         /* [311A-1] Logging del envío en email_logs para trazabilidad. */
@@ -419,11 +419,6 @@ impl EmailService {
 
         let html = super::email_templates::render_vps_approved(
             client_email, tier_name, ip, username, password,
-        );
-    </p>
-  </div>
-</div>
-</body></html>"#,
         );
 
         /* [311A-1] Logging del envío en email_logs para trazabilidad. */

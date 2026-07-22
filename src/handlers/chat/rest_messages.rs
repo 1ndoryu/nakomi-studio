@@ -165,7 +165,7 @@ async fn notify_chat_recipient(
                     };
                     let _ = state
                         .notification_hub
-                        .notify_many(&admins_excluding_staff, base)
+                        .notify_many(&admins_excluding_staff, &base)
                         .await;
                 }
             }
