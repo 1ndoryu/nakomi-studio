@@ -306,8 +306,10 @@ librería uplot/u-legend/tiptap, gap sin allowlist). VarSense 2.2.9 (pin
   `css-especificacion-diseno-local` x1 (baseline 01AA). Gate 2026-10-10 (tras 09AA-1):
   0E / 9W / 0H; los 9W son `sqlite-carga-N-consultas` FP documentados, sin cambio.
 
-## Decidido: `chore/sentinel-0.7.20` se integra en `main` por merge (sentinel 0.7.23)
-- La rama pin sentinel 0.7.23 (`02d82d7`; el nombre es del intento 0.7.20). Diverge de `origin/main` (base común `a666e9f7`): solo en la rama hay commits propios y `main` tiene 265 commits que la rama no tiene. Hay 43 conflictos.
-- Decidido: integrar con merge (sin force), resolver los conflictos y verificar. Motivo: la política prohíbe force, y reaplicar solo el pin perdería la historia de la rama.
-- Copia de seguridad verificada: `C:/tmp/sentinel-bump/nakomi-chore-sentinel-0.7.20.bundle` (`git bundle verify` OK). Se conserva.
-- Cambios ajenos del árbol (roadmap y completados 10AA): más de 2 h, adoptados y commiteados.
+## Bloqueado: `chore/sentinel-0.7.20` no se integra en `main` (decisión reservada)
+- Estado: rama `chore/sentinel-0.7.20` en `31f36024`, publicada en origin por fast-forward (sin force); local = origin. Pin sentinel 0.7.23 (`02d82d7`).
+- Motivo: `origin/main` es la plantilla compartida `glory-rs-template` y tiene 265 commits de otra línea (20 de MN-Inmobiliaria) que NAKOMI no tiene; NAKOMI tiene 1051 commits que `origin/main` no tiene. Base común `a666e9f7` (2026-03-25). Merge probado: 43 conflictos semánticos (bootstrap frente a AppState de MN, `main.rs`, modelos, handlers).
+- Decidido: no integrar ahora. Resolver los 43 conflictos produciría un híbrido no verificado y cambiaría lo que consumen otras plantillas de `origin/main`. Es decisión reservada (afecta a terceros, §0.3).
+- Desbloqueo (decisión de la usuaria): (a) NAKOMI con base propia, sin tocar `origin/main`; o (b) integración en `origin/main` con resolución dedicada y verificación completa.
+- Copias de seguridad verificadas: `C:/tmp/sentinel-bump/nakomi-chore-sentinel-0.7.20-31f36024.bundle` (HEAD actual) y `C:/tmp/sentinel-bump/nakomi-chore-sentinel-0.7.20.bundle` (anterior). Lista de conflictos: `C:/tmp/wm/nakomi-mt.txt`.
+- Deploy: si Coolify despliega `main` automáticamente, cualquier integración sigue siendo reservada (§9.1).
