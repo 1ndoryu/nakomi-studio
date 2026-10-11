@@ -263,14 +263,6 @@ Consola área: NAKOMI = 73 (info/hints + waivers contados en crudo; gate propio
 - **07AA-11** piloto F5/fase-enforce+override — CERRADA 2026-10-07 (2 PASS + bloqueo exit 2 + override +1 PASS; detalle en `Agente/completados/tareas-2026-10-07.md`).
 - **07AA-14** splits 3 god-object + gate FULL PASS — CERRADA 2026-10-07 (mandato Auto; detalle en `Agente/completados/tareas-2026-10-07.md`).
 
-## Board 10AA — sqlite-carga-N-consultas (2026-10-10, ACTIVO)
-
-- **10AA-1** — EN CURSO: cerrar los 2 hallazgos del board en NAKOMI. Corregido en
-  `src/handlers/chat/ws_visitor_helpers.rs` (`join!` de sesión + admins, lectura de
-  BD independiente) y `src/bootstrap/fixtures.rs` (`sentinel-disable-next-line` en
-  DELETE FK en orden hijo→padre, no agrupable). Falsos positivos corregidos en la
-  herramienta: glory-sentinel `cb95bd2` (08AA-26). Verificación: `quality:check 10AA-1`.
-
 ## Gate 01AA — barrido warnings Rust + VarSense 2.2.9 (octubre 2026)
 
 Gate 2026-10-01 02:05: 0E / 79W / 54H (sentinel) + 4W VarSense (clases de
