@@ -255,13 +255,21 @@ Consola área: NAKOMI = 73 (info/hints + waivers contados en crudo; gate propio
 - **07AA-1** varsense x4 (uplot/tiptap): FP confirmado, prevencion vigente — CERRADA sin cambio.
 - **07AA-2** handler-accede-bd x4 → repos — DESBLOQUEADA 2026-10-07: árbol HEAD compila; gate `task-check.mjs 07AA-2` PASS (fmt 9.0s + clippy `--all-targets -D warnings` 37.5s + sentinel 0E/9W/50I; `.quality-reports/check/07AA-2/latest.md`). Cero E0432/E0603/E0599 post-splits 07AA-14 (re-exports intactos en `coolify/mod.rs` y `vps/mod.rs`). Git limpio (`--help` accidental eliminado, `glory-rs` restaurado, plan de otra sesión preservado y commiteado). Pendiente: re-aplicar el DIP F2 (4 upserts en repos; ese código no está en este árbol).
 - **07AA-3** sqlite-carga-N x9: triage en 07AA-14 — mismas 5 familias FP 01AA-3/01AA-4-f3s, solo referencia, sin cambio.
-- **07AA-4** parametros-excesivos x13 (info): 11 preexistentes (email_admin x6, email_orders x3, checkout, lifecycle) + 2 reubicadas verbatim en `coolify/` — excepción clase 229A-1, sin churn (agrupar cambia firmas públicas).
+- **07AA-4** parametros-excesivos x13 — ✅ CERRADA 2026-10-10 vía `09AA-1` (agrupación en structs; reabre la excepción 229A-1 porque cambia firmas públicas; detalle en `Agente/completados/tareas-2026-10-10.md`).
 - **07AA-5** god-object x3 — CERRADA en 07AA-14 (splits + gate PASS, ver 07AA-14).
 - **07AA-6** large-interface-isp x37 (info, frontend wire/API): excepción clase 229A-1, sin churn (partir rompe contrato JSON).
 - **07AA-8** tope físico a validaciones → TRASLADADA a workspace-manager `07AA-6` (alcance de área; el plan vive allí).
 - **07AA-10** piloto F5/fase-observe — CERRADA 2026-10-07 (aviso+registro sin bloqueo, PASS).
 - **07AA-11** piloto F5/fase-enforce+override — CERRADA 2026-10-07 (2 PASS + bloqueo exit 2 + override +1 PASS; detalle en `Agente/completados/tareas-2026-10-07.md`).
 - **07AA-14** splits 3 god-object + gate FULL PASS — CERRADA 2026-10-07 (mandato Auto; detalle en `Agente/completados/tareas-2026-10-07.md`).
+
+## Board 10AA — sqlite-carga-N-consultas (2026-10-10, ACTIVO)
+
+- **10AA-1** — EN CURSO: cerrar los 2 hallazgos del board en NAKOMI. Corregido en
+  `src/handlers/chat/ws_visitor_helpers.rs` (`join!` de sesión + admins, lectura de
+  BD independiente) y `src/bootstrap/fixtures.rs` (`sentinel-disable-next-line` en
+  DELETE FK en orden hijo→padre, no agrupable). Falsos positivos corregidos en la
+  herramienta: glory-sentinel `cb95bd2` (08AA-26). Verificación: `quality:check 10AA-1`.
 
 ## Gate 01AA — barrido warnings Rust + VarSense 2.2.9 (octubre 2026)
 
@@ -295,7 +303,11 @@ librería uplot/u-legend/tiptap, gap sin allowlist). VarSense 2.2.9 (pin
     37 `large-interface-isp` info, fuera de alcance; sin render en navegador,
     ver plan).
 - Fuera de alcance (observado, sin autorización): `large-interface-isp` x37,
-  `parametros-excesivos-rs` x17, `css-especificacion-diseno-local` x1
-  (baseline 01AA; gate f3s actual: 16W = 3 god-object con waiver F3g/regla14 +
-  4 handler-accede-bd con waiver bootstrap + 9 N-consultas FP documentados;
-  0 funcion-larga, 0 limite-lineas).
+  `css-especificacion-diseno-local` x1 (baseline 01AA). Gate 2026-10-10 (tras 09AA-1):
+  0E / 9W / 0H; los 9W son `sqlite-carga-N-consultas` FP documentados, sin cambio.
+
+## Decidido: `chore/sentinel-0.7.20` se integra en `main` por merge (sentinel 0.7.23)
+- La rama pin sentinel 0.7.23 (`02d82d7`; el nombre es del intento 0.7.20). Diverge de `origin/main` (base común `a666e9f7`): solo en la rama hay commits propios y `main` tiene 265 commits que la rama no tiene. Hay 43 conflictos.
+- Decidido: integrar con merge (sin force), resolver los conflictos y verificar. Motivo: la política prohíbe force, y reaplicar solo el pin perdería la historia de la rama.
+- Copia de seguridad verificada: `C:/tmp/sentinel-bump/nakomi-chore-sentinel-0.7.20.bundle` (`git bundle verify` OK). Se conserva.
+- Cambios ajenos del árbol (roadmap y completados 10AA): más de 2 h, adoptados y commiteados.
