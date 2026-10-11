@@ -14,7 +14,7 @@ use crate::models::{
 use crate::repositories::{
     ActivityLogRepository, OrderRepository, UserRepository, WalletRepository,
 };
-use crate::services::{OrderService, PaymentService};
+use crate::services::{AdminMailCtx, OrderCompletedAdminMail, OrderService, PaymentService};
 use crate::AppState;
 
 /// Cliente aprueba una fase entregada
@@ -209,23 +209,23 @@ async fn email_order_completed(state: &AppState, order: &Order) {
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| "Cliente".to_string());
-                let cemail = UserRepository::get_email(&state.pool, order.client_id)
-                    .await
-                    .ok()
-                    .flatten()
-                    .unwrap_or_else(|| "desconocido@email.com".to_string());
                 let site_url = std::env::var("SITE_URL")
                     .unwrap_or_else(|_| "https://nakomi.studio".to_string());
                 tokio::spawn(async move {
+                    /* [09AA-1] Contexto + payload agrupados; el email del cliente ya no se consultaba para el aviso. */
+                    let ctx = AdminMailCtx {
+                        config: &cfg,
+                        pool: &pool,
+                        admin_emails: &admin_emails,
+                        site_url: &site_url,
+                    };
                     crate::services::EmailService::send_order_completed_admin(
-                        &cfg,
-                        &pool,
-                        &admin_emails,
-                        &cname,
-                        &cemail,
-                        onum,
-                        oid,
-                        &site_url,
+                        ctx,
+                        OrderCompletedAdminMail {
+                            client_name: &cname,
+                            order_number: onum,
+                            order_id: oid,
+                        },
                     )
                     .await;
                 });

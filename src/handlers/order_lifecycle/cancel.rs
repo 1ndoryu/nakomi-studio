@@ -8,9 +8,8 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::models::{CreateNotification, Order, NOTIF_ORDER_CANCELLED};
-/* [07AA-7] Import sin uso (warning rustc al validar el bloque). */
 use crate::repositories::{ActivityLogRepository, UserRepository};
-use crate::services::OrderService;
+use crate::services::{AdminMailCtx, OrderCancelledAdminMail, OrderService};
 use crate::AppState;
 
 /// Cancelar una orden (cliente dueño, empleado asignado con razón, o admin)
@@ -163,27 +162,27 @@ async fn email_order_cancelled(state: &AppState, order: &Order, reason: Option<&
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| "Cliente".to_string());
-                let cemail = UserRepository::get_email(&state.pool, order.client_id)
-                    .await
-                    .ok()
-                    .flatten()
-                    .unwrap_or_else(|| "desconocido@email.com".to_string());
                 let reason_clone = reason
                     .map(str::to_string)
                     .unwrap_or_else(|| "Sin motivo especificado".to_string());
                 let site_url = std::env::var("SITE_URL")
                     .unwrap_or_else(|_| "https://nakomi.studio".to_string());
                 tokio::spawn(async move {
+                    /* [09AA-1] Contexto + payload agrupados; el email del cliente ya no se consultaba para el aviso. */
+                    let ctx = AdminMailCtx {
+                        config: &cfg,
+                        pool: &pool,
+                        admin_emails: &admin_emails,
+                        site_url: &site_url,
+                    };
                     crate::services::EmailService::send_order_cancelled_admin(
-                        &cfg,
-                        &pool,
-                        &admin_emails,
-                        &cname,
-                        &cemail,
-                        onum,
-                        &reason_clone,
-                        oid,
-                        &site_url,
+                        ctx,
+                        OrderCancelledAdminMail {
+                            client_name: &cname,
+                            order_number: onum,
+                            reason: &reason_clone,
+                            order_id: oid,
+                        },
                     )
                     .await;
                 });

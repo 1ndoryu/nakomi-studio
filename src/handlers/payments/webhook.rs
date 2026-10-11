@@ -13,8 +13,9 @@ use crate::errors::AppError;
 use crate::models::{CreateNotification, NOTIF_CHAT_INVOICE_PAID, NOTIF_PAYMENT_RECEIVED};
 use crate::repositories::{OrderRepository, PaymentRepository, UserRepository};
 use crate::services::{
-    AuditService, BillingStripeService, DomainStripeService, EmailService, HostingStripeService,
-    PaymentService, VpsStripeService,
+    AdminMailCtx, AuditService, BillingStripeService, DomainStripeService, EmailService,
+    HostingStripeService, NewOrderAdminMail, PaymentReceivedAdminMail, PaymentService,
+    VpsStripeService,
 };
 use crate::AppState;
 
@@ -105,28 +106,27 @@ pub async fn stripe_webhook(
                             if !admin_emails.is_empty() {
                                 let site_url = std::env::var("SITE_URL")
                                     .unwrap_or_else(|_| "https://nakomi.studio".to_string());
-                                let client_email =
-                                    UserRepository::get_email(&state.pool, order.client_id)
-                                        .await
-                                        .ok()
-                                        .flatten()
-                                        .unwrap_or_else(|| "desconocido".to_string());
                                 let client_name =
                                     UserRepository::get_display_name(&state.pool, order.client_id)
                                         .await
                                         .ok()
                                         .flatten()
                                         .unwrap_or_else(|| "Cliente".to_string());
+                                /* [09AA-1] Contexto + payload agrupados; el aviso no usaba el email del cliente. */
+                                let ctx = AdminMailCtx {
+                                    config: email_cfg,
+                                    pool: &state.pool,
+                                    admin_emails: &admin_emails,
+                                    site_url: &site_url,
+                                };
                                 EmailService::send_payment_received_admin(
-                                    email_cfg,
-                                    &state.pool,
-                                    &admin_emails,
-                                    &client_email,
-                                    &client_name,
-                                    order.order_number,
-                                    &amount_display,
-                                    order.id,
-                                    &site_url,
+                                    ctx,
+                                    PaymentReceivedAdminMail {
+                                        client_name: &client_name,
+                                        order_number: order.order_number,
+                                        amount_display: &amount_display,
+                                        order_id: order.id,
+                                    },
                                 )
                                 .await;
                             }
@@ -142,15 +142,14 @@ pub async fn stripe_webhook(
                         || order.status == crate::models::OrderStatus::PaymentHeld;
 
                     if needs_activation {
-                        /* Obtener nombres de servicio y plan para emails/chat */
-                        let (svc_title, _svc_slug, plan_name) =
-                            OrderRepository::get_order_display_info(
-                                &state.pool,
-                                order.service_id,
-                                order.plan_id,
-                            )
-                            .await
-                            .unwrap_or_else(|_| ("Servicio".into(), String::new(), "Plan".into()));
+                        /* Obtener nombre de servicio para emails/chat */
+                        let (svc_title, _svc_slug, _) = OrderRepository::get_order_display_info(
+                            &state.pool,
+                            order.service_id,
+                            order.plan_id,
+                        )
+                        .await
+                        .unwrap_or_else(|_| ("Servicio".into(), String::new(), "Plan".into()));
 
                         let admins = UserRepository::admin_ids(&state.pool)
                             .await
@@ -242,7 +241,6 @@ pub async fn stripe_webhook(
                                 let pool = state.pool.clone();
                                 let name = client_name_opt.unwrap_or_else(|| "Cliente".to_string());
                                 let svc = svc_title.clone();
-                                let plan = plan_name.clone();
                                 let price = crate::services::format_price_cents(
                                     order.final_price_cents,
                                     &order.currency,
@@ -250,7 +248,7 @@ pub async fn stripe_webhook(
                                 let order_num = order.order_number;
                                 tokio::spawn(async move {
                                     EmailService::send_order_confirmation(
-                                        &cfg, &pool, &email, &name, order_num, &svc, &plan, &price,
+                                        &cfg, &pool, &email, &name, order_num, &svc, &price,
                                     )
                                     .await;
                                 });
@@ -265,43 +263,37 @@ pub async fn stripe_webhook(
                             if !admin_emails.is_empty() {
                                 let cfg = email_cfg.clone();
                                 let pool = state.pool.clone();
-                                let client_email_admin =
-                                    UserRepository::get_email(&state.pool, order.client_id)
-                                        .await
-                                        .ok()
-                                        .flatten()
-                                        .unwrap_or_else(|| "desconocido".to_string());
                                 let client_name_admin =
                                     UserRepository::get_display_name(&state.pool, order.client_id)
                                         .await
                                         .ok()
                                         .flatten()
                                         .unwrap_or_else(|| "Cliente".to_string());
-                                let svc = svc_title;
-                                let plan = plan_name;
                                 let price = crate::services::format_price_cents(
                                     order.final_price_cents,
                                     &order.currency,
                                 );
-                                let pmode = format!("{:?}", order.payment_mode);
                                 let oid = order.id;
                                 let onum = order.order_number;
                                 let site_url = std::env::var("SITE_URL")
                                     .unwrap_or_else(|_| "https://nakomi.studio".to_string());
                                 tokio::spawn(async move {
+                                    /* [09AA-1] Contexto + payload agrupados; el aviso ya no usa email, plan ni modo de pago. */
+                                    let ctx = AdminMailCtx {
+                                        config: &cfg,
+                                        pool: &pool,
+                                        admin_emails: &admin_emails,
+                                        site_url: &site_url,
+                                    };
                                     EmailService::send_new_order_admin(
-                                        &cfg,
-                                        &pool,
-                                        &admin_emails,
-                                        &client_email_admin,
-                                        &client_name_admin,
-                                        onum,
-                                        &svc,
-                                        &plan,
-                                        &price,
-                                        &pmode,
-                                        oid,
-                                        &site_url,
+                                        ctx,
+                                        NewOrderAdminMail {
+                                            client_name: &client_name_admin,
+                                            order_number: onum,
+                                            service_title: &svc_title,
+                                            price_display: &price,
+                                            order_id: oid,
+                                        },
                                     )
                                     .await;
                                 });

@@ -8,25 +8,85 @@ use crate::repositories::{EmailLogRepository, NuevoEmailLog};
 
 use super::email::{EmailConfig, EmailService};
 
-/* [311A-1] Envía email a todos los admins activos notificando una nueva orden.
- * Se dispara desde create_order() en handlers/orders.rs.
- * Non-fatal: si falla, solo se loguea. */
+/* [09AA-1] Contexto común a todos los avisos de admin. Todos los campos son
+ * referencias, así que `Copy` permite pasarlo por valor a cada envío. */
+#[derive(Clone, Copy)]
+pub struct AdminMailCtx<'a> {
+    pub config: &'a EmailConfig,
+    pub pool: &'a PgPool,
+    pub admin_emails: &'a [String],
+    pub site_url: &'a str,
+}
+
+/* [09AA-1] Datos del aviso de nueva orden. Sin email del cliente, plan ni modo
+ * de pago: ningún aviso los usaba (solo alimentaban parámetros `_` sin uso). */
+pub struct NewOrderAdminMail<'a> {
+    pub client_name: &'a str,
+    pub order_number: i32,
+    pub service_title: &'a str,
+    pub price_display: &'a str,
+    pub order_id: uuid::Uuid,
+}
+
+/* [09AA-1] Datos del aviso de pago recibido. */
+pub struct PaymentReceivedAdminMail<'a> {
+    pub client_name: &'a str,
+    pub order_number: i32,
+    pub amount_display: &'a str,
+    pub order_id: uuid::Uuid,
+}
+
+/* [09AA-1] Datos del aviso de orden completada. */
+pub struct OrderCompletedAdminMail<'a> {
+    pub client_name: &'a str,
+    pub order_number: i32,
+    pub order_id: uuid::Uuid,
+}
+
+/* [09AA-1] Datos del aviso de orden cancelada. */
+pub struct OrderCancelledAdminMail<'a> {
+    pub client_name: &'a str,
+    pub order_number: i32,
+    pub reason: &'a str,
+    pub order_id: uuid::Uuid,
+}
+
+/* [09AA-1] Datos del aviso de problema reportado. El título no se usaba en el
+ * asunto ni en el HTML, así que solo viaja la descripción. */
+pub struct ProblemReportedAdminMail<'a> {
+    pub client_name: &'a str,
+    pub order_number: i32,
+    pub problem_description: &'a str,
+    pub order_id: uuid::Uuid,
+}
+
+/* [09AA-1] Datos del aviso de reembolso solicitado. */
+pub struct RefundRequestedAdminMail<'a> {
+    pub client_name: &'a str,
+    pub order_number: i32,
+    pub amount_display: &'a str,
+    pub reason: &'a str,
+    pub refund_id: uuid::Uuid,
+}
+
 impl EmailService {
-    #[allow(clippy::too_many_arguments)]
-    pub async fn send_new_order_admin(
-        config: &EmailConfig,
-        pool: &PgPool,
-        admin_emails: &[String],
-        _client_email: &str,
-        client_name: &str,
-        order_number: i32,
-        service_title: &str,
-        _plan_name: &str,
-        price_display: &str,
-        _payment_mode: &str,
-        order_id: uuid::Uuid,
-        site_url: &str,
-    ) {
+    /* [311A-1] Envía email a todos los admins activos notificando una nueva orden.
+     * Se dispara desde el webhook de Stripe (handlers/payments/webhook.rs) tras crear la orden.
+     * Non-fatal: si falla, solo se loguea. */
+    pub async fn send_new_order_admin(ctx: AdminMailCtx<'_>, mail: NewOrderAdminMail<'_>) {
+        let AdminMailCtx {
+            config,
+            pool,
+            admin_emails,
+            site_url,
+        } = ctx;
+        let NewOrderAdminMail {
+            client_name,
+            order_number,
+            service_title,
+            price_display,
+            order_id,
+        } = mail;
         let subject = format!("🆕 Nueva orden #{order_number} — {client_name} — Nakomi Studio");
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
@@ -129,18 +189,22 @@ impl EmailService {
     /* [311A-1] Email a todos los admins activos notificando que un pago de orden fue recibido.
      * Se dispara desde stripe_webhook() en handlers/payments.rs.
      * Non-fatal: si falla, solo se loguea. */
-    #[allow(clippy::too_many_arguments)]
     pub async fn send_payment_received_admin(
-        config: &EmailConfig,
-        pool: &PgPool,
-        admin_emails: &[String],
-        _client_email: &str,
-        client_name: &str,
-        order_number: i32,
-        amount_display: &str,
-        order_id: uuid::Uuid,
-        site_url: &str,
+        ctx: AdminMailCtx<'_>,
+        mail: PaymentReceivedAdminMail<'_>,
     ) {
+        let AdminMailCtx {
+            config,
+            pool,
+            admin_emails,
+            site_url,
+        } = ctx;
+        let PaymentReceivedAdminMail {
+            client_name,
+            order_number,
+            amount_display,
+            order_id,
+        } = mail;
         let subject = format!("💰 Pago recibido — Orden #{order_number} — Nakomi Studio");
         let panel_link = format!("{site_url}/panel/orders/{order_id}");
 
@@ -188,17 +252,21 @@ impl EmailService {
 
     /* [011A-1] Email a admins notificando que una orden fue completada.
      * Se dispara cuando el cliente aprueba la última fase. Non-fatal. */
-    #[allow(clippy::too_many_arguments)]
     pub async fn send_order_completed_admin(
-        config: &EmailConfig,
-        pool: &PgPool,
-        admin_emails: &[String],
-        client_name: &str,
-        _client_email: &str,
-        order_number: i32,
-        order_id: uuid::Uuid,
-        site_url: &str,
+        ctx: AdminMailCtx<'_>,
+        mail: OrderCompletedAdminMail<'_>,
     ) {
+        let AdminMailCtx {
+            config,
+            pool,
+            admin_emails,
+            site_url,
+        } = ctx;
+        let OrderCompletedAdminMail {
+            client_name,
+            order_number,
+            order_id,
+        } = mail;
         let subject =
             format!("✅ Orden #{order_number} completada — {client_name} — Nakomi Studio");
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
@@ -244,18 +312,22 @@ impl EmailService {
 
     /* [011A-1] Email a admins notificando que una orden fue cancelada.
      * Se dispara cuando el admin cancela una orden. Non-fatal. */
-    #[allow(clippy::too_many_arguments)]
     pub async fn send_order_cancelled_admin(
-        config: &EmailConfig,
-        pool: &PgPool,
-        admin_emails: &[String],
-        client_name: &str,
-        _client_email: &str,
-        order_number: i32,
-        reason: &str,
-        order_id: uuid::Uuid,
-        site_url: &str,
+        ctx: AdminMailCtx<'_>,
+        mail: OrderCancelledAdminMail<'_>,
     ) {
+        let AdminMailCtx {
+            config,
+            pool,
+            admin_emails,
+            site_url,
+        } = ctx;
+        let OrderCancelledAdminMail {
+            client_name,
+            order_number,
+            reason,
+            order_id,
+        } = mail;
         let subject = format!("❌ Orden #{order_number} cancelada — {client_name} — Nakomi Studio");
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
@@ -300,19 +372,22 @@ impl EmailService {
 
     /* [011A-1] Email a admins notificando que se reportó un problema.
      * Se dispara cuando un cliente o admin reporta un problema en una orden. Non-fatal. */
-    #[allow(clippy::too_many_arguments)]
     pub async fn send_problem_reported_admin(
-        config: &EmailConfig,
-        pool: &PgPool,
-        admin_emails: &[String],
-        client_name: &str,
-        _client_email: &str,
-        order_number: i32,
-        _problem_title: &str,
-        problem_description: &str,
-        order_id: uuid::Uuid,
-        site_url: &str,
+        ctx: AdminMailCtx<'_>,
+        mail: ProblemReportedAdminMail<'_>,
     ) {
+        let AdminMailCtx {
+            config,
+            pool,
+            admin_emails,
+            site_url,
+        } = ctx;
+        let ProblemReportedAdminMail {
+            client_name,
+            order_number,
+            problem_description,
+            order_id,
+        } = mail;
         let subject = format!("⚠️ Problema reportado — Orden #{order_number} — Nakomi Studio");
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
@@ -357,19 +432,23 @@ impl EmailService {
 
     /* [011A-1] Email a admins notificando solicitud de reembolso.
      * Se dispara cuando un cliente solicita un reembolso. Non-fatal. */
-    #[allow(clippy::too_many_arguments)]
     pub async fn send_refund_requested_admin(
-        config: &EmailConfig,
-        pool: &PgPool,
-        admin_emails: &[String],
-        client_name: &str,
-        _client_email: &str,
-        order_number: i32,
-        amount_display: &str,
-        reason: &str,
-        refund_id: uuid::Uuid,
-        site_url: &str,
+        ctx: AdminMailCtx<'_>,
+        mail: RefundRequestedAdminMail<'_>,
     ) {
+        let AdminMailCtx {
+            config,
+            pool,
+            admin_emails,
+            site_url,
+        } = ctx;
+        let RefundRequestedAdminMail {
+            client_name,
+            order_number,
+            amount_display,
+            reason,
+            refund_id,
+        } = mail;
         let subject = format!("🔄 Reembolso solicitado — Orden #{order_number} — Nakomi Studio");
         let panel_link = format!("{site_url}/panel?seccion=reembolsos&id={refund_id}");
 

@@ -145,15 +145,18 @@ pub async fn deliver_phase_with_files(
             let site_url =
                 std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
             tokio::spawn(async move {
+                /* [09AA-1] Datos del aviso agrupados en PhaseDeliveredMail. */
                 crate::services::EmailService::send_phase_delivered_client(
                     &cfg,
                     &pool,
                     &client_email,
-                    &cname,
-                    onum,
-                    &ptitle,
-                    &site_url,
-                    oid,
+                    crate::services::PhaseDeliveredMail {
+                        client_name: &cname,
+                        order_number: onum,
+                        phase_title: &ptitle,
+                        site_url: &site_url,
+                        order_id: oid,
+                    },
                 )
                 .await;
             });

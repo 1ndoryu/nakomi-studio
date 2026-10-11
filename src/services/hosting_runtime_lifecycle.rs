@@ -6,10 +6,9 @@
 use reqwest::Client;
 
 use crate::errors::AppError;
-use crate::models::HostingPlanConfig;
 
 use super::coolify::{
-    CoolifyConfig, CoolifyService, HostingComposeUpdate, HostingProvisionPreferences,
+    CoolifyConfig, CoolifyService, HostingComposeUpdate, HostingProvisionRequest,
 };
 use super::hosting_runtime::{
     HostingRuntimeDeploymentSummary, HostingRuntimeKind, HostingRuntimeProvisionResult,
@@ -41,17 +40,11 @@ impl HostingRuntimeService {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn provision_hosting(
         http_client: &Client,
         coolify_config: Option<&CoolifyConfig>,
         runtime_kind: Option<HostingRuntimeKind>,
-        deployment_name: &str,
-        access_port: i32,
-        plan_config: &HostingPlanConfig,
-        client_name: &str,
-        client_email: &str,
-        preferences: Option<&HostingProvisionPreferences>,
+        request: HostingProvisionRequest<'_>,
     ) -> Result<HostingRuntimeProvisionResult, AppError> {
         let runtime_kind = Self::resolved_kind(runtime_kind);
         match runtime_kind {
@@ -61,20 +54,19 @@ impl HostingRuntimeService {
                     coolify_config,
                     "provisionar hostings",
                 )?;
-                Ok(CoolifyService::provision_hosting(
-                    http_client,
-                    config,
-                    deployment_name,
-                    access_port,
-                    plan_config,
-                    client_name,
-                    client_email,
-                    preferences,
+                Ok(
+                    CoolifyService::provision_hosting(http_client, config, request)
+                        .await?
+                        .into(),
                 )
-                .await?
-                .into())
             }
             HostingRuntimeKind::Lightweight => {
+                let HostingProvisionRequest {
+                    service_name: deployment_name,
+                    plan_config,
+                    preferences,
+                    ..
+                } = request;
                 if !plan_config.plan_name.starts_with("normal-") {
                     return Err(AppError::ServiceUnavailable(
                         "El runtime de hosting 'lightweight' aún solo soporta planes normal-*; los planes WordPress siguen en el runtime legacy.".into(),

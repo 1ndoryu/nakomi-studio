@@ -3,6 +3,7 @@
 
 use sqlx::PgPool;
 
+use super::checkout::CheckoutStripePayment;
 use super::PaymentService;
 use crate::errors::AppError;
 use crate::models::{PaymentMode, PaymentStatus};
@@ -59,13 +60,15 @@ impl PaymentService {
 
                     Self::handle_checkout_payment_succeeded(
                         pool,
-                        email,
-                        service_slug,
-                        plan_slug,
-                        payment_mode,
-                        pi_id,
-                        charge_id,
-                        amount_cents,
+                        CheckoutStripePayment {
+                            email,
+                            service_slug,
+                            plan_slug,
+                            payment_mode,
+                            stripe_intent_id: pi_id,
+                            charge_id,
+                            stripe_amount_cents: amount_cents,
+                        },
                     )
                     .await?;
 

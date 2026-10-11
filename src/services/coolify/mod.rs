@@ -27,5 +27,5 @@ mod tests_units;
 pub use config::CoolifyConfig;
 pub use types::{
     CoolifyProvisionResult, CoolifyService, CoolifyServiceSummary, HostingComposeUpdate,
-    HostingProvisionPreferences,
+    HostingProvisionPreferences, HostingProvisionRequest,
 };

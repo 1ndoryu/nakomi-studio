@@ -21,6 +21,17 @@ struct StripePaymentIntentMin {
     client_secret: String,
 }
 
+/* Pago de checkout confirmado por Stripe. Agrupado para respetar el límite de parámetros. */
+pub struct CheckoutStripePayment<'a> {
+    pub email: &'a str,
+    pub service_slug: &'a str,
+    pub plan_slug: &'a str,
+    pub payment_mode: PaymentMode,
+    pub stripe_intent_id: &'a str,
+    pub charge_id: Option<&'a str>,
+    pub stripe_amount_cents: i32,
+}
+
 impl PaymentService {
     /// Inicia un pago: crea `PaymentIntent` en Stripe con capture manual, guarda en BD.
     /// [064A-65] `client_id` es None si el caller es admin (no aplica ownership check).
@@ -227,14 +238,17 @@ impl PaymentService {
      * NO se crean cuentas huérfanas — el usuario solo se crea tras pago confirmado. */
     pub async fn handle_checkout_payment_succeeded(
         pool: &PgPool,
-        email: &str,
-        service_slug: &str,
-        plan_slug: &str,
-        payment_mode: PaymentMode,
-        stripe_intent_id: &str,
-        charge_id: Option<&str>,
-        stripe_amount_cents: i32,
+        payment: CheckoutStripePayment<'_>,
     ) -> Result<(), AppError> {
+        let CheckoutStripePayment {
+            email,
+            service_slug,
+            plan_slug,
+            payment_mode,
+            stripe_intent_id,
+            charge_id,
+            stripe_amount_cents,
+        } = payment;
         /* [20CA-1] Buscar o crear usuario por email */
         let user = Self::find_or_create_checkout_user(pool, email).await?;
         let user_id = user.id;

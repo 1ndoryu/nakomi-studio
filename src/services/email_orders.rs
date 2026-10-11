@@ -8,6 +8,15 @@ use crate::repositories::{EmailLogRepository, NuevoEmailLog};
 
 use super::email::{EmailConfig, EmailService};
 
+/// Datos del aviso de fase entregada. Agrupados para respetar el límite de parámetros.
+pub struct PhaseDeliveredMail<'a> {
+    pub client_name: &'a str,
+    pub order_number: i32,
+    pub phase_title: &'a str,
+    pub site_url: &'a str,
+    pub order_id: uuid::Uuid,
+}
+
 impl EmailService {
     /// Genera y envía email de confirmación de pedido.
     pub async fn send_order_confirmation(
@@ -17,7 +26,6 @@ impl EmailService {
         client_name: &str,
         order_number: i32,
         service_title: &str,
-        _plan_name: &str,
         price_display: &str,
     ) {
         let subject = format!("¡Pedido #{order_number} recibido! — Nakomi Studio");
@@ -148,17 +156,19 @@ impl EmailService {
 
     /* [311A-1] Email al cliente notificando que una fase fue entregada.
      * Se dispara cuando el admin sube archivos de una fase. Non-fatal. */
-    #[allow(clippy::too_many_arguments)]
     pub async fn send_phase_delivered_client(
         config: &EmailConfig,
         pool: &PgPool,
         to_email: &str,
-        client_name: &str,
-        order_number: i32,
-        phase_title: &str,
-        site_url: &str,
-        order_id: uuid::Uuid,
+        mail: PhaseDeliveredMail<'_>,
     ) {
+        let PhaseDeliveredMail {
+            client_name,
+            order_number,
+            phase_title,
+            site_url,
+            order_id,
+        } = mail;
         let subject = format!("📦 Fase entregada — Orden #{order_number} — Nakomi Studio");
         let panel_link = format!("{site_url}/panel?seccion=ordenes&id={order_id}");
 
@@ -196,17 +206,15 @@ impl EmailService {
     }
 
     /* [311A-1] Email al cliente notificando que se reportó un problema en su orden.
-     * Se dispara cuando el cliente o admin reporta un problema. Non-fatal. */
-    #[allow(clippy::too_many_arguments)]
+     * Se dispara cuando el cliente o admin reporta un problema. Non-fatal.
+     * [09AA-1] Sin `_problem_title` ni `_site_url`: no se usaban y superaban el límite. */
     pub async fn send_problem_reported_client(
         config: &EmailConfig,
         pool: &PgPool,
         to_email: &str,
         client_name: &str,
         order_number: i32,
-        _problem_title: &str,
         problem_description: &str,
-        _site_url: &str,
         order_id: uuid::Uuid,
     ) {
         let subject = format!("⚠️ Problema reportado — Orden #{order_number} — Nakomi Studio");

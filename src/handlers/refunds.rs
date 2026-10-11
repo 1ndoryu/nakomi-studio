@@ -18,7 +18,7 @@ use crate::models::{
     ReviewAction, ReviewRefundBody, UserRole, NOTIF_REFUND_REQUESTED, NOTIF_REFUND_RESOLVED,
 };
 use crate::repositories::{OrderRepository, PaymentRepository, RefundRepository, UserRepository};
-use crate::services::RefundService;
+use crate::services::{AdminMailCtx, RefundRequestedAdminMail, RefundService};
 use crate::AppState;
 
 /* ============================================================
@@ -105,28 +105,28 @@ pub async fn request_refund(
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| "Cliente".to_string());
-                let cemail = UserRepository::get_email(&state.pool, order.client_id)
-                    .await
-                    .ok()
-                    .flatten()
-                    .unwrap_or_else(|| "desconocido@email.com".to_string());
                 let amount_display =
                     crate::services::email::format_usd_cents(refundable_payment.amount_cents);
                 let reason = body.reason.clone();
                 let site_url = std::env::var("SITE_URL")
                     .unwrap_or_else(|_| "https://nakomi.studio".to_string());
                 tokio::spawn(async move {
+                    /* [09AA-1] Contexto + payload agrupados; el aviso no usaba el email del cliente. */
+                    let ctx = AdminMailCtx {
+                        config: &cfg,
+                        pool: &pool,
+                        admin_emails: &admin_email_list,
+                        site_url: &site_url,
+                    };
                     crate::services::EmailService::send_refund_requested_admin(
-                        &cfg,
-                        &pool,
-                        &admin_email_list,
-                        &cname,
-                        &cemail,
-                        onum,
-                        &amount_display,
-                        &reason,
-                        rid,
-                        &site_url,
+                        ctx,
+                        RefundRequestedAdminMail {
+                            client_name: &cname,
+                            order_number: onum,
+                            amount_display: &amount_display,
+                            reason: &reason,
+                            refund_id: rid,
+                        },
                     )
                     .await;
                 });

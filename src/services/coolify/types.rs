@@ -57,6 +57,17 @@ pub struct HostingProvisionPreferences {
     pub sftp_password: Option<String>,
 }
 
+/// Datos del alta de un hosting. Agrupados para respetar el límite de parámetros.
+/// El runtime lightweight no usa `sftp_port`: el puerto lo fija el gestor en su reporte.
+pub struct HostingProvisionRequest<'a> {
+    pub service_name: &'a str,
+    pub sftp_port: i32,
+    pub plan_config: &'a HostingPlanConfig,
+    pub client_name: &'a str,
+    pub client_email: &'a str,
+    pub preferences: Option<&'a HostingProvisionPreferences>,
+}
+
 pub struct HostingComposeUpdate<'a> {
     pub service_uuid: &'a str,
     pub service_name: &'a str,

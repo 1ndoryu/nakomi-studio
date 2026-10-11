@@ -28,17 +28,20 @@ pub(super) fn wordpress_install_form_is_ready(body: &str) -> bool {
         && body.contains("name=\"admin_password\"")
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn install_wordpress_instance(
     http_client: &Client,
     bootstrap_url: &str,
-    service_name: &str,
-    client_name: &str,
-    client_email: &str,
-    admin_username: &str,
-    admin_password: &str,
-    language: &str,
+    install_context: &WordpressInstallContext<'_>,
 ) -> Result<(), String> {
+    let WordpressInstallContext {
+        service_name,
+        client_name,
+        client_email,
+        admin_username,
+        admin_password,
+        language,
+        ..
+    } = *install_context;
     let install_step_one_url = format!("{bootstrap_url}/wp-admin/install.php?step=1");
     let install_step_two_url = format!("{bootstrap_url}/wp-admin/install.php?step=2");
     let login_url = format!("{bootstrap_url}/wp-login.php");
@@ -203,18 +206,7 @@ pub(super) async fn finalize_wordpress_install(
         return (true, None);
     }
 
-    if let Err(error) = install_wordpress_instance(
-        http_client,
-        domain,
-        install_context.service_name,
-        install_context.client_name,
-        install_context.client_email,
-        install_context.admin_username,
-        install_context.admin_password,
-        install_context.language,
-    )
-    .await
-    {
+    if let Err(error) = install_wordpress_instance(http_client, domain, &install_context).await {
         tracing::warn!(
             "[Coolify] WordPress quedó levantado pero sin instalación automática para '{}' (uuid={}): {}",
             install_context.service_name,

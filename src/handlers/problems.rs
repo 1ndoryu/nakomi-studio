@@ -71,20 +71,16 @@ async fn notify_problem_reported(
                 .ok()
                 .flatten()
                 .unwrap_or_else(|| "Cliente".to_string());
-            let ptitle = reason.chars().take(80).collect::<String>();
             let pdesc = reason.to_string();
-            let site_url =
-                std::env::var("SITE_URL").unwrap_or_else(|_| "https://nakomi.studio".to_string());
             tokio::spawn(async move {
+                /* [09AA-1] Sin título ni site_url: el aviso al cliente no los usaba. */
                 crate::services::EmailService::send_problem_reported_client(
                     &cfg,
                     &pool,
                     &client_email,
                     &cname,
                     onum,
-                    &ptitle,
                     &pdesc,
-                    &site_url,
                     oid,
                 )
                 .await;
@@ -104,27 +100,25 @@ async fn notify_problem_reported(
                     .ok()
                     .flatten()
                     .unwrap_or_else(|| "Cliente".to_string());
-                let cemail = UserRepository::get_email(&state.pool, order.client_id)
-                    .await
-                    .ok()
-                    .flatten()
-                    .unwrap_or_else(|| "desconocido@email.com".to_string());
-                let ptitle = reason.chars().take(80).collect::<String>();
                 let pdesc = reason.to_string();
                 let site_url = std::env::var("SITE_URL")
                     .unwrap_or_else(|_| "https://nakomi.studio".to_string());
                 tokio::spawn(async move {
+                    /* [09AA-1] Contexto + payload agrupados; el título no se usaba en el aviso. */
+                    let ctx = crate::services::AdminMailCtx {
+                        config: &cfg,
+                        pool: &pool,
+                        admin_emails: &admin_emails,
+                        site_url: &site_url,
+                    };
                     crate::services::EmailService::send_problem_reported_admin(
-                        &cfg,
-                        &pool,
-                        &admin_emails,
-                        &cname,
-                        &cemail,
-                        onum,
-                        &ptitle,
-                        &pdesc,
-                        oid,
-                        &site_url,
+                        ctx,
+                        crate::services::ProblemReportedAdminMail {
+                            client_name: &cname,
+                            order_number: onum,
+                            problem_description: &pdesc,
+                            order_id: oid,
+                        },
                     )
                     .await;
                 });

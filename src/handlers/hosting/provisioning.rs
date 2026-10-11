@@ -14,6 +14,7 @@ use crate::models::{HostingSubscriptionResponse, UserRole};
 use crate::repositories::{
     HostingRepository, HostingResourceAllocation, InfrastructureRepository, ServerInfo,
 };
+use crate::services::coolify::HostingProvisionRequest;
 use crate::services::{
     HostingRuntimeProvisionResult, HostingRuntimeService, HostingRuntimeUpdate,
     HostingStripeService,
@@ -114,16 +115,19 @@ async fn execute_provision(
     id: Uuid,
 ) -> Result<HostingRuntimeProvisionResult, AppError> {
     let provision_preferences = HostingStripeService::load_provision_preferences(pool, id).await;
+    let request = HostingProvisionRequest {
+        service_name: &prep.service_name,
+        sftp_port: prep.sftp_port,
+        plan_config: &prep.plan_config,
+        client_name: &prep.sub.client_name,
+        client_email: &prep.sub.client_email,
+        preferences: provision_preferences.as_ref(),
+    };
     let result = match HostingRuntimeService::provision_hosting(
         &state.http_client,
         prep.config.as_ref(),
         Some(prep.runtime_kind),
-        &prep.service_name,
-        prep.sftp_port,
-        &prep.plan_config,
-        &prep.sub.client_name,
-        &prep.sub.client_email,
-        provision_preferences.as_ref(),
+        request,
     )
     .await
     {

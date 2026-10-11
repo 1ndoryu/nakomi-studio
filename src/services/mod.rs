@@ -73,6 +73,11 @@ pub use contabo::{ContaboConfig, ContaboService, CreateInstanceParams};
 pub use coolify::{CoolifyConfig, CoolifyService};
 pub use domain_stripe::{DomainCheckoutParams, DomainStripeService};
 pub use email::{EmailConfig, EmailService};
+pub use email_admin::{
+    AdminMailCtx, NewOrderAdminMail, OrderCancelledAdminMail, OrderCompletedAdminMail,
+    PaymentReceivedAdminMail, ProblemReportedAdminMail, RefundRequestedAdminMail,
+};
+pub use email_orders::PhaseDeliveredMail;
 pub use google_auth::GoogleAuthService;
 pub use hosting_runtime::{
     HostingRuntimeBackupEntry, HostingRuntimeBackupReport, HostingRuntimeDeploymentSummary,

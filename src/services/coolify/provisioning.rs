@@ -4,14 +4,13 @@ use base64::Engine;
 use reqwest::Client;
 
 use crate::errors::AppError;
-use crate::models::HostingPlanConfig;
 
 use super::compose::{
     build_hosting_compose_for_service, build_hosting_compose_for_service_with_ingress_network,
 };
 use super::config::CoolifyConfig;
 use super::parsing::{generate_sftp_credentials, hosting_bootstrap_host};
-use super::types::{CoolifyProvisionResult, HostingComposeUpdate, HostingProvisionPreferences};
+use super::types::{CoolifyProvisionResult, HostingComposeUpdate, HostingProvisionRequest};
 use super::wordpress::{
     create_hosting_service, finalize_wordpress_install, WordpressInstallContext,
 };
@@ -26,17 +25,19 @@ impl CoolifyService {
     ///
     /// # Errors
     /// Retorna `AppError` si la API falla o el JSON no parsea.
-    #[allow(clippy::too_many_arguments)]
     pub async fn provision_hosting(
         http_client: &Client,
         config: &CoolifyConfig,
-        service_name: &str,
-        sftp_port: i32,
-        plan_config: &HostingPlanConfig,
-        client_name: &str,
-        client_email: &str,
-        preferences: Option<&HostingProvisionPreferences>,
+        request: HostingProvisionRequest<'_>,
     ) -> Result<CoolifyProvisionResult, AppError> {
+        let HostingProvisionRequest {
+            service_name,
+            sftp_port,
+            plan_config,
+            client_name,
+            client_email,
+            preferences,
+        } = request;
         let (generated_sftp_user, generated_sftp_password) = generate_sftp_credentials();
         let sftp_user = preferences
             .and_then(|prefs| prefs.sftp_user.as_deref())

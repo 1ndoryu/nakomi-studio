@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::models::{HostingPlanConfig, HostingSubscription};
 use crate::repositories::{HostingRepository, ServerInfo};
-use crate::services::coolify::HostingProvisionPreferences;
+use crate::services::coolify::{HostingProvisionPreferences, HostingProvisionRequest};
 use crate::services::{CoolifyConfig, HostingRuntimeProvisionResult, HostingRuntimeService};
 
 use super::helpers::provisioning_preferences_from_details;
@@ -176,16 +176,19 @@ impl HostingStripeService {
         };
         let preferences = Self::load_provision_preferences(pool, hosting_id).await;
 
+        let request = HostingProvisionRequest {
+            service_name: &service_name,
+            sftp_port,
+            plan_config: &plan_config,
+            client_name: &subscription.client_name,
+            client_email: &subscription.client_email,
+            preferences: preferences.as_ref(),
+        };
         match HostingRuntimeService::provision_hosting(
             http_client,
             coolify_config,
             Some(runtime_kind),
-            &service_name,
-            sftp_port,
-            &plan_config,
-            &subscription.client_name,
-            &subscription.client_email,
-            preferences.as_ref(),
+            request,
         )
         .await
         {
