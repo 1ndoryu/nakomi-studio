@@ -35,7 +35,7 @@ Pensado para máxima velocidad de desarrollo, seguridad por defecto y escalabili
 
 ```bash
 # 1. Clonar el proyecto con el framework fijado
-git clone --recurse-submodules --branch glory-rust-nakomi https://github.com/1ndoryu/glory-rs-template.git nakomi
+git clone --recurse-submodules https://github.com/1ndoryu/nakomi-studio.git nakomi
 cd nakomi
 git submodule update --init --recursive
 cp .env.example .env

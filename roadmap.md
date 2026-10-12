@@ -1,5 +1,5 @@
 Objetivo: Nakomi Studio — sitio web de agencia creativa. Migrado de WordPress a Rust (Axum) + React SPA.
-Rama: glory-rust-nakomi
+Rama: main
 
 ## Stack
 
@@ -17,7 +17,7 @@ Rama: glory-rust-nakomi
 
 # Nakomi Studio — Roadmap
 
-> **Rama:** `glory-rust-nakomi`
+> **Rama:** `main`
 > **Producción:** https://nakomi.studio
 > **Admin:** `andoryyu@gmail.com`, WhatsApp `+1 (608) 466-8134`
 
@@ -66,6 +66,11 @@ Lo siguiente está **confirmado en el código fuente actual** (no solo declarado
 ---
 
 ## 🔴 Pendiente crítico (esperando autorización)
+
+### 0. 12AA-1 Coolify: probar el deploy desde los repos propios
+
+**Estado:** `coolify-manager-rs/config/settings.json` (local, sin secretos en el repo) ya apunta `studio` (nakomi.studio) a `nakomi-studio@main` y `kamples` (samples.nakomi.studio) a `kamples@main`. Antes apuntaban a las ramas `glory-rust-nakomi` y `kamples` de la plantilla, ya borradas. Los contenedores en producción siguen sirviendo la imagen anterior.
+**Pendiente (autorización de la usuaria, §9.1):** un deploy o `sync` de prueba por sitio con `coolify-manager-rs`, y que el `REPO_URL` del compose en Coolify se actualice con él. Sin ese paso, el próximo deploy fallaría por rama inexistente.
 
 ### 1. Watchdog: doble señal — IMPLEMENTADO, pendiente deploy
 
@@ -218,7 +223,7 @@ Las siguientes tareas **estaban marcadas como pendientes pero ya están corregid
 ## Gate moderno (bootstrap 2026-09-25)
 
 Sentinel 0.7.14 (b00747c) + VarSense 2.2.4 (checkout compartido `../.quality-tools`), rama
-primaria `glory-rust-nakomi`. Comandos: `npm run quality:setup|doctor|analyze|lock`,
+primaria `main`. Comandos: `npm run quality:setup|doctor|analyze|lock`,
 `npm run quality:check -- <ID>`. Baseline `.quality-reports/analyze.json`: 643
 archivos, 157 con violaciones (34 errores, 363 warnings, 6 info, 60 hints).
 
@@ -297,11 +302,3 @@ librería uplot/u-legend/tiptap, gap sin allowlist). VarSense 2.2.9 (pin
 - Fuera de alcance (observado, sin autorización): `large-interface-isp` x37,
   `css-especificacion-diseno-local` x1 (baseline 01AA). Gate 2026-10-10 (tras 09AA-1):
   0E / 9W / 0H; los 9W son `sqlite-carga-N-consultas` FP documentados, sin cambio.
-
-## Bloqueado: `chore/sentinel-0.7.20` no se integra en `main` (decisión reservada)
-- Estado: rama `chore/sentinel-0.7.20` en `31f36024`, publicada en origin por fast-forward (sin force); local = origin. Pin sentinel 0.7.23 (`02d82d7`).
-- Motivo: `origin/main` es la plantilla compartida `glory-rs-template` y tiene 265 commits de otra línea (20 de MN-Inmobiliaria) que NAKOMI no tiene; NAKOMI tiene 1051 commits que `origin/main` no tiene. Base común `a666e9f7` (2026-03-25). Merge probado: 43 conflictos semánticos (bootstrap frente a AppState de MN, `main.rs`, modelos, handlers).
-- Decidido: no integrar ahora. Resolver los 43 conflictos produciría un híbrido no verificado y cambiaría lo que consumen otras plantillas de `origin/main`. Es decisión reservada (afecta a terceros, §0.3).
-- Desbloqueo (decisión de la usuaria): (a) NAKOMI con base propia, sin tocar `origin/main`; o (b) integración en `origin/main` con resolución dedicada y verificación completa.
-- Copias de seguridad verificadas: `C:/tmp/sentinel-bump/nakomi-chore-sentinel-0.7.20-31f36024.bundle` (HEAD actual) y `C:/tmp/sentinel-bump/nakomi-chore-sentinel-0.7.20.bundle` (anterior). Lista de conflictos: `C:/tmp/wm/nakomi-mt.txt`.
-- Deploy: si Coolify despliega `main` automáticamente, cualquier integración sigue siendo reservada (§9.1).

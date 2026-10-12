@@ -5,7 +5,7 @@
     "mode": "enforce"
   },
   "project": {
-    "primaryBranch": "glory-rust-nakomi"
+    "primaryBranch": "main"
   },
   "gate": {
     "command": [
