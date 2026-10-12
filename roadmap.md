@@ -72,11 +72,11 @@ Lo siguiente está **confirmado en el código fuente actual** (no solo declarado
 **Estado:** `coolify-manager-rs/config/settings.json` (local, sin secretos en el repo) ya apunta `studio` (nakomi.studio) a `nakomi-studio@main` y `kamples` (samples.nakomi.studio) a `kamples@main`. Antes apuntaban a las ramas `glory-rust-nakomi` y `kamples` de la plantilla, ya borradas. Los contenedores en producción siguen sirviendo la imagen anterior.
 **Pendiente (autorización de la usuaria, §9.1):** un deploy o `sync` de prueba por sitio con `coolify-manager-rs`, y que el `REPO_URL` del compose en Coolify se actualice con él. Sin ese paso, el próximo deploy fallaría por rama inexistente.
 
-### 0b. 12AA-2 Frontend: migrar a Vite 8 + TypeScript 6 (2026-10-12, EN CURSO)
+### 0b. 12AA-2 Frontend: migrar a Vite 8 + TypeScript 6 (2026-10-12, integrada en `main` `ebdfff55`; pendiente visual)
 
-**Qué:** `frontend/package.json` pasa a `vite` `^8.3.0`, `typescript` `~6.0.2` y `@vitejs/plugin-react` `^6.1.1`. Pin de sentinel fijado a `ba6d9c7` (0.7.24) y varsense a `7c5cb7a` (2.2.9), igual que el resto de proyectos (decisión de la usuaria); `sentinel.lock.json` regenerado. Rama `chore/frontend-vite8-ts6` (sin commit).
+**Qué:** `frontend/package.json` pasa a `vite` `^8.3.0`, `typescript` `~6.0.2` y `@vitejs/plugin-react` `^6.1.1`. Pin de sentinel fijado a `ba6d9c7` (0.7.24) y varsense a `7c5cb7a` (2.2.9), igual que el resto de proyectos (decisión de la usuaria); `sentinel.lock.json` regenerado. Commit `ebdfff55`.
 **Hecho:** gate `npm run quality:check -- 12AA-2` PASS (fmt, clippy, sentinel; 3 warnings preexistentes en `ModalSeoEdit.tsx`). `npm run build` (`tsc -b && vite build`) rc=0 con avisos de rolldown en una ejecución anterior; el gate no cubre el frontend y el guard bloquea la ejecución directa. `npm audit` sobre el lock: 38 vulnerabilidades en `main`, 31 en la rama (1 critical en ambos).
-**Pendiente:** comprobación visual del frontend (no hecha); el gate de NAKOMI no tiene etapa de frontend (type-check/build) — añadirla es tarea aparte; commit, integración en `main` y push.
+**Pendiente:** comprobación visual del frontend (no hecha); el gate de NAKOMI no tiene etapa de frontend (type-check/build) — añadirla es tarea aparte; rama borrada tras integrar.
 
 ### 1. Watchdog: doble señal — IMPLEMENTADO, pendiente deploy
 
