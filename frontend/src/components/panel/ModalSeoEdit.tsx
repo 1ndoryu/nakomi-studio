@@ -12,6 +12,8 @@ import {apiUpdateSeoSetting, type SeoSetting} from '../../api/admin-seo';
 import {ImageGalleryPicker} from '../ui/ImageGalleryPicker';
 import {Modal, ModalBody, ModalField, ModalLabel} from '../ui/Modal';
 import {Button} from '../ui/Button';
+import {Input} from '../ui/Input';
+import {Textarea} from '../ui/Textarea';
 import {SelectDropdown} from '../ui/SelectDropdown';
 import './ModalSeoEdit.css';
 
@@ -97,7 +99,7 @@ export const ModalSeoEdit: React.FC<Props> = ({setting, onClose}) => {
                                 {titleLen}/{TITLE_MAX}
                             </span>
                         </ModalLabel>
-                        <input
+                        <Input
                             type="text"
                             className="modalInput modalSeoInput"
                             value={form.title}
@@ -119,7 +121,7 @@ export const ModalSeoEdit: React.FC<Props> = ({setting, onClose}) => {
                                 {descLen}/{DESC_MAX}
                             </span>
                         </ModalLabel>
-                        <textarea
+                        <Textarea
                             className="modalInput modalSeoTextarea"
                             value={form.description}
                             onChange={e => setForm(f => ({...f, description: e.target.value}))}
@@ -188,7 +190,7 @@ export const ModalSeoEdit: React.FC<Props> = ({setting, onClose}) => {
 
                     <ModalField className="modalSeoCampo--readonly">
                         <ModalLabel>Ruta</ModalLabel>
-                        <input
+                        <Input
                             type="text"
                             className="modalInput modalSeoInput modalSeoInput--disabled"
                             value={setting.path}
