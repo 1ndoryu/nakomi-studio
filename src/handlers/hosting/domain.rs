@@ -79,7 +79,7 @@ pub(super) fn active_custom_domain(sub: &crate::models::HostingSubscription) -> 
 
 async fn lookup_txt_records(record_name: &str) -> Result<Vec<String>, String> {
     let resolver = hickory_resolver::Resolver::builder_tokio()
-        .and_then(|builder| builder.build())
+        .and_then(hickory_resolver::ResolverBuilder::build)
         .map_err(|error| format!("No se pudo inicializar el resolver DNS: {error}"))?;
     let lookup = resolver
         .lookup(record_name, hickory_resolver::proto::rr::RecordType::TXT)
