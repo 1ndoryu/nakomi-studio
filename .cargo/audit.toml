@@ -1,0 +1,14 @@
+# Excepciones de cargo-audit. Cada una lleva motivo, decisión y fecha de vencimiento.
+# cargo-audit no tiene caducidad: el vencimiento vive aquí y en roadmap.md (aviso de revisión).
+
+[advisories]
+ignore = [
+    # RUSTSEC-2023-0071 (rsa 0.9.10, Marvin Attack, sin parche).
+    # Motivo: `rsa` solo entra por `sqlx-mysql`, dependencia opcional de sqlx que nunca se compila
+    # (NAKOMI usa solo Postgres; `cargo tree -i sqlx-mysql` no devuelve nada). Cargo la incluye en
+    # Cargo.lock aunque no esté activa, así que cargo-audit la ve. Quitar `default-features` de sqlx
+    # no la elimina del lock. El backend no hace operaciones RSA.
+    # Decidido: excepción de 1 mes (2026-10-13). VENCE 2026-11-13.
+    # Al vencer: quitar la entrada si hay parche o sqlx-mysql sale del lock; si no, renovar con fecha nueva.
+    "RUSTSEC-2023-0071",
+]

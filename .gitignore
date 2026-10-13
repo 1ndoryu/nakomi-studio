@@ -2,7 +2,8 @@
 /target/
 **/*.rs.bk
 *.pdb
-/.cargo/
+/.cargo/*
+!/.cargo/audit.toml
 
 # Environment (secrets)
 .env

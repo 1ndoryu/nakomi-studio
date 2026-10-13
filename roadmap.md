@@ -8,7 +8,7 @@ Rama: main
 | Framework web | Axum 0.7                       |
 | OpenAPI       | utoipa 4 + utoipa-swagger-ui 7 |
 | Base de datos | SQLx 0.8 (PostgreSQL)          |
-| Validación    | validator 0.18                 |
+| Validación    | validator 0.21                 |
 | Auth          | jsonwebtoken + argon2          |
 | Frontend      | React 18 + TypeScript + Vite   |
 | State         | React Query + Zustand          |
@@ -27,6 +27,7 @@ Rama: main
 - **VPS2 Coolify**: Configurado en settings.json
 - **Deploy**: Siempre via coolify-manager-rs, nunca desde Coolify UI
 - **Volúmenes**: Documentado en `Agente/documentacion/hosting/coolify-volumenes-persistencia-2026-04-12.md`
+- **Excepción cargo-audit RUSTSEC-2023-0071 (rsa)**: `rsa` solo está en `Cargo.lock` vía `sqlx-mysql` (no compilado). **Vence 2026-11-13.** Ver `.cargo/audit.toml`; quitarla si hay parche o `sqlx-mysql` sale del lock.
 
 ---
 
