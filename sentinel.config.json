@@ -29,20 +29,23 @@
         "tsc",
         "eslint",
         "prettier",
-        "rustfmt"
+        "rustfmt",
+        "vitest"
       ],
       "cargoSubcommands": [
         "check",
         "clippy",
         "test",
         "bench",
-        "fmt"
+        "fmt",
+        "nextest"
       ],
       "tools": [
         "tsc",
         "eslint",
         "prettier",
-        "rustfmt"
+        "rustfmt",
+        "vitest"
       ]
     }
   },
