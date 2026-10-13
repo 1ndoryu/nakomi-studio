@@ -78,18 +78,24 @@ pub(super) fn active_custom_domain(sub: &crate::models::HostingSubscription) -> 
 }
 
 async fn lookup_txt_records(record_name: &str) -> Result<Vec<String>, String> {
-    let resolver = hickory_resolver::TokioAsyncResolver::tokio_from_system_conf()
+    let resolver = hickory_resolver::Resolver::builder_tokio()
+        .and_then(|builder| builder.build())
         .map_err(|error| format!("No se pudo inicializar el resolver DNS: {error}"))?;
     let lookup = resolver
-        .txt_lookup(record_name)
+        .lookup(record_name, hickory_resolver::proto::rr::RecordType::TXT)
         .await
         .map_err(|error| format!("No se pudo consultar el registro TXT: {error}"))?;
 
     let mut values = lookup
+        .answers()
         .iter()
+        .filter_map(|record| match &record.data {
+            hickory_resolver::proto::rr::RData::TXT(txt) => Some(txt),
+            _ => None,
+        })
         .map(|txt| {
             let value = txt
-                .txt_data()
+                .txt_data
                 .iter()
                 .map(|chunk| String::from_utf8_lossy(chunk).into_owned())
                 .collect::<String>();

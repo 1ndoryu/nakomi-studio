@@ -25,7 +25,7 @@ utoipa = { version = "4", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "7", features = ["axum"] }
 
 # Validation
-validator = { version = "0.18", features = ["derive"] }
+validator = { version = "0.21", features = ["derive"] }
 
 # Environment
 dotenvy = "0.15"
@@ -57,7 +57,7 @@ governor = "0.7"
 tower_governor = "0.4"
 
 # HTTP client (Stripe API)
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "multipart", "hickory-dns"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "multipart"] }
 
 # Webhook signature verification
 hmac = "0.12"
@@ -68,7 +68,7 @@ hex = "0.4"
 regex = "1"
 
 # PDF text extraction (T-5)
-pdf-extract = "0.7"
+pdf-extract = "0.12"
 
 # Base64 encoding (T-5 Groq Vision)
 base64 = "0.22"
@@ -85,7 +85,7 @@ webp = { version = "0.2", default-features = false }
 urlencoding = "2"
 
 # DNS TXT lookup para verificación de ownership de dominios
-hickory-resolver = { version = "0.24", features = ["tokio-runtime", "system-config"] }
+hickory-resolver = { version = "0.26", features = ["tokio", "system-config"] }
 
 # Email (154A-15c)
 lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
