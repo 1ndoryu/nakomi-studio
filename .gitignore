@@ -50,6 +50,7 @@ frontend/openapi-debug.json
 frontend/tsconfig.tsbuildinfo
 /uploads
 /scripts/*
+!/scripts/run-cargo.mjs
 !/scripts/dev.mjs
 !/scripts/prerender.mjs
 !/scripts/check-roadmap.mjs

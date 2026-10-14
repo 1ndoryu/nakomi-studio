@@ -4,9 +4,9 @@
   "description": "Comandos unificados para el monorepo Rust + React",
   "scripts": {
     "dev": "node glory-rs/scripts/dev.mjs",
-    "check": "cargo check && cargo clippy && npm --prefix frontend run type-check",
+    "check": "node scripts/run-cargo.mjs check && node scripts/run-cargo.mjs clippy && npm --prefix frontend run type-check",
     "self-check": "powershell -ExecutionPolicy Bypass -File scripts/self-check.ps1",
-    "check:back": "cargo check && cargo clippy",
+    "check:back": "node scripts/run-cargo.mjs check && node scripts/run-cargo.mjs clippy",
     "check:front": "npm --prefix frontend run type-check",
     "fmt": "cargo fmt",
     "fmt:check": "cargo fmt --check",
