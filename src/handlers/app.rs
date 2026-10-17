@@ -142,8 +142,11 @@ pub fn create_app(pool: sqlx::PgPool, config: crate::config::AppConfig) -> Route
             .service(ServeDir::new(&assets_dir));
 
         /* SPA fallback: index.html se revalida siempre para apuntar a los assets más recientes.
-         * Otros archivos sin hash (favicon, fonts) obtienen 1 día de cache. */
-        let spa_serve = ServeDir::new(&dir).not_found_service(ServeFile::new(&index_path));
+         * Otros archivos sin hash (favicon, fonts) obtienen 1 día de cache.
+         * [16AA-18] `.fallback`, NO `.not_found_service`: el segundo envuelve el servicio en
+         * `SetStatus`, que fuerza un 404 sobre la respuesta del fallback, así que una ruta de
+         * cliente fuera de `spa_shell_routes()` devolvía el index.html con 404. */
+        let spa_serve = ServeDir::new(&dir).fallback(ServeFile::new(&index_path));
 
         /* [214A-2] Middleware SEO dinámico: inyecta meta tags desde BD para crawlers.
          * Reemplaza el enfoque estático de 114A-SEO3 (Puppeteer) que no soportaba CMS editable. */
@@ -210,5 +213,62 @@ async fn spa_index(State(state): State<AppState>) -> Response {
             tracing::error!(%error, static_dir, "No se pudo leer index.html para SPA");
             StatusCode::NOT_FOUND.into_response()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::AppConfig;
+    use tower::ServiceExt;
+
+    /* [16AA-18] `connect_lazy` no abre conexión: el test mira el fallback del SPA, no la base. */
+    fn app_con_dist(dist: &std::path::Path) -> Router {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://test:test@127.0.0.1:1/none")
+            .expect("pool perezoso");
+        create_app(
+            pool,
+            AppConfig {
+                database_url: "postgres://test:test@127.0.0.1:1/none".to_string(),
+                jwt_secret: "test".to_string(),
+                host: "127.0.0.1".to_string(),
+                port: 0,
+                static_dir: Some(dist.display().to_string()),
+                stripe_publishable_key: None,
+                stripe_secret_key: None,
+                stripe_webhook_secret: None,
+                allowed_origins: vec![],
+            },
+        )
+    }
+
+    async fn get(app: &Router, ruta: &str) -> StatusCode {
+        app.clone()
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri(ruta)
+                    .body(Body::empty())
+                    .expect("petición"),
+            )
+            .await
+            .expect("la app debe responder")
+            .status()
+    }
+
+    /* Una ruta de cliente que NO está en `spa_shell_routes()` tiene que servir el
+     * index.html con 200. Con `not_found_service` daba 404: el `SetStatus` de
+     * tower-http pisa el status de la respuesta del fallback.
+     * Se usa `/panel/...` porque el middleware de prerender lo salta sin tocar la BD. */
+    #[tokio::test]
+    async fn ruta_de_cliente_fuera_de_las_shell_devuelve_el_spa_con_200() {
+        let dir = std::env::temp_dir().join(format!("nakomi-spa-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("dist de prueba");
+        std::fs::write(dir.join("index.html"), "<div id=\"root\">SPA</div>").expect("index");
+        let app = app_con_dist(&dir);
+
+        assert_eq!(get(&app, "/panel/loquesea").await, StatusCode::OK);
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }
