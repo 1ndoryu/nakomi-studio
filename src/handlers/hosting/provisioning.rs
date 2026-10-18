@@ -1,7 +1,7 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use chrono::Utc;
-use rand::Rng;
+use rand::RngExt;
 use uuid::Uuid;
 
 use super::domain::{
@@ -305,8 +305,8 @@ pub(super) async fn rotate_credentials(
         "rotar credenciales",
     )?;
 
-    let new_password: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
+    let new_password: String = rand::rng()
+        .sample_iter(&rand::distr::Alphanumeric)
         .take(20)
         .map(char::from)
         .collect();

@@ -5,7 +5,7 @@
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
-use rand::Rng;
+use rand::RngExt;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -45,8 +45,8 @@ fn sanitize_hostname(requested_hostname: Option<&str>, subscription_id: Uuid) ->
 }
 
 fn generate_initial_password() -> String {
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
+    rand::rng()
+        .sample_iter(&rand::distr::Alphanumeric)
         .take(24)
         .map(char::from)
         .collect()

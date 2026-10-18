@@ -1,7 +1,7 @@
 /* [07AA-14] Helpers de parsing Coolify (split sin cambios de lógica desde coolify.rs). */
 
-use rand::distributions::Alphanumeric;
-use rand::Rng;
+use rand::distr::Alphanumeric;
+use rand::RngExt;
 use serde_json::Value;
 
 use super::config::CoolifyConfig;
@@ -249,13 +249,13 @@ pub(super) fn build_traefik_labels(
 }
 
 pub(super) fn generate_sftp_credentials() -> (String, String) {
-    let sftp_user: String = rand::thread_rng()
+    let sftp_user: String = rand::rng()
         .sample_iter(&Alphanumeric)
         .take(10)
         .map(char::from)
         .collect::<String>()
         .to_lowercase();
-    let sftp_password: String = rand::thread_rng()
+    let sftp_password: String = rand::rng()
         .sample_iter(&Alphanumeric)
         .take(20)
         .map(char::from)

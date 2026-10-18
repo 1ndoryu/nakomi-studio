@@ -1,7 +1,7 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use chrono::Utc;
-use rand::Rng;
+use rand::RngExt;
 use uuid::Uuid;
 
 use crate::errors::AppError;
@@ -31,8 +31,8 @@ pub(super) fn normalize_domain(domain: Option<&str>) -> Option<String> {
 }
 
 fn generate_domain_verification_token() -> String {
-    let token: String = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
+    let token: String = rand::rng()
+        .sample_iter(&rand::distr::Alphanumeric)
         .take(24)
         .map(char::from)
         .collect();

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use rand::Rng;
+use rand::RngExt;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -43,7 +43,7 @@ impl HostingRepository {
      * Requiere UNIQUE constraint en sftp_port (migration 20260417000000). */
     pub async fn find_available_sftp_port(pool: &PgPool) -> Result<i32, AppError> {
         for _ in 0..10 {
-            let port: i32 = rand::thread_rng().gen_range(10000..49152);
+            let port: i32 = rand::rng().random_range(10000..49152);
             let taken = sqlx::query_scalar!(
                 "SELECT EXISTS(SELECT 1 FROM hosting_subscriptions WHERE sftp_port = $1) AS \"exists!\"",
                 port
