@@ -38,7 +38,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 thiserror = "2"
 
 # Auth
-jsonwebtoken = "9"
+jsonwebtoken = "10"
 argon2 = "0.5"
 
 # Utils
@@ -74,12 +74,12 @@ pdf-extract = "0.12"
 base64 = "0.22"
 
 # Random generation (SFTP credentials)
-rand = "0.8"
+rand = "0.10"
 
 # Image processing (104A-5)
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 # WebP lossy encoding — image-webp solo soporta lossless; usamos libwebp vendorizado (175A-2)
-webp = { version = "0.2", default-features = false }
+webp = { version = "0.3", default-features = false }
 
 # URL encoding (155A-1 Google OAuth)
 urlencoding = "2"
