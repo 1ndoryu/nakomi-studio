@@ -71,3 +71,6 @@ tools/bdp-weblink-simulator/__pycache__/server.cpython-312.pyc
 tools/bdp-weblink-simulator/__pycache__/test_server.cpython-312.pyc
 nul
 tools/bdp-weblink-simulator/
+
+# Documentacion local del area (planes, tareas, lecciones): fuera del repo publico.
+Agente/
