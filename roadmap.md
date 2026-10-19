@@ -1,311 +1,88 @@
-Objetivo: Nakomi Studio — sitio web de agencia creativa. Migrado de WordPress a Rust (Axum) + React SPA.
-Rama: main
-
-## Stack
-
-| Capa          | Herramienta                    |
-| ------------- | ------------------------------ |
-| Framework web | Axum 0.7                       |
-| OpenAPI       | utoipa 4 + utoipa-swagger-ui 7 |
-| Base de datos | SQLx 0.8 (PostgreSQL)          |
-| Validación    | validator 0.21                 |
-| Auth          | jsonwebtoken + argon2          |
-| Frontend      | React 18 + TypeScript + Vite   |
-| State         | React Query + Zustand          |
-| Codegen       | Orval 8                        |
-| Deploy        | coolify-manager-rs             |
-
-# Nakomi Studio — Roadmap
-
-> **Rama:** `main`
-> **Producción:** https://nakomi.studio
-> **Admin:** `andoryyu@gmail.com`, WhatsApp `+1 (608) 466-8134`
-
-## Notas de infraestructura
-
-- **nakomi.studio**: VPS1 (66.94.100.241), Coolify service `do8k4w8swccwwogoc0os0ck0`
-- **VPS2 Coolify**: Configurado en settings.json
-- **Deploy**: Siempre via coolify-manager-rs, nunca desde Coolify UI
-- **Volúmenes**: Documentado en `Agente/documentacion/hosting/coolify-volumenes-persistencia-2026-04-12.md`
-- **Excepción cargo-audit RUSTSEC-2023-0071 (rsa)**: `rsa` solo está en `Cargo.lock` vía `sqlx-mysql` (no compilado). **Vence 2026-11-13.** Ver `.cargo/audit.toml`; quitarla si hay parche o `sqlx-mysql` sale del lock.
-
----
-
-## ✅ Verificado completo — código corregido y desplegado (hasta 26 julio)
-
-Lo siguiente está **confirmado en el código fuente actual** (no solo declarado):
-
-| Componente                      | Verificado | Detalle                                                                                                                                  |
-| ------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Watchdog freeze                 | ✅         | `last_pulse=0` no mata. Secuencia monotónica. `src/main.rs` usa `spawn_runtime_watchdog`                                                 |
-| SQL ON CONFLICT notificaciones  | ✅         | `notification.rs:54` incluye `WHERE reference_type IS NOT NULL AND reference_id IS NOT NULL`                                             |
-| SQL ON CONFLICT response cycles | ✅         | `response_cycle.rs:118` usa `ON CONFLICT (session_id) WHERE status = 'waiting' DO NOTHING`                                               |
-| Feature flags fail-closed       | ✅         | `chat_alert.rs` `enabled_flag_value()` solo acepta `"true"`/`"1"`. Ausente = desactivado                                                 |
-| Error propagation en alertas    | ✅         | `send_message_with_alerts` usa `?` en create*tx e insert_tx. Sin `let * =` críticos                                                      |
-| Persistencia chat               | ✅         | Sesiones de pedido no expiran. Cleanup solo anónimas. `/reset` archiva                                                                   |
-| Realtime / sonido               | ✅         | `sequence_num` monotónico, campo `delivery` (live/history), dedupe por audio leader (Web Locks)                                          |
-| Alertas email outbox            | ✅         | Outbox `chat_alert_outbox`, worker SMTP, backoff 5s→30s→2m→10m→30m                                                                       |
-| Alertas WhatsApp                | ✅         | Gateway HMAC en glorytemplate, outbox separada, worker `wacli`, timer systemd 5s                                                         |
-| Captura contacto                | ✅         | Nombre y email separados, no se sobrescriben mutuamente                                                                                  |
-| Continuación email              | ✅         | Token SHA-256 un uso, 7 días, scheduler durable, coordinador frontend                                                                    |
-| CTA WhatsApp                    | ✅         | `wa.me/<numero>` con texto prellenado, render seguro `<a target="_blank">`                                                               |
-| Toma humana / fallback IA       | ✅         | `ai_mode`, ciclos de respuesta, worker `response_cycle_worker` fallback 10 min                                                           |
-| Identidad IA transparente       | ✅         | Claudia se identifica como asistente IA, prioriza escalamiento                                                                           |
-| ModalAsignar                    | ✅         | `orderNumber` se usa en JSX. Sin error TS6133                                                                                            |
-| NotificationBell                | ✅         | Montado en `HeaderPanel`. `AuthenticatedNotificationRuntime` global en `App.tsx`                                                         |
-| ChatBell                        | ✅         | Badge de mensajes no leídos por `last_message_at > last_viewed_at`                                                                       |
-| Sidebar badge mensajes          | ✅         | Indicador rojo en "Mensajes" del sidebar (desktop + móvil)                                                                               |
-| Coolify Manager incident tools  | ✅         | 7 comandos (`incident-investigate`, `container-inspect/events/stats`, `db-stats`, `env-toggle`, `incident-logs`) + redacción de secretos |
-| CMS comas/tags                  | ✅         | Permite comas en inputs de tags                                                                                                          |
-| Galería resolución +10%         | ✅         | `galeriaHeroContenedor` y `proyectoGaleriaItem`                                                                                          |
-| Renombrar Empleado→Freelancer   | ✅         | Global backend + frontend                                                                                                                |
-| Auto-asignar admin post-pago    | ✅         | Webhook asigna admin automáticamente                                                                                                     |
-| Accounts sin pago               | ✅         | Registro movido a post-pago (Stripe webhook)                                                                                             |
-
-**Evidencia de producción (26 julio):** Health 200, restart_count=0, OOM=false, 69 migraciones. Correo recibido por la usuaria. WhatsApp canary `sent` recibida físicamente.
-
----
-
-## 🔴 Pendiente crítico (esperando autorización)
-
-### 0. 12AA-1 Coolify: probar el deploy desde los repos propios
-
-**Estado:** `coolify-manager-rs/config/settings.json` (local, sin secretos en el repo) ya apunta `studio` (nakomi.studio) a `nakomi-studio@main` y `kamples` (samples.nakomi.studio) a `kamples@main`. Antes apuntaban a las ramas `glory-rust-nakomi` y `kamples` de la plantilla, ya borradas. Los contenedores en producción siguen sirviendo la imagen anterior.
-**Pendiente (autorización de la usuaria, §9.1):** un deploy o `sync` de prueba por sitio con `coolify-manager-rs`, y que el `REPO_URL` del compose en Coolify se actualice con él. Sin ese paso, el próximo deploy fallaría por rama inexistente.
-
-### 0b. 12AA-2 Frontend: migrar a Vite 8 + TypeScript 6 (2026-10-12, integrada en `main` `ebdfff55`; pendiente visual)
-
-**Qué:** `frontend/package.json` pasa a `vite` `^8.3.0`, `typescript` `~6.0.2` y `@vitejs/plugin-react` `^6.1.1`. Pin de sentinel fijado a `f691510` (0.7.24; decisión de la usuaria el 2026-10-13, antes `ba6d9c7`) y varsense a `7c5cb7a` (2.2.9); `sentinel.lock.json` regenerado con `quality:bump`. El pin de `f691510` va en un commit posterior a `ebdfff55`, que conservaba `ba6d9c7`.
-**Hecho:** gate `npm run quality:check -- 12AA-2` PASS (fmt, clippy, sentinel; 3 warnings preexistentes en `ModalSeoEdit.tsx`). `npm run build` (`tsc -b && vite build`) rc=0 con avisos de rolldown en una ejecución anterior; el gate no cubre el frontend y el guard bloquea la ejecución directa. `npm audit` sobre el lock: 38 vulnerabilidades en `main`, 31 en la rama (1 critical en ambos).
-**Pendiente:** comprobación visual del frontend (no hecha); el gate de NAKOMI no tiene etapa de frontend (type-check/build) — añadirla es tarea aparte; rama borrada tras integrar.
-
-### 1. Watchdog: doble señal — IMPLEMENTADO, pendiente deploy
-
-**Estado:** Implementado (277A-6). Doble señal (heartbeat + HTTP probe loopback), umbral 120s, grace period 60s. Tests pasan (8/8). Commits: `a944de64` (main.rs) + `4d95fb4` (framework).
-**Pendiente:** Deploy a producción + verificación canary.
-
-### 2. Deploy producción: verificar estado real
-
-**⛔ No ejecutar deploy sin autorización del usuario. Ya se había arreglado previamente.**
-**Acción necesaria (solo diagnóstico, sin deploy):**
-1. Ejecutar `coolify-manager-rs health --name studio` para obtener estado
-2. Comparar commit local (`git rev-parse HEAD`) con el desplegado
-3. Reportar al usuario
-
-### 3. Hotfix SQL (ya corregido en código, pendiente de confirmar en producción)
-
-**Nota:** Los bugs ON CONFLICT que estaban en el plan de incidente **ya están corregidos** en el código fuente. Sin embargo, no se puede confirmar que la versión desplegada en producción los incluye.
-
----
-
-## ✅ Completado 27 julio 2026 (277A)
-
-| Tarea | Fix | Archivos |
-|---|---|---|
-| Badge notificaciones fuera del panel | NotificationBell lazy-loaded en Header público para admin | `frontend/src/components/layout/Header.tsx` |
-| Carga inicial badge sidebar | `useNotifications()` reemplaza query `enabled: false` | `frontend/src/components/panel/SidebarPanel.tsx` |
-| Deduplicación unanswered_messages | HashMap<session_id, Instant> con cooldown 30min + cleanup 2h | `src/main.rs` |
-| Sesiones cerradas en listado admin | `list_sessions` filtra `status != 'closed'`; método `_archived` separado | `src/repositories/chat.rs` |
-| Rate limiting continuation claim | 5 intentos/min por IP con LazyLock<Mutex<HashMap>> | `src/handlers/chat/rest.rs` |
-| **Watchdog doble señal** | Heartbeat + HTTP probe loopback, umbral 120s, grace 60s | `glory-rs/backend/src/runtime/watchdog.rs`, `src/main.rs` |
-| **Pagos/reembolsos (Fase F+G)** | Idempotency keys, retry con backoff, constraint único, validación monto | 9 archivos (ver 277A-7) |
-| **SEO audit 404** | Ruta duplicada `/api/api/admin/seo/audit` → `/admin/seo/audit` | `src/handlers/admin_seo.rs` |
-| **SEO: hreflang incorrecto** | Eliminado — apuntaba misma URL para todos los idiomas | `frontend/src/components/seo/SEOHead.tsx` |
-| **SEO: dateModified blog** | Pasar `updated_at` del hook al `blogPostSchema()` | `useBlogSingle.ts`, `BlogSingleIsland.tsx` |
-| **SEO: FAQ schema hosting/VPS** | FAQPage schema con 4 preguntas por tipo de hosting/VPS | `SolucionHostingIsland.tsx`, `SolucionVpsIsland.tsx` |
-| **SEO: descuento 50% backend** | `first_order_discount_percent` ya implementado en `order.rs` | Verificado en código |
-
----
-
-## ⚠️ Pendiente funcional (medio/alto)
-
-### 4. Pendiente deploy producción
-
-**Bloqueado en autorización del usuario.** Incluye:
-- Migración SQL pagos/reembolsos (277A-7)
-- Watchdog doble señal (277A-6)
-- Todos los fixes SEO + banner 50% (277A-8/9/10)
-- Fixes preexistentes (277A-1-5)
-
-### ~~5. SEO: frontend descuento 50% (banner + badge)~~ ✅ Completado
-
-**Estado:** Implementado (277A-10). Endpoint `GET /api/orders/first-order-discount` + banner en ModalCompra con React Query.
-
-### ~~6. SEO: breadcrumbSchema en páginas de detalle~~ ✅ Completado
-
-**Estado:** Implementado (277A-10). Integrado en ServicioIndividualIsland (@graph con serviceSchema) y ProyectoIndividualIsland.
-
----
-
-## 📋 Pendiente bajo riesgo / delegable
-
-### 11. Test aceptación continuación en navegador limpio
-
-Abrir enlace de continuación en navegador sin sesión, confirmar historial + widget abierto.
-**Esfuerzo:** ~30 min (prueba manual).
-
-### 12. Test aceptación: dos mensajes + reconexión
-
-Verificar hotfix de reconexión WebSocket con prueba real.
-**Esfuerzo:** ~30 min (prueba manual).
-
-### 13. Test retención >100 mensajes
-
-Conversación con 150+ mensajes, verificar que los más recientes se muestran primero.
-**Esfuerzo:** ~30 min (prueba manual).
-
-### 14. Verificar CTA WhatsApp móvil/desktop
-
-Abrir chat, provocar escalamiento, confirmar que el CTA abre `wa.me/16084668134`.
-**Esfuerzo:** ~15 min (prueba manual).
-
----
-
-## 📦 Tareas de producto — Correo para Hosting (bloqueado)
-
-Ver análisis completo en `Agente/documentacion/hosting/producto-correo-proveedores-2026-05-26.md`.
-
-**Decisión pendiente (bloqueante):** Elegir proveedor — MXroute ($59/año, sin API) vs Migadu ($9/mes, API REST).
-
-- **265A-11** — Fase 1: Aliases/reenvíos con Cloudflare Email Routing. ~8-10h.
-- **265A-12** — Fase 2: Buzones IMAP (MXroute o Migadu). ~20-26h.
-- **265A-13** — Incluir 1 buzón IMAP gratis en plan Avanzado. ~3-4h.
-
----
-
-## 📝 Planes activos
-
-| Plan                     | Archivo                                                    | Estado verificado                                                                                          |
-| ------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Estabilidad Nakomi       | `plan-estabilidad-nakomi-2026-07-23.md`                    | B-E desplegadas. **SQL bugs ya corregidos** (no pendientes). F-K pendientes.                               |
-| Cierre bloques difíciles | `plan-cierre-bloques-dificiles-nakomi-2026-07-23.md`       | Bloques A-E implementados.                                                                                 |
-| WhatsApp + continuación  | `plan-cierre-whatsapp-continuacion-contacto-2026-07-26.md` | WhatsApp cerrado. Canary continuación pendiente.                                                           |
-| Incidente freeze         | `plan-incidente-freeze-bad-gateway-nakomi-2026-07-24.md`   | Causa raíz corregida. Fase 2-5 (SQL hotfix) **ya hechas en código**. Fase 4 (watchdog redesign) pendiente. |
-| Coolify Manager mejoras  | `plan-mejoras-coolify-manager-incidencias-2026-07-25.md`   | Implementado. README/skill sin actualizar (pasos 10-11).                                                   |
-
-### Planes sin ejecutar
-
-| Plan                                                      | Estado                             |
-| --------------------------------------------------------- | ---------------------------------- |
-| `plan-seo-dashboard-blog-descuento-2026-07-25.md`         | Planificado, pendiente aprobación  |
-| `plan-migracion-consumidores-glory-rs-main-2026-07-25.md` | Bloqueado hasta estabilizar Nakomi |
-| `plan-diagnostico-vps1-2026-05-23.md`                     | Sin ejecutar                       |
-| `plan-fixes-pendientes-2026-06-01.md`                     | Sin verificar                      |
-| `plan-restauracion-guillermo-2026-07-22.md`               | Sin verificar                      |
-
----
-
-## 🔄 Correcciones al estado anterior del roadmap
-
-Las siguientes tareas **estaban marcadas como pendientes pero ya están corregidas en código**:
-
-1. **SQL ON CONFLICT notificaciones** — `notification.rs` ya incluye el predicado del índice parcial.
-2. **SQL ON CONFLICT response cycles** — `response_cycle.rs` ya usa `ON CONFLICT (session_id) WHERE status = 'waiting'`.
-3. **`let _ =` en alertas** — `send_message_with_alerts` ya usa `?` operator.
-4. **Feature flags fail-open** — `chat_alert.rs` ya usa fail-closed (`enabled_flag_value`).
-5. **ModalAsignar TS6133** — `orderNumber` se usa en JSX.
-6. **prompt() admin reembolso** — No encontrado en código fuente.
-
-**Sin embargo**, no se puede confirmar que producción tenga estos fixes hasta verificar el commit desplegado.
-
----
-
-## ⛔ Restricciones operativas
-
-1. **NO ejecutar deploy sin autorización explícita del usuario.**
-2. **Watchdog doble señal** — implementado, pendiente deploy.
-3. **Pagos/reembolsos (F+G)** — implementado, pendiente deploy (migración SQL incluida).
-
-## Orden sugerido de ejecución (sin deploy ni watchdog)
-
-1. ✅ **Badge notificaciones fuera del panel** — añadir NotificationBell al Header público.
-2. ✅ **Carga inicial badge** — habilitar query o usar useNotifications en sidebar.
-3. ✅ **unanswered_messages_loop** — deduplicación durable.
-4. ✅ **Rate limiting claim endpoint** — reutilizar patrón existente.
-5. ✅ **list_all_sessions** — filtrar sesiones activas.
-6. ⏳ **Watchdog doble señal** — esperando autorización.
-7. ⏳ **Deploy producción** — ya arreglado, no tocar.
-8. ⏳ **Pagos/reembolsos** — esperando autorización.
-
-## Gate moderno (bootstrap 2026-09-25)
-
-Sentinel 0.7.14 (b00747c) + VarSense 2.2.4 (checkout compartido `../.quality-tools`), rama
-primaria `main`. Comandos: `npm run quality:setup|doctor|analyze|lock`,
-`npm run quality:check -- <ID>`. Baseline `.quality-reports/analyze.json`: 643
-archivos, 157 con violaciones (34 errores, 363 warnings, 6 info, 60 hints).
-
-- **259A-4** — Partir 5 `god-object-rs` error (>800 líneas): ai_tools, chat_timing,
-  email, hosting_runtime, repositories/infrastructure. ✅ 4a infrastructure (hub 23 +
-  servers 451 + bandwidth 375, gate PASS 4358a9e6); ✅ 4b hosting_runtime (hub 280 +
-  lifecycle 288 + backup_ops 418 + lightweight 113, gate PASS 84baf49d);
-  ✅ 4c email (hub ~140 + orders ~250 + admin ~440 + misc ~430, gate PASS);
-  ✅ 4d chat_timing (hub 508 + rate 198 + loop 181 + response 311 +
-  escalation 195, gate PASS); ✅ 4e ai_tools (hub 489 + hosting 456 +
-  misc 740 + orders 269 + reports 360 + vps 404, gate 259A-4 PASS
-  fmt 7.1s/clippy 203.1s/test 8.6s).
-- **259A-5** — Triage Glory-DS + ISP: fase 5a HECHA (platform/ x3,
-  window/dom 0 restantes, ISP x6, image_proxy, disables; gate PASS
-   fmt 8.4s/clippy 36.2s/test 38.3s, commit 725cbf47). Fase 5b visual HECHA
-   2026-09-27 (modales→`<Modal>` x5, botones/Select→DS, MenuContextual
-   variantes filtro/campana/avatar/accion, css-hardcoded-value 0; commits
-   6f4ede94→82ac16d4; tsc 0 + build 23.94s + bundle dist verificado;
-   navegador 27/09 18:15 (dev :5176): landing 13/13 DS, modal auth DS,
-   consola 0 errores; panel con auth + 320px VERIFICADO 28/09
-   (completada 259A-5/15: campana/avatar, filtro empleado, Activas con seed,
-   consola 0 errores; 320px cubierto por @media 768/480 sin overflow).
-   Docs 5b commiteadas (b38aeca4 + visual). Estado: 259A-5 CERRADA.
-  Fix tool `reactAnalyzer` disables HECHO en sentinel 0.7.14 (token exacto +
-  ventana sin break + guards; pin NAKOMI 647b0603, prevencion
-  sentinel-disable-ignorado RESUELTA).
-   Plan: `Agente/planes/plan-259A-5-2026-09-26.md`.
-
-## Barrido consola 07AA (2026-10-07, ACTIVO)
-
-Consola área: NAKOMI = 73 (info/hints + waivers contados en crudo; gate propio
-16W). Plan: `Agente/planes/plan-barrido-consola-07AA-2026-10-07.md`.
-
-- **07AA-1** varsense x4 (uplot/tiptap): FP confirmado, prevencion vigente — CERRADA sin cambio.
-- **07AA-2** handler-accede-bd x4 → repos — DESBLOQUEADA 2026-10-07: árbol HEAD compila; gate `task-check.mjs 07AA-2` PASS (fmt 9.0s + clippy `--all-targets -D warnings` 37.5s + sentinel 0E/9W/50I; `.quality-reports/check/07AA-2/latest.md`). Cero E0432/E0603/E0599 post-splits 07AA-14 (re-exports intactos en `coolify/mod.rs` y `vps/mod.rs`). Git limpio (`--help` accidental eliminado, `glory-rs` restaurado, plan de otra sesión preservado y commiteado). Pendiente: re-aplicar el DIP F2 (4 upserts en repos; ese código no está en este árbol).
-- **07AA-3** sqlite-carga-N x9: triage en 07AA-14 — mismas 5 familias FP 01AA-3/01AA-4-f3s, solo referencia, sin cambio.
-- **07AA-4** parametros-excesivos x13 — ✅ CERRADA 2026-10-10 vía `09AA-1` (agrupación en structs; reabre la excepción 229A-1 porque cambia firmas públicas; detalle en `Agente/completados/tareas-2026-10-10.md`).
-- **07AA-5** god-object x3 — CERRADA en 07AA-14 (splits + gate PASS, ver 07AA-14).
-- **07AA-6** large-interface-isp x37 (info, frontend wire/API): excepción clase 229A-1, sin churn (partir rompe contrato JSON).
-- **07AA-8** tope físico a validaciones → TRASLADADA a workspace-manager `07AA-6` (alcance de área; el plan vive allí).
-- **07AA-10** piloto F5/fase-observe — CERRADA 2026-10-07 (aviso+registro sin bloqueo, PASS).
-- **07AA-11** piloto F5/fase-enforce+override — CERRADA 2026-10-07 (2 PASS + bloqueo exit 2 + override +1 PASS; detalle en `Agente/completados/tareas-2026-10-07.md`).
-- **07AA-14** splits 3 god-object + gate FULL PASS — CERRADA 2026-10-07 (mandato Auto; detalle en `Agente/completados/tareas-2026-10-07.md`).
-
-## Gate 01AA — barrido warnings Rust + VarSense 2.2.9 (octubre 2026)
-
-Gate 2026-10-01 02:05: 0E / 79W / 54H (sentinel) + 4W VarSense (clases de
-librería uplot/u-legend/tiptap, gap sin allowlist). VarSense 2.2.9 (pin
-8f5eac2) ya propagado a los 13 consumidores, lote cerrado 18/18 ALINEADO.
-
-- **01AA-2** — ✅ CERRADA 2026-10-01 (gate 79W→66W, regla en 0; ver completadas).
-- **01AA-3** — ✅ CERRADA 2026-10-01 (`quality:check 01AA-3` PASS, 0 errores,
-  61W→59W; commits `e830db7e`+`93a94b0e`): `orders.rs` → `count_for_client` (DIP)
-  + `join!` en `ai_tools_reports.rs:289` y `chat_alert_worker.rs:292`. Excepción
-  documentada: `admin_client_bootstrap.rs` x4 BLOQUEADO (dirty ajeno) + 9 FP de
-  `sqlite-carga-N-consultas` aceptados como warnings (ver prevención
-  2026-10-01 en completadas).
-- **01AA-4** — ✅ CERRADA 2026-10-06 — L4: `funcion-larga-rs` x17 + `god-object-rs` x18 +
-  `limite-lineas` x9 (+1 nivel-2). Plan (cerrado) en
-   `Agente/planes/completados/plan-01AA-4-2026-10-01.md` (Fases 1-2 cerradas 59W→52W;
-   Fase 3 en curso (9/9 splits grandes 52W→39W: infrastructure_metrics, payment,
-   order-svc, seed, chat-repo, order-repo, ai_chat, email_templates, hosting_stripe;
-   + resto en curso F3j cpu_burst 39W→38W + F3k hosting-repo 38W→36W
-   + F3l contabo_domains 36W→36W higiene + F3m prerender 36W→36W higiene
-   + F3n payments 36W→34W    + F3o deployments 34W estable    + F3p hosting_domains 34W estable + F3q ai_tools_misc 34W→33W + F3r main.rs 33W→30W (bootstrap lib, main en 0 findings)); no se parten coolify/
-   handlers-mod/vps por waiver válido; F3s Rust CERRADO 2026-10-05
-   (`quality:check 01AA-4-f3s` PASS 0E/16W/53H: funcion-larga x5 extraídas
-   — ws_staff/ws_visitor/checkout/payment/vps_stripe — + waivers god-object
-   retirados al partir; solo quedan 3 god-object con waiver F3g/regla14);
-   F3s frontend CERRADO 2026-10-05 (`hosting.ts` 1049→7 módulos+barrel,
-   `HostingDetalle.css` 1208→5 módulos+barrel, receta `Thumbnail.css`;
-    type-check + build OK, equivalencia 111/111 exports y 155/155 selectores);
-    Fase 4 CERRADA 2026-10-06 (0 findings frontend en warning/error; resto =
-    37 `large-interface-isp` info, fuera de alcance; sin render en navegador,
-    ver plan).
-- Fuera de alcance (observado, sin autorización): `large-interface-isp` x37,
-  `css-especificacion-diseno-local` x1 (baseline 01AA). Gate 2026-10-10 (tras 09AA-1):
-  0E / 9W / 0H; los 9W son `sqlite-carga-N-consultas` FP documentados, sin cambio.
+# Roadmap — NAKOMI
+
+Nakomi Studio — sitio web de agencia creativa migrado de WordPress a Rust (Axum 0.7 + SQLx/PostgreSQL,
+utoipa) con SPA React 18 + TypeScript + Vite (React Query, Zustand, Orval). Producción en
+https://nakomi.studio (VPS1, servicio Coolify `do8k4w8swccwwogoc0os0ck0`); deploy solo vía
+`coolify-manager-rs`. Rama `main`. Admin: `andoryyu@gmail.com`, WhatsApp `+1 (608) 466-8134`.
+
+## Siguiente bloque
+
+- [ ] `12AA-2` — **Frontend: migrar a Vite 8 + TypeScript 6.**
+  Integrado en `main` `ebdfff55`; `frontend/package.json` pasa a `vite ^8.3.0`, `typescript ~6.0.2`
+  y `@vitejs/plugin-react ^6.1.1`. Pins: Sentinel `f691510` (0.7.24) y VarSense `7c5cb7a` (2.2.9);
+  `sentinel.lock.json` regenerado con `quality:bump`.
+  Hecho: gate `npm run quality:check -- 12AA-2` PASS (3 warnings preexistentes en `ModalSeoEdit.tsx`);
+  `npm run build` (`tsc -b && vite build`) rc=0. Pendiente: comprobación visual del frontend.
+- [ ] `19AA-3` — **Añadir etapa de frontend (type-check/build) al gate de NAKOMI.**
+  El gate actual no cubre el frontend (detectado en `12AA-2`); tarea aparte.
+- [ ] `07AA-2` — **handler-accede-bd x4 → repos: re-aplicar el DIP F2.**
+  El árbol HEAD compila y `task-check.mjs 07AA-2` da PASS (fmt + clippy `--all-targets -D warnings` +
+  sentinel); los re-exports de los splits `07AA-14` están intactos. Pendiente: re-aplicar el DIP F2
+  (4 upserts en repos), cuyo código no está en este árbol.
+
+## Pendientes
+
+- [ ] `19AA-4` — **Test de aceptación: continuación en navegador limpio.**
+  Abrir el enlace de continuación sin sesión; confirmar historial y widget abierto. (~30 min manual.)
+- [ ] `19AA-5` — **Test de aceptación: dos mensajes + reconexión.**
+  Verificar el hotfix de reconexión WebSocket con una prueba real. (~30 min manual.)
+- [ ] `19AA-6` — **Test de retención >100 mensajes.**
+  Conversación de 150+ mensajes; confirmar que los más recientes se muestran primero. (~30 min manual.)
+- [ ] `19AA-7` — **Verificar el CTA de WhatsApp en móvil y escritorio.**
+  Provocar escalamiento y confirmar que abre `wa.me/16084668134`. (~15 min manual.)
+- [ ] `07AA-6` — **large-interface-isp x37 (info, frontend wire/API).**
+  Excepción clase `229A-1`, sin churn: partir rompería el contrato JSON.
+
+## Bloqueos
+
+- **Deploy a producción** — bloqueado en autorización de la usuaria (§9.1). Incluye `277A-1`–`277A-5`
+  (fixes preexistentes), `277A-6` (watchdog doble señal; implementado, tests 8/8, commits `a944de64`
+  + `4d95fb4`), `277A-7` (migración SQL pagos/reembolsos) y `277A-8`/`9`/`10` (fixes SEO + banner 50%).
+  No ejecutar deploy sin autorización.
+- `12AA-1` — **Coolify: probar el deploy desde los repos propios.** `settings.json` ya apunta `studio`
+  a `nakomi-studio@main` y `kamples` a `kamples@main`; los contenedores sirven la imagen anterior.
+  Requiere autorización para un deploy/`sync` de prueba y actualizar el `REPO_URL` del compose; sin ese
+  paso el próximo deploy fallaría por rama inexistente.
+- `19AA-1` — **Deploy producción: verificar el estado real (solo diagnóstico).** `coolify-manager-rs
+  health --name studio` y comparar `git rev-parse HEAD` con el commit desplegado; reportar. Sin deploy.
+- `19AA-2` — **Hotfix SQL: confirmar en producción.** Los bugs `ON CONFLICT` ya están corregidos en
+  código; falta confirmar que la versión desplegada los incluye.
+- **Correo para Hosting** — bloqueado en elegir proveedor: MXroute ($59/año, sin API) vs Migadu
+  ($9/mes, API REST). Ver `Agente/documentacion/hosting/producto-correo-proveedores-2026-05-26.md`.
+  Afecta a `265A-11` (Fase 1: aliases/reenvíos con Cloudflare Email Routing, ~8-10 h), `265A-12`
+  (Fase 2: buzones IMAP, ~20-26 h) y `265A-13` (1 buzón IMAP gratis en plan Avanzado, ~3-4 h).
+- **Excepción `cargo-audit` RUSTSEC-2023-0071 (`rsa`)** — `rsa` solo entra en `Cargo.lock` vía
+  `sqlx-mysql` (no compilado). Vence 2026-11-13; ver `.cargo/audit.toml`. Quitar si hay parche o
+  `sqlx-mysql` sale del lock.
+- `229A-1` — excepción reabierta por `09AA-1` (cambia firmas públicas).
+
+## Planes activos
+
+- `Agente/planes/plan-barrido-consola-07AA-2026-10-07.md` — `07AA` — barrido de consola (73 → 0 accionables); quedan `07AA-2` (DIP F2) y `07AA-6` (excepción ISP).
+- `Agente/planes/plan-cierre-bloques-dificiles-nakomi-2026-07-23.md` — bloques A-E implementados; pendientes canary de recepción, prueba visual del CTA y gateway WhatsApp automático.
+- `Agente/planes/plan-cierre-whatsapp-continuacion-contacto-2026-07-26.md` — `267A-3` — WhatsApp cerrado; canary de continuación pendiente.
+- `Agente/planes/plan-cms-api-agente-2026-05-15.md` — `035A-34` — API CMS privada; gap real: tabla `site_config` + endpoints.
+- `Agente/planes/plan-deploy-produccion-2026-07-27.md` — `277A` — deploy del bloque 277A a producción; pendiente de autorización.
+- `Agente/planes/plan-dominios-2026-04-07.md` — gestión de dominios (~80%); faltan auto-renew Stripe, recordatorios de caducidad y UI de DNS.
+- `Agente/planes/plan-estabilidad-nakomi-2026-07-23.md` — `237A-3` — estabilidad integral (freeze, precedencia humano–IA); B-E desplegadas, F-K pendientes.
+- `Agente/planes/plan-fixes-pendientes-2026-06-01.md` — correcciones urgentes y refactor de emails; no cerrado hasta la aceptación funcional.
+- `Agente/planes/plan-fixes-permanentes-studio-2026-05-23.md` — fixes permanentes (build Rust, claves SSH, compose de Coolify).
+- `Agente/planes/plan-galeria-og-seo-2026-07-27.md` — galería de imágenes SEO + recorte + JSON-LD editable.
+- `Agente/planes/plan-gui-coolify-manager-2026-05-10.md` — `105A-9`/`105A-10` — rediseño de la GUI y modo navegador sin Tauri.
+- `Agente/planes/plan-hosting-automation-2026-04-10.md` — hosting automation (~92%); falta política de escalada por impago prolongado.
+- `Agente/planes/plan-hosting-lightweight-sin-coolify-2026-05-24.md` — hosting administrado ligero sin Coolify (plan maestro).
+- `Agente/planes/plan-implementacion-seo-nakomi-2026-07-27.md` — `277A` — implementación SEO; bloque 277A hecho, pendiente aprobación.
+- `Agente/planes/plan-incidente-freeze-bad-gateway-nakomi-2026-07-24.md` — causa raíz corregida; fase 4 (rediseño del watchdog) pendiente.
+- `Agente/planes/plan-latencia-hostings-vps2-2026-05-23.md` — latencia en hostings VPS2; el WordPress de VPS2 sigue lento.
+- `Agente/planes/plan-mejoras-coolify-manager-incidencias-2026-07-25.md` — comandos de incidentes en `coolify-manager-rs`; README/skill sin actualizar.
+- `Agente/planes/plan-migracion-consumidores-glory-rs-main-2026-07-25.md` — migrar consumidores de Glory RS a `main`; bloqueado hasta estabilizar.
+- `Agente/planes/plan-recursos-hosting-2026-05-22.md` — enforcement de recursos (~85%); faltan corte por impago y leer `usage_alert_threshold_pct`.
+- `Agente/planes/plan-restauracion-guillermo-2026-07-22.md` — restauración Guillermo + errores 500; pendiente de aprobación.
+- `Agente/planes/plan-seguridad-hosting-2026-04-16.md` — seguridad del hosting; backlog residual (SSH access logging, fail2ban, MaxAuthTries, SSH key auth).
+- `Agente/planes/plan-sentinel-problemas-reales-2026-04-12.md` — problemas reales del Sentinel report (~40-50% ejecutado).
+- `Agente/planes/plan-sentinel-varsense-editor-agnostico-2026-05-08.md` — Sentinel+VarSense agnóstico (~85%); faltan LSP, CI remoto y `FileWatcherProvider`.
+- `Agente/planes/plan-seo-dashboard-blog-descuento-2026-07-25.md` — dashboard SEO, blog y descuento; planificado, pendiente de aprobación.
+- `Agente/planes/plan-seo-editable-panel-2026-07-27.md` — SEO editable en el panel.
+- `Agente/planes/plan-ssh-guard-2026-06-03.md` — SSH Guard: prohibir técnicamente los comandos SSH directos.
+- `Agente/planes/plan-ssh-sftp-seguro-2026-04-16.md` — SSH/SFTP seguro del servicio de hosting.
+- `Agente/planes/plan-vps-nakomi-studio-2026-05-10.md` — publicar `vps.nakomi.studio` (GUI online con login).
