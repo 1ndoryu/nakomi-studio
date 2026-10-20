@@ -529,18 +529,19 @@
     gap: var(--spacing-xs);
     margin-top: var(--spacing-xs);
     padding: var(--spacing-xs) var(--spacing-md);
-    background: var(--chat-whatsapp);
+    background: var(--brand-black);
     color: var(--brand-white);
     border-radius: var(--radius-sm);
     text-decoration: none;
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-family: var(--font-primary);
+    font-weight: 500;
     text-align: center;
     transition: opacity var(--transicion-rapida);
 }
 
 .chatWidgetContactCtaBtn:hover {
-    opacity: 0.85;
+    opacity: 0.9;
 }
 
 .chatWidgetContactCtaFallback {

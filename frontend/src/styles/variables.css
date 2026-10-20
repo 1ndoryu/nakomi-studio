@@ -214,7 +214,6 @@
     --ventana-punto-rojo: #ff5f57;
     --ventana-punto-ambar: #febc2e;
     --ventana-punto-verde: #28c840;
-    --chat-whatsapp: #25d366;
 
     /* [259A-6] Aliases canonicos para 24 variables usadas pero nunca definidas
      * (varsense variableNoDefinida 107 -> 0). Cada alias conserva el valor del
