@@ -9,11 +9,6 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
 
 ## Siguiente bloque
 
-- [ ] `07AA-2` — **handler-accede-bd x4 → repos: re-aplicar el DIP F2.**
-  El árbol HEAD compila y `task-check.mjs 07AA-2` da PASS (fmt + clippy `--all-targets -D warnings` +
-  sentinel); los re-exports de los splits `07AA-14` están intactos. Pendiente: re-aplicar el DIP F2
-  (4 upserts en repos), cuyo código no está en este árbol.
-
 ## Pendientes
 
 ## Bloqueos
@@ -41,7 +36,7 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
 
 ## Planes activos
 
-- `Agente/planes/plan-barrido-consola-07AA-2026-10-07.md` — `07AA` — barrido de consola (73 → 0 accionables); queda `07AA-2` (DIP F2).
+- `Agente/planes/plan-barrido-consola-07AA-2026-10-07.md` — `07AA` — barrido de consola (73 → 0 accionables); cerrado.
 - `Agente/planes/plan-cierre-bloques-dificiles-nakomi-2026-07-23.md` — bloques A-E implementados; pendientes canary de recepción, prueba visual del CTA y gateway WhatsApp automático.
 - `Agente/planes/plan-cierre-whatsapp-continuacion-contacto-2026-07-26.md` — `267A-3` — WhatsApp cerrado; canary de continuación pendiente.
 - `Agente/planes/plan-cms-api-agente-2026-05-15.md` — `035A-34` — API CMS privada; gap real: tabla `site_config` + endpoints.
