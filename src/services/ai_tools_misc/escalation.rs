@@ -61,12 +61,16 @@ mod tests {
 
     #[test]
     fn el_numero_configurado_produce_el_cta_de_whatsapp() {
-        let _guard = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         std::env::set_var("PUBLIC_SUPPORT_WHATSAPP", "+18149575416");
 
         let r = exec_request_human(&json!({ "reason": "El cliente pide una persona." }));
 
-        let rich = r.rich_message.expect("con número configurado debe haber CTA");
+        let rich = r
+            .rich_message
+            .expect("con número configurado debe haber CTA");
         assert_eq!(rich.message_type, "contact_cta");
         assert_eq!(rich.metadata["label"], "Escribir por WhatsApp");
         let href = rich.metadata["href"].as_str().unwrap();
@@ -84,7 +88,9 @@ mod tests {
 
     #[test]
     fn sin_numero_no_hay_cta_pero_la_escalacion_sigue() {
-        let _guard = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         std::env::remove_var("PUBLIC_SUPPORT_WHATSAPP");
 
         let r = exec_request_human(&json!({ "reason": "sin número" }));
@@ -95,12 +101,17 @@ mod tests {
 
     #[test]
     fn un_numero_con_menos_de_siete_digitos_no_produce_cta() {
-        let _guard = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         std::env::set_var("PUBLIC_SUPPORT_WHATSAPP", "12345");
 
         let r = exec_request_human(&json!({}));
 
-        assert!(r.rich_message.is_none(), "un número incompleto no es un CTA");
+        assert!(
+            r.rich_message.is_none(),
+            "un número incompleto no es un CTA"
+        );
         std::env::remove_var("PUBLIC_SUPPORT_WHATSAPP");
     }
 }
