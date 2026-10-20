@@ -3,16 +3,12 @@
 Nakomi Studio — sitio web de agencia creativa migrado de WordPress a Rust (Axum 0.7 + SQLx/PostgreSQL,
 utoipa) con SPA React 18 + TypeScript + Vite (React Query, Zustand, Orval). Producción en
 https://nakomi.studio (VPS1, servicio Coolify `do8k4w8swccwwogoc0os0ck0`); deploy solo vía
-`coolify-manager-rs`. Rama `main`. Admin: `andoryyu@gmail.com`, WhatsApp `+1 (608) 466-8134`.
+`coolify-manager-rs`. Rama `main`. Admin: `andoryyu@gmail.com`. WhatsApp público de soporte (CTA del
+chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API de Meta
+(`META_WHATSAPP_NUMBER`) es otro número.
 
 ## Siguiente bloque
 
-- [ ] `12AA-2` — **Frontend: migrar a Vite 8 + TypeScript 6.**
-  Integrado en `main` `ebdfff55`; `frontend/package.json` pasa a `vite ^8.3.0`, `typescript ~6.0.2`
-  y `@vitejs/plugin-react ^6.1.1`. Pins: Sentinel `f691510` (0.7.24) y VarSense `7c5cb7a` (2.2.9);
-  `sentinel.lock.json` regenerado con `quality:bump`.
-  Hecho: gate `npm run quality:check -- 12AA-2` PASS (3 warnings preexistentes en `ModalSeoEdit.tsx`);
-  `npm run build` (`tsc -b && vite build`) rc=0. Pendiente: comprobación visual del frontend.
 - [ ] `19AA-3` — **Añadir etapa de frontend (type-check/build) al gate de NAKOMI.**
   El gate actual no cubre el frontend (detectado en `12AA-2`); tarea aparte.
 - [ ] `07AA-2` — **handler-accede-bd x4 → repos: re-aplicar el DIP F2.**
