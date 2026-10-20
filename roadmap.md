@@ -9,8 +9,6 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
 
 ## Siguiente bloque
 
-- [ ] `19AA-3` — **Añadir etapa de frontend (type-check/build) al gate de NAKOMI.**
-  El gate actual no cubre el frontend (detectado en `12AA-2`); tarea aparte.
 - [ ] `07AA-2` — **handler-accede-bd x4 → repos: re-aplicar el DIP F2.**
   El árbol HEAD compila y `task-check.mjs 07AA-2` da PASS (fmt + clippy `--all-targets -D warnings` +
   sentinel); los re-exports de los splits `07AA-14` están intactos. Pendiente: re-aplicar el DIP F2
