@@ -30,8 +30,6 @@ https://nakomi.studio (VPS1, servicio Coolify `do8k4w8swccwwogoc0os0ck0`); deplo
   Conversación de 150+ mensajes; confirmar que los más recientes se muestran primero. (~30 min manual.)
 - [ ] `19AA-7` — **Verificar el CTA de WhatsApp en móvil y escritorio.**
   Provocar escalamiento y confirmar que abre `wa.me/16084668134`. (~15 min manual.)
-- [ ] `07AA-6` — **large-interface-isp x37 (info, frontend wire/API).**
-  Excepción clase `229A-1`, sin churn: partir rompería el contrato JSON.
 
 ## Bloqueos
 
@@ -58,7 +56,7 @@ https://nakomi.studio (VPS1, servicio Coolify `do8k4w8swccwwogoc0os0ck0`); deplo
 
 ## Planes activos
 
-- `Agente/planes/plan-barrido-consola-07AA-2026-10-07.md` — `07AA` — barrido de consola (73 → 0 accionables); quedan `07AA-2` (DIP F2) y `07AA-6` (excepción ISP).
+- `Agente/planes/plan-barrido-consola-07AA-2026-10-07.md` — `07AA` — barrido de consola (73 → 0 accionables); queda `07AA-2` (DIP F2).
 - `Agente/planes/plan-cierre-bloques-dificiles-nakomi-2026-07-23.md` — bloques A-E implementados; pendientes canary de recepción, prueba visual del CTA y gateway WhatsApp automático.
 - `Agente/planes/plan-cierre-whatsapp-continuacion-contacto-2026-07-26.md` — `267A-3` — WhatsApp cerrado; canary de continuación pendiente.
 - `Agente/planes/plan-cms-api-agente-2026-05-15.md` — `035A-34` — API CMS privada; gap real: tabla `site_config` + endpoints.
