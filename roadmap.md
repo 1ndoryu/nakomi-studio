@@ -22,9 +22,6 @@ https://nakomi.studio (VPS1, servicio Coolify `do8k4w8swccwwogoc0os0ck0`); deplo
 
 ## Pendientes
 
-- [ ] `19AA-7` — **Verificar el CTA de WhatsApp en móvil y escritorio.**
-  Provocar escalamiento y confirmar que abre `wa.me/16084668134`. (~15 min manual.)
-
 ## Bloqueos
 
 - **Deploy a producción** — bloqueado en autorización de la usuaria (§9.1). Incluye `277A-1`–`277A-5`

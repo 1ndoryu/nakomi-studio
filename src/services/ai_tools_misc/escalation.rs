@@ -49,3 +49,58 @@ pub(crate) fn exec_request_human(args: &Value) -> ToolExecResult {
         rich_message,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    /* [19AA-7] El CTA depende de PUBLIC_SUPPORT_WHATSAPP: sin ella no hay botón. Se serializan
+     * los dos casos porque la variable de entorno es global al proceso de test. */
+    use super::*;
+    use std::sync::Mutex;
+
+    static ENV: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn el_numero_configurado_produce_el_cta_de_whatsapp() {
+        let _guard = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("PUBLIC_SUPPORT_WHATSAPP", "+18149575416");
+
+        let r = exec_request_human(&json!({ "reason": "El cliente pide una persona." }));
+
+        let rich = r.rich_message.expect("con número configurado debe haber CTA");
+        assert_eq!(rich.message_type, "contact_cta");
+        assert_eq!(rich.metadata["label"], "Escribir por WhatsApp");
+        let href = rich.metadata["href"].as_str().unwrap();
+        assert!(
+            href.starts_with("https://wa.me/18149575416?text="),
+            "href inesperado: {href}"
+        );
+        /* El número viaja solo en dígitos: wa.me no admite «+» ni separadores. */
+        assert!(!href.contains('+'));
+        assert_eq!(rich.metadata["reason"], "El cliente pide una persona.");
+        assert!(r.tool_result_json.contains("\"status\":\"escalated\""));
+
+        std::env::remove_var("PUBLIC_SUPPORT_WHATSAPP");
+    }
+
+    #[test]
+    fn sin_numero_no_hay_cta_pero_la_escalacion_sigue() {
+        let _guard = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::remove_var("PUBLIC_SUPPORT_WHATSAPP");
+
+        let r = exec_request_human(&json!({ "reason": "sin número" }));
+
+        assert!(r.rich_message.is_none(), "sin número no debe haber CTA");
+        assert!(r.tool_result_json.contains("\"status\":\"escalated\""));
+    }
+
+    #[test]
+    fn un_numero_con_menos_de_siete_digitos_no_produce_cta() {
+        let _guard = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("PUBLIC_SUPPORT_WHATSAPP", "12345");
+
+        let r = exec_request_human(&json!({}));
+
+        assert!(r.rich_message.is_none(), "un número incompleto no es un CTA");
+        std::env::remove_var("PUBLIC_SUPPORT_WHATSAPP");
+    }
+}
