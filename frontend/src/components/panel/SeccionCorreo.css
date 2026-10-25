@@ -25,28 +25,14 @@
     margin-bottom: 0;
 }
 
+/* Pestaña: <Button variante="texto" tamano="pequeno">; aquí solo el indicador inferior de la pestaña */
 .correosPestaniaBtn {
-    display: flex;
-    align-items: center;
-    gap: var(--espaciado-xs);
-    padding: 10px 20px;
-    border: none;
-    background: transparent;
-    color: var(--color-texto-secundario);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    cursor: pointer;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
-    transition: all 0.15s ease;
-    font-family: inherit;
 }
 
-.correosPestaniaBtn:hover {
-    color: var(--color-texto-primario);
-}
-
-.correosPestaniaActiva {
+/* Doble clase: gana al color de <Button variante="texto"> sin depender del orden de carga de los CSS */
+.correosPestaniaBtn.correosPestaniaActiva {
     color: var(--color-primario);
     border-bottom-color: var(--color-primario);
 }

@@ -109,8 +109,8 @@ export const ChatWidget: React.FC = () => {
 
             <div className={`chatWidgetPanel ${abierto ? 'chatWidgetPanelAbierto' : ''}`}>
                 <Button
-                    variante="texto"
-                    tamano="pequeno"
+                    variante="primario"
+                    tamano="icono"
                     className="chatWidgetMinimizeBtn"
                     onClick={handleMinimize}
                     aria-label="Minimizar chat"
@@ -226,14 +226,16 @@ function renderMessageContent(msg: {
                         <p className="chatWidgetInvoiceDesc">{description}</p>
                     )}
                     {payUrl && !isPaid && (
-                        <a
+                        <Button
+                            variante="secundario"
+                            tamano="pequeno"
                             href={payUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="chatWidgetInvoicePayBtn"
                         >
                             Pagar ahora
-                        </a>
+                        </Button>
                     )}
                     {msg.content && <p className="chatWidgetMsgCaption">{msg.content}</p>}
                 </div>
@@ -294,14 +296,16 @@ function renderMessageContent(msg: {
                 <div className="chatWidgetMsgRich chatWidgetContactCta">
                     <p className="chatWidgetContactCtaMsg">{msg.content}</p>
                     {href ? (
-                        <a
+                        <Button
+                            variante="secundario"
+                            tamano="pequeno"
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="chatWidgetContactCtaBtn"
                         >
                             {label}
-                        </a>
+                        </Button>
                     ) : (
                         <p className="chatWidgetContactCtaFallback">{fallback}</p>
                     )}
@@ -438,7 +442,7 @@ function ChatWidgetInput({
             />
             <Button
                 variante="texto"
-                tamano="pequeno"
+                tamano="icono"
                 className="chatWidgetAttachBtn"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!connected || uploading}
@@ -459,7 +463,7 @@ function ChatWidgetInput({
                 />
                 <Button
                     variante="texto"
-                    tamano="pequeno"
+                    tamano="icono"
                     className="chatWidgetSendBtn"
                     onClick={onSend}
                     disabled={!connected || !input.trim() || uploading}

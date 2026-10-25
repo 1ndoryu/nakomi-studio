@@ -78,30 +78,12 @@
     pointer-events: auto;
 }
 
-/* Boton minimizar: redondo, flotante top-right dentro del panel */
+/* Boton minimizar: <Button variante="primario" tamano="icono">; aquí solo su posición flotante top-right del panel */
 .chatWidgetMinimizeBtn {
     position: absolute;
     top: var(--spacing-sm);
     right: var(--spacing-sm);
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    border-radius: 50%;
-    background: var(--bg-warm);
-    color: var(--text-dark);
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     z-index: 1;
-    padding: 0;
-    transition: background 0.15s ease;
-    font-family: inherit;
-}
-
-.chatWidgetMinimizeBtn:hover {
-    background: var(--bg-warm-deep);
 }
 
 /* [114A-13] Banner de contexto de reporte — visible cuando se abre desde "Reportar problema" */
@@ -241,31 +223,9 @@
     gap: 4px;
 }
 
-/* [T-5] Botón de adjuntar archivo (clip) */
+/* [T-5] Botón de adjuntar archivo (clip): <Button variante="texto" tamano="icono">; aquí solo que no encoge en la fila del input */
 .chatWidgetAttachBtn {
     flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    border-radius: 50%;
-    padding: 0;
-    background: none;
-    color: var(--text-dark);
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.15s ease;
-}
-
-.chatWidgetAttachBtn:hover {
-    opacity: 0.7;
-}
-
-.chatWidgetAttachBtn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
 }
 
 /* [064A-52] Input: bg unset, radius 104px, full width. Espacio derecho para el send button. */
@@ -286,35 +246,12 @@
     padding-right: 48px;
 }
 
-/* [064A-53] Send button: sin fondo, posición overlaid dentro del input */
+/* [064A-53] Send button: <Button variante="texto" tamano="icono">; aquí solo su posición overlaid dentro del input */
 .chatWidgetSendBtn {
     position: absolute;
     right: 4px;
     top: 50%;
     transform: translateY(-50%);
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    border-radius: 50%;
-    padding: 0;
-    background: none;
-    color: var(--text-dark);
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: inherit;
-    transition: opacity 0.15s ease;
-}
-
-.chatWidgetSendBtn:hover {
-    opacity: 0.7;
-}
-
-.chatWidgetSendBtn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
 }
 
 /* [T-5] Rich message content: imágenes, audio, archivos */
@@ -400,22 +337,9 @@
     color: var(--text-muted);
 }
 
+/* Enlace de pago: <Button variante="secundario" tamano="pequeno" href>; aquí solo su separación */
 .chatWidgetInvoicePayBtn {
-    display: inline-block;
     margin-top: var(--spacing-sm);
-    padding: var(--spacing-xs) var(--spacing-md);
-    background: var(--brand-black);
-    color: var(--brand-white);
-    border-radius: var(--radius-sm);
-    text-decoration: none;
-    font-size: var(--text-sm);
-    
-    text-align: center;
-    transition: opacity var(--transicion-rapida);
-}
-
-.chatWidgetInvoicePayBtn:hover {
-    opacity: 0.85;
 }
 
 /* [084A-26] Service card: tarjeta de servicio */
@@ -522,26 +446,9 @@
     line-height: 1.4;
 }
 
+/* CTA de contacto: <Button variante="secundario" tamano="pequeno" href>; aquí solo su separación */
 .chatWidgetContactCtaBtn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-xs);
     margin-top: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-md);
-    background: var(--brand-black);
-    color: var(--brand-white);
-    border-radius: var(--radius-sm);
-    text-decoration: none;
-    font-size: var(--text-sm);
-    font-family: var(--font-primary);
-    font-weight: 500;
-    text-align: center;
-    transition: opacity var(--transicion-rapida);
-}
-
-.chatWidgetContactCtaBtn:hover {
-    opacity: 0.9;
 }
 
 .chatWidgetContactCtaFallback {

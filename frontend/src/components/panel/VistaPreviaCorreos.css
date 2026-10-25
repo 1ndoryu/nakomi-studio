@@ -30,32 +30,7 @@
     flex-wrap: wrap;
 }
 
-.previewCatBtn {
-    padding: 6px 16px;
-    border: 1px solid var(--border-default);
-    border-radius: 20px;
-    background: transparent;
-    color: var(--text-tertiary);
-    font-size: var(--text-xs);
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.previewCatBtn:hover {
-    border-color: var(--color-primario);
-    color: var(--color-primario);
-}
-
-.previewCatActiva {
-    background: var(--color-primario);
-    border-color: var(--color-primario);
-    color: var(--brand-white);
-}
-
-.previewCatActiva:hover {
-    color: var(--brand-white);
-}
+/* [25AA-1] Chips: <Button variante="outline" | "secundario" tamano="pequeno">, sin clase de estilo propia */
 
 /* Grupos y cuadrícula */
 .previewGrid {
@@ -186,27 +161,7 @@
     font-family: monospace;
 }
 
-.previewDescargarBtn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 6px;
-    background: var(--color-fondo-secundario);
-    color: var(--text-tertiary);
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.15s ease;
-}
-
-.previewDescargarBtn:hover {
-    background: var(--color-primario);
-    color: var(--brand-white);
-}
-
-/* [259A-5 5b-3] Cerrar ahora <Button variante="texto">; sin clase local. */
+/* [259A-5 5b-3] Cerrar ahora <Button variante="texto">; sin clase local. Descargar: <Button variante="texto" tamano="icono" href>, sin clase local. */
 
 .previewModalCuerpo {
     flex: 1;

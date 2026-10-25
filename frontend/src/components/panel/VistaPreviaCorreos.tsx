@@ -86,20 +86,24 @@ export function VistaPreviaCorreos() {
 
             {/* Navegación por categorías */}
             <div className="previewCategorias">
-                <button
-                    className={`previewCatBtn ${selectedCategory === null ? 'previewCatActiva' : ''}`}
+                <Button
+                    variante={selectedCategory === null ? 'secundario' : 'outline'}
+                    tamano="pequeno"
+                    type="button"
                     onClick={() => setSelectedCategory(null)}
                 >
                     Todas
-                </button>
+                </Button>
                 {CATEGORY_ORDER.filter(cat => grupos.has(cat)).map(cat => (
-                    <button
+                    <Button
                         key={cat}
-                        className={`previewCatBtn ${selectedCategory === cat ? 'previewCatActiva' : ''}`}
+                        variante={selectedCategory === cat ? 'secundario' : 'outline'}
+                        tamano="pequeno"
+                        type="button"
                         onClick={() => setSelectedCategory(cat)}
                     >
                         {CATEGORY_LABELS[cat] ?? cat}
-                    </button>
+                    </Button>
                 ))}
             </div>
 
@@ -158,14 +162,16 @@ export function VistaPreviaCorreos() {
                         </div>
                         <div className="modalAcciones">
                             {vista.html && (
-                                <a
+                                <Button
+                                    variante="texto"
+                                    tamano="icono"
                                     href={`data:text/html;charset=utf-8,${encodeURIComponent(vista.html)}`}
                                     download={`${vista.plantilla.id}.html`}
-                                    className="previewDescargarBtn"
                                     title="Descargar HTML"
+                                    aria-label="Descargar HTML"
                                 >
                                     <ExternalLink size={16} />
-                                </a>
+                                </Button>
                             )}
                             <Button
                                 variante="texto"

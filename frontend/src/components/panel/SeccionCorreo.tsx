@@ -155,20 +155,26 @@ export function SeccionCorreo() {
         <div className="correosContenedor">
             {/* Pestañas */}
             <div className="correosPestanias">
-                <button
+                <Button
+                    variante="texto"
+                    tamano="pequeno"
+                    type="button"
                     className={`correosPestaniaBtn ${pestaña === 'preview' ? 'correosPestaniaActiva' : ''}`}
                     onClick={() => setPestaña('preview')}
                 >
                     <Eye size={16} />
                     Vista previa
-                </button>
-                <button
+                </Button>
+                <Button
+                    variante="texto"
+                    tamano="pequeno"
+                    type="button"
                     className={`correosPestaniaBtn ${pestaña === 'enviados' ? 'correosPestaniaActiva' : ''}`}
                     onClick={() => setPestaña('enviados')}
                 >
                     <Mail size={16} />
                     Enviados
-                </button>
+                </Button>
             </div>
 
             {/* Contenido según pestaña */}
