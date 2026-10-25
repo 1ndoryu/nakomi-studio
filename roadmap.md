@@ -9,6 +9,13 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
 
 ## Siguiente bloque
 
+- [ ] `25AA-1` — **Quitar los estilos de botón propios de los CSS de componente y usar `Button`.**
+  Criterio: `problemas --proyecto NAKOMI` sin `estiloBotonEspecifico` (8 casos: chat, panel de correo); el CSS
+  de componente solo conserva posición o indicadores; type-check y tests de lo tocado en verde en la 89.
+- [ ] `25AA-2` — **Cerrar las alertas de vulnerabilidad de npm y cargo.**
+  Criterio: `problemas --proyecto NAKOMI` sin `[vulnerabilidad]`; parche mínimo o excepción documentada en el
+  fichero de excepciones del proyecto.
+
 ## Pendientes
 
 ## Bloqueos
