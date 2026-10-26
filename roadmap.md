@@ -17,6 +17,15 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
   fichero de excepciones del proyecto.
 
 ## Pendientes
+- [ ] `12AA-1` — **Coolify: probar el deploy desde los repos propios.** `settings.json` ya apunta `studio`
+  a `nakomi-studio@main` y `kamples` a `kamples@main`; los contenedores sirven la imagen anterior.
+  Requiere autorización para un deploy/`sync` de prueba y actualizar el `REPO_URL` del compose; sin ese
+  paso el próximo deploy fallaría por rama inexistente.
+- [ ] `19AA-1` — **Deploy producción: verificar el estado real (solo diagnóstico).** `coolify-manager-rs
+  health --name studio` y comparar `git rev-parse HEAD` con el commit desplegado; reportar. Sin deploy.
+- [ ] `19AA-2` — **Hotfix SQL: confirmar en producción.** Los bugs `ON CONFLICT` ya están corregidos en
+  código; falta confirmar que la versión desplegada los incluye.
+- [ ] `229A-1` — excepción reabierta por `09AA-1` (cambia firmas públicas).
 
 ## Bloqueos
 
@@ -24,14 +33,6 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
   (fixes preexistentes), `277A-6` (watchdog doble señal; implementado, tests 8/8, commits `a944de64`
   + `4d95fb4`), `277A-7` (migración SQL pagos/reembolsos) y `277A-8`/`9`/`10` (fixes SEO + banner 50%).
   No ejecutar deploy sin autorización.
-- `12AA-1` — **Coolify: probar el deploy desde los repos propios.** `settings.json` ya apunta `studio`
-  a `nakomi-studio@main` y `kamples` a `kamples@main`; los contenedores sirven la imagen anterior.
-  Requiere autorización para un deploy/`sync` de prueba y actualizar el `REPO_URL` del compose; sin ese
-  paso el próximo deploy fallaría por rama inexistente.
-- `19AA-1` — **Deploy producción: verificar el estado real (solo diagnóstico).** `coolify-manager-rs
-  health --name studio` y comparar `git rev-parse HEAD` con el commit desplegado; reportar. Sin deploy.
-- `19AA-2` — **Hotfix SQL: confirmar en producción.** Los bugs `ON CONFLICT` ya están corregidos en
-  código; falta confirmar que la versión desplegada los incluye.
 - **Correo para Hosting** — bloqueado en elegir proveedor: MXroute ($59/año, sin API) vs Migadu
   ($9/mes, API REST). Ver `Agente/documentacion/hosting/producto-correo-proveedores-2026-05-26.md`.
   Afecta a `265A-11` (Fase 1: aliases/reenvíos con Cloudflare Email Routing, ~8-10 h), `265A-12`
@@ -39,7 +40,6 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
 - **Excepción `cargo-audit` RUSTSEC-2023-0071 (`rsa`)** — `rsa` solo entra en `Cargo.lock` vía
   `sqlx-mysql` (no compilado). Vence 2026-11-13; ver `.cargo/audit.toml`. Quitar si hay parche o
   `sqlx-mysql` sale del lock.
-- `229A-1` — excepción reabierta por `09AA-1` (cambia firmas públicas).
 
 ## Planes activos
 
