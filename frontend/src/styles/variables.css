@@ -18,8 +18,6 @@
     /* [074A-4] Beige cálido para botón primario y elementos interactivos sutiles. */
     --bg-warm: #e8e6e2;
     --bg-warm-hover: #e0deda;
-    /* Beige profundo para hover en surfaces más oscuras */
-    --bg-warm-deep: #d9d7d3;
     --overlay-hover: rgba(0, 0, 0, 0.05);
 
     /* Colors - Cards */
