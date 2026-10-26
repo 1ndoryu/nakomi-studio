@@ -17,10 +17,7 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
   fichero de excepciones del proyecto.
 
 ## Pendientes
-- [ ] `12AA-1` — **Coolify: probar el deploy desde los repos propios.** `settings.json` ya apunta `studio`
-  a `nakomi-studio@main` y `kamples` a `kamples@main`; los contenedores sirven la imagen anterior.
-  Requiere autorización para un deploy/`sync` de prueba y actualizar el `REPO_URL` del compose; sin ese
-  paso el próximo deploy fallaría por rama inexistente.
+
 - [ ] `19AA-1` — **Deploy producción: verificar el estado real (solo diagnóstico).** `coolify-manager-rs
   health --name studio` y comparar `git rev-parse HEAD` con el commit desplegado; reportar. Sin deploy.
 - [ ] `19AA-2` — **Hotfix SQL: confirmar en producción.** Los bugs `ON CONFLICT` ya están corregidos en
@@ -29,6 +26,7 @@ chat): `+1 (814) 957-5416`, vía `PUBLIC_SUPPORT_WHATSAPP`; el canal de la API d
 
 ## Bloqueos
 
+- Bloqueo `12AA-1` — probar el deploy desde los repos propios: `settings.json` ya apunta `studio` a `nakomi-studio@main` y `kamples` a `kamples@main`, pero los contenedores sirven la imagen anterior. Requiere autorización de la usuaria para un deploy/`sync` de prueba y actualizar el `REPO_URL` del compose; sin ese paso el próximo deploy fallaría por rama inexistente.
 - **Deploy a producción** — bloqueado en autorización de la usuaria (§9.1). Incluye `277A-1`–`277A-5`
   (fixes preexistentes), `277A-6` (watchdog doble señal; implementado, tests 8/8, commits `a944de64`
   + `4d95fb4`), `277A-7` (migración SQL pagos/reembolsos) y `277A-8`/`9`/`10` (fixes SEO + banner 50%).
